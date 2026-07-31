@@ -1,6 +1,8 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useGame } from '@/lib/gameStore'
+import { StartScreen } from '@/components/ui/StartScreen'
 import { HUD } from './HUD'
 
 // El Canvas de R3F depende de WebGL/window, así que se carga solo en cliente.
@@ -18,12 +20,21 @@ const GameCanvas = dynamic(
   },
 )
 
-/** Escena de juego: Canvas 3D + HUD en DOM. */
+/**
+ * Escena de juego. El Canvas 3D (con <XR>) está SIEMPRE montado para que la
+ * sesión inmersiva pueda arrancar con la escena ya en el árbol; el menú
+ * (StartScreen) y el HUD se superponen como overlays en DOM según el estado.
+ *
+ * Antes el menú reemplazaba a la escena, por lo que pulsar "Entrar en VR"
+ * iniciaba la sesión sin nada montado y no se veía nada en el visor.
+ */
 export function GameScene() {
+  const { gameState } = useGame()
+
   return (
     <div className="relative h-dvh w-full">
       <GameCanvas />
-      <HUD />
+      {gameState === 'menu' ? <StartScreen /> : <HUD />}
     </div>
   )
 }

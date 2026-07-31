@@ -20,7 +20,7 @@ export function StartScreen() {
     useGame()
 
   return (
-    <main className="relative flex min-h-dvh w-full items-center justify-center overflow-y-auto bg-[var(--color-background)] px-6 py-12">
+    <main className="absolute inset-0 z-20 flex w-full items-center justify-center overflow-y-auto bg-[var(--color-background)] px-6 py-12">
       {/* Gradiente radial sutil de fondo */}
       <div
         aria-hidden
