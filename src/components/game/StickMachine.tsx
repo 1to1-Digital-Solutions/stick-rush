@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { CatmullRomCurve3, Vector3 } from 'three'
 import {
   DIFFICULTY_SPEEDS,
+  GROUND_Y,
   MACHINE_HEIGHT,
   MACHINE_RADIUS,
   stickColor,
@@ -74,10 +75,10 @@ export function StickMachine() {
         <meshStandardMaterial color="#cbd5e1" metalness={0.8} roughness={0.2} />
       </mesh>
 
-      {/* Soportes verticales en los extremos del arco */}
+      {/* Soportes verticales: del suelo (GROUND_Y) al arranque del arco. */}
       {[-MACHINE_RADIUS, MACHINE_RADIUS].map((x) => (
-        <mesh key={x} position={[x, MACHINE_HEIGHT / 2, 0]}>
-          <cylinderGeometry args={[0.1, 0.12, MACHINE_HEIGHT, 12]} />
+        <mesh key={x} position={[x, (MACHINE_HEIGHT + GROUND_Y) / 2, 0]}>
+          <cylinderGeometry args={[0.1, 0.12, MACHINE_HEIGHT - GROUND_Y, 12]} />
           <meshStandardMaterial color="#94a3b8" metalness={0.8} roughness={0.25} />
         </mesh>
       ))}
