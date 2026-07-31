@@ -19,14 +19,14 @@ import { StickMachine } from './StickMachine'
 import { Ground } from './Ground'
 
 /**
- * Escenario: fondo, niebla, suelo e iluminación de entorno.
+ * Escenario: fondo, suelo e iluminación de entorno.
  *
- * El HDRI (una carpa de espectáculos, CC0, servido desde `public/`) hace de
- * escenario en VR y en escritorio: envuelve la escena y además ilumina la
- * máquina con luz cálida rebotada.
+ * El HDRI (una plaza de pueblo de noche, CC0, servido desde `public/`) hace de
+ * escenario en VR y en escritorio: envuelve la escena, se proyecta sobre el
+ * suelo y además ilumina la máquina con la luz cálida de las farolas.
  *
- * En AR no se dibuja fondo, ni niebla, ni suelo: el escenario es la habitación
- * del jugador y taparla con un decorado rompería el passthrough. El HDRI sí se
+ * En AR no se dibuja ni fondo ni suelo: el escenario es la habitación del
+ * jugador y taparla con un decorado rompería el passthrough. El HDRI sí se
  * mantiene, pero solo como fuente de reflejos (`background={false}`): sin él la
  * máquina se vería plana y apagada sobre la sala real.
  */
@@ -38,8 +38,8 @@ function SceneBackdrop() {
     <>
       {!isAR && (
         <>
+          {/* Solo se ve mientras carga el HDRI; luego lo sustituye el fondo. */}
           <color attach="background" args={[BACKDROP_COLOR]} />
-          <fog attach="fog" args={[BACKDROP_COLOR, 5, 20]} />
           <Ground />
         </>
       )}
@@ -47,7 +47,15 @@ function SceneBackdrop() {
       {/* Suspense propio: mientras se carga el HDRI el resto de la escena ya se
           ve, en vez de quedarse todo el Canvas en blanco esperándolo. */}
       <Suspense fallback={null}>
-        <Environment files={HDRI_URL} background={!isAR} backgroundBlurriness={0.04} />
+        <Environment
+          files={HDRI_URL}
+          background={!isAR}
+          environmentIntensity={1.4}
+          // Proyecta el HDRI también sobre el suelo, de modo que la máquina se
+          // planta en el empedrado de la plaza en vez de sobre un plano de
+          // color con un corte visible contra el horizonte de la foto.
+          ground={isAR ? undefined : { height: 1.6, radius: 14, scale: 45 }}
+        />
       </Suspense>
     </>
   )
@@ -100,16 +108,17 @@ export function GameCanvas() {
       gl={{ antialias: true }}
       className="absolute inset-0"
     >
-      <ambientLight intensity={0.5} />
-      {/* Foco cálido sobre la máquina, como el de una caseta. */}
+      <ambientLight intensity={0.35} />
+      {/* Foco cálido sobre la máquina, como el de una caseta de feria de noche. */}
       <pointLight
         position={[0, MACHINE_HEIGHT + 1.2, -MACHINE_RADIUS * 0.4]}
-        intensity={12}
+        intensity={16}
         color="#ffd479"
-        distance={9}
+        distance={10}
         castShadow
       />
-      <directionalLight position={[2.5, 4, 2]} intensity={0.5} />
+      {/* Relleno frío por detrás, para despegar la máquina del fondo oscuro. */}
+      <directionalLight position={[2.5, 4, 3]} intensity={0.35} color="#9fb6d6" />
 
       <XR store={xrStore}>
         {/* Arranca/cierra partidas según el estado de la sesión inmersiva. */}

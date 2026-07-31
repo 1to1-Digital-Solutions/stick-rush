@@ -126,10 +126,17 @@ planta en el centro, así que los palos le caen alrededor, al alcance del brazo.
   XR (`XR_PLAYER_SCALE`): ahora va a 1:1.
 - Las velocidades por dificultad se recalcularon a m/s para conservar los tiempos de caída
   (Fácil ~5.7 s, Imposible ~0.7 s) sobre el nuevo recorrido de 1.6 m.
-- Estética de feria: aro a rayas rojas y crema, guirnalda de bombillas, postes dorados, suelo de
-  moqueta roja y palos de madera amarilla (todos del mismo color).
-- Escenario: HDRI de carpa de espectáculos servido desde `public/hdri/`, que hace de fondo en VR
-  y escritorio y además ilumina la escena. En AR se mantiene solo como reflejos.
+- Estética de feria: aro a rayas rojas y crema con ganchos por palo, celosía superior (aro,
+  montantes y diagonales en zigzag), guirnalda de bombillas con casquillo, postes arriostrados
+  con base y palos de madera amarilla, todos del mismo color. La celosía y los tirantes son
+  deliberadamente redundantes: con un solo tubo la máquina parecía que se fuera a caer.
+- Escenario: HDRI de **plaza de pueblo de noche** (con guirnaldas de banderines), servido desde
+  `public/hdri/`. Hace de fondo, ilumina la escena y se **proyecta sobre el suelo**
+  (`<Environment ground>`), de modo que la máquina se planta en el empedrado real en vez de
+  sobre un plano de color con un corte visible contra el horizonte. En AR se mantiene solo como
+  reflejos. El suelo propio ya no pinta nada: solo recibe la sombra de la máquina.
+- Se usa el EXR de 1K (2 MB). Hay 2K disponible (~8 MB) si se quiere el fondo más nítido en el
+  visor; es cambiar el archivo y `HDRI_URL`.
 
 **No se encontró ningún modelo 3D de máquina de feria** (Poly Haven solo tiene props domésticos),
 así que la máquina sigue siendo geometría por código, ahora con más detalle.

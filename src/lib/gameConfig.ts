@@ -47,15 +47,17 @@ export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
 /** Color de los palos: madera pintada de amarillo de feria. */
 export const STICK_COLOR = '#e8b93f'
 
-/** Tonos de la máquina, a rayas de carpa de feria. */
+/** Tonos de la máquina, a rayas de caseta de feria. */
 export const MACHINE_STRIPE_COLORS = ['#c1121f', '#f4ece0']
 /** Postes y remates de la máquina. */
 export const MACHINE_FRAME_COLOR = '#9a7b33'
+/** Celosía (aro superior, montantes y diagonales): hierro pintado. */
+export const MACHINE_TRUSS_COLOR = '#6d6357'
 /** Bombillas de la guirnalda. */
 export const MACHINE_BULB_COLOR = '#ffd479'
 
-/** Fondo y niebla fuera de AR, en el tono cálido del escenario. */
-export const BACKDROP_COLOR = '#160d10'
+/** Fondo y niebla fuera de AR: noche de plaza, a juego con el escenario. */
+export const BACKDROP_COLOR = '#0d1017'
 
 /** Límites de palos seleccionables. */
 export const MIN_STICKS = 5
@@ -101,7 +103,7 @@ export function machinePoint(t: number): [number, number, number] {
 export const XR_RESTART_DELAY_MS = 4000
 
 /** Rutas de los assets locales (CC0, ver public/CREDITS.md). */
-export const HDRI_URL = '/hdri/circus_arena_2k.hdr'
+export const HDRI_URL = '/hdri/plaza_pueblo_1k.exr'
 
 /**
  * Mapas de la madera de los palos. Se usan el relieve y la rugosidad, que son

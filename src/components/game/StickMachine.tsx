@@ -2,20 +2,22 @@
 
 import { useMemo } from 'react'
 import { useTexture } from '@react-three/drei'
-import { RepeatWrapping } from 'three'
+import { Quaternion, RepeatWrapping, Vector3 } from 'three'
 import {
   DIFFICULTY_SPEEDS,
   GROUND_Y,
   MACHINE_BULB_COLOR,
   MACHINE_FRAME_COLOR,
-  MACHINE_HEIGHT,
   MACHINE_STRIPE_COLORS,
+  MACHINE_TRUSS_COLOR,
   STICK_COLOR,
   WOOD_TEXTURES,
   machinePoint,
 } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
 import { Stick } from './Stick'
+
+type Point = [number, number, number]
 
 /**
  * Pseudo-aleatorio determinista en [0, 1) a partir de dos enteros (índice
@@ -27,19 +29,77 @@ function seededRandom(a: number, b: number): number {
   return x - Math.floor(x)
 }
 
-/** Segmentos del aro, a rayas alternas como el toldo de una caseta. */
-const ARC_SEGMENTS = 24
-/** Bombillas de la guirnalda que recorre el aro. */
-const BULB_COUNT = 13
-const TUBE_RADIUS = 0.045
+const UP = new Vector3(0, 1, 0)
 
 /**
- * La máquina: un aro semicircular horizontal, sostenido por dos postes, del que
- * cuelgan los palos. El jugador se pone en el centro.
+ * Barra recta entre dos puntos cualesquiera. Es la pieza con la que se monta
+ * toda la estructura: los aros (por tramos), los montantes, las diagonales de
+ * la celosía y las riostras de los postes.
+ */
+function Strut({
+  from,
+  to,
+  radius,
+  color,
+  metalness = 0.6,
+  roughness = 0.4,
+}: {
+  from: Point
+  to: Point
+  radius: number
+  color: string
+  metalness?: number
+  roughness?: number
+}) {
+  const { position, quaternion, length } = useMemo(() => {
+    const a = new Vector3(...from)
+    const b = new Vector3(...to)
+    const direction = b.clone().sub(a)
+    return {
+      position: a.clone().add(b).multiplyScalar(0.5),
+      // El cilindro nace vertical; se gira hasta apuntar de `from` a `to`.
+      quaternion: new Quaternion().setFromUnitVectors(
+        UP,
+        direction.clone().normalize(),
+      ),
+      length: direction.length(),
+    }
+  }, [from, to])
+
+  return (
+    <mesh position={position} quaternion={quaternion}>
+      <cylinderGeometry args={[radius, radius, length, 10]} />
+      <meshStandardMaterial
+        color={color}
+        metalness={metalness}
+        roughness={roughness}
+      />
+    </mesh>
+  )
+}
+
+/** Tramos del aro principal, a rayas alternas como el toldo de una caseta. */
+const ARC_SEGMENTS = 24
+/** Montantes verticales que unen el aro principal con el superior. */
+const TRUSS_POSTS = 13
+const TUBE_RADIUS = 0.045
+/** Separación entre el aro de los palos y el aro superior de la celosía. */
+const TRUSS_RISE = 0.3
+
+/** Sube un punto del aro una altura dada. */
+function raise([x, y, z]: Point, dy: number): Point {
+  return [x, y + dy, z]
+}
+
+/**
+ * La máquina: un aro semicircular horizontal del que cuelgan los palos, montado
+ * sobre una celosía y sostenido por dos postes arriostrados. El jugador se pone
+ * en el centro.
  *
- * El aro se construye por segmentos rectos en vez de con una curva continua
- * porque cada tramo alterna color: es lo que le da el aire de caseta de feria
- * sin necesidad de texturas.
+ * La estructura es deliberadamente redundante —doble aro, montantes, diagonales
+ * en zigzag y tirantes en los postes— porque con un solo tubo la máquina parecía
+ * que se fuera a venir abajo. Es la misma lógica que una viga de celosía real:
+ * lo que da sensación de rigidez son las diagonales.
  */
 export function StickMachine() {
   const { stickCount, difficulty, runId, catchStick, resolveStick } = useGame()
@@ -61,42 +121,55 @@ export function StickMachine() {
     }
   }, [normalMap, roughnessMap])
 
-  // Tramos del aro: cada uno es un cilindro entre dos puntos consecutivos.
-  const segments = useMemo(
-    () =>
-      Array.from({ length: ARC_SEGMENTS }, (_, index) => {
-        const from = machinePoint(index / ARC_SEGMENTS)
-        const to = machinePoint((index + 1) / ARC_SEGMENTS)
-        const mid: [number, number, number] = [
-          (from[0] + to[0]) / 2,
-          (from[1] + to[1]) / 2,
-          (from[2] + to[2]) / 2,
-        ]
-        const dx = to[0] - from[0]
-        const dz = to[2] - from[2]
-        const length = Math.hypot(dx, dz)
-        return {
-          index,
-          mid,
-          length,
-          // El cilindro nace vertical: se tumba y se orienta a lo largo del tramo.
-          rotation: [Math.PI / 2, 0, -Math.atan2(dz, dx) + Math.PI / 2] as [
-            number,
-            number,
-            number,
-          ],
-          color: MACHINE_STRIPE_COLORS[index % MACHINE_STRIPE_COLORS.length],
-        }
-      }),
-    [],
-  )
+  // Tramos de los dos aros. El de abajo lleva las rayas y los palos; el de
+  // arriba cierra la celosía.
+  const arcs = useMemo(() => {
+    const lower: { key: number; from: Point; to: Point; color: string }[] = []
+    const upper: { key: number; from: Point; to: Point }[] = []
+    for (let i = 0; i < ARC_SEGMENTS; i++) {
+      const from = machinePoint(i / ARC_SEGMENTS)
+      const to = machinePoint((i + 1) / ARC_SEGMENTS)
+      lower.push({
+        key: i,
+        from,
+        to,
+        color: MACHINE_STRIPE_COLORS[i % MACHINE_STRIPE_COLORS.length],
+      })
+      upper.push({ key: i, from: raise(from, TRUSS_RISE), to: raise(to, TRUSS_RISE) })
+    }
+    return { lower, upper }
+  }, [])
 
-  // Bombillas repartidas por el aro, justo por encima del tubo.
+  // Celosía: montantes verticales y diagonales en zigzag entre ellos.
+  const truss = useMemo(() => {
+    const posts: { key: number; from: Point; to: Point }[] = []
+    const braces: { key: number; from: Point; to: Point }[] = []
+    for (let i = 0; i < TRUSS_POSTS; i++) {
+      const base = machinePoint(i / (TRUSS_POSTS - 1))
+      posts.push({ key: i, from: base, to: raise(base, TRUSS_RISE) })
+      if (i < TRUSS_POSTS - 1) {
+        const next = machinePoint((i + 1) / (TRUSS_POSTS - 1))
+        // Alterna el sentido de la diagonal para formar el zigzag.
+        braces.push(
+          i % 2 === 0
+            ? { key: i, from: base, to: raise(next, TRUSS_RISE) }
+            : { key: i, from: raise(base, TRUSS_RISE), to: next },
+        )
+      }
+    }
+    return { posts, braces }
+  }, [])
+
+  // Bombillas sobre el aro superior, cada una con su casquillo.
   const bulbs = useMemo(
     () =>
-      Array.from({ length: BULB_COUNT }, (_, index) => {
-        const [x, y, z] = machinePoint((index + 0.5) / BULB_COUNT)
-        return { index, position: [x, y + TUBE_RADIUS + 0.03, z] as [number, number, number] }
+      Array.from({ length: TRUSS_POSTS - 1 }, (_, index) => {
+        const point = machinePoint((index + 0.5) / (TRUSS_POSTS - 1))
+        return {
+          key: index,
+          socket: raise(point, TRUSS_RISE + 0.03),
+          bulb: raise(point, TRUSS_RISE + 0.085),
+        }
       }),
     [],
   )
@@ -115,55 +188,138 @@ export function StickMachine() {
     [stickCount, runId],
   )
 
-  const postHeight = MACHINE_HEIGHT - GROUND_Y
+  // Postes de los extremos, arriostrados hacia fuera como los de un escenario.
+  const legs = useMemo(() => {
+    return [0, 1].map((side) => {
+      const top = raise(machinePoint(side), TRUSS_RISE)
+      const [x, , z] = top
+      // El tirante se abre hacia fuera del semicírculo (hacia +Z, la espalda
+      // del jugador) para no invadir la zona de juego.
+      const braceFoot: Point = [x * 1.15, GROUND_Y, z + 0.75]
+      return {
+        key: side,
+        top,
+        foot: [x, GROUND_Y, z] as Point,
+        braceTop: raise(machinePoint(side), TRUSS_RISE * 0.35),
+        braceFoot,
+      }
+    })
+  }, [])
 
   return (
     <group>
-      {/* Aro a rayas */}
-      {segments.map((segment) => (
-        <mesh key={segment.index} position={segment.mid} rotation={segment.rotation}>
-          {/* Un pelo más largo que el tramo, para que no se vean las juntas. */}
-          <cylinderGeometry
-            args={[TUBE_RADIUS, TUBE_RADIUS, segment.length * 1.08, 12]}
-          />
-          <meshStandardMaterial
-            color={segment.color}
-            metalness={0.1}
-            roughness={0.55}
-          />
-        </mesh>
+      {/* Aro de los palos, a rayas */}
+      {arcs.lower.map((segment) => (
+        <Strut
+          key={`low-${segment.key}`}
+          from={segment.from}
+          to={segment.to}
+          radius={TUBE_RADIUS}
+          color={segment.color}
+          metalness={0.1}
+          roughness={0.55}
+        />
       ))}
 
-      {/* Guirnalda de bombillas */}
+      {/* Aro superior y celosía */}
+      {arcs.upper.map((segment) => (
+        <Strut
+          key={`up-${segment.key}`}
+          from={segment.from}
+          to={segment.to}
+          radius={0.028}
+          color={MACHINE_TRUSS_COLOR}
+        />
+      ))}
+      {truss.posts.map((post) => (
+        <Strut
+          key={`post-${post.key}`}
+          from={post.from}
+          to={post.to}
+          radius={0.018}
+          color={MACHINE_TRUSS_COLOR}
+        />
+      ))}
+      {truss.braces.map((brace) => (
+        <Strut
+          key={`brace-${brace.key}`}
+          from={brace.from}
+          to={brace.to}
+          radius={0.013}
+          color={MACHINE_TRUSS_COLOR}
+        />
+      ))}
+
+      {/* Bombillas */}
       {bulbs.map((bulb) => (
-        <mesh key={bulb.index} position={bulb.position}>
-          <sphereGeometry args={[0.028, 12, 12]} />
-          <meshStandardMaterial
-            color={MACHINE_BULB_COLOR}
-            emissive={MACHINE_BULB_COLOR}
-            emissiveIntensity={1.6}
-            toneMapped={false}
-          />
-        </mesh>
-      ))}
-
-      {/* Postes en los extremos del semicírculo, con su base */}
-      {[machinePoint(0), machinePoint(1)].map(([x, , z]) => (
-        <group key={`${x}-${z}`} position={[x, GROUND_Y, z]}>
-          <mesh position={[0, postHeight / 2, 0]}>
-            <cylinderGeometry args={[0.045, 0.06, postHeight, 12]} />
+        <group key={`bulb-${bulb.key}`}>
+          <mesh position={bulb.socket}>
+            <cylinderGeometry args={[0.016, 0.02, 0.05, 8]} />
+            <meshStandardMaterial color="#3b3630" metalness={0.5} roughness={0.6} />
+          </mesh>
+          <mesh position={bulb.bulb}>
+            <sphereGeometry args={[0.032, 14, 14]} />
             <meshStandardMaterial
-              color={MACHINE_FRAME_COLOR}
-              metalness={0.7}
-              roughness={0.35}
+              color={MACHINE_BULB_COLOR}
+              emissive={MACHINE_BULB_COLOR}
+              emissiveIntensity={1.8}
+              toneMapped={false}
             />
           </mesh>
-          <mesh position={[0, 0.02, 0]}>
-            <cylinderGeometry args={[0.16, 0.19, 0.04, 20]} />
+        </group>
+      ))}
+
+      {/* Ganchos: cada palo cuelga de una anilla sujeta al aro. */}
+      {sticks.map((stick) => (
+        <mesh
+          key={`hook-${stick.key}`}
+          position={[
+            stick.anchor[0],
+            stick.anchor[1] - TUBE_RADIUS - 0.012,
+            stick.anchor[2],
+          ]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
+          <torusGeometry args={[0.022, 0.006, 8, 16]} />
+          <meshStandardMaterial
+            color={MACHINE_FRAME_COLOR}
+            metalness={0.8}
+            roughness={0.3}
+          />
+        </mesh>
+      ))}
+
+      {/* Postes con base y tirante */}
+      {legs.map((leg) => (
+        <group key={`leg-${leg.key}`}>
+          <Strut
+            from={leg.foot}
+            to={leg.top}
+            radius={0.06}
+            color={MACHINE_FRAME_COLOR}
+            metalness={0.7}
+            roughness={0.35}
+          />
+          <Strut
+            from={leg.braceFoot}
+            to={leg.braceTop}
+            radius={0.026}
+            color={MACHINE_TRUSS_COLOR}
+          />
+          <mesh position={[leg.foot[0], GROUND_Y + 0.025, leg.foot[2]]}>
+            <cylinderGeometry args={[0.19, 0.23, 0.05, 20]} />
             <meshStandardMaterial
               color={MACHINE_FRAME_COLOR}
               metalness={0.7}
               roughness={0.4}
+            />
+          </mesh>
+          <mesh position={[leg.braceFoot[0], GROUND_Y + 0.02, leg.braceFoot[2]]}>
+            <cylinderGeometry args={[0.1, 0.13, 0.04, 16]} />
+            <meshStandardMaterial
+              color={MACHINE_TRUSS_COLOR}
+              metalness={0.6}
+              roughness={0.45}
             />
           </mesh>
         </group>
