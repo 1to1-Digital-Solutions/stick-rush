@@ -7,18 +7,30 @@
 
 ## ⏭️ SIGUIENTE PASO (lo primero al volver)
 
-1. **Probar la versión Godot** (nueva, 2026-07-06): instalar Godot 4.3+, abrir
-   `godot/project.godot`, F5. Escrita SIN ejecutar (Godot no está instalado en esta máquina):
-   si el editor avisa de algo, serán detalles de API, no de diseño. Ver `godot/README.md`
-   (estructura, mecánica espejo del web, export desktop y camino a Steam).
-2. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
-3. Probar el modo XR en un visor real (VR y AR) y afinar la captura con mandos
+1. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
+2. Probar el modo XR en un visor real (VR y AR) y afinar la captura con mandos
    (`npm run dev:https`): se reutiliza el sistema de punteros de `@react-three/xr` (mismos
-   eventos de clic), sin validar en hardware. Comprobar allí la escala del jugador
-   (`XR_PLAYER_SCALE`, ajustada a ojo) y que en AR se ve el passthrough.
-4. Consolidar git (manual): poner `develop` al día (está en el bootstrap y los agentes de
+   eventos de clic), sin validar en hardware. Comprobar que en AR se ve el passthrough y que,
+   con el aro horizontal, los palos caen al alcance del brazo.
+3. Consolidar git (manual): poner `develop` al día (está en el bootstrap y los agentes de
    Organízate parten de develop); borrar el worktree muerto de `agent/inicializar-proyecto-…`
    (sin commits) con `git worktree remove`.
+
+## 🔒 Godot: congelado hasta cerrar el web
+
+**Decisión (2026-07-31): no se toca `godot/` mientras se itera en el web.** Primero se deja el
+web como debe quedar (jugabilidad, look, XR) y solo entonces se porta el resultado final a
+Godot, de una vez. Portar cada iteración por el camino sería trabajo tirado.
+
+Pendiente para ese momento (no antes):
+
+- [ ] Replicar en Godot el rediseño del web: aro **horizontal** alrededor del jugador, escala
+      humana (metros), velocidades en m/s, estética de feria y palos amarillos. Hoy `godot/`
+      mantiene el arco vertical y las unidades viejas. Detalle en `godot/README.md`.
+- [ ] Decidir qué pasa con un palo perdido: en el web se queda clavado en el suelo, en Godot
+      desaparece.
+- [ ] Abrir el proyecto en Godot 4.3+ por primera vez (se escribió sin ejecutarlo, no hay Godot
+      en esta máquina) y revisar los avisos del editor.
 
 ## Qué es stick-rush
 
@@ -122,13 +134,7 @@ planta en el centro, así que los palos le caen alrededor, al alcance del brazo.
 **No se encontró ningún modelo 3D de máquina de feria** (Poly Haven solo tiene props domésticos),
 así que la máquina sigue siendo geometría por código, ahora con más detalle.
 
-## Deuda declarada: Godot desincronizado
-
-`godot/` mantiene el arco vertical y la escala antigua. Hay que decidir si se replica el
-rediseño o si las dos versiones divergen a propósito. Anotado también en `godot/README.md`.
-
-Diferencia menor previa: un palo perdido se queda clavado en el suelo en el web y desaparece en
-Godot.
+*(La deuda de Godot está arriba, en "Godot: congelado hasta cerrar el web".)*
 
 ## Pendiente / próximos pasos
 
