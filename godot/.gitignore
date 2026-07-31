@@ -1,0 +1,5 @@
+# Caché del editor de Godot (se regenera al abrir el proyecto).
+.godot/
+# Plantillas de export y builds.
+export/
+*.tmp
