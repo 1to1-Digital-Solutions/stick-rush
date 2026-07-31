@@ -5,6 +5,12 @@ es la especificación funcional: `src/lib/gameConfig.ts` ↔ `scripts/game_confi
 `src/components/game/Stick.tsx` ↔ `scripts/stick.gd`, `StickMachine.tsx` + `gameStore.ts` ↔
 `scripts/main.gd`.
 
+> ⚠️ **Desincronizado con el web desde 2026-07-31.** El web rediseñó la máquina: aro
+> **horizontal** alrededor del jugador, a escala humana (metros), con estética de feria y palos
+> amarillos. Esta versión mantiene el arco **vertical** anterior y sus unidades. Antes de
+> retomar Godot hay que decidir si se replica el rediseño o si las dos versiones divergen a
+> propósito.
+
 > ⚠️ **Escrito sin ejecutar Godot en esta máquina** (no está instalado). Al abrirlo por primera
 > vez, revisa la consola del editor: si algo chirría, serán detalles de API, no de diseño.
 

@@ -48,6 +48,8 @@ src/
   lib/
     gameConfig.ts       Constantes: dificultades, velocidades, colores, geometría
     gameStore.ts        Estado global del juego (Context API)
+public/
+  hdri/, textures/      Assets CC0 servidos en local (ver public/CREDITS.md)
 ```
 
 ## Modo XR

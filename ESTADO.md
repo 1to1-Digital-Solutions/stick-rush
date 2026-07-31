@@ -103,10 +103,32 @@ dimensiona el canvas ni pinta. El canvas en blanco ahí no indica un bug de la a
 - HTTPS con certificado válido, así que en el visor no hay que aceptar avisos de certificado
   como con `npm run dev:https`.
 
-## Diferencia conocida web ↔ Godot
+## Rediseño de la máquina (2026-07-31)
 
-Un palo perdido se queda visible clavado en el suelo en el web y desaparece en Godot. Sin
-decidir cuál es el comportamiento bueno.
+La máquina era un arco **vertical** con el jugador delante: en XR los palos del centro le caían
+sobre la cabeza. Ahora es un aro **horizontal** (semicírculo en el plano XZ) y el jugador se
+planta en el centro, así que los palos le caen alrededor, al alcance del brazo.
+
+- Toda la escena pasa a **escala humana (1 unidad = 1 metro)**: aro de 1.25 m de radio a 2.15 m
+  de altura, palos de 42 cm, suelo en y=0. Con eso desaparece el apaño de agrandar al jugador en
+  XR (`XR_PLAYER_SCALE`): ahora va a 1:1.
+- Las velocidades por dificultad se recalcularon a m/s para conservar los tiempos de caída
+  (Fácil ~5.7 s, Imposible ~0.7 s) sobre el nuevo recorrido de 1.6 m.
+- Estética de feria: aro a rayas rojas y crema, guirnalda de bombillas, postes dorados, suelo de
+  moqueta roja y palos de madera amarilla (todos del mismo color).
+- Escenario: HDRI de carpa de espectáculos servido desde `public/hdri/`, que hace de fondo en VR
+  y escritorio y además ilumina la escena. En AR se mantiene solo como reflejos.
+
+**No se encontró ningún modelo 3D de máquina de feria** (Poly Haven solo tiene props domésticos),
+así que la máquina sigue siendo geometría por código, ahora con más detalle.
+
+## Deuda declarada: Godot desincronizado
+
+`godot/` mantiene el arco vertical y la escala antigua. Hay que decidir si se replica el
+rediseño o si las dos versiones divergen a propósito. Anotado también en `godot/README.md`.
+
+Diferencia menor previa: un palo perdido se queda clavado en el suelo en el web y desaparece en
+Godot.
 
 ## Pendiente / próximos pasos
 
