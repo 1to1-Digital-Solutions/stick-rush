@@ -17,13 +17,18 @@ var delay := 0.0
 var _elapsed := 0.0
 var _mesh: MeshInstance3D
 var _material: StandardMaterial3D
+var _cord: MeshInstance3D
 
 
 ## Construye el palo colgando de `anchor` (su extremo superior toca el anclaje).
 func setup(anchor: Vector3, color: Color, fall_speed: float, fall_delay: float) -> void:
 	speed = fall_speed
 	delay = fall_delay
-	position = anchor - Vector3(0.0, GameConfig.STICK_LENGTH / 2.0, 0.0)
+	position = anchor - Vector3(
+		0.0,
+		GameConfig.STICK_CORD_LENGTH + GameConfig.STICK_LENGTH / 2.0,
+		0.0,
+	)
 
 	_material = StandardMaterial3D.new()
 	_material.albedo_color = color
@@ -40,6 +45,25 @@ func setup(anchor: Vector3, color: Color, fall_speed: float, fall_delay: float) 
 	_mesh = MeshInstance3D.new()
 	_mesh.mesh = cylinder
 	add_child(_mesh)
+
+	# Hilo que une el arco con el palo, visible solo mientras cuelga.
+	var cord_mat := StandardMaterial3D.new()
+	cord_mat.albedo_color = Color("#94a3b8")
+	cord_mat.roughness = 0.7
+	var cord_mesh := CylinderMesh.new()
+	cord_mesh.height = GameConfig.STICK_CORD_LENGTH
+	cord_mesh.top_radius = 0.008
+	cord_mesh.bottom_radius = 0.008
+	cord_mesh.material = cord_mat
+
+	_cord = MeshInstance3D.new()
+	_cord.mesh = cord_mesh
+	_cord.position = Vector3(
+		0.0,
+		GameConfig.STICK_LENGTH / 2.0 + GameConfig.STICK_CORD_LENGTH / 2.0,
+		0.0,
+	)
+	add_child(_cord)
 
 	# Colisión algo más gruesa que el mesh para que sea fácil de clicar.
 	var shape := CollisionShape3D.new()
@@ -73,6 +97,7 @@ func _process(delta: float) -> void:
 	# HANGING → FALLING al agotar el retardo escalonado.
 	if state == State.HANGING and _elapsed >= delay:
 		state = State.FALLING
+		_cord.visible = false
 
 	if state == State.FALLING:
 		position.y -= speed * dt
@@ -94,6 +119,7 @@ func try_catch() -> void:
 	if state != State.HANGING and state != State.FALLING:
 		return
 	state = State.CAUGHT
+	_cord.visible = false
 	_material.emission_energy_multiplier = 2.0
 	caught.emit()
 	resolved.emit()

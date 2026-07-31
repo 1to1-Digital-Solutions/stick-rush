@@ -39,6 +39,8 @@ const MACHINE_RADIUS := 3.0
 const MACHINE_HEIGHT := 3.0
 const STICK_LENGTH := 1.5
 const GROUND_Y := -2.0
+## Hueco entre el arco y el palo, ocupado por el hilo del que cuelga.
+const STICK_CORD_LENGTH := 0.25
 
 
 static func stick_color(index: int) -> Color:

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { Group, Mesh, MeshStandardMaterial } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
-import { GROUND_Y, STICK_LENGTH } from '@/lib/gameConfig'
+import { GROUND_Y, STICK_CORD_LENGTH, STICK_LENGTH } from '@/lib/gameConfig'
 
 type StickState = 'hanging' | 'falling' | 'caught' | 'missed'
 
@@ -22,8 +22,11 @@ export interface StickProps {
   onResolve: () => void
 }
 
-// Cota a partir de la cual el palo se considera perdido.
-const MISS_Y = GROUND_Y
+// Cota del anclaje a partir de la cual el palo se considera perdido: la que
+// deja su punta justo sobre el suelo. Medirlo en el anclaje hacía que el palo
+// entero se hundiera bajo el suelo (y siguiera siendo atrapable) antes de
+// contar como perdido.
+const MISS_Y = GROUND_Y + STICK_CORD_LENGTH + STICK_LENGTH
 
 export function Stick({
   anchor,
@@ -119,16 +122,17 @@ export function Stick({
 
   return (
     <group ref={groupRef} position={[anchorX, anchorY, anchorZ]} visible={visible}>
-      {/* Hilo del que cuelga el palo */}
-      <mesh position={[0, STICK_LENGTH / 2, 0]}>
-        <cylinderGeometry args={[0.008, 0.008, STICK_LENGTH * 0.6, 6]} />
+      {/* Hilo que une el arco con el palo. Solo mientras cuelga: en cuanto el
+          palo se suelta deja de haber nada que lo sujete. */}
+      <mesh position={[0, -STICK_CORD_LENGTH / 2, 0]} visible={state === 'hanging'}>
+        <cylinderGeometry args={[0.008, 0.008, STICK_CORD_LENGTH, 6]} />
         <meshStandardMaterial color="#94a3b8" metalness={0.3} roughness={0.7} />
       </mesh>
 
-      {/* El palo en sí. El pivote está en el anclaje: cuelga hacia abajo. */}
+      {/* El palo en sí, colgando bajo el hilo. */}
       <mesh
         ref={meshRef}
-        position={[0, -STICK_LENGTH / 2, 0]}
+        position={[0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0]}
         onClick={handleCatch}
         onPointerOver={(e) => {
           e.stopPropagation()

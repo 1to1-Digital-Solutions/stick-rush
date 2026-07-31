@@ -52,6 +52,8 @@ export const MACHINE_RADIUS = 3
 export const MACHINE_HEIGHT = 3
 export const STICK_LENGTH = 1.5
 export const GROUND_Y = -2
+/** Hueco entre el arco y el palo, ocupado por el hilo del que cuelga. */
+export const STICK_CORD_LENGTH = 0.25
 
 /**
  * Escala del jugador en sesión inmersiva.
