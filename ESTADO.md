@@ -11,13 +11,7 @@
    `godot/project.godot`, F5. Escrita SIN ejecutar (Godot no está instalado en esta máquina):
    si el editor avisa de algo, serán detalles de API, no de diseño. Ver `godot/README.md`
    (estructura, mecánica espejo del web, export desktop y camino a Steam).
-2. **Mirar la escena 3D con los ojos** (pendiente real, no verificado): abrir
-   `http://localhost:3111/game` en un Chrome en primer plano y comprobar que se ve la máquina,
-   que los soportes apoyan en el suelo y que los palos caen y se atrapan con clic. En esta
-   sesión no se pudo: la pestaña de automatización corre en segundo plano
-   (`document.visibilityState === 'hidden'`), y ahí Chrome no ejecuta `requestAnimationFrame`,
-   así que R3F ni dimensiona el canvas ni pinta. No es un fallo de la app: con la pestaña en
-   primer plano el bucle arranca solo.
+2. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
 3. Probar el modo XR en un visor real (VR y AR) y afinar la captura con mandos
    (`npm run dev:https`): se reutiliza el sistema de punteros de `@react-three/xr` (mismos
    eventos de clic), sin validar en hardware. Comprobar allí la escala del jugador
@@ -77,6 +71,42 @@
   escritorio estaba roto.** Ahora se recuerda si hubo sesión inmersiva antes de volver al menú.
 - `gameStore` expone `resolved` (palos resueltos) y deriva `finished` en vez de guardarlo,
   eliminando el ref mutable y el riesgo de perder resoluciones simultáneas.
+
+## Verificado en navegador (2026-07-31)
+
+Prueba end-to-end sobre el build de producción con Chromium headless (Playwright, instalado
+fuera del repo; el script vive en el scratchpad de la sesión, no se ha añadido como dependencia):
+menú → elegir 9 palos y Fácil → Jugar → clics sobre los palos → fin de partida.
+
+- La escena renderiza: ~1.000 draw calls/s, canvas dimensionado, palos cayendo escalonados.
+- Se atrapan con clic (marcador 0/9 → 1/9) y la partida cierra sola al resolverse todos.
+- **Cero peticiones a dominios externos.**
+- Consola limpia salvo un aviso de `THREE.Clock` deprecado, que viene de dentro de las
+  librerías, no del código del proyecto.
+
+Ojo con el entorno: si se prueba en una pestaña que Chrome tiene en segundo plano
+(`document.visibilityState === 'hidden'`), no se ejecuta `requestAnimationFrame` y R3F ni
+dimensiona el canvas ni pinta. El canvas en blanco ahí no indica un bug de la app.
+
+## Notas para el deploy en Vercel
+
+- **No hace falta configurar nada**: no hay variables de entorno, ni base de datos, ni
+  peticiones a terceros. `npm run build` (con su `NODE_ENV=production`) funciona tal cual.
+- **El emulador WebXR no aparecerá**: `@react-three/xr` inyecta IWER solo cuando el hostname es
+  exactamente `localhost` (de ahí el botón "Enter XR" y el aviso de "Multiple instances of
+  Three.js" en local). Comprobado sirviendo por `127.0.0.1`: ambos desaparecen.
+- **Protección de deployments**: si el preview tiene activada Vercel Authentication, el
+  navegador del visor tendrá que hacer login en Vercel para abrirlo. Conviene desactivarla para
+  ese preview o usar un dominio de producción.
+- **Abrir la URL directa en el visor**, no embebida en un iframe (la vista previa del dashboard
+  de Vercel lo es): WebXR necesita `allow="xr-spatial-tracking"` en el iframe padre.
+- HTTPS con certificado válido, así que en el visor no hay que aceptar avisos de certificado
+  como con `npm run dev:https`.
+
+## Diferencia conocida web ↔ Godot
+
+Un palo perdido se queda visible clavado en el suelo en el web y desaparece en Godot. Sin
+decidir cuál es el comportamiento bueno.
 
 ## Pendiente / próximos pasos
 
