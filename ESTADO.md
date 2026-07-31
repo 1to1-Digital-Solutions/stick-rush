@@ -7,9 +7,24 @@
 
 ## ⏭️ SIGUIENTE PASO (lo primero al volver)
 
-- Probar el modo XR en un visor real (VR y AR) y afinar la captura con mandos: hoy
-  se reutiliza el sistema de punteros de `@react-three/xr` (mismos eventos de clic),
-  pero no se ha podido validar en hardware.
+1. **Probar la versión Godot** (nueva, 2026-07-06): instalar Godot 4.3+, abrir
+   `godot/project.godot`, F5. Escrita SIN ejecutar (Godot no está instalado en esta máquina):
+   si el editor avisa de algo, serán detalles de API, no de diseño. Ver `godot/README.md`
+   (estructura, mecánica espejo del web, export desktop y camino a Steam).
+2. **Mirar la escena 3D con los ojos** (pendiente real, no verificado): abrir
+   `http://localhost:3111/game` en un Chrome en primer plano y comprobar que se ve la máquina,
+   que los soportes apoyan en el suelo y que los palos caen y se atrapan con clic. En esta
+   sesión no se pudo: la pestaña de automatización corre en segundo plano
+   (`document.visibilityState === 'hidden'`), y ahí Chrome no ejecuta `requestAnimationFrame`,
+   así que R3F ni dimensiona el canvas ni pinta. No es un fallo de la app: con la pestaña en
+   primer plano el bucle arranca solo.
+3. Probar el modo XR en un visor real (VR y AR) y afinar la captura con mandos
+   (`npm run dev:https`): se reutiliza el sistema de punteros de `@react-three/xr` (mismos
+   eventos de clic), sin validar en hardware. Comprobar allí la escala del jugador
+   (`XR_PLAYER_SCALE`, ajustada a ojo) y que en AR se ve el passthrough.
+4. Consolidar git (manual): poner `develop` al día (está en el bootstrap y los agentes de
+   Organízate parten de develop); borrar el worktree muerto de `agent/inicializar-proyecto-…`
+   (sin commits) con `git worktree remove`.
 
 ## Qué es stick-rush
 
@@ -38,6 +53,30 @@
 - Verificado: `npm run lint` (0 problemas), `npm run typecheck` (0 errores),
   `npm run build` (OK, rutas `/`, `/game`, `/_not-found` prerenderizadas),
   `npm run start` sirve `/` y `/game` con HTTP 200.
+
+## Corregido en la revisión (2026-07-31, rama `fix/xr-escena-y-hud`)
+
+- **AR ya no pinta el escenario**: `SceneBackdrop` (en `GameCanvas.tsx`) omite fondo, niebla,
+  suelo y `<Environment>` cuando el modo es `immersive-ar`, para que se vea el passthrough y
+  solo quede la máquina. R3F crea el renderer con `alpha: true`, así que basta con no pintar.
+- **Escala del jugador en XR**: `XROrigin` se agranda con `XR_PLAYER_SCALE` (2.2), de modo que
+  el mundo se percibe a ~1/2.2 y el arco queda ~1.3 m sobre los ojos. Evita rehacer la
+  geometría, que la versión Godot replica. **El valor está calculado, no probado en visor.**
+- **Soportes apoyados**: van de `GROUND_Y` al arranque del arco, en el web y en Godot
+  (`main.gd`), que tenía el mismo fallo.
+- **HUD 3D en inmersivo** (`XRHud.tsx`): una ficha por palo (atrapado / perdido / pendiente),
+  distinguidas por color *y* por tamaño y altura. Sin texto a propósito: `<Text>` de drei
+  descargaría las fuentes de un CDN. Al terminar, una barra marca la pausa
+  (`XR_RESTART_DELAY_MS`) antes de encadenar la siguiente partida.
+- **Doble resolución de un palo**: `Stick.tsx` usa un ref de guarda (dos mandos XR sobre el
+  mismo palo, o captura justo al tocar el suelo, ya no suman dos veces) y devuelve el cursor
+  al desmontarse.
+- **Bug crítico encontrado al arreglar lo anterior**: `XRSessionController` hacía
+  `resetGame()` con `mode == null && gameState === 'playing'`, y en escritorio `mode` es null
+  siempre → al pulsar "Jugar" la partida se cancelaba sola y volvía al menú. **El modo
+  escritorio estaba roto.** Ahora se recuerda si hubo sesión inmersiva antes de volver al menú.
+- `gameStore` expone `resolved` (palos resueltos) y deriva `finished` en vez de guardarlo,
+  eliminando el ref mutable y el riesgo de perder resoluciones simultáneas.
 
 ## Pendiente / próximos pasos
 
