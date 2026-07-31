@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment } from '@react-three/drei'
+import { OrbitControls, Environment, Lightformer } from '@react-three/drei'
 import { XR, XROrigin, useXR } from '@react-three/xr'
 import {
   GROUND_Y,
@@ -22,6 +22,12 @@ import { Ground } from './Ground'
  * En AR nada de esto se dibuja: el escenario es la habitación del jugador y
  * pintar un fondo opaco (o el suelo virtual) taparía el passthrough. Solo queda
  * la máquina con sus palos, que es justo el modo AR que pide el producto.
+ *
+ * El entorno se genera con <Lightformer> en vez de usar un `preset` de drei: los
+ * presets descargan un HDR de un CDN de terceros (raw.githack.com) en runtime y,
+ * como R3F envuelve el contenido del Canvas en un Suspense, la escena entera se
+ * queda en blanco hasta que ese CDN responde. En un visor conectado solo a la
+ * red local no respondería nunca. Así el juego no depende de la red.
  */
 function SceneBackdrop() {
   const mode = useXR((state) => state.mode)
@@ -35,7 +41,30 @@ function SceneBackdrop() {
       <color attach="background" args={['#0F172A']} />
       <fog attach="fog" args={['#0F172A', 12, 28]} />
       <Ground />
-      <Environment preset="night" />
+
+      {/* Cubemap generado una vez: da reflejos al metal de la máquina, que sin
+          mapa de entorno se vería casi negro. */}
+      <Environment resolution={128}>
+        <Lightformer
+          intensity={0.5}
+          color="#1e293b"
+          position={[0, 6, -6]}
+          scale={[12, 12, 1]}
+        />
+        <Lightformer
+          intensity={2.5}
+          color="#15803d"
+          position={[0, MACHINE_HEIGHT + 2, 3]}
+          scale={[8, 3, 1]}
+        />
+        <Lightformer
+          intensity={1}
+          color="#d97706"
+          position={[-6, 2, 2]}
+          rotation={[0, Math.PI / 2, 0]}
+          scale={[6, 3, 1]}
+        />
+      </Environment>
     </>
   )
 }
@@ -79,7 +108,9 @@ function DesktopControls() {
 export function GameCanvas() {
   return (
     <Canvas
-      shadows
+      // "percentage" = PCFShadowMap. El valor por defecto de R3F es
+      // PCFSoftShadowMap, deprecado en three 0.185 (avisa por consola).
+      shadows="percentage"
       camera={{ position: [0, 2, 8], fov: 60 }}
       gl={{ antialias: true }}
       className="absolute inset-0"
