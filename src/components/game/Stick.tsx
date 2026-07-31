@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { Group, Mesh, MeshStandardMaterial } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
@@ -44,14 +44,35 @@ export function Stick({
   const elapsed = useRef(0)
   // Intensidad del glow al ser atrapado, que decae con el tiempo.
   const flash = useRef(0)
+  // Un palo solo puede resolverse una vez. Hace falta un ref además del
+  // estado porque `setState` no se aplica hasta el siguiente render: dos
+  // capturas en el mismo frame (los dos mandos XR apuntando al mismo palo,
+  // o una captura justo cuando toca el suelo) verían ambas 'falling'.
+  const resolved = useRef(false)
+  // Si el puntero está encima, para devolver el cursor al desmontar.
+  const hovering = useRef(false)
 
   const [anchorX, anchorY, anchorZ] = anchor
 
+  const releaseCursor = () => {
+    if (!hovering.current) return
+    hovering.current = false
+    document.body.style.cursor = 'auto'
+  }
+
+  // El palo desaparece al ser atrapado y se desmonta al acabar la partida:
+  // si el puntero estaba encima, `onPointerOut` ya no llega y el cursor se
+  // quedaría en 'pointer'.
+  useEffect(() => releaseCursor, [])
+
   const handleCatch = (event?: ThreeEvent<MouseEvent>) => {
     event?.stopPropagation()
+    if (resolved.current) return
     if (state !== 'falling' && state !== 'hanging') return
+    resolved.current = true
     setState('caught')
     flash.current = 1
+    releaseCursor()
     onCatch()
     onResolve()
   }
@@ -85,10 +106,11 @@ export function Stick({
       return
     }
 
-    if (state === 'falling') {
+    if (state === 'falling' && !resolved.current) {
       group.position.y -= speed * delta
       if (group.position.y <= MISS_Y) {
         group.position.y = MISS_Y
+        resolved.current = true
         setState('missed')
         onResolve()
       }
@@ -111,12 +133,11 @@ export function Stick({
         onPointerOver={(e) => {
           e.stopPropagation()
           if (state === 'falling' || state === 'hanging') {
+            hovering.current = true
             document.body.style.cursor = 'pointer'
           }
         }}
-        onPointerOut={() => {
-          document.body.style.cursor = 'auto'
-        }}
+        onPointerOut={releaseCursor}
       >
         <cylinderGeometry args={[0.05, 0.05, STICK_LENGTH, 8]} />
         <meshStandardMaterial
