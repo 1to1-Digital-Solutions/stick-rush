@@ -1,13 +1,15 @@
 'use client'
 
+import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Lightformer } from '@react-three/drei'
+import { OrbitControls, Environment } from '@react-three/drei'
 import { XR, XROrigin, useXR } from '@react-three/xr'
 import {
+  BACKDROP_COLOR,
   GROUND_Y,
+  HDRI_URL,
   MACHINE_HEIGHT,
-  XR_PLAYER_DISTANCE,
-  XR_PLAYER_SCALE,
+  MACHINE_RADIUS,
 } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
 import { xrStore } from '@/components/xr/xrStore'
@@ -19,52 +21,34 @@ import { Ground } from './Ground'
 /**
  * Escenario: fondo, niebla, suelo e iluminación de entorno.
  *
- * En AR nada de esto se dibuja: el escenario es la habitación del jugador y
- * pintar un fondo opaco (o el suelo virtual) taparía el passthrough. Solo queda
- * la máquina con sus palos, que es justo el modo AR que pide el producto.
+ * El HDRI (una carpa de espectáculos, CC0, servido desde `public/`) hace de
+ * escenario en VR y en escritorio: envuelve la escena y además ilumina la
+ * máquina con luz cálida rebotada.
  *
- * El entorno se genera con <Lightformer> en vez de usar un `preset` de drei: los
- * presets descargan un HDR de un CDN de terceros (raw.githack.com) en runtime y,
- * como R3F envuelve el contenido del Canvas en un Suspense, la escena entera se
- * queda en blanco hasta que ese CDN responde. En un visor conectado solo a la
- * red local no respondería nunca. Así el juego no depende de la red.
+ * En AR no se dibuja fondo, ni niebla, ni suelo: el escenario es la habitación
+ * del jugador y taparla con un decorado rompería el passthrough. El HDRI sí se
+ * mantiene, pero solo como fuente de reflejos (`background={false}`): sin él la
+ * máquina se vería plana y apagada sobre la sala real.
  */
 function SceneBackdrop() {
   const mode = useXR((state) => state.mode)
-
-  if (mode === 'immersive-ar') {
-    return null
-  }
+  const isAR = mode === 'immersive-ar'
 
   return (
     <>
-      <color attach="background" args={['#0F172A']} />
-      <fog attach="fog" args={['#0F172A', 12, 28]} />
-      <Ground />
+      {!isAR && (
+        <>
+          <color attach="background" args={[BACKDROP_COLOR]} />
+          <fog attach="fog" args={[BACKDROP_COLOR, 5, 20]} />
+          <Ground />
+        </>
+      )}
 
-      {/* Cubemap generado una vez: da reflejos al metal de la máquina, que sin
-          mapa de entorno se vería casi negro. */}
-      <Environment resolution={128}>
-        <Lightformer
-          intensity={0.5}
-          color="#1e293b"
-          position={[0, 6, -6]}
-          scale={[12, 12, 1]}
-        />
-        <Lightformer
-          intensity={2.5}
-          color="#15803d"
-          position={[0, MACHINE_HEIGHT + 2, 3]}
-          scale={[8, 3, 1]}
-        />
-        <Lightformer
-          intensity={1}
-          color="#d97706"
-          position={[-6, 2, 2]}
-          rotation={[0, Math.PI / 2, 0]}
-          scale={[6, 3, 1]}
-        />
-      </Environment>
+      {/* Suspense propio: mientras se carga el HDRI el resto de la escena ya se
+          ve, en vez de quedarse todo el Canvas en blanco esperándolo. */}
+      <Suspense fallback={null}>
+        <Environment files={HDRI_URL} background={!isAR} backgroundBlurriness={0.04} />
+      </Suspense>
     </>
   )
 }
@@ -82,10 +66,10 @@ function DesktopControls() {
     <OrbitControls
       enabled={mode == null && gameState !== 'playing'}
       enablePan={false}
-      minDistance={4}
-      maxDistance={16}
-      maxPolarAngle={Math.PI / 2}
-      target={[0, 1.5, 0]}
+      minDistance={1.5}
+      maxDistance={7}
+      maxPolarAngle={Math.PI / 2.2}
+      target={[0, 1.2, -0.4]}
     />
   )
 }
@@ -93,17 +77,16 @@ function DesktopControls() {
 /**
  * Canvas de React Three Fiber con la escena completa del juego.
  *
- * - Luz ambiental suave + foco verde sobre la máquina (también en AR, para que
- *   la máquina no quede plana sobre la sala real).
- * - <XR> envuelve la escena para que, en sesión inmersiva, los mandos
- *   puedan apuntar y "atrapar" los palos. Con el store por defecto de
+ * - <XR> envuelve la escena para que, en sesión inmersiva, los mandos puedan
+ *   apuntar y "atrapar" los palos. Con el store por defecto de
  *   @react-three/xr, los controllers/manos emiten un rayo cuyo botón de
  *   selección dispara los mismos eventos onClick que el ratón, así que la
  *   lógica de captura de Stick.tsx funciona igual en navegador y en visor.
- * - <XROrigin> coloca los pies del jugador sobre el suelo virtual (GROUND_Y),
- *   frente a la máquina y agrandado por XR_PLAYER_SCALE: la escena está
- *   modelada para la cámara de escritorio y, a escala 1:1, los palos quedarían
- *   metros por encima de la cabeza (ver gameConfig).
+ * - <XROrigin> planta al jugador en el centro del semicírculo, a escala 1:1
+ *   (la escena está en metros): los palos le caen alrededor, al alcance del
+ *   brazo. El HUD 3D cuelga de aquí para acompañarle.
+ * - La cámara de escritorio se coloca algo por detrás y por encima de esa misma
+ *   posición, para que se vea el aro entero.
  */
 export function GameCanvas() {
   return (
@@ -111,35 +94,38 @@ export function GameCanvas() {
       // "percentage" = PCFShadowMap. El valor por defecto de R3F es
       // PCFSoftShadowMap, deprecado en three 0.185 (avisa por consola).
       shadows="percentage"
-      camera={{ position: [0, 2, 8], fov: 60 }}
+      // Elevada y por detrás del jugador: a la altura del aro, un semicírculo
+      // horizontal se vería de canto (una simple barra).
+      camera={{ position: [0, 3.1, 2.9], fov: 52, near: 0.05, far: 60 }}
       gl={{ antialias: true }}
       className="absolute inset-0"
     >
-      <ambientLight intensity={0.4} />
+      <ambientLight intensity={0.5} />
+      {/* Foco cálido sobre la máquina, como el de una caseta. */}
       <pointLight
-        position={[0, MACHINE_HEIGHT + 3, 2]}
-        intensity={60}
-        color="#15803d"
-        distance={20}
+        position={[0, MACHINE_HEIGHT + 1.2, -MACHINE_RADIUS * 0.4]}
+        intensity={12}
+        color="#ffd479"
+        distance={9}
         castShadow
       />
-      <directionalLight position={[4, 8, 6]} intensity={0.6} />
+      <directionalLight position={[2.5, 4, 2]} intensity={0.5} />
 
       <XR store={xrStore}>
         {/* Arranca/cierra partidas según el estado de la sesión inmersiva. */}
         <XRSessionController />
 
-        {/* Jugador de pie sobre el suelo, frente a la máquina, mirando a -Z.
-            El HUD 3D cuelga de aquí para heredar su escala y quedar siempre
-            delante, a una distancia cómoda. */}
-        <XROrigin
-          position={[0, GROUND_Y, XR_PLAYER_DISTANCE]}
-          scale={XR_PLAYER_SCALE}
-        >
+        {/* Jugador de pie en el centro del semicírculo, mirando a -Z. */}
+        <XROrigin position={[0, GROUND_Y, 0]}>
           <XRHud />
         </XROrigin>
 
-        <StickMachine />
+        {/* Las texturas de la madera se cargan aquí dentro; con su propio
+            Suspense la máquina aparece en cuanto están, sin bloquear el resto. */}
+        <Suspense fallback={null}>
+          <StickMachine />
+        </Suspense>
+
         <SceneBackdrop />
         <DesktopControls />
       </XR>

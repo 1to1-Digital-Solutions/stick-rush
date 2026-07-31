@@ -2,16 +2,28 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import type { Group, Mesh, MeshStandardMaterial } from 'three'
+import type { Group, Mesh, MeshStandardMaterial, Texture } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
-import { GROUND_Y, STICK_CORD_LENGTH, STICK_LENGTH } from '@/lib/gameConfig'
+import {
+  GROUND_Y,
+  STICK_CORD_LENGTH,
+  STICK_LENGTH,
+  STICK_RADIUS,
+} from '@/lib/gameConfig'
 
 type StickState = 'hanging' | 'falling' | 'caught' | 'missed'
 
 export interface StickProps {
-  /** Punto de anclaje en el arco del que cuelga el palo. */
+  /** Punto de anclaje en el aro del que cuelga el palo. */
   anchor: [number, number, number]
   color: string
+  /**
+   * Relieve y rugosidad de la madera. Los carga y comparte StickMachine: el
+   * material sí es propio de cada palo (el destello al atraparlo cambia su
+   * emisión), pero las texturas, que es lo caro, se cargan una sola vez.
+   */
+  normalMap: Texture
+  roughnessMap: Texture
   /** Velocidad de caída en unidades por segundo (según dificultad). */
   speed: number
   /** Retardo, en segundos, antes de empezar a caer. */
@@ -31,6 +43,8 @@ const MISS_Y = GROUND_Y + STICK_CORD_LENGTH + STICK_LENGTH
 export function Stick({
   anchor,
   color,
+  normalMap,
+  roughnessMap,
   speed,
   delay,
   onCatch,
@@ -125,8 +139,8 @@ export function Stick({
       {/* Hilo que une el arco con el palo. Solo mientras cuelga: en cuanto el
           palo se suelta deja de haber nada que lo sujete. */}
       <mesh position={[0, -STICK_CORD_LENGTH / 2, 0]} visible={state === 'hanging'}>
-        <cylinderGeometry args={[0.008, 0.008, STICK_CORD_LENGTH, 6]} />
-        <meshStandardMaterial color="#94a3b8" metalness={0.3} roughness={0.7} />
+        <cylinderGeometry args={[0.005, 0.005, STICK_CORD_LENGTH, 6]} />
+        <meshStandardMaterial color="#4a4038" metalness={0.1} roughness={0.9} />
       </mesh>
 
       {/* El palo en sí, colgando bajo el hilo. */}
@@ -143,14 +157,19 @@ export function Stick({
         }}
         onPointerOut={releaseCursor}
       >
-        <cylinderGeometry args={[0.05, 0.05, STICK_LENGTH, 8]} />
+        <cylinderGeometry args={[STICK_RADIUS, STICK_RADIUS, STICK_LENGTH, 16]} />
+        {/* Madera pintada, no plástico: el grano en relieve y la aspereza
+            irregular son los que dan la sensación de peso. */}
         <meshStandardMaterial
           ref={materialRef}
           color={color}
+          normalMap={normalMap}
+          normalScale={[0.8, 0.8]}
+          roughnessMap={roughnessMap}
           emissive={color}
           emissiveIntensity={0}
-          metalness={0.3}
-          roughness={0.4}
+          metalness={0}
+          roughness={0.75}
         />
       </mesh>
     </group>

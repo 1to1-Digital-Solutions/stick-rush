@@ -19,14 +19,14 @@ import { useGame } from '@/lib/gameStore'
  * el visor esté en una red local sin salida. Cada estado se distingue por color
  * *y* por tamaño y altura, para no depender solo del color.
  *
- * Va dentro de <XROrigin>, así que hereda la escala del jugador y sus medidas
- * son metros tal y como los percibe: fila a 1.2 m de distancia y 1 m de altura,
- * por debajo de la línea de visión de la máquina.
+ * Va dentro de <XROrigin>, así que sus medidas son metros vistos por el
+ * jugador. Queda por delante y por debajo del aro, dentro del semicírculo, para
+ * no cruzarse con los palos que caen (que lo hacen sobre el radio del aro).
  */
 
 const TOKEN_SPACING = 0.07
 const TOKEN_RADIUS = 0.026
-const HUD_POSITION: [number, number, number] = [0, 1.0, -1.2]
+const HUD_POSITION: [number, number, number] = [0, 0.85, -0.8]
 const RESTART_SECONDS = XR_RESTART_DELAY_MS / 1000
 
 type TokenState = 'caught' | 'missed' | 'pending'

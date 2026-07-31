@@ -1,12 +1,16 @@
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'impossible'
 
-/** Velocidad de caída (unidades por segundo) por dificultad. */
+/**
+ * Velocidad de caída en metros por segundo. La escena está a escala humana
+ * (1 unidad = 1 metro) y un palo recorre ~1.6 m desde que se suelta hasta el
+ * suelo, así que en Fácil dura algo menos de 6 s y en Imposible, siete décimas.
+ */
 export const DIFFICULTY_SPEEDS: Record<Difficulty, number> = {
-  easy: 0.8,
-  medium: 1.5,
-  hard: 2.5,
-  expert: 4.0,
-  impossible: 7.0,
+  easy: 0.28,
+  medium: 0.5,
+  hard: 0.85,
+  expert: 1.35,
+  impossible: 2.4,
 }
 
 /** Etiqueta visible para el usuario (idioma del producto: español). */
@@ -40,36 +44,54 @@ export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
   impossible: '#dc2626',
 }
 
-/** Paleta de los sticks; se asigna cíclicamente por índice. */
-export const STICK_COLORS = ['#D97706', '#15803D', '#DC2626', '#7C3AED', '#0284C7']
+/** Color de los palos: madera pintada de amarillo de feria. */
+export const STICK_COLOR = '#e8b93f'
+
+/** Tonos de la máquina, a rayas de carpa de feria. */
+export const MACHINE_STRIPE_COLORS = ['#c1121f', '#f4ece0']
+/** Postes y remates de la máquina. */
+export const MACHINE_FRAME_COLOR = '#9a7b33'
+/** Bombillas de la guirnalda. */
+export const MACHINE_BULB_COLOR = '#ffd479'
+
+/** Fondo y niebla fuera de AR, en el tono cálido del escenario. */
+export const BACKDROP_COLOR = '#160d10'
 
 /** Límites de palos seleccionables. */
 export const MIN_STICKS = 5
 export const MAX_STICKS = 13
 
-/** Geometría de la máquina y de los palos. */
-export const MACHINE_RADIUS = 3
-export const MACHINE_HEIGHT = 3
-export const STICK_LENGTH = 1.5
-export const GROUND_Y = -2
-/** Hueco entre el arco y el palo, ocupado por el hilo del que cuelga. */
-export const STICK_CORD_LENGTH = 0.25
+/**
+ * Geometría de la máquina y de los palos, en metros.
+ *
+ * El aro es un semicírculo **horizontal** (en el plano XZ) que rodea al jugador
+ * por delante: él se planta en el centro y estira el brazo para atrapar los
+ * palos, que le caen alrededor y no encima. Con el arco vertical de antes, los
+ * palos del centro le caían literalmente sobre la cabeza.
+ */
+/** Radio del aro: al alcance del brazo desde el centro. */
+export const MACHINE_RADIUS = 1.25
+/** Altura del aro sobre el suelo: por encima de la cabeza, sin llegar a estorbar. */
+export const MACHINE_HEIGHT = 2.15
+export const STICK_LENGTH = 0.42
+export const STICK_RADIUS = 0.022
+export const GROUND_Y = 0
+/** Hueco entre el aro y el palo, ocupado por el hilo del que cuelga. */
+export const STICK_CORD_LENGTH = 0.12
 
 /**
- * Escala del jugador en sesión inmersiva.
- *
- * La escena está modelada en unidades pensadas para la cámara de escritorio: del
- * suelo (`GROUND_Y`) al alto del arco hay ~6.5 unidades. Si esas unidades fueran
- * metros, el jugador tendría los palos a más de 3 m por encima de la cabeza y
- * una máquina de 6 m de ancho. En vez de rehacer la geometría (que la versión
- * Godot replica), se agranda el origen del jugador: el mundo se percibe a
- * 1/XR_PLAYER_SCALE, dejando el arco algo más de un metro sobre los ojos y los
- * palos cayendo a la altura de las manos.
+ * Punto del aro para `t` en [0, 1], repartiendo de izquierda a derecha por
+ * delante del jugador (mira hacia -Z). Es la misma curva que sigue la máquina y
+ * de la que cuelgan los palos.
  */
-export const XR_PLAYER_SCALE = 2.2
-
-/** Distancia (en unidades de mundo) del jugador al centro de la máquina. */
-export const XR_PLAYER_DISTANCE = 5
+export function machinePoint(t: number): [number, number, number] {
+  const angle = (t - 0.5) * Math.PI
+  return [
+    Math.sin(angle) * MACHINE_RADIUS,
+    MACHINE_HEIGHT,
+    -Math.cos(angle) * MACHINE_RADIUS,
+  ]
+}
 
 /**
  * Pausa entre el fin de una partida en XR y el arranque de la siguiente. En
@@ -78,7 +100,16 @@ export const XR_PLAYER_DISTANCE = 5
  */
 export const XR_RESTART_DELAY_MS = 4000
 
-/** Color del color picker por defecto. */
-export function stickColor(index: number): string {
-  return STICK_COLORS[index % STICK_COLORS.length]
-}
+/** Rutas de los assets locales (CC0, ver public/CREDITS.md). */
+export const HDRI_URL = '/hdri/circus_arena_2k.hdr'
+
+/**
+ * Mapas de la madera de los palos. Se usan el relieve y la rugosidad, que son
+ * los que dan la sensación de madera con peso, pero no el mapa de color: es una
+ * madera casi negra y, como el tinte multiplica, dejaba los palos marrón oscuro
+ * en vez de amarillos. El color va plano, como madera pintada.
+ */
+export const WOOD_TEXTURES = {
+  normalMap: '/textures/wood_nor_1k.jpg',
+  roughnessMap: '/textures/wood_rough_1k.jpg',
+} as const
