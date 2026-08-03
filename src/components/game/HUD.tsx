@@ -10,7 +10,14 @@ export function HUD() {
     <>
       {/* Marcador permanente durante la partida */}
       <div className="pointer-events-none fixed right-4 top-4 z-10 flex flex-col items-end gap-1">
-        <div className="rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 backdrop-blur">
+        {/* El número por sí solo no dice nada leído en voz alta, así que el
+            marcador se anuncia entero cada vez que cambia. */}
+        <div
+          role="status"
+          aria-live="polite"
+          aria-label={`Atrapados ${score} de ${stickCount}`}
+          className="rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 backdrop-blur"
+        >
           <p className="text-xs uppercase tracking-[0.2em] text-white/50">
             Atrapados
           </p>
@@ -27,8 +34,16 @@ export function HUD() {
       {/* Pantalla de fin de partida */}
       {gameState === 'finished' && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm">
-          <div className="animate-fade-slide-up flex w-full max-w-sm flex-col items-center gap-6 rounded-2xl border border-white/10 bg-[var(--color-muted)] p-8 text-center shadow-2xl">
-            <h2 className="text-glow-primary text-3xl tracking-wide text-[var(--color-primary)]">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="game-over-title"
+            className="animate-fade-slide-up flex w-full max-w-sm flex-col items-center gap-6 rounded-2xl border border-white/10 bg-[var(--color-muted)] p-8 text-center shadow-2xl"
+          >
+            <h2
+              id="game-over-title"
+              className="text-glow-primary text-3xl tracking-wide text-[var(--color-primary)]"
+            >
               ¡Partida terminada!
             </h2>
             <p className="text-lg text-white/80">

@@ -5,7 +5,6 @@ import {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   useState,
 } from 'react'
 import {
@@ -23,6 +22,11 @@ export interface GameStore {
   difficulty: Difficulty
   /** Palos atrapados en la partida actual. */
   score: number
+  /**
+   * Palos ya resueltos (atrapados + perdidos) en la partida actual. Es estado
+   * y no un contador interno porque el HUD 3D de XR lo pinta palo a palo.
+   */
+  resolved: number
   /** Fase del juego. */
   gameState: GameState
   /**
@@ -52,13 +56,14 @@ export function useGameStoreValue(): GameStore {
   const [stickCount, setStickCountState] = useState(MIN_STICKS)
   const [difficulty, setDifficulty] = useState<Difficulty>('easy')
   const [score, setScore] = useState(0)
-  const [gameState, setGameState] = useState<GameState>('menu')
+  const [resolved, setResolved] = useState(0)
+  // Solo se guardan las fases que decide el jugador; "finished" se deriva de
+  // los palos resueltos, así no hay dos fuentes de verdad que sincronizar.
+  const [phase, setPhase] = useState<'menu' | 'playing'>('menu')
   const [runId, setRunId] = useState(0)
 
-  // Cuenta de palos ya resueltos en la partida (atrapados + perdidos);
-  // cuando llega a stickCount, la partida termina. Es un ref porque solo
-  // se mutó y compara, no participa en el render.
-  const resolvedCount = useRef(0)
+  const gameState: GameState =
+    phase === 'playing' && resolved >= stickCount ? 'finished' : phase
 
   const setStickCount = useCallback((count: number) => {
     setStickCountState(clampStickCount(count))
@@ -66,9 +71,9 @@ export function useGameStoreValue(): GameStore {
 
   const startGame = useCallback(() => {
     setScore(0)
-    resolvedCount.current = 0
+    setResolved(0)
     setRunId((id) => id + 1)
-    setGameState('playing')
+    setPhase('playing')
   }, [])
 
   const catchStick = useCallback(() => {
@@ -76,16 +81,13 @@ export function useGameStoreValue(): GameStore {
   }, [])
 
   const resolveStick = useCallback(() => {
-    resolvedCount.current += 1
-    if (resolvedCount.current >= stickCount) {
-      setGameState('finished')
-    }
-  }, [stickCount])
+    setResolved((value) => value + 1)
+  }, [])
 
   const resetGame = useCallback(() => {
     setScore(0)
-    resolvedCount.current = 0
-    setGameState('menu')
+    setResolved(0)
+    setPhase('menu')
   }, [])
 
   return useMemo(
@@ -93,6 +95,7 @@ export function useGameStoreValue(): GameStore {
       stickCount,
       difficulty,
       score,
+      resolved,
       gameState,
       runId,
       setStickCount,
@@ -106,6 +109,7 @@ export function useGameStoreValue(): GameStore {
       stickCount,
       difficulty,
       score,
+      resolved,
       gameState,
       runId,
       setStickCount,

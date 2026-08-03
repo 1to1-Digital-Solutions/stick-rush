@@ -12,6 +12,13 @@
 
 # testing
 /coverage
+/test-results
+/playwright-report
+/blob-report
+/.playwright
+
+# worktrees de trabajo (checkouts separados del mismo repo)
+/.claude/worktrees
 
 # next.js
 /.next/
