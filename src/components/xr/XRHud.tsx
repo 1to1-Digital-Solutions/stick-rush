@@ -1,12 +1,15 @@
 'use client'
 
-import { useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
 import { useXR } from '@react-three/xr'
-import type { Mesh } from 'three'
-import { XR_RESTART_DELAY_MS } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
 import { type StickStatus, stickStatuses } from '@/lib/stickLayout'
+import {
+  PANEL_COLOR,
+  XRBackIcon,
+  XRPanel,
+  XRPressable,
+  XRRepeatIcon,
+} from './XRUi'
 
 /**
  * Marcador dentro de la escena, para sesiones inmersivas.
@@ -21,14 +24,13 @@ import { type StickStatus, stickStatuses } from '@/lib/stickLayout'
  * *y* por tamaño y altura, para no depender solo del color.
  *
  * Va dentro de <XROrigin>, así que sus medidas son metros vistos por el
- * jugador. Queda por delante y por debajo del aro, dentro del semicírculo, para
- * no cruzarse con los palos que caen (que lo hacen sobre el radio del aro).
+ * jugador. Queda por delante y por debajo del aro para no cruzarse con los
+ * palos que caen.
  */
 
 const TOKEN_SPACING = 0.07
 const TOKEN_RADIUS = 0.026
-const HUD_POSITION: [number, number, number] = [0, 0.85, -0.8]
-const RESTART_SECONDS = XR_RESTART_DELAY_MS / 1000
+const HUD_POSITION: [number, number, number] = [0, 0.95, -0.85]
 
 const TOKEN_STYLE: Record<
   StickStatus,
@@ -63,37 +65,13 @@ function Token({ state, x }: { state: StickStatus; x: number }) {
   )
 }
 
-/**
- * Barra que se vacía durante la pausa entre partidas, para que la siguiente no
- * arranque de sorpresa. Se monta al terminar, así que su reloj empieza a la vez
- * que el temporizador de XRSessionController.
- */
-function RestartBar() {
-  const barRef = useRef<Mesh>(null)
-  const elapsed = useRef(0)
-
-  useFrame((_, delta) => {
-    elapsed.current = Math.min(elapsed.current + delta, RESTART_SECONDS)
-    const remaining = 1 - elapsed.current / RESTART_SECONDS
-    if (barRef.current) {
-      barRef.current.scale.x = Math.max(remaining, 0.001)
-    }
-  })
-
-  return (
-    <mesh ref={barRef} position={[0, -0.075, 0.002]}>
-      <planeGeometry args={[0.5, 0.008]} />
-      <meshBasicMaterial color="#d97706" toneMapped={false} />
-    </mesh>
-  )
-}
-
 export function XRHud() {
   const mode = useXR((state) => state.mode)
-  const { score, resolved, stickCount, gameState } = useGame()
+  const { score, resolved, stickCount, gameState, startGame, resetGame } =
+    useGame()
 
-  // Fuera de sesión inmersiva manda el HUD en DOM.
-  if (mode == null) {
+  // Fuera de sesión inmersiva manda el HUD en DOM, y en el menú manda XRMenu.
+  if (mode == null || gameState === 'menu') {
     return null
   }
 
@@ -105,26 +83,100 @@ export function XRHud() {
       x: index * TOKEN_SPACING - width / 2,
     }),
   )
+  const finished = gameState === 'finished'
 
   return (
     <group position={HUD_POSITION}>
       {/* Panel de fondo: en AR el mundo real está detrás, sin él las fichas
           pierden contraste sobre cualquier pared. */}
-      <mesh position={[0, 0, -0.01]}>
-        <planeGeometry args={[width + 0.16, 0.19]} />
-        <meshBasicMaterial
-          color="#0f1f2b"
-          transparent
-          opacity={0.72}
-          toneMapped={false}
+      <XRPanel
+        width={width + 0.2}
+        height={finished ? 0.34 : 0.19}
+        color={PANEL_COLOR}
+        opacity={0.72}
+      />
+
+      <group position={[0, finished ? 0.06 : 0, 0]}>
+        {tokens.map((token) => (
+          <Token key={token.index} state={token.state} x={token.x} />
+        ))}
+      </group>
+
+      {/*
+        Al acabar, la partida ya no encadena sola: el jugador decide. Antes se
+        reiniciaba tras una pausa y no había forma de volver a elegir palos ni
+        dificultad sin quitarse el visor.
+      */}
+      {finished && (
+        <group position={[0, -0.08, 0]}>
+          <XRPressable
+            position={[-0.09, 0, 0]}
+            onSelect={startGame}
+            hitSize={[0.15, 0.11, 0.06]}
+          >
+            <mesh position={[0, 0, -0.008]}>
+              <boxGeometry args={[0.13, 0.09, 0.012]} />
+              <meshStandardMaterial
+                color="#15803d"
+                emissive="#22c55e"
+                emissiveIntensity={0.4}
+                roughness={0.5}
+              />
+            </mesh>
+            <XRRepeatIcon position={[0, 0, 0.008]} size={0.026} />
+          </XRPressable>
+
+          <XRPressable
+            position={[0.09, 0, 0]}
+            onSelect={resetGame}
+            hitSize={[0.15, 0.11, 0.06]}
+          >
+            <mesh position={[0, 0, -0.008]}>
+              <boxGeometry args={[0.13, 0.09, 0.012]} />
+              <meshStandardMaterial
+                color="#334155"
+                emissive="#94a3b8"
+                emissiveIntensity={0.2}
+                roughness={0.5}
+              />
+            </mesh>
+            <XRBackIcon position={[-0.008, 0, 0.008]} size={0.024} />
+          </XRPressable>
+        </group>
+      )}
+    </group>
+  )
+}
+
+/**
+ * Botón de volver al menú durante la partida, apartado a un lado para no
+ * cruzarse con los palos. Sin él, entrar en una partida en el visor era un
+ * callejón sin salida: no había forma de cambiar de opciones.
+ */
+export function XRQuitButton() {
+  const mode = useXR((state) => state.mode)
+  const { gameState, resetGame } = useGame()
+
+  if (mode == null || gameState !== 'playing') {
+    return null
+  }
+
+  return (
+    <XRPressable
+      position={[-0.62, 1.05, -0.5]}
+      onSelect={resetGame}
+      hitSize={[0.16, 0.14, 0.08]}
+    >
+      <mesh rotation={[0, Math.PI / 7, 0]}>
+        <boxGeometry args={[0.12, 0.1, 0.012]} />
+        <meshStandardMaterial
+          color="#334155"
+          emissive="#94a3b8"
+          emissiveIntensity={0.22}
+          roughness={0.5}
         />
       </mesh>
-
-      {tokens.map((token) => (
-        <Token key={token.index} state={token.state} x={token.x} />
-      ))}
-
-      {gameState === 'finished' && <RestartBar />}
-    </group>
+      <XRBackIcon position={[-0.008, 0, 0.012]} size={0.024} />
+    </XRPressable>
   )
 }

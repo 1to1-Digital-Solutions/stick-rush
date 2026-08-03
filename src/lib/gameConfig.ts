@@ -2,15 +2,19 @@ export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'impossible'
 
 /**
  * Velocidad de caída en metros por segundo. La escena está a escala humana
- * (1 unidad = 1 metro) y un palo recorre ~1.6 m desde que se suelta hasta el
+ * (1 unidad = 1 metro) y un palo recorre ~1.4 m desde que se suelta hasta el
  * suelo, así que en Fácil dura algo menos de 6 s y en Imposible, siete décimas.
+ *
+ * Se recalcularon al acercar el aro al jugador: el recorrido se acortó y, con
+ * las velocidades de antes, todas las dificultades se habrían vuelto un 12 %
+ * más severas sin querer.
  */
 export const DIFFICULTY_SPEEDS: Record<Difficulty, number> = {
-  easy: 0.28,
-  medium: 0.5,
-  hard: 0.85,
-  expert: 1.35,
-  impossible: 2.4,
+  easy: 0.25,
+  medium: 0.44,
+  hard: 0.75,
+  expert: 1.18,
+  impossible: 2.1,
 }
 
 /** Etiqueta visible para el usuario (idioma del producto: español). */
@@ -71,10 +75,18 @@ export const MAX_STICKS = 13
  * palos, que le caen alrededor y no encima. Con el arco vertical de antes, los
  * palos del centro le caían literalmente sobre la cabeza.
  */
-/** Radio del aro: al alcance del brazo desde el centro. */
-export const MACHINE_RADIUS = 1.25
-/** Altura del aro sobre el suelo: por encima de la cabeza, sin llegar a estorbar. */
-export const MACHINE_HEIGHT = 2.15
+/**
+ * Radio del aro. Manda el alcance real del brazo: los palos se cogen con la
+ * mano (agarre), no apuntando, así que tienen que caer dentro del volumen que
+ * el jugador alcanza sin moverse de sitio. Con el 1.25 m de antes se veían
+ * lejos y no había forma de llegar a ellos en el visor.
+ */
+export const MACHINE_RADIUS = 0.62
+/**
+ * Altura del aro: justo encima de la cabeza. Los palos cuelgan hasta ~1.4 m y
+ * caen atravesando la altura del pecho, que es donde la mano llega cómoda.
+ */
+export const MACHINE_HEIGHT = 1.95
 export const STICK_LENGTH = 0.42
 export const STICK_RADIUS = 0.022
 export const GROUND_Y = 0
@@ -114,13 +126,6 @@ export function machinePoint(t: number): [number, number, number] {
     -Math.cos(angle) * MACHINE_RADIUS,
   ]
 }
-
-/**
- * Pausa entre el fin de una partida en XR y el arranque de la siguiente. En
- * inmersivo no hay botón "Volver al menú", así que la partida encadena sola:
- * este margen es el que tiene el jugador para leer el resultado en el HUD 3D.
- */
-export const XR_RESTART_DELAY_MS = 4000
 
 /** Rutas de los assets locales (CC0, ver public/CREDITS.md). */
 export const HDRI_URL = '/hdri/plaza_pueblo_1k.exr'

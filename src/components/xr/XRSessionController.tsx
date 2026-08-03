@@ -2,52 +2,42 @@
 
 import { useEffect, useRef } from 'react'
 import { useXR } from '@react-three/xr'
-import { XR_RESTART_DELAY_MS } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
 
 /**
  * Puente entre el estado de la sesión WebXR y el estado del juego.
  *
- * En modo inmersivo no hay DOM (ni menú ni botón "Jugar"), así que el jugador
- * no podría arrancar ni reiniciar partidas. Para que el juego sea jugable solo
- * con el visor, al entrar en una sesión XR se inicia una partida y, al
- * terminarla, se encadena la siguiente tras una pausa (el HUD 3D muestra el
- * resultado mientras tanto). Al salir de la sesión se vuelve al menú.
+ * Al entrar en VR/AR se lleva al jugador **al menú**, no a una partida: en el
+ * visor manda `XRMenu`, que es donde elige palos y dificultad. Antes la sesión
+ * arrancaba una partida sola y encadenaba la siguiente al acabar, de modo que
+ * nunca se podía elegir nada ni volver atrás sin quitarse el visor.
  *
  * Debe montarse dentro de <XR> para poder leer el estado de la sesión.
  */
 export function XRSessionController() {
   const mode = useXR((state) => state.mode)
-  const { gameState, startGame, resetGame } = useGame()
+  const { gameState, resetGame } = useGame()
 
-  // Dentro de la sesión no puede quedarse en menú ni en pantalla de fin: si no
-  // hay partida en curso, arranca una. Tras un final espera para que dé tiempo
-  // a leer el marcador; si el jugador sale antes, el cleanup cancela el timer.
+  // Recordar que hubo sesión es imprescindible: en escritorio `mode` es null
+  // siempre, y sin esta guarda cualquier partida iniciada con el ratón se
+  // cancelaría sola nada más empezar.
+  const immersive = useRef(false)
+
   useEffect(() => {
-    if (mode == null || gameState === 'playing') return
-
-    if (gameState === 'menu') {
-      startGame()
-      return
-    }
-
-    const timer = setTimeout(startGame, XR_RESTART_DELAY_MS)
-    return () => clearTimeout(timer)
-  }, [mode, gameState, startGame])
-
-  // Al SALIR de una sesión se vuelve al menú. Hace falta recordar que hubo
-  // sesión: en escritorio `mode` es null siempre, y sin esta guarda cualquier
-  // partida iniciada con el ratón se cancelaría sola al empezar.
-  const wasImmersive = useRef(false)
-  useEffect(() => {
+    // Entrada: si se llega con una partida de escritorio a medias, se descarta.
+    // En el visor el punto de partida es siempre el menú.
     if (mode != null) {
-      wasImmersive.current = true
+      if (immersive.current) return
+      immersive.current = true
+      if (gameState !== 'menu') resetGame()
       return
     }
-    if (!wasImmersive.current) return
-    wasImmersive.current = false
+
+    // Salida: se vuelve al menú de escritorio.
+    if (!immersive.current) return
+    immersive.current = false
     resetGame()
-  }, [mode, resetGame])
+  }, [mode, gameState, resetGame])
 
   return null
 }
