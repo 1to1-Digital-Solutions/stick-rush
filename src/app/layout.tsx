@@ -24,7 +24,8 @@ export const viewport: Viewport = {
   themeColor: '#0F172A',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  // Sin `maximumScale`: bloquear el zoom incumple WCAG 1.4.4 y deja fuera a
+  // quien necesita ampliar para leer el menú.
 }
 
 export default function RootLayout({

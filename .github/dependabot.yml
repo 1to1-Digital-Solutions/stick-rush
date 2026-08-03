@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Un solo PR para el bloque 3D: three, R3F, drei y xr van acoplados entre
+      # sí y actualizarlos por separado rompe tipos.
+      three:
+        patterns:
+          - 'three'
+          - '@types/three'
+          - '@react-three/*'
+      dev:
+        dependency-type: development
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
