@@ -1,151 +1,154 @@
 # Stick Rush
 
-Juego de navegador y de realidad mixta: de una máquina de feria cuelgan unos palos
-que se van soltando de forma escalonada y aleatoria, y hay que atraparlos antes de
-que toquen el suelo.
+A browser and mixed-reality game: sticks hang from a fairground machine, drop one
+after another at random intervals, and you have to catch them before they hit the
+ground.
 
-![Partida en curso: la máquina semicircular con los palos colgando y varios ya cayendo, y el marcador en 2 de 11](docs/partida.jpg)
+![Game in progress: the semicircular machine with sticks hanging and several already falling, score at 2 of 11](docs/partida.jpg)
 
-La máquina es un **aro semicircular horizontal** y el jugador se planta en el
-centro, así que los palos le caen alrededor, al alcance del brazo, en vez de sobre
-la cabeza. Toda la escena está a escala humana (1 unidad = 1 metro).
+The machine is a **horizontal semicircular ring** and the player stands at its
+centre, so the sticks fall all around them, within arm's reach, instead of onto
+their head. The whole scene is at human scale (1 unit = 1 metre).
 
-## Cómo se juega
+## How to play
 
-1. Elige cuántos palos quieres, **entre 5 y 13**.
-2. Elige la dificultad —**Fácil, Medio, Difícil, Experto o Imposible**—, que fija la
-   velocidad de caída: de unos 5,7 s por palo en Fácil a menos de 1 s en Imposible.
-3. Pulsa **Jugar**. Los palos se sueltan uno tras otro, con un desfase aleatorio.
-4. Atrapa los que puedas. La partida termina cuando todos se han resuelto (atrapados
-   o caídos) y el marcador muestra el resultado.
+1. Pick how many sticks you want, **between 5 and 13**.
+2. Pick the difficulty — **Fácil, Medio, Difícil, Experto or Imposible** (easy to
+   impossible) — which sets the fall speed: from about 5.7 s per stick on Fácil to
+   under 1 s on Imposible.
+3. Press **Jugar** (play). The sticks are released one after another, with a random
+   offset between them.
+4. Catch what you can. The round ends once every stick is resolved (caught or
+   dropped) and the score screen shows the result.
 
-| Dónde | Cómo se atrapa | Qué se ve |
+> The game's interface is in Spanish, which is the product language.
+
+| Where | How you catch | What you see |
 | --- | --- | --- |
-| Navegador de escritorio o móvil | Clic o toque sobre el palo | La máquina en una plaza, con la cámara detrás del jugador |
-| Visor XR, modo **VR** | Gatillo del mando apuntando al palo | El escenario completo alrededor |
-| Visor XR, modo **AR** | Gatillo del mando apuntando al palo | Solo la máquina, sobre tu habitación real (passthrough) |
+| Desktop or mobile browser | Click or tap the stick | The machine in a town square, camera behind the player |
+| XR headset, **VR** mode | Controller trigger aimed at the stick | The full environment all around |
+| XR headset, **AR** mode | Controller trigger aimed at the stick | Only the machine, over your real room (passthrough) |
 
-En sesión inmersiva no hay DOM, así que no hay botón «Jugar»: al entrar en VR/AR la
-partida arranca sola y, al acabar, encadena la siguiente tras una pausa. El marcador
-lo sustituye un HUD 3D de fichas —una por palo, atrapado / perdido / pendiente—,
-distinguidas por color *y* por tamaño y altura, sin texto (así no hace falta
-descargar fuentes de ningún CDN). Al salir de la sesión se vuelve al menú.
+There is no DOM in an immersive session, so there is no "play" button either:
+entering VR/AR starts a round automatically and, once it ends, chains the next one
+after a pause. A 3D HUD replaces the score — one token per stick, caught / dropped /
+pending — told apart by colour *and* by size and height, with no text at all (that
+way no fonts have to be fetched from a CDN). Leaving the session returns to the menu.
 
 ## Stack
 
 - [Next.js 16](https://nextjs.org) (App Router) + React 19 + TypeScript
-- [React Three Fiber](https://docs.pmnd.rs/react-three-fiber) + [drei](https://github.com/pmndrs/drei) + [three.js](https://threejs.org) para la escena 3D
-- [@react-three/xr](https://github.com/pmndrs/xr) para las sesiones inmersivas (WebXR)
-- Tailwind CSS v4 para la UI en DOM
-- [Vitest](https://vitest.dev) (unitarios) y [Playwright](https://playwright.dev) (extremo a extremo)
+- [React Three Fiber](https://docs.pmnd.rs/react-three-fiber) + [drei](https://github.com/pmndrs/drei) + [three.js](https://threejs.org) for the 3D scene
+- [@react-three/xr](https://github.com/pmndrs/xr) for immersive sessions (WebXR)
+- Tailwind CSS v4 for the DOM UI
+- [Vitest](https://vitest.dev) (unit) and [Playwright](https://playwright.dev) (end-to-end)
 
-El juego **no depende de ningún servicio externo**: no hay variables de entorno, ni
-base de datos, ni peticiones a terceros. Los assets (HDRI y texturas, todos CC0) se
-sirven desde `public/`; ver [`public/CREDITS.md`](public/CREDITS.md).
+The game **depends on no external service**: no environment variables, no database,
+no third-party requests. Assets (HDRI and textures, all CC0) are served from
+`public/`; see [`public/CREDITS.md`](public/CREDITS.md).
 
-## Desarrollo
+## Development
 
 ```bash
 npm install
-npm run dev        # servidor de desarrollo en http://localhost:3000
-npm run dev:https  # igual, pero sobre HTTPS (necesario para probar WebXR en un visor)
-npm run build      # build de producción
-npm run start      # sirve el build de producción
+npm run dev        # dev server at http://localhost:3000
+npm run dev:https  # same, over HTTPS (required to test WebXR on a headset)
+npm run build      # production build
+npm run start      # serve the production build
 ```
 
-### Comprobaciones
+### Checks
 
 ```bash
 npm run lint       # ESLint
-npm run typecheck  # comprobación de tipos
-npm test           # unitarios (Vitest)
-npm run test:e2e   # extremo a extremo (Playwright; hace build y levanta el servidor)
-npm run capture    # regenera docs/partida.jpg, la captura de este README
+npm run typecheck  # type checking
+npm test           # unit tests (Vitest)
+npm run test:e2e   # end-to-end (Playwright; builds and starts the server)
+npm run capture    # regenerates docs/partida.jpg, the screenshot in this README
 ```
 
-La primera vez, Playwright necesita su navegador: `npx playwright install chromium`.
+Playwright needs its browser the first time: `npx playwright install chromium`.
 
-Los unitarios cubren la lógica de `src/lib` —geometría de la máquina, reparto y
-retardos de los palos, tiempos de caída por dificultad y el ciclo de la partida—. Los
-e2e recorren el juego real en Chromium sobre el build de producción: menú, partida,
-captura de palos con el ratón, fin de partida y comportamiento en pantalla de móvil.
+The unit tests cover the logic in `src/lib` — machine geometry, stick layout and
+release delays, fall times per difficulty, and the round lifecycle. The e2e tests
+drive the real game in Chromium against the production build: menu, round, catching
+sticks with the mouse, game over, and behaviour on a phone-sized screen.
 
-Los e2e se sirven en `127.0.0.1` a propósito: `@react-three/xr` inyecta el emulador
-WebXR (IWER) cuando el hostname es exactamente `localhost`, y con él aparece un botón
-«Enter XR» que no existe en el juego real.
+The e2e suite is served from `127.0.0.1` rather than `localhost` on purpose:
+`@react-three/xr` injects the WebXR emulator (IWER) when the hostname is exactly
+`localhost`, which adds an "Enter XR" button that does not exist in the real game.
 
-## Estructura
+## Layout
 
 ```
 src/
   app/
-    layout.tsx          Layout raíz: fuentes (Righteous + Poppins) y metadatos
-    page.tsx            Escena con menú/HUD como overlays según el estado
-    game/page.tsx       Ruta directa a la misma escena
-    global-error.tsx    Boundary de error global
-    globals.css         Tokens de diseño y estilos globales
+    layout.tsx          Root layout: fonts (Righteous + Poppins) and metadata
+    page.tsx            Scene with menu/HUD as overlays driven by game state
+    game/page.tsx       Direct route to the same scene
+    global-error.tsx    Global error boundary
+    globals.css         Design tokens and global styles
   components/
-    GameProvider.tsx    Provee el contexto del juego
-    ui/StartScreen.tsx  Menú overlay (palos, dificultad, jugar, VR/AR)
-    game/               Canvas R3F (siempre montado), máquina, palos, suelo y HUD
-    xr/                 Store de WebXR, botones VR/AR y puente sesión↔juego
+    GameProvider.tsx    Provides the game context
+    ui/StartScreen.tsx  Menu overlay (sticks, difficulty, play, VR/AR)
+    game/               R3F canvas (always mounted), machine, sticks, ground, HUD
+    xr/                 WebXR store, VR/AR buttons and session↔game bridge
   lib/
-    gameConfig.ts       Constantes: dificultades, velocidades, colores, geometría
-    gameStore.ts        Estado global del juego (Context API)
-    stickLayout.ts      Reparto de los palos por el aro y estados del marcador
-e2e/                    Tests de Playwright
-docs/                   Capturas del README
+    gameConfig.ts       Constants: difficulties, speeds, colours, geometry
+    gameStore.ts        Global game state (Context API)
+    stickLayout.ts      Stick layout around the ring and score token states
+e2e/                    Playwright tests
+docs/                   README screenshots
 public/
-  hdri/, textures/      Assets CC0 servidos en local (ver public/CREDITS.md)
-godot/                  Port a Godot para escritorio (congelado, ver godot/README.md)
+  hdri/, textures/      CC0 assets served locally (see public/CREDITS.md)
+godot/                  Desktop Godot port (frozen, see godot/README.md)
 ```
 
-El estado del juego vive en un **Context API** (`gameStore`), sin librería externa.
-Guarda solo lo que decide el jugador —palos elegidos, dificultad, atrapados,
-resueltos y la fase— y **deriva** «partida terminada» de los palos resueltos, para no
-tener dos fuentes de verdad que sincronizar. La lógica pura (dónde cuelga cada palo,
-cuándo se suelta, cómo se pinta el marcador) vive en `src/lib`, fuera de los
-componentes 3D, que es lo que permite probarla sin navegador.
+Game state lives in a **Context API** store (`gameStore`), with no external library.
+It keeps only what the player decides — stick count, difficulty, caught, resolved and
+the phase — and **derives** "round over" from the resolved sticks, so there are never
+two sources of truth to keep in sync. The pure logic (where each stick hangs, when it
+drops, how the score is rendered) lives in `src/lib`, outside the 3D components,
+which is what makes it testable without a browser.
 
-## Modo XR
+## XR mode
 
-Los botones de entrada a VR/AR solo aparecen si el dispositivo soporta WebXR
-(`navigator.xr`). En sesión inmersiva, el sistema de punteros de `@react-three/xr`
-dispara los mismos eventos de clic que el ratón, de modo que la lógica de captura
-de los palos es la misma en navegador y en visor.
+The VR/AR entry buttons only show up if the device supports WebXR (`navigator.xr`).
+In an immersive session, the pointer system of `@react-three/xr` fires the same click
+events as the mouse, so the catching logic is identical in browser and headset.
 
-El `<Canvas>` con `<XR>` está **siempre montado**: el menú y el HUD son overlays
-en DOM que se superponen a la escena 3D. Así, al pulsar «Entrar en VR» la sesión
-arranca con la escena ya en el árbol y se ve dentro del visor. `<XROrigin>` coloca
-los pies del jugador en el centro del semicírculo, a escala 1:1.
+The `<Canvas>` with `<XR>` is **always mounted**: the menu and HUD are DOM overlays on
+top of the 3D scene. That way, pressing "Entrar en VR" starts the session with the
+scene already in the tree and it shows up inside the headset. `<XROrigin>` places the
+player's feet at the centre of the semicircle, at 1:1 scale.
 
-En **AR** no se dibujan ni el fondo ni el suelo ni el escenario: el decorado es la
-habitación del jugador y taparla rompería el passthrough. El HDRI se mantiene solo
-como fuente de reflejos, para que la máquina no se vea plana sobre la sala real.
+In **AR** neither the background, the ground nor the environment is drawn: the set is
+the player's own room and covering it would break passthrough. The HDRI is kept only
+as a reflection source, so the machine does not look flat against the real room.
 
-### Probar en un visor Quest
+### Testing on a Quest headset
 
-WebXR exige un origen seguro, así que para abrir el juego desde el navegador del
-visor por la red local hace falta HTTPS:
+WebXR requires a secure origin, so opening the game from the headset's browser over
+the local network needs HTTPS:
 
-1. Arranca el servidor en HTTPS: `npm run dev:https`. La primera vez, Next genera y
-   confía un certificado autofirmado local (no requiere dependencias extra).
-2. Averigua la IP de tu PC en la red local (p. ej. `ipconfig getifaddr en0` en macOS).
-   El PC y el visor deben estar en la **misma red Wi-Fi**.
-3. En el navegador del Quest abre `https://<IP-del-PC>:3000`.
-4. Acepta el aviso de certificado autofirmado («avanzado» → continuar).
-5. Pulsa **Entrar en VR** o **Entrar en AR**, concede los permisos de WebXR y apunta
-   con los mandos a los palos: el gatillo de selección los atrapa igual que el clic.
+1. Start the server over HTTPS: `npm run dev:https`. The first time, Next generates and
+   trusts a local self-signed certificate (no extra dependencies needed).
+2. Find your machine's IP on the local network (e.g. `ipconfig getifaddr en0` on
+   macOS). The computer and the headset must be on the **same Wi-Fi network**.
+3. On the Quest browser open `https://<your-ip>:3000`.
+4. Accept the self-signed certificate warning ("advanced" → proceed).
+5. Press **Entrar en VR** or **Entrar en AR**, grant the WebXR permissions and aim at
+   the sticks with the controllers: the select trigger catches them just like a click.
 
-> El modo escritorio sigue funcionando con `npm run dev` (HTTP): menú → Jugar y clic
-> con el ratón para atrapar.
+> Desktop mode still works with `npm run dev` (HTTP): menu → Jugar and click with the
+> mouse to catch.
 
-Si se despliega en Vercel, abre la **URL directa** en el visor y no la vista previa
-del dashboard: va embebida en un iframe, y WebXR necesita `allow="xr-spatial-tracking"`
-en el iframe padre.
+If deployed to Vercel, open the **direct URL** on the headset rather than the
+dashboard preview: that one is embedded in an iframe, and WebXR needs
+`allow="xr-spatial-tracking"` on the parent iframe.
 
-## Estado del proyecto
+## Project status
 
-`ESTADO.md` es el handoff entre sesiones: qué está hecho, qué está verificado y qué
-toca a continuación. La interacción con mandos XR está implementada pero **aún no
-validada en hardware real**.
+`ESTADO.md` is the handoff between sessions (in Spanish): what is done, what is
+verified and what comes next. XR controller interaction is implemented but **not yet
+validated on real hardware**.
