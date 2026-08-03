@@ -7,9 +7,32 @@
 
 ## ⏭️ SIGUIENTE PASO (lo primero al volver)
 
-- Probar el modo XR en un visor real (VR y AR) y afinar la captura con mandos: hoy
-  se reutiliza el sistema de punteros de `@react-three/xr` (mismos eventos de clic),
-  pero no se ha podido validar en hardware.
+0. **Cerrar la PR de la primera versión** (`fix/xr-escena-y-hud`, rama de trabajo
+   `chore/tests-y-readme`): revisada, con tests unitarios y e2e y el README al día.
+1. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
+2. Probar el modo XR en un visor real (VR y AR) y afinar la captura con mandos
+   (`npm run dev:https`): se reutiliza el sistema de punteros de `@react-three/xr` (mismos
+   eventos de clic), sin validar en hardware. Comprobar que en AR se ve el passthrough y que,
+   con el aro horizontal, los palos caen al alcance del brazo.
+3. Consolidar git (manual): poner `develop` al día (está en el bootstrap y los agentes de
+   Organízate parten de develop); borrar el worktree muerto de `agent/inicializar-proyecto-…`
+   (sin commits) con `git worktree remove`.
+
+## 🔒 Godot: congelado hasta cerrar el web
+
+**Decisión (2026-07-31): no se toca `godot/` mientras se itera en el web.** Primero se deja el
+web como debe quedar (jugabilidad, look, XR) y solo entonces se porta el resultado final a
+Godot, de una vez. Portar cada iteración por el camino sería trabajo tirado.
+
+Pendiente para ese momento (no antes):
+
+- [ ] Replicar en Godot el rediseño del web: aro **horizontal** alrededor del jugador, escala
+      humana (metros), velocidades en m/s, estética de feria y palos amarillos. Hoy `godot/`
+      mantiene el arco vertical y las unidades viejas. Detalle en `godot/README.md`.
+- [ ] Decidir qué pasa con un palo perdido: en el web se queda clavado en el suelo, en Godot
+      desaparece.
+- [ ] Abrir el proyecto en Godot 4.3+ por primera vez (se escribió sin ejecutarlo, no hay Godot
+      en esta máquina) y revisar los avisos del editor.
 
 ## Qué es stick-rush
 
@@ -39,13 +62,129 @@
   `npm run build` (OK, rutas `/`, `/game`, `/_not-found` prerenderizadas),
   `npm run start` sirve `/` y `/game` con HTTP 200.
 
+## Tests (2026-08-03)
+
+Ya hay runner, y forma parte de las comprobaciones antes de dar nada por terminado.
+
+- **Unitarios — Vitest + Testing Library** (`npm test`, 43 tests). Cubren `src/lib`:
+  geometría del aro (`machinePoint`), coherencia de las dificultades, tiempos de caída por
+  nivel, reparto y retardos de los palos, estados del marcador y el ciclo completo de la
+  partida en `gameStore` (incluido el caso de dos palos resolviéndose en el mismo lote).
+- **Extremo a extremo — Playwright** (`npm run test:e2e`, 20 tests en Chromium sobre el build
+  de producción). Menú, selección, teclado, partida, captura de palos con el ratón, fin de
+  partida, revancha, ausencia de errores de consola, cero peticiones externas y pantalla de
+  móvil. Un test aparte (`npm run capture`) regenera la captura del README.
+- Para poder probar la lógica sin navegador se sacó de los componentes 3D a
+  **`src/lib/stickLayout.ts`**: reparto de los palos por el aro, retardos escalonados y
+  estados del marcador. `STICK_MISS_Y`, `STICK_FALL_DISTANCE` y `fallDurationSeconds()` pasan
+  a `gameConfig.ts`. Los componentes solo pintan.
+- Para tener enganches estables (y de paso accesibilidad): el marcador es `role="status"` con
+  `aria-live` y el fin de partida `role="dialog"`.
+- El e2e destapó un incumplimiento real: los botones de dificultad medían **42 px** de alto,
+  por debajo del mínimo táctil de 44 px de `.claude/rules/design.md`. Corregido ahí y en los
+  botones de VR/AR.
+- Los e2e se sirven en `127.0.0.1` y no en `localhost` a propósito: con `localhost`,
+  `@react-three/xr` inyecta el emulador IWER y aparece un botón "Enter XR" que no existe en
+  el juego real.
+
+## Corregido en la revisión (2026-07-31, rama `fix/xr-escena-y-hud`)
+
+- **AR ya no pinta el escenario**: `SceneBackdrop` (en `GameCanvas.tsx`) omite fondo, niebla,
+  suelo y `<Environment>` cuando el modo es `immersive-ar`, para que se vea el passthrough y
+  solo quede la máquina. R3F crea el renderer con `alpha: true`, así que basta con no pintar.
+- **Escala del jugador en XR**: `XROrigin` se agranda con `XR_PLAYER_SCALE` (2.2), de modo que
+  el mundo se percibe a ~1/2.2 y el arco queda ~1.3 m sobre los ojos. Evita rehacer la
+  geometría, que la versión Godot replica. **El valor está calculado, no probado en visor.**
+- **Soportes apoyados**: van de `GROUND_Y` al arranque del arco, en el web y en Godot
+  (`main.gd`), que tenía el mismo fallo.
+- **HUD 3D en inmersivo** (`XRHud.tsx`): una ficha por palo (atrapado / perdido / pendiente),
+  distinguidas por color *y* por tamaño y altura. Sin texto a propósito: `<Text>` de drei
+  descargaría las fuentes de un CDN. Al terminar, una barra marca la pausa
+  (`XR_RESTART_DELAY_MS`) antes de encadenar la siguiente partida.
+- **Doble resolución de un palo**: `Stick.tsx` usa un ref de guarda (dos mandos XR sobre el
+  mismo palo, o captura justo al tocar el suelo, ya no suman dos veces) y devuelve el cursor
+  al desmontarse.
+- **Bug crítico encontrado al arreglar lo anterior**: `XRSessionController` hacía
+  `resetGame()` con `mode == null && gameState === 'playing'`, y en escritorio `mode` es null
+  siempre → al pulsar "Jugar" la partida se cancelaba sola y volvía al menú. **El modo
+  escritorio estaba roto.** Ahora se recuerda si hubo sesión inmersiva antes de volver al menú.
+- `gameStore` expone `resolved` (palos resueltos) y deriva `finished` en vez de guardarlo,
+  eliminando el ref mutable y el riesgo de perder resoluciones simultáneas.
+
+## Verificado en navegador (2026-07-31)
+
+Prueba end-to-end sobre el build de producción con Chromium headless (Playwright, instalado
+fuera del repo; el script vive en el scratchpad de la sesión, no se ha añadido como dependencia):
+menú → elegir 9 palos y Fácil → Jugar → clics sobre los palos → fin de partida.
+
+- La escena renderiza: ~1.000 draw calls/s, canvas dimensionado, palos cayendo escalonados.
+- Se atrapan con clic (marcador 0/9 → 1/9) y la partida cierra sola al resolverse todos.
+- **Cero peticiones a dominios externos.**
+- Consola limpia salvo un aviso de `THREE.Clock` deprecado, que viene de dentro de las
+  librerías, no del código del proyecto.
+
+Ojo con el entorno: si se prueba en una pestaña que Chrome tiene en segundo plano
+(`document.visibilityState === 'hidden'`), no se ejecuta `requestAnimationFrame` y R3F ni
+dimensiona el canvas ni pinta. El canvas en blanco ahí no indica un bug de la app.
+
+## Notas para el deploy en Vercel
+
+- **No hace falta configurar nada**: no hay variables de entorno, ni base de datos, ni
+  peticiones a terceros. `npm run build` (con su `NODE_ENV=production`) funciona tal cual.
+- **El emulador WebXR no aparecerá**: `@react-three/xr` inyecta IWER solo cuando el hostname es
+  exactamente `localhost` (de ahí el botón "Enter XR" y el aviso de "Multiple instances of
+  Three.js" en local). Comprobado sirviendo por `127.0.0.1`: ambos desaparecen.
+- **Protección de deployments**: si el preview tiene activada Vercel Authentication, el
+  navegador del visor tendrá que hacer login en Vercel para abrirlo. Conviene desactivarla para
+  ese preview o usar un dominio de producción.
+- **Abrir la URL directa en el visor**, no embebida en un iframe (la vista previa del dashboard
+  de Vercel lo es): WebXR necesita `allow="xr-spatial-tracking"` en el iframe padre.
+- HTTPS con certificado válido, así que en el visor no hay que aceptar avisos de certificado
+  como con `npm run dev:https`.
+
+## Rediseño de la máquina (2026-07-31)
+
+La máquina era un arco **vertical** con el jugador delante: en XR los palos del centro le caían
+sobre la cabeza. Ahora es un aro **horizontal** (semicírculo en el plano XZ) y el jugador se
+planta en el centro, así que los palos le caen alrededor, al alcance del brazo.
+
+- Toda la escena pasa a **escala humana (1 unidad = 1 metro)**: aro de 1.25 m de radio a 2.15 m
+  de altura, palos de 42 cm, suelo en y=0. Con eso desaparece el apaño de agrandar al jugador en
+  XR (`XR_PLAYER_SCALE`): ahora va a 1:1.
+- Las velocidades por dificultad se recalcularon a m/s para conservar los tiempos de caída
+  (Fácil ~5.7 s, Imposible ~0.7 s) sobre el nuevo recorrido de 1.6 m.
+- Estética de feria: aro a rayas rojas y crema con ganchos por palo, celosía superior (aro,
+  montantes y diagonales en zigzag), guirnalda de bombillas con casquillo, postes arriostrados
+  con base y palos de madera amarilla, todos del mismo color. La celosía y los tirantes son
+  deliberadamente redundantes: con un solo tubo la máquina parecía que se fuera a caer.
+- Escenario: HDRI de **plaza de pueblo de noche** (con guirnaldas de banderines), servido desde
+  `public/hdri/`. Hace de fondo, ilumina la escena y se **proyecta sobre el suelo**
+  (`<Environment ground>`), de modo que la máquina se planta en el empedrado real en vez de
+  sobre un plano de color con un corte visible contra el horizonte. En AR se mantiene solo como
+  reflejos. El suelo propio ya no pinta nada: solo recibe la sombra de la máquina.
+- Se usa el EXR de 1K (2 MB). Hay 2K disponible (~8 MB) si se quiere el fondo más nítido en el
+  visor; es cambiar el archivo y `HDRI_URL`.
+
+**No se encontró ningún modelo 3D de máquina de feria** (Poly Haven solo tiene props domésticos),
+así que la máquina sigue siendo geometría por código, ahora con más detalle.
+
+*(La deuda de Godot está arriba, en "Godot: congelado hasta cerrar el web".)*
+
 ## Pendiente / próximos pasos
 
 - Validar y pulir la interacción XR con mandos en hardware real.
 - Posibles mejoras: sonido al atrapar/perder, animación de "vibración" de los palos
   colgando, temporizador/puntuación por tiempo, escenario VR más elaborado.
-- Tests: aún no hay (no se ha configurado runner). Buen candidato: lógica de
-  `gameStore` (resolución de partida) y `clampStickCount`.
+- **Decidir si un palo debe poder atraparse mientras aún cuelga.** Hoy `Stick.handleCatch`
+  acepta los estados `hanging` y `falling`, así que se puede vaciar el aro a clics nada más
+  empezar, sin esperar a que caiga nada. Puede ser deliberado (premia la puntería), pero con
+  13 palos en Fácil convierte la partida en trivial. Si se cierra a `falling`, hay que ajustar
+  el e2e "atrapar un palo suma en el marcador", que hoy se apoya en los palos colgados.
+- **Vulnerabilidades de dependencias**: `npm audit` reporta 5 high, todas heredadas
+  (`next@16.2.9`, `postcss`, `sharp`) y ninguna introducida por los tests. Conviene subir al
+  último patch de Next 16.2.x antes de publicar.
+- Los avisos de "multiple lockfiles" en el build solo salen al compilar desde un worktree
+  anidado dentro del repo; en el checkout normal no aparecen.
 
 ## Caveats y notas
 

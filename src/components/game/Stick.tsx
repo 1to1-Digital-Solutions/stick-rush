@@ -1,17 +1,29 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import type { Group, Mesh, MeshStandardMaterial } from 'three'
+import type { Group, Mesh, MeshStandardMaterial, Texture } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
-import { GROUND_Y, STICK_LENGTH } from '@/lib/gameConfig'
+import {
+  STICK_CORD_LENGTH,
+  STICK_LENGTH,
+  STICK_MISS_Y,
+  STICK_RADIUS,
+} from '@/lib/gameConfig'
 
 type StickState = 'hanging' | 'falling' | 'caught' | 'missed'
 
 export interface StickProps {
-  /** Punto de anclaje en el arco del que cuelga el palo. */
+  /** Punto de anclaje en el aro del que cuelga el palo. */
   anchor: [number, number, number]
   color: string
+  /**
+   * Relieve y rugosidad de la madera. Los carga y comparte StickMachine: el
+   * material sí es propio de cada palo (el destello al atraparlo cambia su
+   * emisión), pero las texturas, que es lo caro, se cargan una sola vez.
+   */
+  normalMap: Texture
+  roughnessMap: Texture
   /** Velocidad de caída en unidades por segundo (según dificultad). */
   speed: number
   /** Retardo, en segundos, antes de empezar a caer. */
@@ -22,12 +34,11 @@ export interface StickProps {
   onResolve: () => void
 }
 
-// Cota a partir de la cual el palo se considera perdido.
-const MISS_Y = GROUND_Y
-
 export function Stick({
   anchor,
   color,
+  normalMap,
+  roughnessMap,
   speed,
   delay,
   onCatch,
@@ -44,14 +55,35 @@ export function Stick({
   const elapsed = useRef(0)
   // Intensidad del glow al ser atrapado, que decae con el tiempo.
   const flash = useRef(0)
+  // Un palo solo puede resolverse una vez. Hace falta un ref además del
+  // estado porque `setState` no se aplica hasta el siguiente render: dos
+  // capturas en el mismo frame (los dos mandos XR apuntando al mismo palo,
+  // o una captura justo cuando toca el suelo) verían ambas 'falling'.
+  const resolved = useRef(false)
+  // Si el puntero está encima, para devolver el cursor al desmontar.
+  const hovering = useRef(false)
 
   const [anchorX, anchorY, anchorZ] = anchor
 
+  const releaseCursor = () => {
+    if (!hovering.current) return
+    hovering.current = false
+    document.body.style.cursor = 'auto'
+  }
+
+  // El palo desaparece al ser atrapado y se desmonta al acabar la partida:
+  // si el puntero estaba encima, `onPointerOut` ya no llega y el cursor se
+  // quedaría en 'pointer'.
+  useEffect(() => releaseCursor, [])
+
   const handleCatch = (event?: ThreeEvent<MouseEvent>) => {
     event?.stopPropagation()
+    if (resolved.current) return
     if (state !== 'falling' && state !== 'hanging') return
+    resolved.current = true
     setState('caught')
     flash.current = 1
+    releaseCursor()
     onCatch()
     onResolve()
   }
@@ -85,10 +117,11 @@ export function Stick({
       return
     }
 
-    if (state === 'falling') {
+    if (state === 'falling' && !resolved.current) {
       group.position.y -= speed * delta
-      if (group.position.y <= MISS_Y) {
-        group.position.y = MISS_Y
+      if (group.position.y <= STICK_MISS_Y) {
+        group.position.y = STICK_MISS_Y
+        resolved.current = true
         setState('missed')
         onResolve()
       }
@@ -97,35 +130,40 @@ export function Stick({
 
   return (
     <group ref={groupRef} position={[anchorX, anchorY, anchorZ]} visible={visible}>
-      {/* Hilo del que cuelga el palo */}
-      <mesh position={[0, STICK_LENGTH / 2, 0]}>
-        <cylinderGeometry args={[0.008, 0.008, STICK_LENGTH * 0.6, 6]} />
-        <meshStandardMaterial color="#94a3b8" metalness={0.3} roughness={0.7} />
+      {/* Hilo que une el arco con el palo. Solo mientras cuelga: en cuanto el
+          palo se suelta deja de haber nada que lo sujete. */}
+      <mesh position={[0, -STICK_CORD_LENGTH / 2, 0]} visible={state === 'hanging'}>
+        <cylinderGeometry args={[0.005, 0.005, STICK_CORD_LENGTH, 6]} />
+        <meshStandardMaterial color="#4a4038" metalness={0.1} roughness={0.9} />
       </mesh>
 
-      {/* El palo en sí. El pivote está en el anclaje: cuelga hacia abajo. */}
+      {/* El palo en sí, colgando bajo el hilo. */}
       <mesh
         ref={meshRef}
-        position={[0, -STICK_LENGTH / 2, 0]}
+        position={[0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0]}
         onClick={handleCatch}
         onPointerOver={(e) => {
           e.stopPropagation()
           if (state === 'falling' || state === 'hanging') {
+            hovering.current = true
             document.body.style.cursor = 'pointer'
           }
         }}
-        onPointerOut={() => {
-          document.body.style.cursor = 'auto'
-        }}
+        onPointerOut={releaseCursor}
       >
-        <cylinderGeometry args={[0.05, 0.05, STICK_LENGTH, 8]} />
+        <cylinderGeometry args={[STICK_RADIUS, STICK_RADIUS, STICK_LENGTH, 16]} />
+        {/* Madera pintada, no plástico: el grano en relieve y la aspereza
+            irregular son los que dan la sensación de peso. */}
         <meshStandardMaterial
           ref={materialRef}
           color={color}
+          normalMap={normalMap}
+          normalScale={[0.8, 0.8]}
+          roughnessMap={roughnessMap}
           emissive={color}
           emissiveIntensity={0}
-          metalness={0.3}
-          roughness={0.4}
+          metalness={0}
+          roughness={0.75}
         />
       </mesh>
     </group>
