@@ -93,7 +93,7 @@ export function StartScreen() {
                       ? { backgroundColor: color, borderColor: color }
                       : { borderColor: `${color}66` }
                   }
-                  className={`rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+                  className={`inline-flex min-h-11 items-center justify-center rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
                     selected
                       ? 'text-white'
                       : 'bg-[var(--color-muted)] text-white/80 hover:text-white'
