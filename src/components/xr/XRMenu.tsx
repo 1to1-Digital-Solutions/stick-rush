@@ -9,6 +9,11 @@ import {
   STICK_COLOR,
 } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
+import {
+  XR_DIFFICULTY_SPACING,
+  XR_MENU_POSITION,
+  XR_STICK_PICKER_SPACING,
+} from '@/lib/xrLayout'
 import { PANEL_COLOR, XRPanel, XRPlayIcon, XRPressable } from './XRUi'
 
 /**
@@ -26,10 +31,10 @@ import { PANEL_COLOR, XRPanel, XRPlayIcon, XRPressable } from './XRUi'
  * escritorio. Cada estado se distingue por forma *y* color, nunca solo color.
  */
 
-/** Distancia a la que se planta el panel, y altura de los ojos. */
-const MENU_POSITION: [number, number, number] = [0, 1.4, -0.95]
-const STICK_PICKER_SPACING = 0.055
-const DIFFICULTY_SPACING = 0.17
+// El layout vive en `@/lib/xrLayout` para que los tests de sesión inmersiva
+// apunten el mando exactamente a estos mismos puntos.
+const STICK_PICKER_SPACING = XR_STICK_PICKER_SPACING
+const DIFFICULTY_SPACING = XR_DIFFICULTY_SPACING
 
 /**
  * Selector del número de palos: una fila con los 13 posibles, encendidos hasta
@@ -141,7 +146,7 @@ export function XRMenu() {
   }
 
   return (
-    <group position={MENU_POSITION}>
+    <group position={XR_MENU_POSITION}>
       <XRPanel width={1.06} height={0.62} color={PANEL_COLOR} />
       <StickPicker />
       <DifficultyPicker />

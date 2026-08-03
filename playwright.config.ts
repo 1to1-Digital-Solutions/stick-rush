@@ -14,6 +14,8 @@ const baseURL = `http://${HOST}:${PORT}`
 
 export default defineConfig({
   testDir: './e2e',
+  // Empaqueta el emulador WebXR que usan los tests de sesión inmersiva.
+  globalSetup: './e2e/support/globalSetup.ts',
   // La escena 3D es tiempo real: dos partidas a la vez en la misma máquina se
   // roban FPS y falsean los tiempos de caída.
   workers: 1,

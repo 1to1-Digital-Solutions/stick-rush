@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Bundle generado del emulador WebXR para los tests (no es código fuente).
+    "e2e/support/xr-emulator.bundle.js",
   ]),
 ]);
 

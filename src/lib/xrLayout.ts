@@ -1,0 +1,69 @@
+import { DIFFICULTY_ORDER, MAX_STICKS, type Difficulty } from './gameConfig'
+
+/**
+ * Dónde se coloca cada cosa de la interfaz inmersiva, en metros y relativo a
+ * los pies del jugador (`<XROrigin>`).
+ *
+ * Vive aquí, y no dentro de los componentes, porque los tests de sesión
+ * inmersiva tienen que apuntar el mando a estos mismos puntos: si el layout se
+ * mueve, los tests lo siguen sin tocarlos. Los componentes solo pintan.
+ */
+
+export type Vec3 = [number, number, number]
+
+/** Panel del menú, delante del jugador y a la altura de los ojos. */
+export const XR_MENU_POSITION: Vec3 = [0, 1.4, -0.95]
+/** Marcador, por debajo del menú para no cruzarse con los palos. */
+export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
+/** Botón de salir durante la partida, apartado a un lado. */
+export const XR_QUIT_POSITION: Vec3 = [-0.62, 1.05, -0.5]
+
+/** Separación entre los palos del selector de cantidad. */
+export const XR_STICK_PICKER_SPACING = 0.055
+/** Separación entre las fichas de dificultad. */
+export const XR_DIFFICULTY_SPACING = 0.17
+
+/** Altura del selector de palos dentro del panel. */
+const STICK_PICKER_Y = 0.16
+/** Altura del selector de dificultad dentro del panel. */
+const DIFFICULTY_Y = -0.04
+/** Altura del botón de empezar dentro del panel. */
+const PLAY_Y = -0.21
+
+function offset([x, y, z]: Vec3, dx: number, dy: number): Vec3 {
+  return [x + dx, y + dy, z]
+}
+
+/** Botón de salir durante la partida. */
+export function xrQuitButtonPosition(): Vec3 {
+  return XR_QUIT_POSITION
+}
+
+/** Botón de empezar partida. */
+export function xrPlayButtonPosition(): Vec3 {
+  return offset(XR_MENU_POSITION, 0, PLAY_Y)
+}
+
+/**
+ * Posición del palo `index` (0-based) del selector de cantidad. El selector
+ * muestra los `MAX_STICKS` posibles y se elige tocando hasta cuál se quiere.
+ */
+export function xrStickOptionPosition(index: number): Vec3 {
+  const width = (MAX_STICKS - 1) * XR_STICK_PICKER_SPACING
+  return offset(
+    XR_MENU_POSITION,
+    index * XR_STICK_PICKER_SPACING - width / 2,
+    STICK_PICKER_Y,
+  )
+}
+
+/** Posición de la ficha de una dificultad. */
+export function xrDifficultyOptionPosition(difficulty: Difficulty): Vec3 {
+  const index = DIFFICULTY_ORDER.indexOf(difficulty)
+  const width = (DIFFICULTY_ORDER.length - 1) * XR_DIFFICULTY_SPACING
+  return offset(
+    XR_MENU_POSITION,
+    index * XR_DIFFICULTY_SPACING - width / 2,
+    DIFFICULTY_Y,
+  )
+}

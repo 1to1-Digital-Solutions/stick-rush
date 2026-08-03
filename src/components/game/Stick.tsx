@@ -10,6 +10,7 @@ import {
   STICK_MISS_Y,
   STICK_RADIUS,
 } from '@/lib/gameConfig'
+import { canCatchWithPointer } from '@/lib/xrInteraction'
 
 type StickState = 'hanging' | 'falling' | 'caught' | 'missed'
 
@@ -88,25 +89,14 @@ export function Stick({
     document.body.style.cursor = 'auto'
   }
 
-  /**
-   * Un palo se coge con la mano, no apuntando.
-   *
-   * En sesión inmersiva @react-three/xr registra dos punteros por mando: el
-   * rayo (`ray`, que sale del mando y llega a cualquier sitio) y el de agarre
-   * (`grab`, una esfera pegada al puño que se activa con el gatillo lateral).
-   * Aquí se aceptan el agarre y el contacto directo con la mano (`touch`), y se
-   * ignora el rayo: apuntar desde lejos no debe atrapar nada. El ratón (`mouse`)
-   * sigue valiendo, que es como se juega en escritorio.
-   */
-  const isGrabLike = (pointerType: string | undefined) => pointerType !== 'ray'
-
   // El palo desaparece al ser atrapado y se desmonta al acabar la partida:
   // si el puntero estaba encima, `onPointerOut` ya no llega y el cursor se
   // quedaría en 'pointer'.
   useEffect(() => releaseCursor, [])
 
   const handleCatch = (event?: ThreeEvent<PointerEvent | MouseEvent>) => {
-    if (!isGrabLike(pointerTypeOf(event))) return
+    // Se coge con la mano, no apuntando: ver `canCatchWithPointer`.
+    if (!canCatchWithPointer(pointerTypeOf(event))) return
     event?.stopPropagation()
     if (resolved.current) return
     if (state !== 'falling' && state !== 'hanging') return

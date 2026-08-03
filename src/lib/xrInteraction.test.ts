@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MACHINE_HEIGHT, MACHINE_RADIUS, STICK_MISS_Y } from './gameConfig'
+import { canCatchWithPointer } from './xrInteraction'
 
 /**
  * La máquina tiene que quedar dentro de lo que el jugador alcanza con la mano.
@@ -39,5 +40,31 @@ describe('la máquina queda al alcance de la mano', () => {
     // El peor caso es un palo en un extremo del semicírculo, recién soltado.
     const worstCase = Math.hypot(MACHINE_RADIUS, MACHINE_HEIGHT - SHOULDER_HEIGHT)
     expect(worstCase).toBeLessThanOrEqual(ARM_REACH + 0.15)
+  })
+})
+
+describe('un palo se coge con la mano, no apuntando', () => {
+  it('el agarre del mando y el contacto de la mano valen', () => {
+    expect(canCatchWithPointer('grab')).toBe(true)
+    expect(canCatchWithPointer('touch')).toBe(true)
+  })
+
+  it('el rayo no: apuntar desde lejos no atrapa nada', () => {
+    // Es lo que distingue este juego de un shooter: el rayo llega a cualquier
+    // distancia y convertiría atrapar los palos en apuntar y disparar. Se queda
+    // solo para manejar el menú.
+    expect(canCatchWithPointer('ray')).toBe(false)
+  })
+
+  it('el ratón sigue valiendo, que es como se juega en escritorio', () => {
+    expect(canCatchWithPointer('mouse')).toBe(true)
+    // Los eventos de ratón no siempre traen el tipo de puntero.
+    expect(canCatchWithPointer(undefined)).toBe(true)
+  })
+
+  it('un puntero nuevo de la librería puede coger palos por defecto', () => {
+    // Preferimos que algo desconocido funcione a que deje de responder sin que
+    // nadie se entere: el único caso que se cierra es el rayo, explícitamente.
+    expect(canCatchWithPointer('lines')).toBe(true)
   })
 })

@@ -46,3 +46,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# bundle generado del emulador WebXR para los tests
+/e2e/support/xr-emulator.bundle.js

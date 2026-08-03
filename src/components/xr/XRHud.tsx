@@ -3,6 +3,7 @@
 import { useXR } from '@react-three/xr'
 import { useGame } from '@/lib/gameStore'
 import { type StickStatus, stickStatuses } from '@/lib/stickLayout'
+import { XR_HUD_POSITION, XR_QUIT_POSITION } from '@/lib/xrLayout'
 import {
   PANEL_COLOR,
   XRBackIcon,
@@ -30,7 +31,6 @@ import {
 
 const TOKEN_SPACING = 0.07
 const TOKEN_RADIUS = 0.026
-const HUD_POSITION: [number, number, number] = [0, 0.95, -0.85]
 
 const TOKEN_STYLE: Record<
   StickStatus,
@@ -86,7 +86,7 @@ export function XRHud() {
   const finished = gameState === 'finished'
 
   return (
-    <group position={HUD_POSITION}>
+    <group position={XR_HUD_POSITION}>
       {/* Panel de fondo: en AR el mundo real está detrás, sin él las fichas
           pierden contraste sobre cualquier pared. */}
       <XRPanel
@@ -163,7 +163,7 @@ export function XRQuitButton() {
 
   return (
     <XRPressable
-      position={[-0.62, 1.05, -0.5]}
+      position={XR_QUIT_POSITION}
       onSelect={resetGame}
       hitSize={[0.16, 0.14, 0.08]}
     >
