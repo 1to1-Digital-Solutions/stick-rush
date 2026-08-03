@@ -7,6 +7,8 @@
 
 ## ⏭️ SIGUIENTE PASO (lo primero al volver)
 
+0. **Cerrar la PR de la primera versión** (`fix/xr-escena-y-hud`, rama de trabajo
+   `chore/tests-y-readme`): revisada, con tests unitarios y e2e y el README al día.
 1. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
 2. Probar el modo XR en un visor real (VR y AR) y afinar la captura con mandos
    (`npm run dev:https`): se reutiliza el sistema de punteros de `@react-three/xr` (mismos
@@ -59,6 +61,31 @@ Pendiente para ese momento (no antes):
 - Verificado: `npm run lint` (0 problemas), `npm run typecheck` (0 errores),
   `npm run build` (OK, rutas `/`, `/game`, `/_not-found` prerenderizadas),
   `npm run start` sirve `/` y `/game` con HTTP 200.
+
+## Tests (2026-08-03)
+
+Ya hay runner, y forma parte de las comprobaciones antes de dar nada por terminado.
+
+- **Unitarios — Vitest + Testing Library** (`npm test`, 43 tests). Cubren `src/lib`:
+  geometría del aro (`machinePoint`), coherencia de las dificultades, tiempos de caída por
+  nivel, reparto y retardos de los palos, estados del marcador y el ciclo completo de la
+  partida en `gameStore` (incluido el caso de dos palos resolviéndose en el mismo lote).
+- **Extremo a extremo — Playwright** (`npm run test:e2e`, 20 tests en Chromium sobre el build
+  de producción). Menú, selección, teclado, partida, captura de palos con el ratón, fin de
+  partida, revancha, ausencia de errores de consola, cero peticiones externas y pantalla de
+  móvil. Un test aparte (`npm run capture`) regenera la captura del README.
+- Para poder probar la lógica sin navegador se sacó de los componentes 3D a
+  **`src/lib/stickLayout.ts`**: reparto de los palos por el aro, retardos escalonados y
+  estados del marcador. `STICK_MISS_Y`, `STICK_FALL_DISTANCE` y `fallDurationSeconds()` pasan
+  a `gameConfig.ts`. Los componentes solo pintan.
+- Para tener enganches estables (y de paso accesibilidad): el marcador es `role="status"` con
+  `aria-live` y el fin de partida `role="dialog"`.
+- El e2e destapó un incumplimiento real: los botones de dificultad medían **42 px** de alto,
+  por debajo del mínimo táctil de 44 px de `.claude/rules/design.md`. Corregido ahí y en los
+  botones de VR/AR.
+- Los e2e se sirven en `127.0.0.1` y no en `localhost` a propósito: con `localhost`,
+  `@react-three/xr` inyecta el emulador IWER y aparece un botón "Enter XR" que no existe en
+  el juego real.
 
 ## Corregido en la revisión (2026-07-31, rama `fix/xr-escena-y-hud`)
 
@@ -148,8 +175,16 @@ así que la máquina sigue siendo geometría por código, ahora con más detalle
 - Validar y pulir la interacción XR con mandos en hardware real.
 - Posibles mejoras: sonido al atrapar/perder, animación de "vibración" de los palos
   colgando, temporizador/puntuación por tiempo, escenario VR más elaborado.
-- Tests: aún no hay (no se ha configurado runner). Buen candidato: lógica de
-  `gameStore` (resolución de partida) y `clampStickCount`.
+- **Decidir si un palo debe poder atraparse mientras aún cuelga.** Hoy `Stick.handleCatch`
+  acepta los estados `hanging` y `falling`, así que se puede vaciar el aro a clics nada más
+  empezar, sin esperar a que caiga nada. Puede ser deliberado (premia la puntería), pero con
+  13 palos en Fácil convierte la partida en trivial. Si se cierra a `falling`, hay que ajustar
+  el e2e "atrapar un palo suma en el marcador", que hoy se apoya en los palos colgados.
+- **Vulnerabilidades de dependencias**: `npm audit` reporta 5 high, todas heredadas
+  (`next@16.2.9`, `postcss`, `sharp`) y ninguna introducida por los tests. Conviene subir al
+  último patch de Next 16.2.x antes de publicar.
+- Los avisos de "multiple lockfiles" en el build solo salen al compilar desde un worktree
+  anidado dentro del repo; en el checkout normal no aparecen.
 
 ## Caveats y notas
 
