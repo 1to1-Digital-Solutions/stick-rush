@@ -5,9 +5,9 @@ import { useFrame } from '@react-three/fiber'
 import type { Group, Mesh, MeshStandardMaterial, Texture } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import {
-  GROUND_Y,
   STICK_CORD_LENGTH,
   STICK_LENGTH,
+  STICK_MISS_Y,
   STICK_RADIUS,
 } from '@/lib/gameConfig'
 
@@ -33,12 +33,6 @@ export interface StickProps {
   /** Resuelto: atrapado o perdido (para cerrar la partida). */
   onResolve: () => void
 }
-
-// Cota del anclaje a partir de la cual el palo se considera perdido: la que
-// deja su punta justo sobre el suelo. Medirlo en el anclaje hacía que el palo
-// entero se hundiera bajo el suelo (y siguiera siendo atrapable) antes de
-// contar como perdido.
-const MISS_Y = GROUND_Y + STICK_CORD_LENGTH + STICK_LENGTH
 
 export function Stick({
   anchor,
@@ -125,8 +119,8 @@ export function Stick({
 
     if (state === 'falling' && !resolved.current) {
       group.position.y -= speed * delta
-      if (group.position.y <= MISS_Y) {
-        group.position.y = MISS_Y
+      if (group.position.y <= STICK_MISS_Y) {
+        group.position.y = STICK_MISS_Y
         resolved.current = true
         setState('missed')
         onResolve()

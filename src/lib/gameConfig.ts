@@ -82,6 +82,26 @@ export const GROUND_Y = 0
 export const STICK_CORD_LENGTH = 0.12
 
 /**
+ * Cota del anclaje a partir de la cual el palo se considera perdido: la que
+ * deja su punta justo sobre el suelo. Medirlo en el anclaje hacía que el palo
+ * entero se hundiera bajo el suelo (y siguiera siendo atrapable) antes de
+ * contar como perdido.
+ */
+export const STICK_MISS_Y = GROUND_Y + STICK_CORD_LENGTH + STICK_LENGTH
+
+/** Recorrido de un palo desde que se suelta hasta que se da por perdido. */
+export const STICK_FALL_DISTANCE = MACHINE_HEIGHT - STICK_MISS_Y
+
+/**
+ * Segundos que tarda un palo en llegar al suelo en cada dificultad. Es el
+ * margen real que tiene el jugador para atraparlo, y lo que se ajusta al tocar
+ * `DIFFICULTY_SPEEDS` o la geometría de la máquina.
+ */
+export function fallDurationSeconds(difficulty: Difficulty): number {
+  return STICK_FALL_DISTANCE / DIFFICULTY_SPEEDS[difficulty]
+}
+
+/**
  * Punto del aro para `t` en [0, 1], repartiendo de izquierda a derecha por
  * delante del jugador (mira hacia -Z). Es la misma curva que sigue la máquina y
  * de la que cuelgan los palos.

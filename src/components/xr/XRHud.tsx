@@ -6,6 +6,7 @@ import { useXR } from '@react-three/xr'
 import type { Mesh } from 'three'
 import { XR_RESTART_DELAY_MS } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
+import { type StickStatus, stickStatuses } from '@/lib/stickLayout'
 
 /**
  * Marcador dentro de la escena, para sesiones inmersivas.
@@ -29,10 +30,8 @@ const TOKEN_RADIUS = 0.026
 const HUD_POSITION: [number, number, number] = [0, 0.85, -0.8]
 const RESTART_SECONDS = XR_RESTART_DELAY_MS / 1000
 
-type TokenState = 'caught' | 'missed' | 'pending'
-
 const TOKEN_STYLE: Record<
-  TokenState,
+  StickStatus,
   { color: string; emissive: number; scale: number; lift: number }
 > = {
   // Atrapado: verde, ficha grande y elevada.
@@ -43,7 +42,7 @@ const TOKEN_STYLE: Record<
   pending: { color: '#475569', emissive: 0, scale: 0.9, lift: 0 },
 }
 
-function Token({ state, x }: { state: TokenState; x: number }) {
+function Token({ state, x }: { state: StickStatus; x: number }) {
   const style = TOKEN_STYLE[state]
 
   return (
@@ -99,11 +98,13 @@ export function XRHud() {
   }
 
   const width = Math.max(stickCount - 1, 0) * TOKEN_SPACING
-  const tokens = Array.from({ length: stickCount }, (_, index) => {
-    const state: TokenState =
-      index < score ? 'caught' : index < resolved ? 'missed' : 'pending'
-    return { index, state, x: index * TOKEN_SPACING - width / 2 }
-  })
+  const tokens = stickStatuses(score, resolved, stickCount).map(
+    (state, index) => ({
+      index,
+      state,
+      x: index * TOKEN_SPACING - width / 2,
+    }),
+  )
 
   return (
     <group position={HUD_POSITION}>

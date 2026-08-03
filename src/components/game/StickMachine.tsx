@@ -15,19 +15,10 @@ import {
   machinePoint,
 } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
+import { buildStickLayout } from '@/lib/stickLayout'
 import { Stick } from './Stick'
 
 type Point = [number, number, number]
-
-/**
- * Pseudo-aleatorio determinista en [0, 1) a partir de dos enteros (índice
- * y partida). Evita Math.random() en render (impuro) manteniendo el jitter
- * estable durante el ciclo de vida de cada palo.
- */
-function seededRandom(a: number, b: number): number {
-  const x = Math.sin(a * 374761393 + b * 668265263) * 43758.5453
-  return x - Math.floor(x)
-}
 
 const UP = new Vector3(0, 1, 0)
 
@@ -177,14 +168,7 @@ export function StickMachine() {
   // Anclajes y retardos escalonados. Se recalculan en cada partida (runId)
   // y cuando cambia el número de palos.
   const sticks = useMemo(
-    () =>
-      Array.from({ length: stickCount }, (_, index) => {
-        // Reparte los palos por el aro evitando los extremos exactos.
-        const t = stickCount === 1 ? 0.5 : (index + 1) / (stickCount + 1)
-        // Caída escalonada: cada palo arranca algo más tarde, con jitter.
-        const delay = index * (1 + seededRandom(index, runId) * 0.5)
-        return { key: `${runId}-${index}`, anchor: machinePoint(t), delay }
-      }),
+    () => buildStickLayout(stickCount, runId),
     [stickCount, runId],
   )
 
