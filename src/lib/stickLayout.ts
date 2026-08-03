@@ -21,22 +21,47 @@ export function seededRandom(a: number, b: number): number {
 }
 
 /**
+ * Turno de caída de cada palo, barajado.
+ *
+ * Devuelve las posiciones del aro en el orden en que se sueltan: `order[0]` es
+ * el palo que cae primero. Fisher-Yates sembrado con `runId`, así que la
+ * secuencia es distinta en cada partida pero estable dentro de ella.
+ */
+export function fallOrder(stickCount: number, runId: number): number[] {
+  const order = Array.from({ length: Math.max(stickCount, 0) }, (_, i) => i)
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(seededRandom(i, runId) * (i + 1))
+    ;[order[i], order[j]] = [order[j], order[i]]
+  }
+  return order
+}
+
+/**
  * Reparte los palos por el aro y escalona su caída.
  *
- * Los anclajes van de izquierda a derecha evitando los extremos exactos (ahí
- * están los postes) y cada palo sale algo más tarde que el anterior, con un
- * jitter determinista para que la secuencia no se sienta metronómica.
+ * La posición en el aro y el momento de caer son **independientes**: los
+ * anclajes van de izquierda a derecha evitando los extremos exactos (ahí están
+ * los postes), pero el turno de cada palo sale de `fallOrder`. Antes el retardo
+ * se calculaba a partir del índice, así que los palos caían siempre en orden,
+ * de izquierda a derecha, y la partida era predecible.
  */
 export function buildStickLayout(
   stickCount: number,
   runId: number,
 ): StickLayout[] {
+  const order = fallOrder(stickCount, runId)
+  const turnOf: number[] = []
+  order.forEach((stickIndex, turn) => {
+    turnOf[stickIndex] = turn
+  })
+
   return Array.from({ length: stickCount }, (_, index) => {
     const t = stickCount === 1 ? 0.5 : (index + 1) / (stickCount + 1)
     return {
       key: `${runId}-${index}`,
       anchor: machinePoint(t),
-      delay: index * (1 + seededRandom(index, runId) * 0.5),
+      // Un turno por palo, más un jitter para que no suene a metrónomo.
+      delay: turnOf[index] * (1 + seededRandom(index, runId) * 0.5),
     }
   })
 }

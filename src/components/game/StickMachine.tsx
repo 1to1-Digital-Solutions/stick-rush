@@ -72,10 +72,10 @@ function Strut({
 /** Tramos del aro principal, a rayas alternas como el toldo de una caseta. */
 const ARC_SEGMENTS = 24
 /** Montantes verticales que unen el aro principal con el superior. */
-const TRUSS_POSTS = 13
-const TUBE_RADIUS = 0.045
+const TRUSS_POSTS = 9
+const TUBE_RADIUS = 0.032
 /** Separación entre el aro de los palos y el aro superior de la celosía. */
-const TRUSS_RISE = 0.3
+const TRUSS_RISE = 0.24
 
 /** Sube un punto del aro una altura dada. */
 function raise([x, y, z]: Point, dy: number): Point {
@@ -93,8 +93,12 @@ function raise([x, y, z]: Point, dy: number): Point {
  * lo que da sensación de rigidez son las diagonales.
  */
 export function StickMachine() {
-  const { stickCount, difficulty, runId, catchStick, resolveStick } = useGame()
+  const { stickCount, difficulty, runId, gameState, catchStick, resolveStick } =
+    useGame()
   const speed = DIFFICULTY_SPEEDS[difficulty]
+  // Fuera de la partida los palos se quedan colgando, a la vista, mientras el
+  // jugador elige opciones.
+  const paused = gameState !== 'playing'
 
   const [normalMap, roughnessMap] = useTexture([
     WOOD_TEXTURES.normalMap,
@@ -173,17 +177,20 @@ export function StickMachine() {
   )
 
   // Postes de los extremos, arriostrados hacia fuera como los de un escenario.
+  //
+  // El pie se abre hacia fuera y hacia atrás en vez de caer a plomo: con el aro
+  // al alcance del brazo, unos postes verticales quedarían pegados a los
+  // hombros del jugador y le cerrarían el paso.
   const legs = useMemo(() => {
     return [0, 1].map((side) => {
       const top = raise(machinePoint(side), TRUSS_RISE)
       const [x, , z] = top
-      // El tirante se abre hacia fuera del semicírculo (hacia +Z, la espalda
-      // del jugador) para no invadir la zona de juego.
-      const braceFoot: Point = [x * 1.15, GROUND_Y, z + 0.75]
+      const foot: Point = [x * 1.9, GROUND_Y, z + 0.45]
+      const braceFoot: Point = [x * 2.3, GROUND_Y, z + 1.05]
       return {
         key: side,
         top,
-        foot: [x, GROUND_Y, z] as Point,
+        foot,
         braceTop: raise(machinePoint(side), TRUSS_RISE * 0.35),
         braceFoot,
       }
@@ -211,7 +218,7 @@ export function StickMachine() {
           key={`up-${segment.key}`}
           from={segment.from}
           to={segment.to}
-          radius={0.028}
+          radius={0.02}
           color={MACHINE_TRUSS_COLOR}
         />
       ))}
@@ -220,7 +227,7 @@ export function StickMachine() {
           key={`post-${post.key}`}
           from={post.from}
           to={post.to}
-          radius={0.018}
+          radius={0.013}
           color={MACHINE_TRUSS_COLOR}
         />
       ))}
@@ -238,11 +245,11 @@ export function StickMachine() {
       {bulbs.map((bulb) => (
         <group key={`bulb-${bulb.key}`}>
           <mesh position={bulb.socket}>
-            <cylinderGeometry args={[0.016, 0.02, 0.05, 8]} />
+            <cylinderGeometry args={[0.012, 0.015, 0.038, 8]} />
             <meshStandardMaterial color="#3b3630" metalness={0.5} roughness={0.6} />
           </mesh>
           <mesh position={bulb.bulb}>
-            <sphereGeometry args={[0.032, 14, 14]} />
+            <sphereGeometry args={[0.024, 14, 14]} />
             <meshStandardMaterial
               color={MACHINE_BULB_COLOR}
               emissive={MACHINE_BULB_COLOR}
@@ -279,7 +286,7 @@ export function StickMachine() {
           <Strut
             from={leg.foot}
             to={leg.top}
-            radius={0.06}
+            radius={0.042}
             color={MACHINE_FRAME_COLOR}
             metalness={0.7}
             roughness={0.35}
@@ -287,11 +294,11 @@ export function StickMachine() {
           <Strut
             from={leg.braceFoot}
             to={leg.braceTop}
-            radius={0.026}
+            radius={0.019}
             color={MACHINE_TRUSS_COLOR}
           />
           <mesh position={[leg.foot[0], GROUND_Y + 0.025, leg.foot[2]]}>
-            <cylinderGeometry args={[0.19, 0.23, 0.05, 20]} />
+            <cylinderGeometry args={[0.13, 0.16, 0.04, 20]} />
             <meshStandardMaterial
               color={MACHINE_FRAME_COLOR}
               metalness={0.7}
@@ -299,7 +306,7 @@ export function StickMachine() {
             />
           </mesh>
           <mesh position={[leg.braceFoot[0], GROUND_Y + 0.02, leg.braceFoot[2]]}>
-            <cylinderGeometry args={[0.1, 0.13, 0.04, 16]} />
+            <cylinderGeometry args={[0.075, 0.095, 0.032, 16]} />
             <meshStandardMaterial
               color={MACHINE_TRUSS_COLOR}
               metalness={0.6}
@@ -318,6 +325,7 @@ export function StickMachine() {
           roughnessMap={roughnessMap}
           speed={speed}
           delay={stick.delay}
+          paused={paused}
           onCatch={catchStick}
           onResolve={resolveStick}
         />

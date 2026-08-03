@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { MACHINE_RADIUS, MAX_STICKS, MIN_STICKS } from './gameConfig'
-import { buildStickLayout, seededRandom, stickStatuses } from './stickLayout'
+import {
+  buildStickLayout,
+  fallOrder,
+  seededRandom,
+  stickStatuses,
+} from './stickLayout'
 
 describe('seededRandom', () => {
   it('devuelve siempre un valor en [0, 1)', () => {
@@ -52,17 +57,46 @@ describe('buildStickLayout', () => {
     expect(xs[0]).toBeCloseTo(-xs[6], 6)
   })
 
-  it('escalona la caída: el primero sale ya y el resto se van repartiendo', () => {
+  it('escalona la caída: uno sale ya y el resto se van repartiendo', () => {
     const delays = buildStickLayout(MAX_STICKS, 4).map((stick) => stick.delay)
-    expect(delays[0]).toBe(0)
-    // Cada palo espera aproximadamente un segundo por posición, más el jitter.
-    // No se exige orden estricto: el solape ocasional es lo que hace que la
-    // secuencia se sienta aleatoria y no una cuenta atrás.
-    delays.forEach((delay, index) => {
-      expect(delay).toBeGreaterThanOrEqual(index)
-      expect(delay).toBeLessThanOrEqual(index * 1.5)
+
+    // Exactamente un palo abre la partida, y cada turno espera en torno a un
+    // segundo más que el anterior, más el jitter.
+    expect(delays.filter((delay) => delay === 0)).toHaveLength(1)
+    const sorted = [...delays].sort((a, b) => a - b)
+    sorted.forEach((delay, turn) => {
+      expect(delay).toBeGreaterThanOrEqual(turn)
+      expect(delay).toBeLessThanOrEqual(turn * 1.5)
     })
-    expect(delays.at(-1)).toBeGreaterThan(delays[0])
+  })
+
+  it('no suelta los palos en el orden en que están colgados', () => {
+    // El fallo que se veía en el visor: caían siempre de izquierda a derecha,
+    // así que la partida era predecible. Se comprueba en varias partidas
+    // porque una baraja concreta podría salir casi ordenada por azar.
+    const correlated = [1, 2, 3, 4, 5].filter((runId) => {
+      const delays = buildStickLayout(MAX_STICKS, runId).map((s) => s.delay)
+      const ascending = delays.every(
+        (delay, i) => i === 0 || delay > delays[i - 1],
+      )
+      return ascending
+    })
+    expect(correlated).toEqual([])
+  })
+
+  it('reparte turnos distintos en cada partida', () => {
+    const first = fallOrder(MAX_STICKS, 1)
+    const second = fallOrder(MAX_STICKS, 2)
+    expect(first).not.toEqual(second)
+  })
+
+  it('cada palo cae exactamente una vez', () => {
+    for (let count = MIN_STICKS; count <= MAX_STICKS; count++) {
+      const order = fallOrder(count, 7)
+      expect([...order].sort((a, b) => a - b)).toEqual(
+        Array.from({ length: count }, (_, i) => i),
+      )
+    }
   })
 
   it('desordena los retardos sin volverlos metronómicos', () => {

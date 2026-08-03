@@ -1,0 +1,168 @@
+'use client'
+
+import { useXR } from '@react-three/xr'
+import {
+  DIFFICULTY_COLORS,
+  DIFFICULTY_ORDER,
+  MAX_STICKS,
+  MIN_STICKS,
+  STICK_COLOR,
+} from '@/lib/gameConfig'
+import { useGame } from '@/lib/gameStore'
+import { PANEL_COLOR, XRPanel, XRPlayIcon, XRPressable } from './XRUi'
+
+/**
+ * Menú de partida para sesiones inmersivas.
+ *
+ * En VR/AR no hay DOM, así que la pantalla de inicio no se ve: antes la sesión
+ * arrancaba una partida sola y el jugador no podía elegir nada. Este menú la
+ * sustituye con geometría, delante del jugador y a la altura de los ojos.
+ *
+ * **Sin una sola letra, a propósito.** `<Text>` de drei descarga las fuentes de
+ * un CDN (troika las resuelve contra jsDelivr) y el juego debe funcionar en un
+ * visor sin salida a internet —además, la CSP lo bloquea—. Así que cada ajuste
+ * se representa por lo que significa: el número de palos, con los propios
+ * palos; la dificultad, con barras que crecen y el color que ya usa el menú de
+ * escritorio. Cada estado se distingue por forma *y* color, nunca solo color.
+ */
+
+/** Distancia a la que se planta el panel, y altura de los ojos. */
+const MENU_POSITION: [number, number, number] = [0, 1.4, -0.95]
+const STICK_PICKER_SPACING = 0.055
+const DIFFICULTY_SPACING = 0.17
+
+/**
+ * Selector del número de palos: una fila con los 13 posibles, encendidos hasta
+ * el elegido. Se lee contando y es literalmente lo que colgará de la máquina.
+ * Tocar uno selecciona ese número (el store recorta al rango permitido).
+ */
+function StickPicker() {
+  const { stickCount, setStickCount } = useGame()
+  const width = (MAX_STICKS - 1) * STICK_PICKER_SPACING
+
+  return (
+    <group position={[0, 0.16, 0]}>
+      {Array.from({ length: MAX_STICKS }, (_, index) => {
+        const count = index + 1
+        const on = count <= stickCount
+        const selectable = count >= MIN_STICKS
+        return (
+          <XRPressable
+            key={count}
+            position={[index * STICK_PICKER_SPACING - width / 2, 0, 0]}
+            onSelect={() => setStickCount(count)}
+            disabled={!selectable}
+            hitSize={[STICK_PICKER_SPACING, 0.16, 0.05]}
+          >
+            {/* Un palo en miniatura: encendido si entra en la selección. */}
+            <mesh position={[0, on ? 0.008 : 0, 0]}>
+              <cylinderGeometry
+                args={[0.008, 0.008, on ? 0.11 : 0.075, 8]}
+              />
+              <meshStandardMaterial
+                color={on ? STICK_COLOR : '#3d4654'}
+                emissive={STICK_COLOR}
+                emissiveIntensity={on ? 0.55 : 0}
+                roughness={0.6}
+              />
+            </mesh>
+          </XRPressable>
+        )
+      })}
+    </group>
+  )
+}
+
+/**
+ * Selector de dificultad: cinco fichas con 1 a 5 barras crecientes, del verde
+ * al rojo. La elegida se adelanta y se ilumina, así que no depende del color.
+ */
+function DifficultyPicker() {
+  const { difficulty, setDifficulty } = useGame()
+  const width = (DIFFICULTY_ORDER.length - 1) * DIFFICULTY_SPACING
+
+  return (
+    <group position={[0, -0.04, 0]}>
+      {DIFFICULTY_ORDER.map((level, index) => {
+        const selected = level === difficulty
+        const color = DIFFICULTY_COLORS[level]
+        return (
+          <XRPressable
+            key={level}
+            position={[index * DIFFICULTY_SPACING - width / 2, 0, selected ? 0.022 : 0]}
+            onSelect={() => setDifficulty(level)}
+            hitSize={[DIFFICULTY_SPACING * 0.92, 0.15, 0.05]}
+          >
+            <mesh position={[0, 0, -0.008]}>
+              <boxGeometry args={[DIFFICULTY_SPACING * 0.82, 0.13, 0.012]} />
+              <meshStandardMaterial
+                color={selected ? color : '#1c2634'}
+                emissive={color}
+                emissiveIntensity={selected ? 0.5 : 0.06}
+                roughness={0.55}
+              />
+            </mesh>
+            {/* Barras: tantas como nivel, cada una más alta que la anterior. */}
+            {Array.from({ length: index + 1 }, (_, bar) => {
+              const height = 0.028 + bar * 0.017
+              return (
+                <mesh
+                  key={bar}
+                  position={[
+                    (bar - index / 2) * 0.022,
+                    -0.04 + height / 2,
+                    0.004,
+                  ]}
+                >
+                  <boxGeometry args={[0.013, height, 0.008]} />
+                  <meshStandardMaterial
+                    color={selected ? '#ffffff' : color}
+                    emissive={selected ? '#ffffff' : color}
+                    emissiveIntensity={selected ? 0.7 : 0.25}
+                    toneMapped={false}
+                  />
+                </mesh>
+              )
+            })}
+          </XRPressable>
+        )
+      })}
+    </group>
+  )
+}
+
+export function XRMenu() {
+  const mode = useXR((state) => state.mode)
+  const { gameState, startGame } = useGame()
+
+  // Fuera de sesión inmersiva manda la pantalla de inicio en DOM.
+  if (mode == null || gameState !== 'menu') {
+    return null
+  }
+
+  return (
+    <group position={MENU_POSITION}>
+      <XRPanel width={1.06} height={0.62} color={PANEL_COLOR} />
+      <StickPicker />
+      <DifficultyPicker />
+
+      {/* Empezar */}
+      <XRPressable
+        position={[0, -0.21, 0]}
+        onSelect={startGame}
+        hitSize={[0.36, 0.13, 0.06]}
+      >
+        <mesh position={[0, 0, -0.008]}>
+          <boxGeometry args={[0.32, 0.1, 0.014]} />
+          <meshStandardMaterial
+            color="#15803d"
+            emissive="#22c55e"
+            emissiveIntensity={0.45}
+            roughness={0.45}
+          />
+        </mesh>
+        <XRPlayIcon position={[0, 0, 0.008]} />
+      </XRPressable>
+    </group>
+  )
+}

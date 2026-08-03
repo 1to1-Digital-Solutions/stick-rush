@@ -13,6 +13,16 @@ import {
 
 type StickState = 'hanging' | 'falling' | 'caught' | 'missed'
 
+/**
+ * Tipo de puntero que ha disparado el evento, si lo trae. Los eventos de ratón
+ * no lo llevan; los de @pmndrs/pointer-events (los de XR) sí.
+ */
+function pointerTypeOf(event: unknown): string | undefined {
+  if (typeof event !== 'object' || event == null) return undefined
+  const { pointerType } = event as { pointerType?: unknown }
+  return typeof pointerType === 'string' ? pointerType : undefined
+}
+
 export interface StickProps {
   /** Punto de anclaje en el aro del que cuelga el palo. */
   anchor: [number, number, number]
@@ -28,6 +38,12 @@ export interface StickProps {
   speed: number
   /** Retardo, en segundos, antes de empezar a caer. */
   delay: number
+  /**
+   * Con la partida parada (menú o fin) el palo se queda colgando: su reloj no
+   * corre. Si no, los palos se soltaban mientras el jugador elegía opciones y
+   * al empezar ya estaban por el suelo.
+   */
+  paused: boolean
   /** Atrapado por el jugador (click o mando XR). */
   onCatch: () => void
   /** Resuelto: atrapado o perdido (para cerrar la partida). */
@@ -41,6 +57,7 @@ export function Stick({
   roughnessMap,
   speed,
   delay,
+  paused,
   onCatch,
   onResolve,
 }: StickProps) {
@@ -71,12 +88,25 @@ export function Stick({
     document.body.style.cursor = 'auto'
   }
 
+  /**
+   * Un palo se coge con la mano, no apuntando.
+   *
+   * En sesión inmersiva @react-three/xr registra dos punteros por mando: el
+   * rayo (`ray`, que sale del mando y llega a cualquier sitio) y el de agarre
+   * (`grab`, una esfera pegada al puño que se activa con el gatillo lateral).
+   * Aquí se aceptan el agarre y el contacto directo con la mano (`touch`), y se
+   * ignora el rayo: apuntar desde lejos no debe atrapar nada. El ratón (`mouse`)
+   * sigue valiendo, que es como se juega en escritorio.
+   */
+  const isGrabLike = (pointerType: string | undefined) => pointerType !== 'ray'
+
   // El palo desaparece al ser atrapado y se desmonta al acabar la partida:
   // si el puntero estaba encima, `onPointerOut` ya no llega y el cursor se
   // quedaría en 'pointer'.
   useEffect(() => releaseCursor, [])
 
-  const handleCatch = (event?: ThreeEvent<MouseEvent>) => {
+  const handleCatch = (event?: ThreeEvent<PointerEvent | MouseEvent>) => {
+    if (!isGrabLike(pointerTypeOf(event))) return
     event?.stopPropagation()
     if (resolved.current) return
     if (state !== 'falling' && state !== 'hanging') return
@@ -94,7 +124,9 @@ export function Stick({
 
     // Limita el delta para evitar saltos tras pestañas en segundo plano.
     const delta = Math.min(rawDelta, 0.05)
-    elapsed.current += delta
+    if (!paused) {
+      elapsed.current += delta
+    }
 
     // Animación del flash de captura (escala + emissive decreciente).
     if (flash.current > 0) {
@@ -111,13 +143,13 @@ export function Stick({
     }
 
     if (state === 'hanging') {
-      if (elapsed.current >= delay) {
+      if (!paused && elapsed.current >= delay) {
         setState('falling')
       }
       return
     }
 
-    if (state === 'falling' && !resolved.current) {
+    if (state === 'falling' && !resolved.current && !paused) {
       group.position.y -= speed * delta
       if (group.position.y <= STICK_MISS_Y) {
         group.position.y = STICK_MISS_Y
@@ -142,6 +174,10 @@ export function Stick({
         ref={meshRef}
         position={[0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0]}
         onClick={handleCatch}
+        // El agarre se resuelve al cerrar la mano, sin esperar a soltar: con el
+        // palo cayendo, exigir un clic completo (pulsar y soltar sobre el mismo
+        // objeto) haría fallar agarres que el jugador siente como buenos.
+        onPointerDown={handleCatch}
         onPointerOver={(e) => {
           e.stopPropagation()
           if (state === 'falling' || state === 'hanging') {

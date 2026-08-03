@@ -13,7 +13,8 @@ import {
 } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
 import { xrStore } from '@/components/xr/xrStore'
-import { XRHud } from '@/components/xr/XRHud'
+import { XRHud, XRQuitButton } from '@/components/xr/XRHud'
+import { XRMenu } from '@/components/xr/XRMenu'
 import { XRSessionController } from '@/components/xr/XRSessionController'
 import { StickMachine } from './StickMachine'
 import { Ground } from './Ground'
@@ -74,10 +75,10 @@ function DesktopControls() {
     <OrbitControls
       enabled={mode == null && gameState !== 'playing'}
       enablePan={false}
-      minDistance={1.5}
+      minDistance={1.8}
       maxDistance={7}
       maxPolarAngle={Math.PI / 2.2}
-      target={[0, 1.2, -0.4]}
+      target={[0, 1.15, -0.2]}
     />
   )
 }
@@ -104,14 +105,14 @@ export function GameCanvas() {
       shadows="percentage"
       // Elevada y por detrás del jugador: a la altura del aro, un semicírculo
       // horizontal se vería de canto (una simple barra).
-      camera={{ position: [0, 3.1, 2.9], fov: 52, near: 0.05, far: 60 }}
+      camera={{ position: [0, 1.95, 3.3], fov: 52, near: 0.05, far: 60 }}
       gl={{ antialias: true }}
       className="absolute inset-0"
     >
       <ambientLight intensity={0.35} />
       {/* Foco cálido sobre la máquina, como el de una caseta de feria de noche. */}
       <pointLight
-        position={[0, MACHINE_HEIGHT + 1.2, -MACHINE_RADIUS * 0.4]}
+        position={[0, MACHINE_HEIGHT + 1, -MACHINE_RADIUS * 0.4]}
         intensity={16}
         color="#ffd479"
         distance={10}
@@ -127,6 +128,8 @@ export function GameCanvas() {
         {/* Jugador de pie en el centro del semicírculo, mirando a -Z. */}
         <XROrigin position={[0, GROUND_Y, 0]}>
           <XRHud />
+          <XRMenu />
+          <XRQuitButton />
         </XROrigin>
 
         {/* Las texturas de la madera se cargan aquí dentro; con su propio

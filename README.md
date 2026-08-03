@@ -16,8 +16,8 @@ their head. The whole scene is at human scale (1 unit = 1 metre).
 2. Pick the difficulty — **Fácil, Medio, Difícil, Experto or Imposible** (easy to
    impossible) — which sets the fall speed: from about 5.7 s per stick on Fácil to
    under 1 s on Imposible.
-3. Press **Jugar** (play). The sticks are released one after another, with a random
-   offset between them.
+3. Press **Jugar** (play). The sticks drop one at a time in **random order**, with a
+   random gap between them — where a stick hangs says nothing about when it falls.
 4. Catch what you can. The round ends once every stick is resolved (caught or
    dropped) and the score screen shows the result.
 
@@ -26,14 +26,21 @@ their head. The whole scene is at human scale (1 unit = 1 metre).
 | Where | How you catch | What you see |
 | --- | --- | --- |
 | Desktop or mobile browser | Click or tap the stick | The machine in a town square, camera behind the player |
-| XR headset, **VR** mode | Controller trigger aimed at the stick | The full environment all around |
-| XR headset, **AR** mode | Controller trigger aimed at the stick | Only the machine, over your real room (passthrough) |
+| XR headset, **VR** mode | **Grab it with your hand** (squeeze button) | The full environment all around |
+| XR headset, **AR** mode | **Grab it with your hand** (squeeze button) | Only the machine, over your real room (passthrough) |
 
-There is no DOM in an immersive session, so there is no "play" button either:
-entering VR/AR starts a round automatically and, once it ends, chains the next one
-after a pause. A 3D HUD replaces the score — one token per stick, caught / dropped /
-pending — told apart by colour *and* by size and height, with no text at all (that
-way no fonts have to be fetched from a CDN). Leaving the session returns to the menu.
+In a headset you do **not** catch sticks by pointing at them. The ring sits within
+arm's reach and you close your hand around a stick as it falls: the grab pointer is
+a sphere attached to your fist, triggered by the squeeze button. The aiming ray is
+still there, but only to operate the menu — pointing at a stick does nothing.
+
+There is no DOM in an immersive session, so the menu is built out of geometry and
+shown in front of you when you enter VR/AR: a row of sticks to pick how many you
+want, five tiles with growing bars for the difficulty, and a play button. **Not a
+single letter** — `<Text>` would pull fonts from a CDN, and the game has to run on a
+headset with no internet access, so every control is drawn as the thing it means.
+A back button is always within reach during a round, and when it ends you choose
+between replaying and going back to the menu.
 
 ## Stack
 
@@ -46,6 +53,12 @@ way no fonts have to be fetched from a CDN). Leaving the session returns to the 
 The game **depends on no external service**: no environment variables, no database,
 no third-party requests. Assets (HDRI and textures, all CC0) are served from
 `public/`; see [`public/CREDITS.md`](public/CREDITS.md).
+
+It is a fully static site — no middleware, no Server Actions, no API routes. Security
+headers (CSP, `Permissions-Policy`, HSTS and friends) are declared in
+`next.config.ts`; `connect-src 'self'` is what enforces the "no external requests"
+promise, and `xr-spatial-tracking=(self)` is what keeps WebXR working. Both are
+covered by tests in `e2e/seguridad.spec.ts`.
 
 ## Development
 
@@ -92,11 +105,11 @@ src/
     GameProvider.tsx    Provides the game context
     ui/StartScreen.tsx  Menu overlay (sticks, difficulty, play, VR/AR)
     game/               R3F canvas (always mounted), machine, sticks, ground, HUD
-    xr/                 WebXR store, VR/AR buttons and session↔game bridge
+    xr/                 WebXR store, VR/AR buttons, immersive menu, 3D HUD
   lib/
     gameConfig.ts       Constants: difficulties, speeds, colours, geometry
     gameStore.ts        Global game state (Context API)
-    stickLayout.ts      Stick layout around the ring and score token states
+    stickLayout.ts      Stick layout, shuffled fall order and score token states
 e2e/                    Playwright tests
 docs/                   README screenshots
 public/
@@ -114,13 +127,23 @@ which is what makes it testable without a browser.
 ## XR mode
 
 The VR/AR entry buttons only show up if the device supports WebXR (`navigator.xr`).
-In an immersive session, the pointer system of `@react-three/xr` fires the same click
-events as the mouse, so the catching logic is identical in browser and headset.
 
-The `<Canvas>` with `<XR>` is **always mounted**: the menu and HUD are DOM overlays on
-top of the 3D scene. That way, pressing "Entrar en VR" starts the session with the
-scene already in the tree and it shows up inside the headset. `<XROrigin>` places the
-player's feet at the centre of the semicircle, at 1:1 scale.
+`@react-three/xr` registers two pointers per controller and the game treats them
+differently: the **grab** pointer (a sphere on your fist, fired by the squeeze
+button) is what catches sticks, while the **ray** only drives the menu. `Stick`
+decides that by looking at the event's pointer type, so a stray ray can never catch
+anything. The mouse keeps working untouched, which is how you play on desktop.
+
+Controller and hand models are disabled on purpose: `@react-three/xr` downloads them
+from `cdn.jsdelivr.net`, and the game must work on a headset with no route to the
+internet — the CSP blocks it anyway. You orient yourself with the grab cursor and the
+ray, which are local geometry.
+
+The `<Canvas>` with `<XR>` is **always mounted**: the desktop menu and HUD are DOM
+overlays on top of the 3D scene. That way, pressing "Entrar en VR" starts the session
+with the scene already in the tree and it shows up inside the headset. `<XROrigin>`
+places the player's feet at the centre of the semicircle, at 1:1 scale, with the ring
+just above head height and within arm's reach.
 
 In **AR** neither the background, the ground nor the environment is drawn: the set is
 the player's own room and covering it would break passthrough. The HDRI is kept only
@@ -137,8 +160,9 @@ the local network needs HTTPS:
    macOS). The computer and the headset must be on the **same Wi-Fi network**.
 3. On the Quest browser open `https://<your-ip>:3000`.
 4. Accept the self-signed certificate warning ("advanced" → proceed).
-5. Press **Entrar en VR** or **Entrar en AR**, grant the WebXR permissions and aim at
-   the sticks with the controllers: the select trigger catches them just like a click.
+5. Press **Entrar en VR** or **Entrar en AR** and grant the WebXR permissions. Pick
+   your options in the floating menu, press play, and **squeeze** the grip button
+   with your hand around a stick to catch it.
 
 > Desktop mode still works with `npm run dev` (HTTP): menu → Jugar and click with the
 > mouse to catch.

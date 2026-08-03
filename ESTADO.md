@@ -7,13 +7,16 @@
 
 ## ⏭️ SIGUIENTE PASO (lo primero al volver)
 
-0. **Cerrar la PR de la primera versión** (`fix/xr-escena-y-hud`, rama de trabajo
-   `chore/tests-y-readme`): revisada, con tests unitarios y e2e y el README al día.
+0. **Probar en el visor la rama `feat/xr-menu-inmersivo-y-seguridad`.** Todo lo de XR
+   que lleva está implementado contra la API de `@react-three/xr` y verificado por
+   código y por los tests de escritorio, pero **nada de ello se ha probado en
+   hardware**: menú inmersivo, agarre con el mando, alcance del aro y botón de volver.
+   Lo que hay que mirar, en orden: (a) que al entrar en VR/AR salga el menú y no una
+   partida; (b) que los palos se cojan cerrando la mano y **no** apuntando; (c) que se
+   llegue a ellos sin moverse del sitio; (d) que el botón de volver esté a mano y no
+   estorbe.
 1. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
-2. Probar el modo XR en un visor real (VR y AR) y afinar la captura con mandos
-   (`npm run dev:https`): se reutiliza el sistema de punteros de `@react-three/xr` (mismos
-   eventos de clic), sin validar en hardware. Comprobar que en AR se ve el passthrough y que,
-   con el aro horizontal, los palos caen al alcance del brazo.
+2. Comprobar que en AR se sigue viendo el passthrough tras los cambios de geometría.
 3. Consolidar git (manual): poner `develop` al día (está en el bootstrap y los agentes de
    Organízate parten de develop); borrar el worktree muerto de `agent/inicializar-proyecto-…`
    (sin commits) con `git worktree remove`.
@@ -170,6 +173,67 @@ así que la máquina sigue siendo geometría por código, ahora con más detalle
 
 *(La deuda de Godot está arriba, en "Godot: congelado hasta cerrar el web".)*
 
+## Jugabilidad XR tras la primera prueba en visor (2026-08-03)
+
+Cinco cosas que salieron de probarlo con las gafas puestas, todas en
+`feat/xr-menu-inmersivo-y-seguridad`:
+
+- **Entrar en VR/AR ya no arranca una partida.** `XRSessionController` lleva al menú y
+  el nuevo `XRMenu` lo dibuja con geometría: fila de 13 palos (encendidos hasta el
+  elegido), cinco fichas de dificultad con barras crecientes, y botón de empezar.
+  **Sin una sola letra**, igual que el HUD: `<Text>` de drei descarga las fuentes de
+  un CDN y la CSP ahora lo bloquea. Piezas comunes en `XRUi.tsx`.
+- **Se puede volver atrás.** Botón de salir a un lado durante la partida
+  (`XRQuitButton`) y, al acabar, repetir o volver al menú. Se quitó el reinicio
+  automático y con él `XR_RESTART_DELAY_MS`.
+- **Los palos ya no caen en orden.** `buildStickLayout` sacaba el retardo del índice,
+  así que caían de izquierda a derecha siempre. Ahora `fallOrder()` baraja
+  (Fisher-Yates sembrado con `runId`) y la posición en el aro no dice nada del turno.
+- **El aro baja al alcance del brazo**: radio 1.25 → **0.62 m** y altura 2.15 → 1.95 m.
+  Las velocidades se recalcularon para conservar los tiempos por dificultad (el
+  recorrido se acortó un 12 %), los perfiles se afinaron y la cámara de escritorio se
+  reencuadró. `xrInteraction.test.ts` fija que el aro no se aleje del alcance.
+- **Se coge agarrando, no apuntando.** `Stick` mira el `pointerType` del evento y
+  descarta `ray`: el agarre (`grab`, esfera en el puño con el botón *squeeze*) y el
+  contacto de la mano (`touch`) sí valen; el rayo se queda solo para el menú. Se
+  resuelve en `pointerdown` y no en `click`, porque con el palo cayendo exigir
+  pulsar-y-soltar sobre el mismo objeto hacía fallar agarres buenos.
+- De regalo: los palos ya **no caen mientras estás en el menú**. Su reloj corría desde
+  que se montaban, así que al empezar podían estar ya por el suelo.
+
+## Auditoría de seguridad y prueba en visor (2026-08-03)
+
+Auditoría completa antes de hacer el repo público: **sin secretos en el historial**
+(revisado `--all`, contenido además de nombres), sin XSS, sin red, sin storage, sin
+source maps y sin rutas locales en el bundle. La app es 100 % estática: ni middleware,
+ni Server Actions, ni API routes, ni `next/image`.
+
+Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
+
+- **Cabeceras** en `next.config.ts`. La importante es `connect-src 'self'`: en el
+  bundle hay CDNs cableados por librerías (mandos de @react-three/xr en jsDelivr,
+  HDRI de preset de drei en raw.githack, fuentes de troika). Ahora el "funciona sin
+  internet" lo impone el navegador. `xr-spatial-tracking=(self)` es obligatorio: sin
+  él WebXR no arranca.
+- **Modelos de mando y mano desactivados** (`xrStore`), que era la descarga real a
+  jsDelivr. La ruta no se puede redirigir desde `createXRStore` (lo expone
+  `XRControllerLayoutLoaderOptions`, no `XRControllerModelOptions`), así que para
+  recuperarlos habría que auto-hospedar `@webxr-input-profiles/assets` y montar un
+  `<XRController>` propio.
+- `LICENSE` MIT, CI (lint/tipos/unitarios/e2e), Dependabot, y `maximumScale: 1` fuera.
+
+**Pendiente y no resuelto:**
+
+- `npm audit` sigue con 5 high tras subir a `next@16.2.12`. El rango vulnerable llega
+  hasta `16.3.0-preview.7`, así que **16.2.12 sigue dentro** y npm solo ofrece bajar a
+  9.3.3. Ninguna aplica a esta app (son de Server Actions, middleware, rewrites,
+  custom servers e Image Optimization API, que no se usan). Hay que esperar release.
+- **El email personal `cesar.peonlam@gmail.com` está en el historial de commits.** Al
+  hacer el repo público queda expuesto para siempre; quitarlo exige reescribir el
+  historial. Decidirlo *antes* de publicar.
+- `.claude/` y `.organizate/install-state.json` se publicarán y dejan ver el tooling
+  interno. Sin secretos, pero es una decisión.
+
 ## Pendiente / próximos pasos
 
 - Validar y pulir la interacción XR con mandos en hardware real.
@@ -180,9 +244,6 @@ así que la máquina sigue siendo geometría por código, ahora con más detalle
   empezar, sin esperar a que caiga nada. Puede ser deliberado (premia la puntería), pero con
   13 palos en Fácil convierte la partida en trivial. Si se cierra a `falling`, hay que ajustar
   el e2e "atrapar un palo suma en el marcador", que hoy se apoya en los palos colgados.
-- **Vulnerabilidades de dependencias**: `npm audit` reporta 5 high, todas heredadas
-  (`next@16.2.9`, `postcss`, `sharp`) y ninguna introducida por los tests. Conviene subir al
-  último patch de Next 16.2.x antes de publicar.
 - Los avisos de "multiple lockfiles" en el build solo salen al compilar desde un worktree
   anidado dentro del repo; en el checkout normal no aparecen.
 
