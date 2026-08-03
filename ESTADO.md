@@ -7,14 +7,14 @@
 
 ## ⏭️ SIGUIENTE PASO (lo primero al volver)
 
-0. **Probar en el visor la rama `feat/xr-menu-inmersivo-y-seguridad`.** Todo lo de XR
-   que lleva está implementado contra la API de `@react-three/xr` y verificado por
-   código y por los tests de escritorio, pero **nada de ello se ha probado en
-   hardware**: menú inmersivo, agarre con el mando, alcance del aro y botón de volver.
-   Lo que hay que mirar, en orden: (a) que al entrar en VR/AR salga el menú y no una
-   partida; (b) que los palos se cojan cerrando la mano y **no** apuntando; (c) que se
-   llegue a ellos sin moverse del sitio; (d) que el botón de volver esté a mano y no
-   estorbe.
+0. **Probar en el visor lo que los tests no alcanzan.** Ya está en `main` el menú
+   inmersivo y el agarre. Los tests con emulador cubren que entrar en VR lleva al menú
+   y no arranca partida, pero **no llegan a mover los mandos** (ver "Tests de XR"), así
+   que sigue sin validarse en hardware: (a) que los palos se cojan cerrando la mano y
+   **no** apuntando; (b) que se llegue a ellos sin moverse del sitio; (c) que los
+   botones del menú 3D se puedan pulsar con el rayo; (d) que el botón de volver esté a
+   mano y no estorbe. Valores a retocar si algo no cuadra: radio de agarre (9 cm, en
+   `xrStore`), distancia del menú (95 cm, en `xrLayout`) y `MACHINE_RADIUS`.
 1. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
 2. Comprobar que en AR se sigue viendo el passthrough tras los cambios de geometría.
 3. Consolidar git (manual): poner `develop` al día (está en el bootstrap y los agentes de
@@ -201,6 +201,31 @@ Cinco cosas que salieron de probarlo con las gafas puestas, todas en
 - De regalo: los palos ya **no caen mientras estás en el menú**. Su reloj corría desde
   que se montaban, así que al empezar podían estar ya por el suelo.
 
+## Tests de XR con emulador (2026-08-03, rama `test/xr-emulado`)
+
+Chromium no implementa WebXR, así que hasta ahora **ningún test tocaba el modo
+inmersivo**: todos entraban por el ratón, que es otro camino de código. Se inyecta
+IWER (el emulador de Meta, ya presente como dependencia de `@react-three/xr`) con
+`page.addInitScript` y se abren sesiones de verdad, con un Quest 3 y sus dos mandos.
+El bundle se genera en `globalSetup` con esbuild y está gitignorado.
+
+Cubierto: que aparezcan las entradas a VR/AR, que **entrar en VR lleve al menú y no
+arranque partida sola**, que los palos no se suelten en el menú, y que salir de la
+sesión devuelva al menú (lo que de paso prueba que la app reconoce el modo).
+
+**Lo que NO se pudo cubrir, y por qué:** mover los mandos y pulsar sus botones. El
+emulador entrega sesión, dos `inputSources` y ~125 fps, pero los punteros de
+`@react-three/xr` no emiten eventos sobre los objetos de la escena. Se descartó por
+diagnóstico: no es la orientación del rayo (falla igual con agarre y con contacto
+directo), ni la posición (barrido 2D de todo el plano del jugador sin un solo hover),
+ni el frameloop, ni la detección de modo. Queda como línea abierta si alguien quiere
+retomarla.
+
+Como contrapartida, la **regla** de interacción sí está cubierta por unitarios:
+`src/lib/xrInteraction.ts` decide qué puntero puede coger un palo (el rayo no; el
+agarre, el contacto y el ratón sí) y eso se testea sin navegador. El layout de la
+interfaz inmersiva vive en `src/lib/xrLayout.ts`, compartido por componentes y tests.
+
 ## Auditoría de seguridad y prueba en visor (2026-08-03)
 
 Auditoría completa antes de hacer el repo público: **sin secretos en el historial**
@@ -228,9 +253,14 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
   hasta `16.3.0-preview.7`, así que **16.2.12 sigue dentro** y npm solo ofrece bajar a
   9.3.3. Ninguna aplica a esta app (son de Server Actions, middleware, rewrites,
   custom servers e Image Optimization API, que no se usan). Hay que esperar release.
-- **El email personal `cesar.peonlam@gmail.com` está en el historial de commits.** Al
-  hacer el repo público queda expuesto para siempre; quitarlo exige reescribir el
-  historial. Decidirlo *antes* de publicar.
+- **El email personal `cesar.peonlam@gmail.com` está en 28 de los 34 commits.** Al
+  hacer el repo público queda expuesto para siempre. Se puede quitar reescribiendo el
+  historial (`git filter-branch --env-filter` o `git-filter-repo`, cambiándolo por
+  `100352899+cpl121@users.noreply.github.com`, que ya se usa en 2 commits), pero
+  **cambia todos los SHA y exige `push --force` sobre `main`**: se rompen los enlaces
+  a commits de las PR #1 y #2 y cualquier clon hay que rehacerlo. Con el repo aún
+  privado y 34 commits es el momento más barato para hacerlo. Recordar después
+  `git config user.email` al noreply, o se reintroduce solo.
 - `.claude/` y `.organizate/install-state.json` se publicarán y dejan ver el tooling
   interno. Sin secretos, pero es una decisión.
 
