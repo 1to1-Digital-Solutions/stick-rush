@@ -24,12 +24,22 @@ test.describe('En móvil', () => {
 
     for (let i = 0; i < count; i++) {
       const button = buttons.nth(i)
-      const box = await button.boundingBox()
-      const name = await button.textContent()
-      expect(box, `sin caja: ${name}`).not.toBeNull()
+      const name = (await button.textContent())?.trim()
+
+      // Se mide con `poll` y no de una sola lectura: si la hoja de estilos aún
+      // no se ha aplicado (pasa en el primer arranque tras un build limpio), el
+      // botón se mide sin su tamaño real y el test falla por un motivo falso.
       // WCAG 2.2 (objetivo mínimo) y la regla de diseño del proyecto.
-      expect(box!.height, `alto insuficiente en "${name?.trim()}"`).toBeGreaterThanOrEqual(44)
-      expect(box!.width, `ancho insuficiente en "${name?.trim()}"`).toBeGreaterThanOrEqual(44)
+      await expect
+        .poll(async () => (await button.boundingBox())?.height ?? 0, {
+          message: `alto insuficiente en "${name}"`,
+        })
+        .toBeGreaterThanOrEqual(44)
+      await expect
+        .poll(async () => (await button.boundingBox())?.width ?? 0, {
+          message: `ancho insuficiente en "${name}"`,
+        })
+        .toBeGreaterThanOrEqual(44)
     }
   })
 
