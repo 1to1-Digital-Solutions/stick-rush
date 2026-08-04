@@ -7,12 +7,17 @@
 
 ## 📍 DÓNDE ESTAMOS (2026-08-04)
 
-`main` = `origin/main` = **e0bd955**, con todo lo de abajo dentro y verificado: build
-limpio, **54 unitarios** (`npm test`) y **28 e2e** (`npm run test:e2e`) en verde.
+`main` local = **dded752**, con todo lo de abajo dentro y verificado: lint y typecheck
+limpios, build OK, **54 unitarios** (`npm test`) y **28 e2e** (`npm run test:e2e`) en
+verde, y `npm audit` en **0 vulnerabilidades**.
+
+⚠️ **`main` va 3 commits por delante de `origin/main`** (dos de docs y el de Next
+16.3.0). El remoto no tiene nada que falte en local: para desplegar hay que **publicar**,
+no descargar.
 
 Últimos hitos, en orden: primera versión jugable → tests + README → auditoría de
 seguridad → menú inmersivo y agarre tras probar con las gafas → tests de XR con
-emulador → historial reescrito para quitar el email personal.
+emulador → historial reescrito para quitar el email personal → Next 16.3.0.
 
 ## ⏭️ SIGUIENTE PASO (lo primero al volver)
 
@@ -26,21 +31,23 @@ emulador → historial reescrito para quitar el email personal.
    distancia del menú (95 cm, en `xrLayout`) y `MACHINE_RADIUS` (62 cm, en
    `gameConfig`; si se cambia, recalcular `DIFFICULTY_SPEEDS` para conservar los
    tiempos de caída, que `gameConfig.test.ts` vigila).
-1. **Antes de hacer el repo público: limpiar las ramas del remoto.** `main` ya no tiene
-   el email personal, pero **el resto de ramas publicadas sí**: `agent/stick-rush-v1`,
-   `master`, `fix/xr-escena-y-hud` y siete de Dependabot. Las tres primeras son
-   obsoletas:
-   `git push origin --delete agent/stick-rush-v1 master fix/xr-escena-y-hud`.
-   Las de Dependabot se regeneran solas: hay que **cerrarlas** para que las recree
-   sobre el `main` nuevo (quedaron desfasadas al reescribir el historial). Ojo también:
-   las PR #1 y #2 apuntan ahora a commits huérfanos.
+1. **Publicar `main`** (`git push origin main`): sin eso el deploy no lleva los últimos
+   cambios.
 2. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
 3. Comprobar que en AR se sigue viendo el passthrough tras los cambios de geometría.
-4. Consolidar git (manual): poner `develop` al día (está en el bootstrap y los agentes de
-   Organízate parten de develop); borrar el worktree muerto de `agent/inicializar-proyecto-…`
-   (sin commits) con `git worktree remove`. Ramas locales ya mergeadas que se pueden
-   borrar: `chore/tests-y-readme`, `feat/xr-menu-inmersivo-y-seguridad`,
-   `test/xr-emulado`, `fix/xr-escena-y-hud`.
+4. **Antes de hacer el repo público: limpiar las ramas del remoto.** Las siete de
+   Dependabot y `fix/xr-escena-y-hud` **ya se borraron** (2026-08-04). Quedan dos, ambas
+   con el email personal en el historial y ya obsoletas:
+   `git push origin --delete master agent/stick-rush-v1`.
+   Dependabot recreará sus ramas solo sobre el `main` nuevo. Ojo: las PR #1 y #2 apuntan
+   a commits huérfanos desde la reescritura.
+5. Consolidar git (manual): poner `develop` al día (está en el bootstrap y los agentes de
+   Organízate parten de develop). El worktree de `test/xr-emulado` ya se eliminó; queda el
+   de `agent/inicializar-proyecto-…` en `~/Proyectos/.organizate-worktrees/`, que **sí
+   tiene ~20 ficheros en staging** (el primer scaffold del 28 de junio, superado por
+   `main`): no hay nada que rescatar, pero `git worktree remove` necesitará `--force`.
+   Ramas locales ya integradas que se pueden borrar: `chore/tests-y-readme`,
+   `feat/xr-menu-inmersivo-y-seguridad`, `test/xr-emulado`, `fix/xr-escena-y-hud`.
 
 ## 🧭 Convenciones de trabajo aprendidas
 
@@ -284,10 +291,10 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 
 **Pendiente y no resuelto:**
 
-- `npm audit` sigue con 5 high tras subir a `next@16.2.12`. El rango vulnerable llega
-  hasta `16.3.0-preview.7`, así que **16.2.12 sigue dentro** y npm solo ofrece bajar a
-  9.3.3. Ninguna aplica a esta app (son de Server Actions, middleware, rewrites,
-  custom servers e Image Optimization API, que no se usan). Hay que esperar release.
+- ~~`npm audit` con 5 high por `next@16.2.12`~~ **RESUELTO (2026-08-04)**: salió
+  `next@16.3.0` y con él desaparecen los avisos que arrastraba `sharp`/libvips. `npm
+  audit fix` (sin `--force`, sin salirse de los rangos declarados) cerró además `postcss`
+  y `brace-expansion` en dependencias de desarrollo. **0 vulnerabilidades.**
 - ~~El email personal en el historial~~ **RESUELTO (2026-08-03)**: se reescribieron los
   28 commits que lo llevaban con `git filter-branch --env-filter`, cambiándolo por
   `100352899+cpl121@users.noreply.github.com`. El árbol quedó **idéntico** (mismo hash
@@ -308,8 +315,11 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
   empezar, sin esperar a que caiga nada. Puede ser deliberado (premia la puntería), pero con
   13 palos en Fácil convierte la partida en trivial. Si se cierra a `falling`, hay que ajustar
   el e2e "atrapar un palo suma en el marcador", que hoy se apoya en los palos colgados.
-- Los avisos de "multiple lockfiles" en el build solo salen al compilar desde un worktree
-  anidado dentro del repo; en el checkout normal no aparecen.
+- **Nada de worktrees anidados dentro del repo.** Además de los avisos de "multiple
+  lockfiles" al compilar, si el worktree llega a tener un `.next/` compilado el `npm run
+  lint` lo recorre entero: los `globalIgnores` de `eslint.config.mjs` son relativos
+  (`.next/**`) y no alcanzan `.claude/worktrees/*/.next/**`. Salían >13.000 problemas,
+  ninguno del proyecto. Se resolvió eliminando el worktree, no tocando la config.
 
 ## Caveats y notas
 
