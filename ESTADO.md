@@ -5,21 +5,53 @@
 
 ---
 
+## 📍 DÓNDE ESTAMOS (2026-08-04)
+
+`main` = `origin/main` = **e0bd955**, con todo lo de abajo dentro y verificado: build
+limpio, **54 unitarios** (`npm test`) y **28 e2e** (`npm run test:e2e`) en verde.
+
+Últimos hitos, en orden: primera versión jugable → tests + README → auditoría de
+seguridad → menú inmersivo y agarre tras probar con las gafas → tests de XR con
+emulador → historial reescrito para quitar el email personal.
+
 ## ⏭️ SIGUIENTE PASO (lo primero al volver)
 
-0. **Probar en el visor lo que los tests no alcanzan.** Ya está en `main` el menú
-   inmersivo y el agarre. Los tests con emulador cubren que entrar en VR lleva al menú
-   y no arranca partida, pero **no llegan a mover los mandos** (ver "Tests de XR"), así
-   que sigue sin validarse en hardware: (a) que los palos se cojan cerrando la mano y
-   **no** apuntando; (b) que se llegue a ellos sin moverse del sitio; (c) que los
-   botones del menú 3D se puedan pulsar con el rayo; (d) que el botón de volver esté a
-   mano y no estorbe. Valores a retocar si algo no cuadra: radio de agarre (9 cm, en
-   `xrStore`), distancia del menú (95 cm, en `xrLayout`) y `MACHINE_RADIUS`.
-1. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
-2. Comprobar que en AR se sigue viendo el passthrough tras los cambios de geometría.
-3. Consolidar git (manual): poner `develop` al día (está en el bootstrap y los agentes de
+0. **Probar en el visor lo que los tests no alcanzan.** Es el único bloqueo real. Los
+   tests con emulador cubren que entrar en VR lleva al menú y no arranca partida, pero
+   **no llegan a mover los mandos** (ver "Tests de XR con emulador"), así que sigue sin
+   validarse en hardware: (a) que los palos se cojan cerrando la mano y **no**
+   apuntando; (b) que se llegue a ellos sin moverse del sitio; (c) que los botones del
+   menú 3D se puedan pulsar con el rayo; (d) que el botón de volver esté a mano y no
+   estorbe. Valores a retocar si algo no cuadra: radio de agarre (9 cm, en `xrStore`),
+   distancia del menú (95 cm, en `xrLayout`) y `MACHINE_RADIUS` (62 cm, en
+   `gameConfig`; si se cambia, recalcular `DIFFICULTY_SPEEDS` para conservar los
+   tiempos de caída, que `gameConfig.test.ts` vigila).
+1. **Antes de hacer el repo público: limpiar las ramas del remoto.** `main` ya no tiene
+   el email personal, pero **el resto de ramas publicadas sí**: `agent/stick-rush-v1`,
+   `master`, `fix/xr-escena-y-hud` y siete de Dependabot. Las tres primeras son
+   obsoletas:
+   `git push origin --delete agent/stick-rush-v1 master fix/xr-escena-y-hud`.
+   Las de Dependabot se regeneran solas: hay que **cerrarlas** para que las recree
+   sobre el `main` nuevo (quedaron desfasadas al reescribir el historial). Ojo también:
+   las PR #1 y #2 apuntan ahora a commits huérfanos.
+2. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
+3. Comprobar que en AR se sigue viendo el passthrough tras los cambios de geometría.
+4. Consolidar git (manual): poner `develop` al día (está en el bootstrap y los agentes de
    Organízate parten de develop); borrar el worktree muerto de `agent/inicializar-proyecto-…`
-   (sin commits) con `git worktree remove`.
+   (sin commits) con `git worktree remove`. Ramas locales ya mergeadas que se pueden
+   borrar: `chore/tests-y-readme`, `feat/xr-menu-inmersivo-y-seguridad`,
+   `test/xr-emulado`, `fix/xr-escena-y-hud`.
+
+## 🧭 Convenciones de trabajo aprendidas
+
+- **Commits y push**: `.claude/rules/git-workflow.md` prohíbe `push` y tocar `main`. En
+  la práctica el dueño del repo lo autoriza caso por caso; sin autorización explícita,
+  commitear en una rama y ofrecer el comando.
+- **Verificar antes de dar nada por hecho**: `npm run lint`, `npm run typecheck`,
+  `npm test` y `npm run test:e2e`. La suite e2e tarda ~1 min y tiene partes sensibles al
+  tiempo; si algo falla de forma intermitente, repetirla antes de "arreglar" nada.
+- Hay un **backup del historial previo a la reescritura** en
+  `refs/backup/main-antes-de-reescribir` (SHA `e0750ca`), por si hiciera falta.
 
 ## 🔒 Godot: congelado hasta cerrar el web
 
@@ -253,14 +285,13 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
   hasta `16.3.0-preview.7`, así que **16.2.12 sigue dentro** y npm solo ofrece bajar a
   9.3.3. Ninguna aplica a esta app (son de Server Actions, middleware, rewrites,
   custom servers e Image Optimization API, que no se usan). Hay que esperar release.
-- **El email personal `cesar.peonlam@gmail.com` está en 28 de los 34 commits.** Al
-  hacer el repo público queda expuesto para siempre. Se puede quitar reescribiendo el
-  historial (`git filter-branch --env-filter` o `git-filter-repo`, cambiándolo por
-  `100352899+cpl121@users.noreply.github.com`, que ya se usa en 2 commits), pero
-  **cambia todos los SHA y exige `push --force` sobre `main`**: se rompen los enlaces
-  a commits de las PR #1 y #2 y cualquier clon hay que rehacerlo. Con el repo aún
-  privado y 34 commits es el momento más barato para hacerlo. Recordar después
-  `git config user.email` al noreply, o se reintroduce solo.
+- ~~El email personal en el historial~~ **RESUELTO (2026-08-03)**: se reescribieron los
+  28 commits que lo llevaban con `git filter-branch --env-filter`, cambiándolo por
+  `100352899+cpl121@users.noreply.github.com`. El árbol quedó **idéntico** (mismo hash
+  de árbol antes y después: solo cambiaron metadatos de autor) y se hizo `push --force`
+  sobre `main`. `git config user.email` ya apunta al noreply para que no vuelva a
+  colarse. **Pero el resto de ramas del remoto siguen con el email**: ver el paso 1 de
+  "SIGUIENTE PASO".
 - `.claude/` y `.organizate/install-state.json` se publicarán y dejan ver el tooling
   interno. Sin secretos, pero es una decisión.
 
