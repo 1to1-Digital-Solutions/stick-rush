@@ -97,15 +97,15 @@ Pendiente para ese momento (no antes):
   `npm run build` (OK, rutas `/`, `/game`, `/_not-found` prerenderizadas),
   `npm run start` sirve `/` y `/game` con HTTP 200.
 
-## Tests (2026-08-03)
+## Tests (2026-08-03) — cifras al día en «DÓNDE ESTAMOS»
 
 Ya hay runner, y forma parte de las comprobaciones antes de dar nada por terminado.
 
-- **Unitarios — Vitest + Testing Library** (`npm test`, 43 tests). Cubren `src/lib`:
+- **Unitarios — Vitest + Testing Library** (`npm test`). Cubren `src/lib`:
   geometría del aro (`machinePoint`), coherencia de las dificultades, tiempos de caída por
   nivel, reparto y retardos de los palos, estados del marcador y el ciclo completo de la
   partida en `gameStore` (incluido el caso de dos palos resolviéndose en el mismo lote).
-- **Extremo a extremo — Playwright** (`npm run test:e2e`, 20 tests en Chromium sobre el build
+- **Extremo a extremo — Playwright** (`npm run test:e2e`, Chromium sobre el build
   de producción). Menú, selección, teclado, partida, captura de palos con el ratón, fin de
   partida, revancha, ausencia de errores de consola, cero peticiones externas y pantalla de
   móvil. Un test aparte (`npm run capture`) regenera la captura del README.
@@ -128,14 +128,17 @@ Ya hay runner, y forma parte de las comprobaciones antes de dar nada por termina
   suelo y `<Environment>` cuando el modo es `immersive-ar`, para que se vea el passthrough y
   solo quede la máquina. R3F crea el renderer con `alpha: true`, así que basta con no pintar.
 - **Escala del jugador en XR**: `XROrigin` se agranda con `XR_PLAYER_SCALE` (2.2), de modo que
-  el mundo se percibe a ~1/2.2 y el arco queda ~1.3 m sobre los ojos. Evita rehacer la
-  geometría, que la versión Godot replica. **El valor está calculado, no probado en visor.**
+  el mundo se percibe a ~1/2.2 y el arco queda ~1.3 m sobre los ojos.
+  > **Obsoleto:** `XR_PLAYER_SCALE` desapareció al pasar la escena a metros; hoy el
+  > jugador va a 1:1 y el aro está a 62 cm (ver "Jugabilidad XR").
 - **Soportes apoyados**: van de `GROUND_Y` al arranque del arco, en el web y en Godot
   (`main.gd`), que tenía el mismo fallo.
 - **HUD 3D en inmersivo** (`XRHud.tsx`): una ficha por palo (atrapado / perdido / pendiente),
   distinguidas por color *y* por tamaño y altura. Sin texto a propósito: `<Text>` de drei
-  descargaría las fuentes de un CDN. Al terminar, una barra marca la pausa
+  descargaría las fuentes de un CDN. Al terminar, una barra marcaba la pausa
   (`XR_RESTART_DELAY_MS`) antes de encadenar la siguiente partida.
+  > **Obsoleto:** el reinicio automático y `XR_RESTART_DELAY_MS` se eliminaron el
+  > 2026-08-03; ahora al terminar se elige entre repetir y volver al menú.
 - **Doble resolución de un palo**: `Stick.tsx` usa un ref de guarda (dos mandos XR sobre el
   mismo palo, o captura justo al tocar el suelo, ya no suman dos veces) y devuelve el cursor
   al desmontarse.
