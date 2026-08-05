@@ -11,10 +11,17 @@ import {
 import { useGame } from '@/lib/gameStore'
 import {
   XR_DIFFICULTY_SPACING,
+  XR_MENU_EXIT_OFFSET,
   XR_MENU_POSITION,
   XR_STICK_PICKER_SPACING,
 } from '@/lib/xrLayout'
-import { PANEL_COLOR, XRPanel, XRPlayIcon, XRPressable } from './XRUi'
+import {
+  PANEL_COLOR,
+  XRBackIcon,
+  XRPanel,
+  XRPlayIcon,
+  XRPressable,
+} from './XRUi'
 
 /**
  * Menú de partida para sesiones inmersivas.
@@ -138,6 +145,7 @@ function DifficultyPicker() {
 
 export function XRMenu() {
   const mode = useXR((state) => state.mode)
+  const session = useXR((state) => state.session)
   const { gameState, startGame } = useGame()
 
   // Fuera de sesión inmersiva manda la pantalla de inicio en DOM.
@@ -167,6 +175,25 @@ export function XRMenu() {
           />
         </mesh>
         <XRPlayIcon position={[0, 0, 0.008]} />
+      </XRPressable>
+
+      {/* Salir del visor. Desde el menú inmersivo no había forma de volver sin
+          quitarse las gafas: el botón del sistema no siempre está a mano. */}
+      <XRPressable
+        position={XR_MENU_EXIT_OFFSET}
+        onSelect={() => void session?.end()}
+        hitSize={[0.16, 0.13, 0.06]}
+      >
+        <mesh position={[0, 0, -0.008]}>
+          <boxGeometry args={[0.13, 0.1, 0.014]} />
+          <meshStandardMaterial
+            color="#334155"
+            emissive="#94a3b8"
+            emissiveIntensity={0.22}
+            roughness={0.5}
+          />
+        </mesh>
+        <XRBackIcon position={[-0.008, 0, 0.008]} size={0.026} />
       </XRPressable>
     </group>
   )
