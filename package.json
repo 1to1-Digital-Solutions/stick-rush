@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "capture": "CAPTURE=1 playwright test captura"
+    "capture": "CAPTURE=1 playwright test captura",
+    "sync:xr-profiles": "node scripts/sync-xr-profiles.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
@@ -32,6 +33,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.185.0",
+    "@webxr-input-profiles/assets": "^1.0.20",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "jsdom": "^30.0.1",

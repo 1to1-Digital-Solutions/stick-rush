@@ -13,6 +13,7 @@ import {
 } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
 import { xrStore } from '@/components/xr/xrStore'
+import { XRGazeAnchor } from '@/components/xr/XRGazeAnchor'
 import { XRHud, XRQuitButton } from '@/components/xr/XRHud'
 import { XRMenu } from '@/components/xr/XRMenu'
 import { XRSessionController } from '@/components/xr/XRSessionController'
@@ -125,11 +126,16 @@ export function GameCanvas() {
         {/* Arranca/cierra partidas según el estado de la sesión inmersiva. */}
         <XRSessionController />
 
-        {/* Jugador de pie en el centro del semicírculo, mirando a -Z. */}
+        {/* Jugador de pie en el centro del semicírculo. La interfaz cuelga de
+            <XRGazeAnchor> y no del origen: el -Z del origen lo fija la
+            calibración de la sala, así que entrar mirando a otro lado dejaba el
+            menú a la espalda, invisible e imposible de apuntar. */}
         <XROrigin position={[0, GROUND_Y, 0]}>
-          <XRHud />
-          <XRMenu />
-          <XRQuitButton />
+          <XRGazeAnchor>
+            <XRHud />
+            <XRMenu />
+            <XRQuitButton />
+          </XRGazeAnchor>
         </XROrigin>
 
         {/* Las texturas de la madera se cargan aquí dentro; con su propio

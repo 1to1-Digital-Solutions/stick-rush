@@ -7,30 +7,34 @@
 
 ## 📍 DÓNDE ESTAMOS (2026-08-04)
 
-`main` local = **dded752**, con todo lo de abajo dentro y verificado: lint y typecheck
-limpios, build OK, **54 unitarios** (`npm test`) y **28 e2e** (`npm run test:e2e`) en
-verde, y `npm audit` en **0 vulnerabilidades**.
+El trabajo vivo está en **`fix/xr-mandos-y-menu-visible`** (4 commits sobre `main`), que
+arregla el modo inmersivo: sin ella el visor es inutilizable. Verificado ahí: lint y
+typecheck limpios, build OK, **78 unitarios** (`npm test`) y **29 e2e**
+(`npm run test:e2e`) en verde, y `npm audit` en **0 vulnerabilidades**.
 
-⚠️ **`main` va 3 commits por delante de `origin/main`** (dos de docs y el de Next
-16.3.0). El remoto no tiene nada que falte en local: para desplegar hay que **publicar**,
-no descargar.
+`main` local = **371562b**, con Next 16.3.0 dentro.
+
+⚠️ **`main` va 4 commits por delante de `origin/main`.** El remoto no tiene nada que
+falte en local: para desplegar hay que **publicar**, no descargar.
 
 Últimos hitos, en orden: primera versión jugable → tests + README → auditoría de
 seguridad → menú inmersivo y agarre tras probar con las gafas → tests de XR con
-emulador → historial reescrito para quitar el email personal → Next 16.3.0.
+emulador → historial reescrito para quitar el email personal → Next 16.3.0 → arreglo
+del modo inmersivo tras la segunda prueba con el visor.
 
 ## ⏭️ SIGUIENTE PASO (lo primero al volver)
 
-0. **Probar en el visor lo que los tests no alcanzan.** Es el único bloqueo real. Los
-   tests con emulador cubren que entrar en VR lleva al menú y no arranca partida, pero
-   **no llegan a mover los mandos** (ver "Tests de XR con emulador"), así que sigue sin
-   validarse en hardware: (a) que los palos se cojan cerrando la mano y **no**
-   apuntando; (b) que se llegue a ellos sin moverse del sitio; (c) que los botones del
-   menú 3D se puedan pulsar con el rayo; (d) que el botón de volver esté a mano y no
-   estorbe. Valores a retocar si algo no cuadra: radio de agarre (9 cm, en `xrStore`),
-   distancia del menú (95 cm, en `xrLayout`) y `MACHINE_RADIUS` (62 cm, en
-   `gameConfig`; si se cambia, recalcular `DIFFICULTY_SPEEDS` para conservar los
-   tiempos de caída, que `gameConfig.test.ts` vigila).
+0. **Probar `fix/xr-mandos-y-menu-visible` en el visor.** Es el único bloqueo real: el
+   emulador no puede pulsar botones, así que nada de esto está validado en hardware.
+   Qué mirar: (a) que **se vean los dos mandos** y el gatillo lateral latiendo en ámbar;
+   (b) que el menú aparezca **delante**, se entre mirando hacia donde se entre, y que no
+   huya al apuntarle; (c) que los botones del menú se pulsen con el rayo y se note el
+   halo de foco; (d) que el botón de salir esté a mano; (e) que los palos se cojan
+   cerrando la mano y **no** apuntando, sin moverse del sitio. Valores a retocar si algo
+   no cuadra: zona muerta del anclaje (40°, `XR_ANCHOR_DEADZONE` en `xrAnchor`), radio de
+   agarre (9 cm, en `XRController`), distancia del menú (95 cm, en `xrLayout`) y
+   `MACHINE_RADIUS` (62 cm, en `gameConfig`; si se cambia, recalcular `DIFFICULTY_SPEEDS`
+   para conservar los tiempos de caída, que `gameConfig.test.ts` vigila).
 1. **Publicar `main`** (`git push origin main`): sin eso el deploy no lleva los últimos
    cambios.
 2. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
@@ -263,10 +267,47 @@ directo), ni la posición (barrido 2D de todo el plano del jugador sin un solo h
 ni el frameloop, ni la detección de modo. Queda como línea abierta si alguien quiere
 retomarla.
 
+> **Aviso (2026-08-05):** este párrafo se convirtió en una coartada. Durante semanas
+> tapó un fallo real —los mandos **no se registraban**, así que no había punteros que
+> pudieran emitir nada— que se veía en la consola con solo entrar en sesión. Se
+> reintentó el test tras arreglarlo y sigue sin enganchar, así que la limitación de
+> IWER es real; pero ahora hay un e2e que vigila la consola dentro de la sesión
+> (`la sesión monta mandos e interfaz sin ensuciar la consola`) para que un fallo así
+> no vuelva a esconderse detrás de "es el emulador".
+
 Como contrapartida, la **regla** de interacción sí está cubierta por unitarios:
 `src/lib/xrInteraction.ts` decide qué puntero puede coger un palo (el rayo no; el
 agarre, el contacto y el ratón sí) y eso se testea sin navegador. El layout de la
 interfaz inmersiva vive en `src/lib/xrLayout.ts`, compartido por componentes y tests.
+
+## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
+
+Con las gafas puestas el modo inmersivo era **inutilizable**: no se veían los mandos,
+no se podía seleccionar nivel ni nada, y el botón de volver no aparecía. Dos fallos
+independientes, los dos arreglados en esa rama:
+
+1. **Los mandos no llegaban a registrarse.** `@react-three/xr` necesita el *perfil* del
+   mando (qué botón es cuál) y lo descarga de `cdn.jsdelivr.net`. La CSP lo bloquea;
+   `createXRControllerState` resuelve esa carga en una promesa cuyo rechazo se traga un
+   `.catch(console.error)`, así que **nunca se llama a `addController`** y sin estado de
+   mando no se monta ni el rayo ni el puntero de agarre. Los mandos no existían para la
+   app. Ahora los 42 perfiles se sirven desde `public/webxr-profiles/` (528 KB de JSON;
+   los `.glb`, 100 MB, no hacen falta) vía `baseAssetPath`, y `npm run sync:xr-profiles`
+   los regenera.
+2. **La interfaz aparecía a la espalda.** Menú, marcador y botón de salir colgaban de
+   `<XROrigin>` con Z negativo fijo, pero el −Z del origen lo decide la calibración de
+   la sala, no hacia dónde mire el jugador. Ahora cuelgan de `<XRGazeAnchor>`, que gira
+   con él y le acompaña si camina, con una zona muerta de 40° para que se pueda apuntar
+   sin que el objetivo huya. La aritmética está en `src/lib/xrAnchor.ts`, probada sin
+   navegador.
+
+Además: mando dibujado con geometría propia (sin descargas) con el gatillo de agarre
+latiendo en ámbar hasta el primer palo atrapado y en verde mientras se aprieta; botones
+que se resuelven en `pointerdown` y no en `click` (apuntando a pulso, el rayo se salía
+entre pulsar y soltar) y con halo de foco visible; y salida del visor desde el menú.
+
+**Sigue sin validarse en hardware**: el emulador no puede pulsar botones (ver el aviso
+en "Tests de XR con emulador"), así que hay que probarlo con las gafas.
 
 ## Auditoría de seguridad y prueba en visor (2026-08-03)
 
@@ -282,11 +323,13 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
   HDRI de preset de drei en raw.githack, fuentes de troika). Ahora el "funciona sin
   internet" lo impone el navegador. `xr-spatial-tracking=(self)` es obligatorio: sin
   él WebXR no arranca.
-- **Modelos de mando y mano desactivados** (`xrStore`), que era la descarga real a
-  jsDelivr. La ruta no se puede redirigir desde `createXRStore` (lo expone
-  `XRControllerLayoutLoaderOptions`, no `XRControllerModelOptions`), así que para
-  recuperarlos habría que auto-hospedar `@webxr-input-profiles/assets` y montar un
-  `<XRController>` propio.
+- **Modelos de mando y mano desactivados** (`xrStore`).
+  > **Corregido (2026-08-05):** aquí se dijo que eso *era la descarga real a jsDelivr*.
+  > Era **falso**, y costó caro: `model: false` solo quita el modelo `.glb`; el
+  > **perfil** del mando se seguía descargando, la CSP lo bloqueaba y eso dejaba el
+  > visor sin mandos. Ver "Segunda prueba en visor". La ruta **sí** se puede redirigir
+  > desde `createXRStore`: acepta `XRControllerLayoutLoaderOptions`, y `baseAssetPath`
+  > es justo lo que ahora apunta a `public/webxr-profiles/`.
 - `LICENSE` MIT, CI (lint/tipos/unitarios/e2e), Dependabot, y `maximumScale: 1` fuera.
 
 **Pendiente y no resuelto:**

@@ -1,39 +1,53 @@
 'use client'
 
 import { createXRStore } from '@react-three/xr'
+import { StickRushController } from './XRController'
 
-/** Radio de la esfera de agarre del mando, en metros (por defecto 0.07). */
-const CONTROLLER_GRAB_RADIUS = 0.09
-/** El mismo volumen para la mano desnuda, algo más ajustado. */
+/** El mismo volumen de agarre para la mano desnuda, algo más ajustado. */
 const HAND_GRAB_RADIUS = 0.06
+
+/** Dónde viven los perfiles de mando servidos por la propia app. */
+const XR_PROFILES_PATH = '/webxr-profiles/'
+
+/**
+ * Ruta absoluta a los perfiles.
+ *
+ * @react-three/xr resuelve las rutas con `new URL(path, baseAssetPath)`, que
+ * exige una base absoluta: una ruta como `/webxr-profiles/` lanza. En el
+ * servidor no hay `window`, pero tampoco hay sesión XR, así que ese valor no
+ * llega a usarse nunca.
+ */
+function profilesBasePath(): string {
+  if (typeof window === 'undefined') return `http://localhost${XR_PROFILES_PATH}`
+  return new URL(XR_PROFILES_PATH, window.location.origin).href
+}
 
 /**
  * Store de WebXR compartido entre los botones de entrada (DOM) y el
  * componente <XR> dentro del Canvas. Se crea una sola vez a nivel de
  * módulo para que ambos lados apunten a la misma sesión.
  *
- * Dos decisiones a propósito:
+ * Dos decisiones, las dos salidas de probar con el visor puesto:
  *
- * - **Se conservan los dos punteros.** El de agarre (`grab`) es una esfera
- *   pegada al puño que se activa con el gatillo lateral: es con el que se cogen
- *   los palos. El rayo (`ray`) se queda para manejar el menú, que está a un par
- *   de metros y sería incómodo tocar. Quién puede atrapar y quién no lo decide
- *   `Stick` mirando el tipo de puntero del evento, no este fichero.
- * - **Sin modelo de mando ni de mano** (`model: false`). @react-three/xr los
- *   descarga de `cdn.jsdelivr.net`, y el juego tiene que funcionar en un visor
- *   sin salida a internet (además, la CSP ya lo bloquea). En su lugar el
- *   jugador se orienta con el cursor del agarre y el rayo, que son geometría
- *   local. Si algún día se quieren los modelos, hay que auto-hospedar
- *   `@webxr-input-profiles/assets` y montar un <XRController> propio: la ruta
- *   no se puede cambiar desde aquí.
+ * - **Los perfiles de mando se sirven desde la propia app** (`baseAssetPath`).
+ *   Por defecto se descargan de `cdn.jsdelivr.net`; la CSP lo bloquea, y al
+ *   fallar la promesa @react-three/xr se traga el error en un
+ *   `.catch(console.error)` y **nunca registra el mando**. Sin estado de mando
+ *   no se monta ni el rayo ni el puntero de agarre: en el visor eso era
+ *   quedarse sin mandos y sin poder pulsar nada. Los ficheros se copian con
+ *   `npm run sync:xr-profiles`.
+ * - **El mando lo dibuja el juego**, no la librería: `StickRushController` monta
+ *   un mando de geometría propia (con la pista del gatillo de agarre) y sus dos
+ *   punteros. El modelo real es un `.glb` del mismo CDN, y auto-hospedarlo
+ *   costaría los 100 MB del paquete de assets para algo que se ve de refilón.
+ *
+ * Las manos desnudas van sin modelo: en AR se ven las de verdad por
+ * passthrough, y en VR el cursor del agarre basta para situarlas. Su modelo sí
+ * es una descarga del CDN y no hay equivalente local ligero.
  */
 export const xrStore = createXRStore({
-  controller: {
-    model: false,
-    grabPointer: { radius: CONTROLLER_GRAB_RADIUS, cursorModel: true },
-    rayPointer: { rayModel: true, cursorModel: true },
-    teleportPointer: false,
-  },
+  baseAssetPath: profilesBasePath(),
+  controller: StickRushController,
   hand: {
     model: false,
     grabPointer: { radius: HAND_GRAB_RADIUS, cursorModel: true },

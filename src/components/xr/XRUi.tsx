@@ -1,6 +1,6 @@
 'use client'
 
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useRef, useState } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 
 /**
@@ -38,6 +38,16 @@ export function XRPanel({
   )
 }
 
+/** Color del halo que marca el botón apuntado. */
+const HOVER_COLOR = '#7dd3fc'
+
+/**
+ * Ventana, en milisegundos, durante la que se ignora una segunda pulsación.
+ * Los dos mandos pueden cruzarse sobre el mismo botón, y un agarre suele
+ * registrar el puntero de rayo y el de contacto casi a la vez.
+ */
+const DEBOUNCE_MS = 300
+
 /**
  * Botón 3D.
  *
@@ -45,9 +55,20 @@ export function XRPanel({
  * que los palos, que solo se dejan coger con la mano: un menú que hubiera que
  * tocar físicamente sería incómodo de manejar.
  *
+ * Dos decisiones que vienen de probarlo en el visor:
+ *
+ * - **Se resuelve al pulsar, no al soltar.** `onClick` exige pulsar y soltar
+ *   sobre el mismo objeto; apuntando a pulso a un metro de distancia, el rayo
+ *   se sale del botón entre una cosa y la otra y la pulsación se pierde. Es el
+ *   mismo motivo por el que `Stick` escucha `onPointerDown`.
+ * - **El foco se ve.** Sin modelo de mando el jugador no tenía forma de saber
+ *   a qué apuntaba. Ahora el botón apuntado crece *y* se enciende con un halo:
+ *   forma y color, nunca solo color.
+ *
  * La zona sensible es una caja invisible más grande que el dibujo del botón:
  * apuntando en el aire, un objetivo del tamaño exacto del icono se falla
- * constantemente.
+ * constantemente. Que sea invisible no la excluye del raycasting —los punteros
+ * de @pmndrs/pointer-events no miran `visible`, solo si hay listeners.
  */
 export function XRPressable({
   position,
@@ -63,18 +84,28 @@ export function XRPressable({
   disabled?: boolean
 }) {
   const [hovered, setHovered] = useState(false)
+  const lastFired = useRef(0)
 
-  const handle = (event: ThreeEvent<MouseEvent>) => {
+  const handle = (event: ThreeEvent<PointerEvent | MouseEvent>) => {
     event.stopPropagation()
     if (disabled) return
+
+    const now =
+      typeof performance !== 'undefined' ? performance.now() : lastFired.current
+    if (now - lastFired.current < DEBOUNCE_MS) return
+    lastFired.current = now
+
     onSelect()
   }
+
+  const active = hovered && !disabled
+  const [hitWidth, hitHeight] = hitSize
 
   return (
     <group
       position={position}
-      scale={hovered && !disabled ? 1.08 : 1}
-      onClick={handle}
+      scale={active ? 1.08 : 1}
+      onPointerDown={handle}
       onPointerOver={(event) => {
         event.stopPropagation()
         if (!disabled) setHovered(true)
@@ -82,6 +113,18 @@ export function XRPressable({
       onPointerOut={() => setHovered(false)}
     >
       {children}
+
+      {/* Halo de foco: por detrás del dibujo, para enmarcarlo sin taparlo. */}
+      <mesh position={[0, 0, -0.014]} visible={active}>
+        <planeGeometry args={[hitWidth * 0.98, hitHeight * 0.94]} />
+        <meshBasicMaterial
+          color={HOVER_COLOR}
+          transparent
+          opacity={0.34}
+          toneMapped={false}
+        />
+      </mesh>
+
       <mesh visible={false}>
         <boxGeometry args={hitSize} />
       </mesh>
