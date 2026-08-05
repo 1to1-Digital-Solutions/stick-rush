@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { MACHINE_HEIGHT, MACHINE_RADIUS, STICK_MISS_Y } from './gameConfig'
+import { XR_ANCHOR_DEADZONE } from './xrAnchor'
 import { canCatchWithPointer } from './xrInteraction'
+import {
+  XR_HUD_POSITION,
+  XR_MENU_POSITION,
+  XR_QUIT_POSITION,
+  type Vec3,
+  xrMenuExitPosition,
+} from './xrLayout'
 
 /**
  * La máquina tiene que quedar dentro de lo que el jugador alcanza con la mano.
@@ -40,6 +48,45 @@ describe('la máquina queda al alcance de la mano', () => {
     // El peor caso es un palo en un extremo del semicírculo, recién soltado.
     const worstCase = Math.hypot(MACHINE_RADIUS, MACHINE_HEIGHT - SHOULDER_HEIGHT)
     expect(worstCase).toBeLessThanOrEqual(ARM_REACH + 0.15)
+  })
+})
+
+/**
+ * Ángulo horizontal de un punto respecto al frente del jugador (−Z), en
+ * radianes. Siempre positivo: importa cuánto hay que girar, no hacia dónde.
+ */
+function gazeAngle([x, , z]: Vec3): number {
+  return Math.abs(Math.atan2(x, -z))
+}
+
+describe('la interfaz cae dentro del campo de visión', () => {
+  const elements: Array<[string, Vec3]> = [
+    ['el menú', XR_MENU_POSITION],
+    ['el marcador', XR_HUD_POSITION],
+    ['el botón de salir de la partida', XR_QUIT_POSITION],
+    ['el botón de salir del visor', xrMenuExitPosition()],
+  ]
+
+  it.each(elements)('%s se puede mirar sin que la interfaz huya', (_, position) => {
+    // La relación que de verdad importa: si un elemento estuviera más allá de
+    // la zona muerta, mirarlo haría girar todo el conjunto y el botón se
+    // escaparía del rayo justo al intentar apuntarlo. Con margen, además, para
+    // que no baste con rozar el límite.
+    expect(gazeAngle(position)).toBeLessThan(XR_ANCHOR_DEADZONE * 0.85)
+  })
+
+  it.each(elements)('%s queda a una altura cómoda', (_, [, y]) => {
+    // Por encima de la cintura y por debajo de tener que estirar el cuello.
+    expect(y).toBeGreaterThan(0.85)
+    expect(y).toBeLessThan(1.75)
+  })
+
+  it.each(elements)('%s queda al alcance del rayo, sin pegarse a la cara', (_, [x, , z]) => {
+    const distance = Math.hypot(x, z)
+    // Más cerca de medio metro y hay que bizquear; más lejos de metro y medio y
+    // los objetivos pequeños del selector de palos se vuelven imposibles.
+    expect(distance).toBeGreaterThan(0.5)
+    expect(distance).toBeLessThan(1.5)
   })
 })
 

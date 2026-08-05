@@ -2,7 +2,13 @@ import { DIFFICULTY_ORDER, MAX_STICKS, type Difficulty } from './gameConfig'
 
 /**
  * Dónde se coloca cada cosa de la interfaz inmersiva, en metros y relativo a
- * los pies del jugador (`<XROrigin>`).
+ * los pies del jugador.
+ *
+ * **El −Z de aquí es hacia donde mira el jugador**, no una dirección fija de la
+ * sala: todo esto cuelga de `<XRGazeAnchor>`, que gira el conjunto con él (ver
+ * `@/lib/xrAnchor`). Antes colgaba directamente de `<XROrigin>`, cuyo −Z lo
+ * decide la calibración del espacio, y bastaba entrar mirando a otro lado para
+ * que el menú apareciera a la espalda.
  *
  * Vive aquí, y no dentro de los componentes, porque los tests de sesión
  * inmersiva tienen que apuntar el mando a estos mismos puntos: si el layout se
@@ -15,8 +21,14 @@ export type Vec3 = [number, number, number]
 export const XR_MENU_POSITION: Vec3 = [0, 1.4, -0.95]
 /** Marcador, por debajo del menú para no cruzarse con los palos. */
 export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
-/** Botón de salir durante la partida, apartado a un lado. */
-export const XR_QUIT_POSITION: Vec3 = [-0.62, 1.05, -0.5]
+/**
+ * Botón de salir durante la partida. Apartado a un lado para no cruzarse con
+ * los palos, pero dentro del campo de visión: a 51° quedaba fuera de vista y no
+ * se encontraba.
+ */
+export const XR_QUIT_POSITION: Vec3 = [-0.42, 1.15, -0.75]
+/** Botón de salir del visor, en la esquina del panel del menú. */
+export const XR_MENU_EXIT_OFFSET: Vec3 = [-0.42, -0.21, 0]
 
 /** Separación entre los palos del selector de cantidad. */
 export const XR_STICK_PICKER_SPACING = 0.055
@@ -37,6 +49,12 @@ function offset([x, y, z]: Vec3, dx: number, dy: number): Vec3 {
 /** Botón de salir durante la partida. */
 export function xrQuitButtonPosition(): Vec3 {
   return XR_QUIT_POSITION
+}
+
+/** Botón de salir del visor, dentro del panel del menú. */
+export function xrMenuExitPosition(): Vec3 {
+  const [dx, dy] = XR_MENU_EXIT_OFFSET
+  return offset(XR_MENU_POSITION, dx, dy)
 }
 
 /** Botón de empezar partida. */
