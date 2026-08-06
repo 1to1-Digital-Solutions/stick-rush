@@ -7,10 +7,11 @@
 
 ## 📍 DÓNDE ESTAMOS (2026-08-04)
 
-El trabajo vivo está en **`fix/xr-mandos-y-menu-visible`** (4 commits sobre `main`), que
-arregla el modo inmersivo: sin ella el visor es inutilizable. Verificado ahí: lint y
-typecheck limpios, build OK, **78 unitarios** (`npm test`) y **29 e2e**
-(`npm run test:e2e`) en verde, y `npm audit` en **0 vulnerabilidades**.
+El trabajo vivo está en **`fix/xr-mandos-y-menu-visible`** (10 commits sobre `main`):
+arregla el modo inmersivo —sin ella el visor es inutilizable— y recoge las mejoras de
+la tercera prueba con las gafas. Verificado ahí: lint y typecheck limpios, build OK,
+**110 unitarios** (`npm test`) y **32 e2e** (`npm run test:e2e`) en verde, y
+`npm audit` en **0 vulnerabilidades**.
 
 `main` local = **371562b**, con Next 16.3.0 dentro.
 
@@ -24,17 +25,18 @@ del modo inmersivo tras la segunda prueba con el visor.
 
 ## ⏭️ SIGUIENTE PASO (lo primero al volver)
 
-0. **Probar `fix/xr-mandos-y-menu-visible` en el visor.** Es el único bloqueo real: el
-   emulador no puede pulsar botones, así que nada de esto está validado en hardware.
-   Qué mirar: (a) que **se vean los dos mandos** y el gatillo lateral latiendo en ámbar;
-   (b) que el menú aparezca **delante**, se entre mirando hacia donde se entre, y que no
-   huya al apuntarle; (c) que los botones del menú se pulsen con el rayo y se note el
-   halo de foco; (d) que el botón de salir esté a mano; (e) que los palos se cojan
-   cerrando la mano y **no** apuntando, sin moverse del sitio. Valores a retocar si algo
-   no cuadra: zona muerta del anclaje (40°, `XR_ANCHOR_DEADZONE` en `xrAnchor`), radio de
-   agarre (9 cm, en `XRController`), distancia del menú (95 cm, en `xrLayout`) y
-   `MACHINE_RADIUS` (62 cm, en `gameConfig`; si se cambia, recalcular `DIFFICULTY_SPEEDS`
-   para conservar los tiempos de caída, que `gameConfig.test.ts` vigila).
+0. **Probar en el visor lo añadido el 2026-08-06.** El emulador no puede pulsar botones,
+   así que nada de esto está validado en hardware. Qué mirar: (a) que la **posición del
+   jugador** ya sea la buena, sin dar el paso adelante; (b) que el **tamaño** convenza
+   tras el −8 %; (c) que el **selector de escenario/passthrough** funcione y el fundido
+   no maree; (d) que la **cuenta atrás** dé tiempo suficiente; (e) que el destello verde
+   y los palos rojos en el suelo se lean bien con las gafas.
+   Valores a retocar: adelanto del jugador (`PLAYER_OFFSET_Z`, −0.18 m), tamaño
+   (`MACHINE_RADIUS` 0.57 m y `STICK_LENGTH` 0.39 m — al cambiarlos hay que recalcular
+   `DIFFICULTY_SPEEDS` para conservar los tiempos, que `gameConfig.test.ts` vigila),
+   duración de la cuenta (`COUNTDOWN_SECONDS`), fundido (`FADE_SECONDS` en
+   `SceneryFade`), zona muerta del anclaje (`XR_ANCHOR_DEADZONE`, 40°) y radio de agarre
+   (9 cm, en `XRController`).
 1. **Publicar `main`** (`git push origin main`): sin eso el deploy no lleva los últimos
    cambios.
 2. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
@@ -280,6 +282,26 @@ Como contrapartida, la **regla** de interacción sí está cubierta por unitario
 agarre, el contacto y el ratón sí) y eso se testea sin navegador. El layout de la
 interfaz inmersiva vive en `src/lib/xrLayout.ts`, compartido por componentes y tests.
 
+## Tercera prueba en visor (2026-08-06, misma rama)
+
+El modo inmersivo **funciona**: se ven los mandos y el menú se maneja. De esa
+prueba salieron seis mejoras, todas dentro de la rama:
+
+- **El jugador estaba echado hacia atrás** (había que dar un paso al empezar). El aro
+  es un *semi*círculo, así que su masa cae hacia −Z; ahora el jugador se planta en
+  `PLAYER_POSITION`, 18 cm por delante del centro.
+- **Máquina y palos un 8 % más pequeños**, con las velocidades recalculadas para
+  conservar los tiempos de caída. La altura del aro no se toca: la manda la estatura.
+- **Puntuación** (`src/lib/scoring.ts`): base por palo × dificultad × racha × reflejos.
+  El tope de racha existe para que 13 palos en Fácil no batan a una partida perfecta
+  en Imposible.
+- **Cuenta atrás de 3 s** como fase propia, durante la cual los palos **no se dejan
+  coger** (si no, se vaciaba el aro a clics antes de empezar).
+- **Acierto en verde con onda, fallo en rojo en el suelo.**
+- **Escenario o passthrough se elige dentro del visor**, con fundido. Se entra siempre
+  en `immersive-ar` cuando se puede, porque WebXR no deja cambiar de tipo de sesión
+  sin reabrirla. La entrada del menú es ahora un solo botón.
+
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 
 Con las gafas puestas el modo inmersivo era **inutilizable**: no se veían los mandos,
@@ -358,6 +380,8 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
   empezar, sin esperar a que caiga nada. Puede ser deliberado (premia la puntería), pero con
   13 palos en Fácil convierte la partida en trivial. Si se cierra a `falling`, hay que ajustar
   el e2e "atrapar un palo suma en el marcador", que hoy se apoya en los palos colgados.
+  Mitigado a medias desde la cuenta atrás: durante esos tres segundos ya no se puede coger
+  nada, y el bonus por reflejos premia cogerlos arriba, no esperarlos abajo.
 - **Nada de worktrees anidados dentro del repo.** Además de los avisos de "multiple
   lockfiles" al compilar, si el worktree llega a tener un `.next/` compilado el `npm run
   lint` lo recorre entero: los `globalIgnores` de `eslint.config.mjs` son relativos
