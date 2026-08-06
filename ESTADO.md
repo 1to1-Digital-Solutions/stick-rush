@@ -37,24 +37,26 @@ del modo inmersivo tras la segunda prueba con el visor.
    duración de la cuenta (`COUNTDOWN_SECONDS`), fundido (`FADE_SECONDS` en
    `SceneryFade`), zona muerta del anclaje (`XR_ANCHOR_DEADZONE`, 40°) y radio de agarre
    (9 cm, en `XRController`).
-1. **Publicar `main`** (`git push origin main`): sin eso el deploy no lleva los últimos
-   cambios.
-2. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
-3. Comprobar que en AR se sigue viendo el passthrough tras los cambios de geometría.
+1. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
+   `main` ya está publicado y `origin` solo tiene esa rama.
+2. Comprobar que en AR se sigue viendo el passthrough tras los cambios de geometría.
+3. **El repo ya se puede hacer público** en lo que respecta a datos personales: no queda
+   ningún email personal en nada publicado. La única decisión pendiente es si se quiere
+   publicar `.claude/` y `.organizate/install-state.json`, que dejan ver el tooling
+   interno (sin secretos).
 4. ~~Limpiar las ramas del remoto antes de hacer el repo público.~~ **HECHO
    (2026-08-06).** El remoto tiene **solo `main`**, y su único email de autor es el
    `noreply`: el personal ya no está en ninguna parte publicada. Se borraron las siete de
    Dependabot y `fix/xr-escena-y-hud` (04-08), y `master` y `agent/stick-rush-v1`
    (06-08). Dependabot recreará sus ramas solo sobre el `main` nuevo. Ojo: las PR #1 y #2
    apuntan a commits huérfanos desde la reescritura del historial.
-5. Consolidar git en local (manual): poner `develop` al día (está en el bootstrap y los
-   agentes de Organízate parten de develop). Queda el worktree muerto de
-   `agent/inicializar-proyecto-…` en `~/Proyectos/.organizate-worktrees/`, que **sí tiene
-   ~20 ficheros en staging** (el primer scaffold del 28 de junio, superado por `main`):
-   no hay nada que rescatar, pero `git worktree remove` necesitará `--force`. Ramas
-   locales ya integradas que se pueden borrar: `chore/tests-y-readme`,
-   `feat/xr-menu-inmersivo-y-seguridad`, `fix/xr-escena-y-hud`,
-   `fix/xr-mandos-y-menu-visible`, `test/xr-emulado`.
+5. ~~Consolidar git en local.~~ **HECHO (2026-08-06).** Solo quedan `main` y `develop`,
+   las dos en el mismo commit y sin worktrees sueltos. Se borraron las seis ramas ya
+   integradas y el worktree muerto de `agent/inicializar-proyecto-…` (693 MB; sus 22
+   ficheros en staging eran el scaffold del 28 de junio, con Zustand, que el proyecto
+   descartó). Antes de forzar cada borrado se comprobó que la rama no tuviera ni un
+   fichero fuera de `main`; en el caso de `fix/xr-mandos-y-menu-visible` se verificó
+   además que su árbol fuera **idéntico** al del merge de la PR #10.
 
 ## 🧭 Convenciones de trabajo aprendidas
 
