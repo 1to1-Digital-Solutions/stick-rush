@@ -51,6 +51,10 @@ export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
 
 /** Color de los palos: madera pintada de amarillo de feria. */
 export const STICK_COLOR = '#e8b93f'
+/** Verde del acierto: el palo se enciende al atraparlo. */
+export const STICK_CAUGHT_COLOR = '#22c55e'
+/** Rojo del fallo: el palo que toca el suelo se queda teñido. */
+export const STICK_MISSED_COLOR = '#b91c1c'
 
 /** Tonos de la máquina, a rayas de caseta de feria. */
 export const MACHINE_STRIPE_COLORS = ['#c1121f', '#f4ece0']

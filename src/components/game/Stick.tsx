@@ -1,13 +1,16 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import type { Group, Mesh, MeshStandardMaterial, Texture } from 'three'
+import { Color } from 'three'
+import type { Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, Texture } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import {
+  STICK_CAUGHT_COLOR,
   STICK_CORD_LENGTH,
   STICK_LENGTH,
   STICK_MISS_Y,
+  STICK_MISSED_COLOR,
   STICK_RADIUS,
   stickFallProgress,
 } from '@/lib/gameConfig'
@@ -69,6 +72,21 @@ export function Stick({
   const groupRef = useRef<Group>(null)
   const materialRef = useRef<MeshStandardMaterial>(null)
   const meshRef = useRef<Mesh>(null)
+  const ringRef = useRef<Mesh>(null)
+  const ringMaterialRef = useRef<MeshBasicMaterial>(null)
+  // Cuánto se ha teñido de rojo el palo perdido, de 0 a 1.
+  const missTint = useRef(0)
+
+  // Los colores se crean una vez por palo: instanciarlos dentro del bucle de
+  // render generaría basura en cada uno de los 90 fotogramas del visor.
+  const { baseColor, caughtColor, missedColor } = useMemo(
+    () => ({
+      baseColor: new Color(color),
+      caughtColor: new Color(STICK_CAUGHT_COLOR),
+      missedColor: new Color(STICK_MISSED_COLOR),
+    }),
+    [color],
+  )
 
   const [state, setState] = useState<StickState>('hanging')
   // Visibilidad: se oculta cuando termina la animación de captura.
@@ -110,6 +128,13 @@ export function Stick({
     resolved.current = true
     setState('caught')
     flash.current = 1
+    // El verde entra de golpe: el destello ya es la confirmación, y una
+    // transición desde el amarillo la volvería tibia.
+    const material = materialRef.current
+    if (material) {
+      material.color.copy(caughtColor)
+      material.emissive.copy(caughtColor)
+    }
     releaseCursor()
     // Dónde estaba el palo al cogerlo decide el bonus por reflejos. Se lee de
     // la posición viva y no del estado, que aún no se ha vuelto a renderizar.
@@ -126,17 +151,43 @@ export function Stick({
       elapsed.current += delta
     }
 
-    // Animación del flash de captura (escala + emissive decreciente).
+    // Acierto: el palo se enciende en verde, da un golpe de escala y se
+    // desvanece, mientras una onda sale de donde estaba. Es el único momento en
+    // que el juego dice "bien" en el visor, donde no hay marcador que leer sin
+    // apartar la vista de los palos.
     if (flash.current > 0) {
-      flash.current = Math.max(0, flash.current - delta * 2.5)
-      const scale = 1 + flash.current * 0.6
-      group.scale.setScalar(scale)
-      if (materialRef.current) {
-        materialRef.current.emissiveIntensity = flash.current * 1.8
+      flash.current = Math.max(0, flash.current - delta * CATCH_FLASH_DECAY)
+      const t = flash.current
+      group.scale.setScalar(1 + (1 - t) * 0.5)
+
+      const material = materialRef.current
+      if (material) {
+        material.emissiveIntensity = t * 2.4
+        material.opacity = Math.min(t * 1.6, 1)
       }
-      // Cuando el flash se apaga, el palo atrapado desaparece.
+
+      const ring = ringRef.current
+      const ringMaterial = ringMaterialRef.current
+      if (ring && ringMaterial) {
+        ring.visible = true
+        ring.scale.setScalar(0.3 + (1 - t) * 2.6)
+        ringMaterial.opacity = t * 0.7
+      }
+
       if (flash.current <= 0 && state === 'caught') {
         setVisible(false)
+      }
+    }
+
+    // Fallo: el palo tocado el suelo se tiñe de rojo. Se queda ahí, así que al
+    // final de la partida el suelo cuenta lo que se ha escapado.
+    if (state === 'missed' && missTint.current < 1) {
+      missTint.current = Math.min(1, missTint.current + delta * MISS_TINT_SPEED)
+      const material = materialRef.current
+      if (material) {
+        material.color.copy(baseColor).lerp(missedColor, missTint.current)
+        material.emissive.copy(missedColor)
+        material.emissiveIntensity = 0.35 * missTint.current
       }
     }
 
@@ -200,8 +251,36 @@ export function Stick({
           emissiveIntensity={0}
           metalness={0}
           roughness={0.75}
+          // Transparente desde el principio para poder desvanecer el palo al
+          // atraparlo: alternar `transparent` en caliente recompila el shader y
+          // da un tirón justo en el momento del destello.
+          transparent
+          opacity={1}
+        />
+      </mesh>
+
+      {/* Onda del acierto: sale de donde estaba el palo y se abre. Empieza
+          oculta y solo la enciende el destello. */}
+      <mesh
+        ref={ringRef}
+        position={[0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0]}
+        rotation={[Math.PI / 2, 0, 0]}
+        visible={false}
+      >
+        <torusGeometry args={[0.05, 0.006, 6, 24]} />
+        <meshBasicMaterial
+          ref={ringMaterialRef}
+          color={STICK_CAUGHT_COLOR}
+          transparent
+          opacity={0}
+          toneMapped={false}
         />
       </mesh>
     </group>
   )
 }
+
+/** A qué ritmo se apaga el destello del acierto (1/s). */
+const CATCH_FLASH_DECAY = 1.8
+/** A qué ritmo se tiñe de rojo el palo perdido (1/s). */
+const MISS_TINT_SPEED = 3.5
