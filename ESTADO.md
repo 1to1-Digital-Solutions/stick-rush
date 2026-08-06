@@ -41,19 +41,20 @@ del modo inmersivo tras la segunda prueba con el visor.
    cambios.
 2. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
 3. Comprobar que en AR se sigue viendo el passthrough tras los cambios de geometría.
-4. **Antes de hacer el repo público: limpiar las ramas del remoto.** Las siete de
-   Dependabot y `fix/xr-escena-y-hud` **ya se borraron** (2026-08-04). Quedan dos, ambas
-   con el email personal en el historial y ya obsoletas:
-   `git push origin --delete master agent/stick-rush-v1`.
-   Dependabot recreará sus ramas solo sobre el `main` nuevo. Ojo: las PR #1 y #2 apuntan
-   a commits huérfanos desde la reescritura.
-5. Consolidar git (manual): poner `develop` al día (está en el bootstrap y los agentes de
-   Organízate parten de develop). El worktree de `test/xr-emulado` ya se eliminó; queda el
-   de `agent/inicializar-proyecto-…` en `~/Proyectos/.organizate-worktrees/`, que **sí
-   tiene ~20 ficheros en staging** (el primer scaffold del 28 de junio, superado por
-   `main`): no hay nada que rescatar, pero `git worktree remove` necesitará `--force`.
-   Ramas locales ya integradas que se pueden borrar: `chore/tests-y-readme`,
-   `feat/xr-menu-inmersivo-y-seguridad`, `test/xr-emulado`, `fix/xr-escena-y-hud`.
+4. ~~Limpiar las ramas del remoto antes de hacer el repo público.~~ **HECHO
+   (2026-08-06).** El remoto tiene **solo `main`**, y su único email de autor es el
+   `noreply`: el personal ya no está en ninguna parte publicada. Se borraron las siete de
+   Dependabot y `fix/xr-escena-y-hud` (04-08), y `master` y `agent/stick-rush-v1`
+   (06-08). Dependabot recreará sus ramas solo sobre el `main` nuevo. Ojo: las PR #1 y #2
+   apuntan a commits huérfanos desde la reescritura del historial.
+5. Consolidar git en local (manual): poner `develop` al día (está en el bootstrap y los
+   agentes de Organízate parten de develop). Queda el worktree muerto de
+   `agent/inicializar-proyecto-…` en `~/Proyectos/.organizate-worktrees/`, que **sí tiene
+   ~20 ficheros en staging** (el primer scaffold del 28 de junio, superado por `main`):
+   no hay nada que rescatar, pero `git worktree remove` necesitará `--force`. Ramas
+   locales ya integradas que se pueden borrar: `chore/tests-y-readme`,
+   `feat/xr-menu-inmersivo-y-seguridad`, `fix/xr-escena-y-hud`,
+   `fix/xr-mandos-y-menu-visible`, `test/xr-emulado`.
 
 ## 🧭 Convenciones de trabajo aprendidas
 
@@ -365,8 +366,9 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
   `100352899+cpl121@users.noreply.github.com`. El árbol quedó **idéntico** (mismo hash
   de árbol antes y después: solo cambiaron metadatos de autor) y se hizo `push --force`
   sobre `main`. `git config user.email` ya apunta al noreply para que no vuelva a
-  colarse. **Pero el resto de ramas del remoto siguen con el email**: ver el paso 1 de
-  "SIGUIENTE PASO".
+  colarse. **Cerrado del todo el 2026-08-06**: se borraron también las ramas del remoto
+  que lo conservaban, así que hoy `origin` solo tiene `main` y ningún commit publicado
+  lleva el email personal.
 - `.claude/` y `.organizate/install-state.json` se publicarán y dejan ver el tooling
   interno. Sin secretos, pero es una decisión.
 
