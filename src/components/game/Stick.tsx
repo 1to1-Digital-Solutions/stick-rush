@@ -9,6 +9,7 @@ import {
   STICK_LENGTH,
   STICK_MISS_Y,
   STICK_RADIUS,
+  stickFallProgress,
 } from '@/lib/gameConfig'
 import { canCatchWithPointer } from '@/lib/xrInteraction'
 
@@ -45,10 +46,13 @@ export interface StickProps {
    * al empezar ya estaban por el suelo.
    */
   paused: boolean
-  /** Atrapado por el jugador (click o mando XR). */
-  onCatch: () => void
-  /** Resuelto: atrapado o perdido (para cerrar la partida). */
-  onResolve: () => void
+  /**
+   * Atrapado por el jugador (click o mando XR). Recibe cuánto había caído el
+   * palo, de 0 (recién soltado) a 1 (a ras de suelo): cogerlo pronto puntúa más.
+   */
+  onCatch: (fallProgress: number) => void
+  /** Se le escapó y ha tocado el suelo. */
+  onMiss: () => void
 }
 
 export function Stick({
@@ -60,7 +64,7 @@ export function Stick({
   delay,
   paused,
   onCatch,
-  onResolve,
+  onMiss,
 }: StickProps) {
   const groupRef = useRef<Group>(null)
   const materialRef = useRef<MeshStandardMaterial>(null)
@@ -104,8 +108,9 @@ export function Stick({
     setState('caught')
     flash.current = 1
     releaseCursor()
-    onCatch()
-    onResolve()
+    // Dónde estaba el palo al cogerlo decide el bonus por reflejos. Se lee de
+    // la posición viva y no del estado, que aún no se ha vuelto a renderizar.
+    onCatch(stickFallProgress(groupRef.current?.position.y ?? anchorY))
   }
 
   useFrame((_, rawDelta) => {
@@ -145,7 +150,7 @@ export function Stick({
         group.position.y = STICK_MISS_Y
         resolved.current = true
         setState('missed')
-        onResolve()
+        onMiss()
       }
     }
   })

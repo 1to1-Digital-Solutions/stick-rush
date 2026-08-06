@@ -2,9 +2,21 @@
 
 import { DIFFICULTY_LABELS } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
+import { maxScore } from '@/lib/scoring'
 
 export function HUD() {
-  const { score, stickCount, difficulty, gameState, resetGame } = useGame()
+  const {
+    score,
+    points,
+    streak,
+    bestStreak,
+    stickCount,
+    difficulty,
+    gameState,
+    resetGame,
+  } = useGame()
+
+  const best = maxScore(difficulty, stickCount)
 
   return (
     <>
@@ -15,17 +27,28 @@ export function HUD() {
         <div
           role="status"
           aria-live="polite"
-          aria-label={`Atrapados ${score} de ${stickCount}`}
+          aria-label={`${points} puntos. Atrapados ${score} de ${stickCount}`}
           className="rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 backdrop-blur"
         >
           <p className="text-xs uppercase tracking-[0.2em] text-white/50">
-            Atrapados
+            Puntos
           </p>
-          <p className="text-2xl font-bold text-[var(--color-primary)]">
-            {score}
-            <span className="text-base font-medium text-white/50"> / {stickCount}</span>
+          <p className="text-2xl font-bold tabular-nums text-[var(--color-primary)]">
+            {points.toLocaleString('es-ES')}
+          </p>
+          <p className="text-xs font-medium text-white/50">
+            {score} / {stickCount} palos
           </p>
         </div>
+
+        {/* La racha solo aparece cuando hay algo que presumir: a partir de dos
+            palos seguidos. Con el "x1" permanente sería ruido. */}
+        {streak >= 2 && (
+          <span className="animate-fade-slide-up rounded-md border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/15 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--color-accent)] backdrop-blur">
+            Racha ×{streak}
+          </span>
+        )}
+
         <span className="rounded-md border border-white/10 bg-[var(--color-muted)]/80 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white/60 backdrop-blur">
           {DIFFICULTY_LABELS[difficulty]}
         </span>
@@ -46,14 +69,39 @@ export function HUD() {
             >
               ¡Partida terminada!
             </h2>
+            <div className="flex flex-col items-center gap-1">
+              <p className="text-5xl font-bold tabular-nums text-[var(--color-accent)]">
+                {points.toLocaleString('es-ES')}
+              </p>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                de {best.toLocaleString('es-ES')} posibles
+              </p>
+            </div>
+
             <p className="text-lg text-white/80">
               Has atrapado{' '}
               <span className="font-bold text-[var(--color-accent)]">{score}</span> de{' '}
               <span className="font-bold">{stickCount}</span> palos.
             </p>
-            <p className="text-sm text-white/50">
-              Dificultad: {DIFFICULTY_LABELS[difficulty]}
-            </p>
+
+            <dl className="flex w-full justify-center gap-6 text-sm">
+              <div className="flex flex-col items-center">
+                <dt className="text-xs uppercase tracking-wide text-white/40">
+                  Mejor racha
+                </dt>
+                <dd className="font-bold tabular-nums text-white/80">
+                  ×{bestStreak}
+                </dd>
+              </div>
+              <div className="flex flex-col items-center">
+                <dt className="text-xs uppercase tracking-wide text-white/40">
+                  Dificultad
+                </dt>
+                <dd className="font-bold text-white/80">
+                  {DIFFICULTY_LABELS[difficulty]}
+                </dd>
+              </div>
+            </dl>
             <button
               type="button"
               onClick={resetGame}

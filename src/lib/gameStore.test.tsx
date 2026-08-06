@@ -13,8 +13,8 @@ function playRound(
   act(() => store.current.startGame())
   for (let i = 0; i < total; i++) {
     act(() => {
-      if (i < caught) store.current.catchStick()
-      store.current.resolveStick()
+      if (i < caught) store.current.catchStick(0.5)
+      else store.current.missStick()
     })
   }
 }
@@ -86,10 +86,7 @@ describe('ciclo de una partida', () => {
     act(() => result.current.setStickCount(5))
     act(() => result.current.startGame())
 
-    act(() => {
-      result.current.catchStick()
-      result.current.resolveStick()
-    })
+    act(() => result.current.catchStick(0.5))
 
     expect(result.current.score).toBe(1)
     expect(result.current.resolved).toBe(1)
@@ -100,7 +97,7 @@ describe('ciclo de una partida', () => {
     const { result } = renderHook(() => useGameStoreValue())
     act(() => result.current.setStickCount(5))
     act(() => result.current.startGame())
-    act(() => result.current.resolveStick())
+    act(() => result.current.missStick())
 
     expect(result.current.score).toBe(0)
     expect(result.current.resolved).toBe(1)
@@ -126,8 +123,7 @@ describe('ciclo de una partida', () => {
 
     act(() => {
       for (let i = 0; i < 5; i++) {
-        result.current.catchStick()
-        result.current.resolveStick()
+        result.current.catchStick(0.5)
       }
     })
 
@@ -139,9 +135,112 @@ describe('ciclo de una partida', () => {
   it('sobrevive a una resolución de más sin volver al menú', () => {
     const { result } = renderHook(() => useGameStoreValue())
     playRound(result, 5, 5)
-    act(() => result.current.resolveStick())
+    act(() => result.current.missStick())
 
     expect(result.current.gameState).toBe('finished')
+  })
+})
+
+describe('puntuación y racha', () => {
+  it('atrapar suma puntos; fallar no', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame())
+
+    act(() => result.current.catchStick(0.5))
+    const afterCatch = result.current.points
+    expect(afterCatch).toBeGreaterThan(0)
+
+    act(() => result.current.missStick())
+    expect(result.current.points).toBe(afterCatch)
+  })
+
+  it('cogerlo pronto puntúa más que rescatarlo del suelo', () => {
+    const early = renderHook(() => useGameStoreValue())
+    act(() => early.result.current.startGame())
+    act(() => early.result.current.catchStick(0))
+
+    const late = renderHook(() => useGameStoreValue())
+    act(() => late.result.current.startGame())
+    act(() => late.result.current.catchStick(1))
+
+    expect(early.result.current.points).toBeGreaterThan(late.result.current.points)
+  })
+
+  it('la misma partida renta más en una dificultad alta', () => {
+    const easy = renderHook(() => useGameStoreValue())
+    act(() => easy.result.current.startGame())
+    act(() => easy.result.current.catchStick(0.5))
+
+    const hard = renderHook(() => useGameStoreValue())
+    act(() => hard.result.current.setDifficulty('impossible'))
+    act(() => hard.result.current.startGame())
+    act(() => hard.result.current.catchStick(0.5))
+
+    expect(hard.result.current.points).toBeGreaterThan(easy.result.current.points)
+  })
+
+  it('la racha crece al encadenar y se rompe al fallar', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setStickCount(9))
+    act(() => result.current.startGame())
+
+    act(() => result.current.catchStick(0.5))
+    act(() => result.current.catchStick(0.5))
+    expect(result.current.streak).toBe(2)
+
+    act(() => result.current.missStick())
+    expect(result.current.streak).toBe(0)
+
+    act(() => result.current.catchStick(0.5))
+    expect(result.current.streak).toBe(1)
+  })
+
+  it('guarda la mejor racha aunque luego se rompa', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setStickCount(9))
+    act(() => result.current.startGame())
+
+    act(() => result.current.catchStick(0.5))
+    act(() => result.current.catchStick(0.5))
+    act(() => result.current.catchStick(0.5))
+    act(() => result.current.missStick())
+
+    expect(result.current.streak).toBe(0)
+    expect(result.current.bestStreak).toBe(3)
+  })
+
+  it('dos palos atrapados en el mismo lote puntúan cada uno por su racha', () => {
+    // Los dos mandos XR pueden resolver a la vez. Si la racha se leyera del
+    // render anterior, ambos cobrarían el mismo bonus y el segundo saldría
+    // barato.
+    const batched = renderHook(() => useGameStoreValue())
+    act(() => batched.result.current.setStickCount(9))
+    act(() => batched.result.current.startGame())
+    act(() => {
+      batched.result.current.catchStick(0.5)
+      batched.result.current.catchStick(0.5)
+    })
+
+    const sequential = renderHook(() => useGameStoreValue())
+    act(() => sequential.result.current.setStickCount(9))
+    act(() => sequential.result.current.startGame())
+    act(() => sequential.result.current.catchStick(0.5))
+    act(() => sequential.result.current.catchStick(0.5))
+
+    expect(batched.result.current.streak).toBe(2)
+    expect(batched.result.current.points).toBe(sequential.result.current.points)
+  })
+
+  it('empezar otra partida borra puntos y racha', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    playRound(result, 5, 5)
+    expect(result.current.points).toBeGreaterThan(0)
+
+    act(() => result.current.startGame())
+
+    expect(result.current.points).toBe(0)
+    expect(result.current.streak).toBe(0)
+    expect(result.current.bestStreak).toBe(0)
   })
 })
 
@@ -174,7 +273,7 @@ describe('vuelta al menú y revancha', () => {
 
   it('no da por terminada una partida que no ha empezado', () => {
     const { result } = renderHook(() => useGameStoreValue())
-    act(() => result.current.resolveStick())
+    act(() => result.current.missStick())
     expect(result.current.gameState).toBe('menu')
   })
 })

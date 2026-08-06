@@ -93,7 +93,7 @@ function raise([x, y, z]: Point, dy: number): Point {
  * lo que da sensación de rigidez son las diagonales.
  */
 export function StickMachine() {
-  const { stickCount, difficulty, runId, gameState, catchStick, resolveStick } =
+  const { stickCount, difficulty, runId, gameState, catchStick, missStick } =
     useGame()
   const speed = DIFFICULTY_SPEEDS[difficulty]
   // Fuera de la partida los palos se quedan colgando, a la vista, mientras el
@@ -327,7 +327,7 @@ export function StickMachine() {
           delay={stick.delay}
           paused={paused}
           onCatch={catchStick}
-          onResolve={resolveStick}
+          onMiss={missStick}
         />
       ))}
     </group>

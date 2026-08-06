@@ -38,7 +38,7 @@ export async function startGame(
 
   await expect(page.getByRole('status')).toHaveAttribute(
     'aria-label',
-    `Atrapados 0 de ${sticks}`,
+    new RegExp(`Atrapados 0 de ${sticks}$`),
   )
 }
 
@@ -48,6 +48,14 @@ export async function readScore(page: Page): Promise<number> {
   const match = label?.match(/Atrapados (\d+) de (\d+)/)
   if (!match) throw new Error(`Marcador ilegible: ${label}`)
   return Number(match[1])
+}
+
+/** Puntos acumulados según el marcador. */
+export async function readPoints(page: Page): Promise<number> {
+  const label = await page.getByRole('status').getAttribute('aria-label')
+  const match = label?.match(/^([\d.]+) puntos/)
+  if (!match) throw new Error(`Marcador ilegible: ${label}`)
+  return Number(match[1].replace(/\./g, ''))
 }
 
 /**

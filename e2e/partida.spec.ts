@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import {
   catchStick,
   openGame,
+  readPoints,
   readScore,
   startGame,
   waitForGameOver,
@@ -21,7 +22,7 @@ test.describe('Partida', () => {
     await expect(page.locator('canvas')).toBeVisible()
     await expect(page.getByRole('status')).toHaveAttribute(
       'aria-label',
-      'Atrapados 0 de 5',
+      /Atrapados 0 de 5$/,
     )
     await expect(page.getByText('Fácil', { exact: true })).toBeVisible()
   })
@@ -34,8 +35,28 @@ test.describe('Partida', () => {
 
     await expect(page.getByRole('status')).toHaveAttribute(
       'aria-label',
-      'Atrapados 1 de 13',
+      /Atrapados 1 de 13$/,
     )
+  })
+
+  test('atrapar un palo suma puntos', async ({ page }) => {
+    await startGame(page, { sticks: 13, difficulty: 'Fácil' })
+    expect(await readPoints(page)).toBe(0)
+
+    await catchStick(page)
+
+    expect(await readPoints(page)).toBeGreaterThan(0)
+  })
+
+  test('la racha aparece al encadenar y no antes', async ({ page }) => {
+    await startGame(page, { sticks: 13, difficulty: 'Fácil' })
+
+    const streak = page.getByText(/^Racha ×/)
+    await catchStick(page)
+    await expect(streak).toHaveCount(0)
+
+    await catchStick(page)
+    await expect(streak).toBeVisible()
   })
 
   test('un palo solo se puede atrapar una vez', async ({ page }) => {
@@ -69,7 +90,10 @@ test.describe('Partida', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText('¡Partida terminada!')
     await expect(dialog).toContainText('Has atrapado')
-    await expect(dialog).toContainText('Dificultad: Imposible')
+    await expect(dialog).toContainText('Imposible')
+    // El resumen sitúa la puntuación: un número suelto no dice si es buena.
+    await expect(dialog).toContainText('posibles')
+    await expect(dialog).toContainText('Mejor racha')
   })
 
   test('desde el fin de partida se vuelve al menú con la selección intacta', async ({
@@ -98,7 +122,7 @@ test.describe('Partida', () => {
 
     await expect(page.getByRole('status')).toHaveAttribute(
       'aria-label',
-      'Atrapados 0 de 5',
+      /Atrapados 0 de 5$/,
     )
     await expect(page.getByRole('dialog')).toBeHidden()
   })
