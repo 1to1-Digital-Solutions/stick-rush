@@ -2,48 +2,48 @@
 
 > **Cómo continuar tras reiniciar:** di a Claude «revisa `ESTADO.md` y continúa con el siguiente
 > paso». Este fichero es la memoria entre sesiones: mantenlo corto, veraz y al día.
+>
+> El **backlog** (qué falta por hacer) vive en **`TODO.md`**. Aquí va el estado y el
+> porqué de las decisiones; allí, la lista de tareas.
 
 ---
 
-## 📍 DÓNDE ESTAMOS (2026-08-04)
+## 📍 DÓNDE ESTAMOS (2026-08-06)
 
-El trabajo vivo está en **`fix/xr-mandos-y-menu-visible`** (10 commits sobre `main`):
-arregla el modo inmersivo —sin ella el visor es inutilizable— y recoge las mejoras de
-la tercera prueba con las gafas. Verificado ahí: lint y typecheck limpios, build OK,
-**110 unitarios** (`npm test`) y **32 e2e** (`npm run test:e2e`) en verde, y
-`npm audit` en **0 vulnerabilidades**.
+**El juego está desplegado en Vercel y probado en el visor: funciona.** Máquina y palos
+a buen tamaño, mandos bien, agarre bien, y los modos VR y AR alternan sin problema.
 
-`main` local = **371562b**, con Next 16.3.0 dentro.
-
-⚠️ **`main` va 4 commits por delante de `origin/main`.** El remoto no tiene nada que
-falte en local: para desplegar hay que **publicar**, no descargar.
+`main` = `origin/main`, y `origin` **solo tiene esa rama**. En local, solo `main` y
+`develop` (al día). Verificado: lint y typecheck limpios, build OK, **110 unitarios**
+(`npm test`) y **32 e2e** (`npm run test:e2e`) en verde, y `npm audit` en
+**0 vulnerabilidades**.
 
 Últimos hitos, en orden: primera versión jugable → tests + README → auditoría de
 seguridad → menú inmersivo y agarre tras probar con las gafas → tests de XR con
-emulador → historial reescrito para quitar el email personal → Next 16.3.0 → arreglo
-del modo inmersivo tras la segunda prueba con el visor.
+emulador → historial reescrito para quitar el email personal → Next 16.3.0 → los mandos
+no se registraban (segunda prueba) → puntuación, cuenta atrás, animaciones y selector
+VR/AR (tercera prueba) → limpieza de ramas → **desplegado y validado en hardware**.
 
 ## ⏭️ SIGUIENTE PASO (lo primero al volver)
 
-0. **Probar en el visor lo añadido el 2026-08-06.** El emulador no puede pulsar botones,
-   así que nada de esto está validado en hardware. Qué mirar: (a) que la **posición del
-   jugador** ya sea la buena, sin dar el paso adelante; (b) que el **tamaño** convenza
-   tras el −8 %; (c) que el **selector de escenario/passthrough** funcione y el fundido
-   no maree; (d) que la **cuenta atrás** dé tiempo suficiente; (e) que el destello verde
-   y los palos rojos en el suelo se lean bien con las gafas.
-   Valores a retocar: adelanto del jugador (`PLAYER_OFFSET_Z`, −0.18 m), tamaño
-   (`MACHINE_RADIUS` 0.57 m y `STICK_LENGTH` 0.39 m — al cambiarlos hay que recalcular
-   `DIFFICULTY_SPEEDS` para conservar los tiempos, que `gameConfig.test.ts` vigila),
-   duración de la cuenta (`COUNTDOWN_SECONDS`), fundido (`FADE_SECONDS` en
-   `SceneryFade`), zona muerta del anclaje (`XR_ANCHOR_DEADZONE`, 40°) y radio de agarre
-   (9 cm, en `XRController`).
-1. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
-   `main` ya está publicado y `origin` solo tiene esa rama.
-2. Comprobar que en AR se sigue viendo el passthrough tras los cambios de geometría.
-3. **El repo ya se puede hacer público** en lo que respecta a datos personales: no queda
-   ningún email personal en nada publicado. La única decisión pendiente es si se quiere
-   publicar `.claude/` y `.organizate/install-state.json`, que dejan ver el tooling
-   interno (sin secretos).
+No hay ningún bloqueo: lo que queda es mejora, y está priorizado en **`TODO.md`**.
+
+1. **Mejorar los iconos del menú 3D.** Es lo único que salió mal de la prueba en visor
+   del 06-08: el de volver atrás no se lee como una flecha, y «volver al menú» y «salir
+   del visor» comparten icono haciendo cosas distintas. Detalle en `TODO.md`.
+2. **Actualizar el `README.md`**, que se quedó atrás (habla de dos botones de entrada que
+   ya no existen, y no menciona puntuación, cuenta atrás ni el selector de escenario).
+3. **Sonido y vibración de los mandos**, que es lo que más se echa de menos jugando.
+4. **Decidir si el repo se hace público.** Por datos personales ya no hay bloqueo: no
+   queda ningún email personal publicado. Lo único a decidir es si se quiere publicar
+   `.claude/` y `.organizate/install-state.json`, que dejan ver el tooling interno.
+
+Valores que se retocan al afinar la jugabilidad: adelanto del jugador
+(`PLAYER_OFFSET_Z`, −0.18 m), tamaño (`MACHINE_RADIUS` 0.57 m y `STICK_LENGTH` 0.39 m —
+al cambiarlos hay que recalcular `DIFFICULTY_SPEEDS` para conservar los tiempos, que
+`gameConfig.test.ts` vigila), duración de la cuenta (`COUNTDOWN_SECONDS`), fundido
+(`FADE_SECONDS` en `SceneryFade`), zona muerta del anclaje (`XR_ANCHOR_DEADZONE`, 40°) y
+radio de agarre (9 cm, en `XRController`).
 4. ~~Limpiar las ramas del remoto antes de hacer el repo público.~~ **HECHO
    (2026-08-06).** El remoto tiene **solo `main`**, y su único email de autor es el
    `noreply`: el personal ya no está en ninguna parte publicada. Se borraron las siete de
@@ -374,26 +374,16 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 - `.claude/` y `.organizate/install-state.json` se publicarán y dejan ver el tooling
   interno. Sin secretos, pero es una decisión.
 
-## Pendiente / próximos pasos
+## Caveats y notas
 
-- Validar y pulir la interacción XR con mandos en hardware real.
-- Posibles mejoras: sonido al atrapar/perder, animación de "vibración" de los palos
-  colgando, temporizador/puntuación por tiempo, escenario VR más elaborado.
-- **Decidir si un palo debe poder atraparse mientras aún cuelga.** Hoy `Stick.handleCatch`
-  acepta los estados `hanging` y `falling`, así que se puede vaciar el aro a clics nada más
-  empezar, sin esperar a que caiga nada. Puede ser deliberado (premia la puntería), pero con
-  13 palos en Fácil convierte la partida en trivial. Si se cierra a `falling`, hay que ajustar
-  el e2e "atrapar un palo suma en el marcador", que hoy se apoya en los palos colgados.
-  Mitigado a medias desde la cuenta atrás: durante esos tres segundos ya no se puede coger
-  nada, y el bonus por reflejos premia cogerlos arriba, no esperarlos abajo.
+*(La lista de tareas pendientes está en **`TODO.md`**. Aquí solo quedan las trampas del
+entorno: no son tareas, son cosas con las que tropezar.)*
+
 - **Nada de worktrees anidados dentro del repo.** Además de los avisos de "multiple
   lockfiles" al compilar, si el worktree llega a tener un `.next/` compilado el `npm run
   lint` lo recorre entero: los `globalIgnores` de `eslint.config.mjs` son relativos
   (`.next/**`) y no alcanzan `.claude/worktrees/*/.next/**`. Salían >13.000 problemas,
   ninguno del proyecto. Se resolvió eliminando el worktree, no tocando la config.
-
-## Caveats y notas
-
 - El Canvas R3F se carga con `dynamic(..., { ssr: false })`; depende de WebGL/`window`.
 - El `GameProvider` se monta a nivel de página (no en el root layout) para no
   arrastrar contexto cliente a la página interna `/_global-error`.
