@@ -184,9 +184,11 @@ export function StickRushController() {
   // queda a su derecha y viceversa.
   const side = handedness === 'left' ? 1 : -1
 
-  // La pista solo mientras haga falta: durante la partida y hasta que atrape el
-  // primer palo. En el menú estorbaría, porque allí se usa el rayo.
-  const hint = gameState === 'playing' && score === 0
+  // La pista solo mientras haga falta: desde la cuenta atrás —que es justo
+  // cuando conviene enseñar el control, antes de que caiga nada— y hasta que
+  // atrape el primer palo. En el menú estorbaría, porque allí se usa el rayo.
+  const hint =
+    (gameState === 'countdown' || gameState === 'playing') && score === 0
 
   return (
     <>

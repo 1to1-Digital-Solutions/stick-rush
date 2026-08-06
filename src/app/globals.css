@@ -54,6 +54,25 @@ h3 {
   animation: fade-slide-up 0.5s ease-out both;
 }
 
+/* Golpe de cada número de la cuenta atrás: entra grande y se asienta. */
+@keyframes countdown-pop {
+  from {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+
+.animate-countdown-pop {
+  animation: countdown-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* Glow del título */
 .text-glow-primary {
   text-shadow:
@@ -77,7 +96,8 @@ h3 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-fade-slide-up {
+  .animate-fade-slide-up,
+  .animate-countdown-pop {
     animation: none;
   }
 }

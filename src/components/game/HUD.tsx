@@ -13,6 +13,7 @@ export function HUD() {
     stickCount,
     difficulty,
     gameState,
+    countdown,
     resetGame,
   } = useGame()
 
@@ -53,6 +54,27 @@ export function HUD() {
           {DIFFICULTY_LABELS[difficulty]}
         </span>
       </div>
+
+      {/* Cuenta atrás antes del primer palo. No bloquea la escena: el jugador
+          ve la máquina cargada mientras se prepara. */}
+      {gameState === 'countdown' && (
+        <div className="pointer-events-none fixed inset-0 z-20 flex items-center justify-center">
+          <p
+            // `timer` y no `status`: es exactamente lo que describe la ARIA
+            // para una cuenta, y además deja el `status` libre para el
+            // marcador, que convive con ella en pantalla.
+            role="timer"
+            aria-live="assertive"
+            aria-label={`Empieza en ${countdown}`}
+            // La clave fuerza el remontaje en cada número, y con él la
+            // animación: sin ella el texto cambiaría sin dar el golpe.
+            key={countdown}
+            className="animate-countdown-pop text-glow-primary text-[10rem] font-bold leading-none tabular-nums text-[var(--color-primary)] motion-reduce:animate-none"
+          >
+            {countdown}
+          </p>
+        </div>
+      )}
 
       {/* Pantalla de fin de partida */}
       {gameState === 'finished' && (

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   catchStick,
+  findCatchableStick,
   openGame,
   readPoints,
   readScore,
@@ -25,6 +26,25 @@ test.describe('Partida', () => {
       /Atrapados 0 de 5$/,
     )
     await expect(page.getByText('Fácil', { exact: true })).toBeVisible()
+  })
+
+  test('la cuenta atrás precede a la partida y no deja atrapar nada', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: '13', exact: true }).click()
+    await page.getByRole('button', { name: 'Fácil', exact: true }).click()
+    await page.getByRole('button', { name: 'Jugar' }).click()
+
+    // Mientras cuenta, los palos cuelgan quietos: sin esta guarda se podía
+    // vaciar el aro entero a clics antes de que empezara a caer nada.
+    await expect(page.getByRole('timer')).toBeVisible()
+    expect(await findCatchableStick(page)).toBeNull()
+
+    await expect(page.getByRole('timer')).toBeHidden()
+
+    // Y al acabar la cuenta, se juega con normalidad.
+    await catchStick(page)
+    expect(await readScore(page)).toBe(1)
   })
 
   test('atrapar un palo suma en el marcador', async ({ page }) => {

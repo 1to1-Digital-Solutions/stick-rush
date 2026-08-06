@@ -103,6 +103,9 @@ export function Stick({
     if (!canCatchWithPointer(pointerTypeOf(event))) return
     event?.stopPropagation()
     if (resolved.current) return
+    // Con la partida parada no se coge nada. Sin esto, durante la cuenta atrás
+    // se podía vaciar el aro entero a clics antes de que empezara a caer nada.
+    if (paused) return
     if (state !== 'falling' && state !== 'hanging') return
     resolved.current = true
     setState('caught')
@@ -175,7 +178,9 @@ export function Stick({
         onPointerDown={handleCatch}
         onPointerOver={(e) => {
           e.stopPropagation()
-          if (state === 'falling' || state === 'hanging') {
+          // El cursor promete que el palo se puede coger, así que tiene que
+          // decir la verdad también mientras la partida está parada.
+          if (!paused && (state === 'falling' || state === 'hanging')) {
             hovering.current = true
             document.body.style.cursor = 'pointer'
           }

@@ -222,7 +222,9 @@ export function XRQuitButton() {
   const mode = useXR((state) => state.mode)
   const { gameState, resetGame } = useGame()
 
-  if (mode == null || gameState !== 'playing') {
+  // También durante la cuenta atrás: si al jugador se le ocurre que se ha
+  // equivocado de opciones, esos tres segundos son su última oportunidad.
+  if (mode == null || (gameState !== 'playing' && gameState !== 'countdown')) {
     return null
   }
 

@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react'
@@ -14,7 +15,10 @@ import {
 } from './gameConfig'
 import { stickPoints } from './scoring'
 
-export type GameState = 'menu' | 'playing' | 'finished'
+export type GameState = 'menu' | 'countdown' | 'playing' | 'finished'
+
+/** Segundos de cuenta atrás entre pulsar "Jugar" y el primer palo. */
+export const COUNTDOWN_SECONDS = 3
 
 export interface GameStore {
   /** Número de palos elegido (5–13). */
@@ -36,6 +40,11 @@ export interface GameStore {
   bestStreak: number
   /** Fase del juego. */
   gameState: GameState
+  /**
+   * Segundos que faltan para que se suelte el primer palo. Solo tiene sentido
+   * en `countdown`; fuera de esa fase vale 0.
+   */
+  countdown: number
   /**
    * Identificador de partida. Se incrementa al iniciar una nueva para
    * forzar el remontaje de los sticks y reiniciar sus animaciones.
@@ -71,13 +80,30 @@ export function useGameStoreValue(): GameStore {
   const [points, setPoints] = useState(0)
   const [streak, setStreak] = useState(0)
   const [bestStreak, setBestStreak] = useState(0)
-  // Solo se guardan las fases que decide el jugador; "finished" se deriva de
-  // los palos resueltos, así no hay dos fuentes de verdad que sincronizar.
-  const [phase, setPhase] = useState<'menu' | 'playing'>('menu')
+  // Lo único que se guarda es si hay partida en marcha. Las tres fases de una
+  // partida —contando, jugando y terminada— se derivan de la cuenta atrás y de
+  // los palos resueltos, así no hay fuentes de verdad que sincronizar ni
+  // efectos que cambien de fase provocando renders en cascada.
+  const [running, setRunning] = useState(false)
+  const [countdown, setCountdown] = useState(0)
   const [runId, setRunId] = useState(0)
 
-  const gameState: GameState =
-    phase === 'playing' && resolved >= stickCount ? 'finished' : phase
+  const gameState: GameState = !running
+    ? 'menu'
+    : countdown > 0
+      ? 'countdown'
+      : resolved >= stickCount
+        ? 'finished'
+        : 'playing'
+
+  // Un tic por segundo hasta soltar el primer palo. La cuenta atrás da tiempo a
+  // colocarse —en el visor uno acaba de pulsar un botón y tiene las manos donde
+  // no toca— y avisa de que la partida va a empezar de verdad.
+  useEffect(() => {
+    if (!running || countdown <= 0) return
+    const timer = setTimeout(() => setCountdown((value) => value - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [running, countdown])
 
   const setStickCount = useCallback((count: number) => {
     setStickCountState(clampStickCount(count))
@@ -94,7 +120,8 @@ export function useGameStoreValue(): GameStore {
   const startGame = useCallback(() => {
     clearRun()
     setRunId((id) => id + 1)
-    setPhase('playing')
+    setCountdown(COUNTDOWN_SECONDS)
+    setRunning(true)
   }, [clearRun])
 
   const catchStick = useCallback(
@@ -123,7 +150,8 @@ export function useGameStoreValue(): GameStore {
 
   const resetGame = useCallback(() => {
     clearRun()
-    setPhase('menu')
+    setCountdown(0)
+    setRunning(false)
   }, [clearRun])
 
   return useMemo(
@@ -136,6 +164,7 @@ export function useGameStoreValue(): GameStore {
       streak,
       bestStreak,
       gameState,
+      countdown,
       runId,
       setStickCount,
       setDifficulty,
@@ -153,6 +182,7 @@ export function useGameStoreValue(): GameStore {
       streak,
       bestStreak,
       gameState,
+      countdown,
       runId,
       setStickCount,
       startGame,

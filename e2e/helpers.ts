@@ -40,6 +40,11 @@ export async function startGame(
     'aria-label',
     new RegExp(`Atrapados 0 de ${sticks}$`),
   )
+
+  // La partida no empieza al pulsar, sino cuando se agota la cuenta atrás.
+  // Devolver antes dejaría a los tests intentando atrapar palos que todavía
+  // cuelgan quietos y no se dejan coger.
+  await expect(page.getByRole('timer')).toBeHidden()
 }
 
 /** Palos atrapados según el marcador. */

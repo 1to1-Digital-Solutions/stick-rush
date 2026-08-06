@@ -1,7 +1,38 @@
 import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MAX_STICKS, MIN_STICKS } from './gameConfig'
-import { useGameStoreValue } from './gameStore'
+import { COUNTDOWN_SECONDS, useGameStoreValue } from './gameStore'
+
+// La cuenta atrás usa `setTimeout`, así que todo el fichero corre con relojes
+// falsos: si no, cada partida costaría tres segundos reales de test.
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+/**
+ * Agota la cuenta atrás y deja la partida en juego.
+ *
+ * Segundo a segundo, y no de un salto: cada tic reprograma el siguiente desde
+ * un efecto, que no corre hasta que React vuelve a renderizar. Avanzar tres
+ * segundos de golpe solo dispararía el primero.
+ */
+function runOutCountdown() {
+  for (let second = 0; second < COUNTDOWN_SECONDS; second++) {
+    act(() => void vi.advanceTimersByTime(1000))
+  }
+}
+
+/** Arranca una partida y agota la cuenta atrás, dejándola en juego. */
+function startPlaying(store: {
+  current: ReturnType<typeof useGameStoreValue>
+}) {
+  act(() => store.current.startGame())
+  runOutCountdown()
+}
 
 /** Juega una partida entera atrapando `caught` palos y perdiendo el resto. */
 function playRound(
@@ -10,7 +41,7 @@ function playRound(
   caught: number,
 ) {
   act(() => store.current.setStickCount(total))
-  act(() => store.current.startGame())
+  startPlaying(store)
   for (let i = 0; i < total; i++) {
     act(() => {
       if (i < caught) store.current.catchStick(0.5)
@@ -67,7 +98,7 @@ describe('selección previa a la partida', () => {
 describe('ciclo de una partida', () => {
   it('empieza a jugar con el marcador a cero', () => {
     const { result } = renderHook(() => useGameStoreValue())
-    act(() => result.current.startGame())
+    startPlaying(result)
 
     expect(result.current.gameState).toBe('playing')
     expect(result.current.score).toBe(0)
@@ -77,14 +108,14 @@ describe('ciclo de una partida', () => {
   it('renueva el identificador de partida para remontar los palos', () => {
     const { result } = renderHook(() => useGameStoreValue())
     const before = result.current.runId
-    act(() => result.current.startGame())
+    startPlaying(result)
     expect(result.current.runId).toBe(before + 1)
   })
 
   it('suma los palos atrapados sin cerrar la partida antes de tiempo', () => {
     const { result } = renderHook(() => useGameStoreValue())
     act(() => result.current.setStickCount(5))
-    act(() => result.current.startGame())
+    startPlaying(result)
 
     act(() => result.current.catchStick(0.5))
 
@@ -96,7 +127,7 @@ describe('ciclo de una partida', () => {
   it('cuenta como resuelto el palo perdido, sin sumar al marcador', () => {
     const { result } = renderHook(() => useGameStoreValue())
     act(() => result.current.setStickCount(5))
-    act(() => result.current.startGame())
+    startPlaying(result)
     act(() => result.current.missStick())
 
     expect(result.current.score).toBe(0)
@@ -119,7 +150,7 @@ describe('ciclo de una partida', () => {
     // ninguna se pierde.
     const { result } = renderHook(() => useGameStoreValue())
     act(() => result.current.setStickCount(5))
-    act(() => result.current.startGame())
+    startPlaying(result)
 
     act(() => {
       for (let i = 0; i < 5; i++) {
@@ -141,10 +172,61 @@ describe('ciclo de una partida', () => {
   })
 })
 
+describe('cuenta atrás', () => {
+  it('la partida no arranca de golpe: primero cuenta', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame())
+
+    expect(result.current.gameState).toBe('countdown')
+    expect(result.current.countdown).toBe(COUNTDOWN_SECONDS)
+  })
+
+  it('va bajando un segundo cada vez', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame())
+
+    act(() => void vi.advanceTimersByTime(1000))
+    expect(result.current.countdown).toBe(COUNTDOWN_SECONDS - 1)
+
+    act(() => void vi.advanceTimersByTime(1000))
+    expect(result.current.countdown).toBe(COUNTDOWN_SECONDS - 2)
+    expect(result.current.gameState).toBe('countdown')
+  })
+
+  it('los palos no caen mientras se cuenta', () => {
+    // `StickMachine` los mantiene parados mirando la fase; si la cuenta atrás
+    // no fuera una fase propia, el primer palo saldría antes del "ya".
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame())
+    expect(result.current.gameState).not.toBe('playing')
+  })
+
+  it('al llegar a cero se empieza a jugar', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame())
+    runOutCountdown()
+
+    expect(result.current.gameState).toBe('playing')
+  })
+
+  it('volver al menú durante la cuenta la corta', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame())
+    act(() => result.current.resetGame())
+
+    expect(result.current.gameState).toBe('menu')
+
+    // Y no arranca sola después: un temporizador que quedara vivo no puede
+    // devolver al jugador a una partida que ha cancelado.
+    act(() => void vi.advanceTimersByTime(5000))
+    expect(result.current.gameState).toBe('menu')
+  })
+})
+
 describe('puntuación y racha', () => {
   it('atrapar suma puntos; fallar no', () => {
     const { result } = renderHook(() => useGameStoreValue())
-    act(() => result.current.startGame())
+    startPlaying(result)
 
     act(() => result.current.catchStick(0.5))
     const afterCatch = result.current.points
@@ -156,11 +238,11 @@ describe('puntuación y racha', () => {
 
   it('cogerlo pronto puntúa más que rescatarlo del suelo', () => {
     const early = renderHook(() => useGameStoreValue())
-    act(() => early.result.current.startGame())
+    startPlaying(early.result)
     act(() => early.result.current.catchStick(0))
 
     const late = renderHook(() => useGameStoreValue())
-    act(() => late.result.current.startGame())
+    startPlaying(late.result)
     act(() => late.result.current.catchStick(1))
 
     expect(early.result.current.points).toBeGreaterThan(late.result.current.points)
@@ -168,12 +250,12 @@ describe('puntuación y racha', () => {
 
   it('la misma partida renta más en una dificultad alta', () => {
     const easy = renderHook(() => useGameStoreValue())
-    act(() => easy.result.current.startGame())
+    startPlaying(easy.result)
     act(() => easy.result.current.catchStick(0.5))
 
     const hard = renderHook(() => useGameStoreValue())
     act(() => hard.result.current.setDifficulty('impossible'))
-    act(() => hard.result.current.startGame())
+    startPlaying(hard.result)
     act(() => hard.result.current.catchStick(0.5))
 
     expect(hard.result.current.points).toBeGreaterThan(easy.result.current.points)
@@ -182,7 +264,7 @@ describe('puntuación y racha', () => {
   it('la racha crece al encadenar y se rompe al fallar', () => {
     const { result } = renderHook(() => useGameStoreValue())
     act(() => result.current.setStickCount(9))
-    act(() => result.current.startGame())
+    startPlaying(result)
 
     act(() => result.current.catchStick(0.5))
     act(() => result.current.catchStick(0.5))
@@ -198,7 +280,7 @@ describe('puntuación y racha', () => {
   it('guarda la mejor racha aunque luego se rompa', () => {
     const { result } = renderHook(() => useGameStoreValue())
     act(() => result.current.setStickCount(9))
-    act(() => result.current.startGame())
+    startPlaying(result)
 
     act(() => result.current.catchStick(0.5))
     act(() => result.current.catchStick(0.5))
@@ -215,7 +297,7 @@ describe('puntuación y racha', () => {
     // barato.
     const batched = renderHook(() => useGameStoreValue())
     act(() => batched.result.current.setStickCount(9))
-    act(() => batched.result.current.startGame())
+    startPlaying(batched.result)
     act(() => {
       batched.result.current.catchStick(0.5)
       batched.result.current.catchStick(0.5)
@@ -223,7 +305,7 @@ describe('puntuación y racha', () => {
 
     const sequential = renderHook(() => useGameStoreValue())
     act(() => sequential.result.current.setStickCount(9))
-    act(() => sequential.result.current.startGame())
+    startPlaying(sequential.result)
     act(() => sequential.result.current.catchStick(0.5))
     act(() => sequential.result.current.catchStick(0.5))
 
@@ -236,7 +318,7 @@ describe('puntuación y racha', () => {
     playRound(result, 5, 5)
     expect(result.current.points).toBeGreaterThan(0)
 
-    act(() => result.current.startGame())
+    startPlaying(result)
 
     expect(result.current.points).toBe(0)
     expect(result.current.streak).toBe(0)
@@ -264,7 +346,7 @@ describe('vuelta al menú y revancha', () => {
     playRound(result, 5, 5)
     expect(result.current.gameState).toBe('finished')
 
-    act(() => result.current.startGame())
+    startPlaying(result)
 
     expect(result.current.gameState).toBe('playing')
     expect(result.current.score).toBe(0)

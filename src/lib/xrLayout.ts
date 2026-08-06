@@ -29,6 +29,11 @@ export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
 export const XR_QUIT_POSITION: Vec3 = [-0.42, 1.15, -0.75]
 /** Botón de salir del visor, en la esquina del panel del menú. */
 export const XR_MENU_EXIT_OFFSET: Vec3 = [-0.42, -0.21, 0]
+/**
+ * Cuenta atrás: al frente y a la altura de los ojos, que es donde el jugador
+ * está mirando justo después de pulsar «empezar».
+ */
+export const XR_COUNTDOWN_POSITION: Vec3 = [0, 1.5, -0.9]
 
 /** Separación entre los palos del selector de cantidad. */
 export const XR_STICK_PICKER_SPACING = 0.055

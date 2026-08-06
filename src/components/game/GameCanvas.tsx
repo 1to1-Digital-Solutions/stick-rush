@@ -13,6 +13,7 @@ import {
 } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
 import { xrStore } from '@/components/xr/xrStore'
+import { XRCountdown } from '@/components/xr/XRCountdown'
 import { XRGazeAnchor } from '@/components/xr/XRGazeAnchor'
 import { XRHud, XRQuitButton } from '@/components/xr/XRHud'
 import { XRMenu } from '@/components/xr/XRMenu'
@@ -74,7 +75,11 @@ function DesktopControls() {
 
   return (
     <OrbitControls
-      enabled={mode == null && gameState !== 'playing'}
+      // Desde la cuenta atrás ya no se orbita: la partida ha empezado y girar
+      // la cámara mientras caen los palos compite con la captura.
+      enabled={
+        mode == null && (gameState === 'menu' || gameState === 'finished')
+      }
       enablePan={false}
       minDistance={1.7}
       maxDistance={7}
@@ -134,6 +139,7 @@ export function GameCanvas() {
           <XRGazeAnchor>
             <XRHud />
             <XRMenu />
+            <XRCountdown />
             <XRQuitButton />
           </XRGazeAnchor>
         </XROrigin>
