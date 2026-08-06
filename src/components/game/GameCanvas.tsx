@@ -6,10 +6,10 @@ import { OrbitControls, Environment } from '@react-three/drei'
 import { XR, XROrigin, useXR } from '@react-three/xr'
 import {
   BACKDROP_COLOR,
-  GROUND_Y,
   HDRI_URL,
   MACHINE_HEIGHT,
   MACHINE_RADIUS,
+  PLAYER_POSITION,
 } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
 import { xrStore } from '@/components/xr/xrStore'
@@ -76,10 +76,10 @@ function DesktopControls() {
     <OrbitControls
       enabled={mode == null && gameState !== 'playing'}
       enablePan={false}
-      minDistance={1.8}
+      minDistance={1.7}
       maxDistance={7}
       maxPolarAngle={Math.PI / 2.2}
-      target={[0, 1.15, -0.2]}
+      target={[0, 1.12, -0.25]}
     />
   )
 }
@@ -106,7 +106,7 @@ export function GameCanvas() {
       shadows="percentage"
       // Elevada y por detrás del jugador: a la altura del aro, un semicírculo
       // horizontal se vería de canto (una simple barra).
-      camera={{ position: [0, 1.95, 3.3], fov: 52, near: 0.05, far: 60 }}
+      camera={{ position: [0, 1.9, 3.05], fov: 52, near: 0.05, far: 60 }}
       gl={{ antialias: true }}
       className="absolute inset-0"
     >
@@ -130,7 +130,7 @@ export function GameCanvas() {
             <XRGazeAnchor> y no del origen: el -Z del origen lo fija la
             calibración de la sala, así que entrar mirando a otro lado dejaba el
             menú a la espalda, invisible e imposible de apuntar. */}
-        <XROrigin position={[0, GROUND_Y, 0]}>
+        <XROrigin position={PLAYER_POSITION}>
           <XRGazeAnchor>
             <XRHud />
             <XRMenu />

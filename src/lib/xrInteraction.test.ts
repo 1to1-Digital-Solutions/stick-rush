@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { MACHINE_HEIGHT, MACHINE_RADIUS, STICK_MISS_Y } from './gameConfig'
+import {
+  MACHINE_HEIGHT,
+  MACHINE_RADIUS,
+  PLAYER_OFFSET_Z,
+  PLAYER_SHOULDER_HEIGHT,
+  STICK_CORD_LENGTH,
+  STICK_LENGTH,
+  STICK_MISS_Y,
+  distanceFromPlayer,
+  machinePoint,
+} from './gameConfig'
 import { XR_ANCHOR_DEADZONE } from './xrAnchor'
 import { canCatchWithPointer } from './xrInteraction'
 import {
@@ -19,16 +29,16 @@ import {
  * visor sin que ningún test de escritorio se entere.
  */
 
-/** Alcance cómodo del brazo de un adulto desde el eje del cuerpo, en metros. */
+/** Alcance cómodo del brazo de un adulto desde el hombro, en metros. */
 const ARM_REACH = 0.75
-/** Altura de hombro de referencia (adulto de pie). */
-const SHOULDER_HEIGHT = 1.45
+
+/** Centro del palo colgado del punto `t` del aro, antes de empezar a caer. */
+function hangingStickCenter(t: number): [number, number, number] {
+  const [x, y, z] = machinePoint(t)
+  return [x, y - STICK_CORD_LENGTH - STICK_LENGTH / 2, z]
+}
 
 describe('la máquina queda al alcance de la mano', () => {
-  it('el aro no se va más lejos que el brazo extendido', () => {
-    expect(MACHINE_RADIUS).toBeLessThanOrEqual(ARM_REACH)
-  })
-
   it('el aro queda por encima de la cabeza, sin golpearla', () => {
     // Por encima de una persona alta de pie, y por debajo de lo que dejaría los
     // palos colgando fuera de alcance.
@@ -39,15 +49,27 @@ describe('la máquina queda al alcance de la mano', () => {
   it('los palos pasan por delante del jugador a altura de agarre', () => {
     // Recorren desde donde cuelgan hasta que se pierden: toda esa franja tiene
     // que cruzar la altura del hombro para poder cogerlos al vuelo.
-    const highest = MACHINE_HEIGHT
-    expect(highest).toBeGreaterThan(SHOULDER_HEIGHT)
-    expect(STICK_MISS_Y).toBeLessThan(SHOULDER_HEIGHT)
+    expect(MACHINE_HEIGHT).toBeGreaterThan(PLAYER_SHOULDER_HEIGHT)
+    expect(STICK_MISS_Y).toBeLessThan(PLAYER_SHOULDER_HEIGHT)
   })
 
-  it('la distancia diagonal al palo más lejano sigue siendo alcanzable', () => {
-    // El peor caso es un palo en un extremo del semicírculo, recién soltado.
-    const worstCase = Math.hypot(MACHINE_RADIUS, MACHINE_HEIGHT - SHOULDER_HEIGHT)
-    expect(worstCase).toBeLessThanOrEqual(ARM_REACH + 0.15)
+  it('ningún palo del aro queda fuera del brazo extendido', () => {
+    // Se mide desde donde está el jugador de verdad, que no es el centro del
+    // aro: va adelantado (`PLAYER_OFFSET_Z`) porque el semicírculo solo cubre
+    // su frente. El peor caso son los extremos, que con ese adelanto quedan más
+    // lejos que el palo del centro.
+    for (let i = 0; i <= 20; i++) {
+      expect(distanceFromPlayer(hangingStickCenter(i / 20))).toBeLessThanOrEqual(
+        ARM_REACH,
+      )
+    }
+  })
+
+  it('el jugador va adelantado, pero sin dejarse palos a la espalda', () => {
+    // Si se adelantara más que los extremos del aro, los palos de los lados le
+    // caerían por detrás y no los vería venir.
+    expect(PLAYER_OFFSET_Z).toBeLessThan(0)
+    expect(PLAYER_OFFSET_Z).toBeGreaterThan(-MACHINE_RADIUS / 2)
   })
 })
 

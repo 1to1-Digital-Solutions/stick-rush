@@ -2,19 +2,20 @@ export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'impossible'
 
 /**
  * Velocidad de caída en metros por segundo. La escena está a escala humana
- * (1 unidad = 1 metro) y un palo recorre ~1.4 m desde que se suelta hasta el
+ * (1 unidad = 1 metro) y un palo recorre ~1.45 m desde que se suelta hasta el
  * suelo, así que en Fácil dura algo menos de 6 s y en Imposible, siete décimas.
  *
- * Se recalcularon al acercar el aro al jugador: el recorrido se acortó y, con
- * las velocidades de antes, todas las dificultades se habrían vuelto un 12 %
- * más severas sin querer.
+ * Se recalculan cada vez que cambia la geometría —primero al acercar el aro al
+ * jugador, luego al encogerlo un 8 %—, porque el recorrido cambia con ella y si
+ * no todas las dificultades se desplazarían sin que nadie lo decidiera.
+ * `gameConfig.test.ts` vigila que los márgenes de reacción sigan en su sitio.
  */
 export const DIFFICULTY_SPEEDS: Record<Difficulty, number> = {
-  easy: 0.25,
-  medium: 0.44,
-  hard: 0.75,
-  expert: 1.18,
-  impossible: 2.1,
+  easy: 0.257,
+  medium: 0.452,
+  hard: 0.771,
+  expert: 1.213,
+  impossible: 2.16,
 }
 
 /** Etiqueta visible para el usuario (idioma del producto: español). */
@@ -78,20 +79,56 @@ export const MAX_STICKS = 13
 /**
  * Radio del aro. Manda el alcance real del brazo: los palos se cogen con la
  * mano (agarre), no apuntando, así que tienen que caer dentro del volumen que
- * el jugador alcanza sin moverse de sitio. Con el 1.25 m de antes se veían
- * lejos y no había forma de llegar a ellos en el visor.
+ * el jugador alcanza sin moverse de sitio. Con el 1.25 m del diseño original se
+ * veían lejos y no había forma de llegar a ellos en el visor.
  */
-export const MACHINE_RADIUS = 0.62
+export const MACHINE_RADIUS = 0.57
 /**
  * Altura del aro: justo encima de la cabeza. Los palos cuelgan hasta ~1.4 m y
  * caen atravesando la altura del pecho, que es donde la mano llega cómoda.
+ *
+ * **No se encoge con el resto.** La máquina se redujo un 8 % porque se veía
+ * demasiado grande, pero esta cota la manda la estatura del jugador, no el
+ * tamaño de la máquina: bajarla dejaría el aro a la altura de los ojos.
  */
 export const MACHINE_HEIGHT = 1.95
-export const STICK_LENGTH = 0.42
-export const STICK_RADIUS = 0.022
+export const STICK_LENGTH = 0.39
+export const STICK_RADIUS = 0.02
 export const GROUND_Y = 0
 /** Hueco entre el aro y el palo, ocupado por el hilo del que cuelga. */
-export const STICK_CORD_LENGTH = 0.12
+export const STICK_CORD_LENGTH = 0.11
+
+/**
+ * Dónde se planta el jugador respecto al centro del aro, en metros.
+ *
+ * No va en el centro geométrico. El aro es un **semi**círculo por delante, así
+ * que toda su masa queda hacia −Z y desde el centro exacto el jugador se siente
+ * echado hacia atrás: en el visor había que dar un paso adelante para estar
+ * bien colocado. Se le adelanta poco menos de la mitad de lo que dista el
+ * centroide del arco (−0.36 m), lo justo para quedar dentro de la máquina sin
+ * que los palos de los extremos se le vayan a la espalda.
+ */
+export const PLAYER_OFFSET_Z = -0.18
+
+/** Posición del jugador: los pies, en el suelo, adelantados hacia el aro. */
+export const PLAYER_POSITION: [number, number, number] = [
+  0,
+  GROUND_Y,
+  PLAYER_OFFSET_Z,
+]
+
+/** Distancia desde el jugador hasta un punto de la escena, en metros. */
+export function distanceFromPlayer([x, y, z]: [
+  number,
+  number,
+  number,
+]): number {
+  const [px, , pz] = PLAYER_POSITION
+  return Math.hypot(x - px, y - PLAYER_SHOULDER_HEIGHT, z - pz)
+}
+
+/** Altura de hombro de referencia, origen del alcance del brazo. */
+export const PLAYER_SHOULDER_HEIGHT = 1.45
 
 /**
  * Cota del anclaje a partir de la cual el palo se considera perdido: la que
@@ -111,6 +148,17 @@ export const STICK_FALL_DISTANCE = MACHINE_HEIGHT - STICK_MISS_Y
  */
 export function fallDurationSeconds(difficulty: Difficulty): number {
   return STICK_FALL_DISTANCE / DIFFICULTY_SPEEDS[difficulty]
+}
+
+/**
+ * Cuánto ha caído un palo cuyo anclaje está a la cota `y`: 0 recién soltado, 1
+ * a punto de tocar el suelo. Es lo que convierte "dónde lo cogí" en el bonus de
+ * reflejos de la puntuación (ver `scoring.ts`).
+ */
+export function stickFallProgress(y: number): number {
+  if (!Number.isFinite(y) || STICK_FALL_DISTANCE <= 0) return 0
+  const fallen = (MACHINE_HEIGHT - y) / STICK_FALL_DISTANCE
+  return Math.min(Math.max(fallen, 0), 1)
 }
 
 /**
