@@ -17,6 +17,20 @@ import { stickPoints } from './scoring'
 
 export type GameState = 'menu' | 'countdown' | 'playing' | 'finished'
 
+/**
+ * Qué se ve alrededor de la máquina en una sesión inmersiva.
+ *
+ * - `scene`: el escenario del juego (la plaza de noche). Es el «modo VR».
+ * - `passthrough`: la habitación real del jugador. Es el «modo AR».
+ *
+ * No son dos tipos de sesión de WebXR sino dos formas de pintar la misma:
+ * cambiar de `immersive-vr` a `immersive-ar` obligaría a cerrar la sesión y
+ * abrir otra, con su parpadeo y su permiso. Entrando siempre en `immersive-ar`
+ * —cuando el visor la soporta— basta con dibujar el decorado o no para pasar de
+ * uno a otro al instante.
+ */
+export type SceneryMode = 'scene' | 'passthrough'
+
 /** Segundos de cuenta atrás entre pulsar "Jugar" y el primer palo. */
 export const COUNTDOWN_SECONDS = 3
 
@@ -50,7 +64,10 @@ export interface GameStore {
    * forzar el remontaje de los sticks y reiniciar sus animaciones.
    */
   runId: number
+  /** Escenario o passthrough en sesión inmersiva. */
+  scenery: SceneryMode
 
+  setScenery: (scenery: SceneryMode) => void
   setStickCount: (count: number) => void
   setDifficulty: (difficulty: Difficulty) => void
   startGame: () => void
@@ -85,6 +102,9 @@ export function useGameStoreValue(): GameStore {
   // los palos resueltos, así no hay fuentes de verdad que sincronizar ni
   // efectos que cambien de fase provocando renders en cascada.
   const [running, setRunning] = useState(false)
+  // Se entra con el escenario puesto: es la experiencia completa, y quien
+  // prefiera ver su cuarto lo quita desde el menú inmersivo.
+  const [scenery, setScenery] = useState<SceneryMode>('scene')
   const [countdown, setCountdown] = useState(0)
   const [runId, setRunId] = useState(0)
 
@@ -166,6 +186,8 @@ export function useGameStoreValue(): GameStore {
       gameState,
       countdown,
       runId,
+      scenery,
+      setScenery,
       setStickCount,
       setDifficulty,
       startGame,
@@ -184,6 +206,8 @@ export function useGameStoreValue(): GameStore {
       gameState,
       countdown,
       runId,
+      scenery,
+      setScenery,
       setStickCount,
       startGame,
       catchStick,

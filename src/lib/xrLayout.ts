@@ -28,7 +28,9 @@ export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
  */
 export const XR_QUIT_POSITION: Vec3 = [-0.42, 1.15, -0.75]
 /** Botón de salir del visor, en la esquina del panel del menú. */
-export const XR_MENU_EXIT_OFFSET: Vec3 = [-0.42, -0.21, 0]
+export const XR_MENU_EXIT_OFFSET: Vec3 = [-0.42, -0.29, 0]
+/** Selector de escenario o passthrough, bajo las dificultades. */
+export const XR_SCENERY_PICKER_OFFSET: Vec3 = [0, -0.17, 0]
 /**
  * Cuenta atrás: al frente y a la altura de los ojos, que es donde el jugador
  * está mirando justo después de pulsar «empezar».

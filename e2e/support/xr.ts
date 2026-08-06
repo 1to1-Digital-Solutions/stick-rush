@@ -35,13 +35,17 @@ export async function installXREmulator(page: Page) {
 /**
  * Entra en una sesión inmersiva pulsando el botón real del menú.
  *
+ * Hay un único botón de entrada: la sesión se abre en `immersive-ar` cuando el
+ * visor la admite, porque es la que deja alternar escenario y passthrough sin
+ * reabrirla (ver `XRWrapper`).
+ *
  * Además de esperar a que la sesión exista, espera a que la app haya asentado
  * su estado: `XRSessionController` reacciona a la entrada con un efecto que
  * lleva al menú, y actuar antes de que corra hace que ese efecto cancele
  * después lo que el test acababa de hacer.
  */
 export async function enterVR(page: Page) {
-  await page.getByRole('button', { name: 'Entrar en VR' }).click()
+  await page.getByRole('button', { name: 'Entrar en el visor' }).click()
   await expect
     .poll(() => page.evaluate(() => window.__xrTest.hasSession()), {
       message: 'no arrancó la sesión inmersiva',

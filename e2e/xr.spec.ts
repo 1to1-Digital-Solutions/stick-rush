@@ -47,11 +47,10 @@ test.describe('Sesión inmersiva', () => {
     await openGame(page)
   })
 
-  test('con WebXR disponible aparecen las entradas a VR y AR', async ({
-    page,
-  }) => {
-    await expect(page.getByRole('button', { name: 'Entrar en VR' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Entrar en AR' })).toBeVisible()
+  test('con WebXR disponible aparece la entrada al visor', async ({ page }) => {
+    await expect(
+      page.getByRole('button', { name: 'Entrar en el visor' }),
+    ).toBeVisible()
   })
 
   test('entrar en VR lleva al menú y no arranca una partida sola', async ({

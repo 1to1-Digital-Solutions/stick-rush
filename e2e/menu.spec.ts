@@ -65,12 +65,10 @@ test.describe('Menú de inicio', () => {
     ).toHaveAttribute('aria-pressed', 'false')
   })
 
-  test('esconde los botones de VR/AR en un navegador sin WebXR', async ({
+  test('esconde la entrada al visor en un navegador sin WebXR', async ({
     page,
   }) => {
-    await expect(page.getByRole('button', { name: /Entrar en (VR|AR)/ })).toHaveCount(
-      0,
-    )
+    await expect(page.getByRole('button', { name: /Entrar en/ })).toHaveCount(0)
   })
 
   test('no pide nada a dominios externos', async ({ page }) => {

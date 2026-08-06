@@ -174,6 +174,68 @@ export function XRBackIcon({
   )
 }
 
+/** Dos montañas y una luna: el escenario del juego. */
+export function XRSceneIcon({
+  position = [0, 0, 0],
+  size = 0.04,
+  color = '#ffffff',
+}: {
+  position?: [number, number, number]
+  size?: number
+  color?: string
+}) {
+  return (
+    <group position={position}>
+      {[-0.5, 0.45].map((offset, index) => (
+        <mesh
+          key={index}
+          position={[offset * size, index === 0 ? 0 : size * 0.18, 0]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
+          <cylinderGeometry
+            args={[size * (index === 0 ? 0.62 : 0.48), 0, 0.008, 3]}
+          />
+          <meshBasicMaterial color={color} toneMapped={false} />
+        </mesh>
+      ))}
+      <mesh position={[size * 0.75, size * 0.85, 0]}>
+        <circleGeometry args={[size * 0.2, 12]} />
+        <meshBasicMaterial color={color} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Un marco vacío: la habitación de verdad, sin decorado encima. */
+export function XRPassthroughIcon({
+  position = [0, 0, 0],
+  size = 0.04,
+  color = '#ffffff',
+}: {
+  position?: [number, number, number]
+  size?: number
+  color?: string
+}) {
+  const thickness = size * 0.16
+
+  return (
+    <group position={position}>
+      {/* Cuatro barras que dejan el centro despejado. */}
+      {[
+        [0, size * 0.9, size * 2, thickness],
+        [0, -size * 0.9, size * 2, thickness],
+        [-size, 0, thickness, size * 1.8],
+        [size, 0, thickness, size * 1.8],
+      ].map(([x, y, width, height], index) => (
+        <mesh key={index} position={[x, y, 0]}>
+          <boxGeometry args={[width, height, 0.008]} />
+          <meshBasicMaterial color={color} toneMapped={false} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 /** Dos flechas girando: repetir partida. Un anillo abierto con su punta. */
 export function XRRepeatIcon({
   position = [0, 0, 0],

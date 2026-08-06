@@ -13,14 +13,17 @@ import {
   XR_DIFFICULTY_SPACING,
   XR_MENU_EXIT_OFFSET,
   XR_MENU_POSITION,
+  XR_SCENERY_PICKER_OFFSET,
   XR_STICK_PICKER_SPACING,
 } from '@/lib/xrLayout'
 import {
   PANEL_COLOR,
   XRBackIcon,
   XRPanel,
+  XRPassthroughIcon,
   XRPlayIcon,
   XRPressable,
+  XRSceneIcon,
 } from './XRUi'
 
 /**
@@ -143,6 +146,63 @@ function DifficultyPicker() {
   )
 }
 
+/**
+ * Escenario o habitación real, sin salir de la sesión.
+ *
+ * En una sesión `immersive-ar` los dos modos son la misma sesión pintada de dos
+ * formas, así que el cambio es inmediato (con su fundido, ver `SceneryFade`).
+ * En una sesión `immersive-vr` no hay passthrough que enseñar —el visor no lo
+ * entrega—, así que la opción se muestra apagada en vez de mentir.
+ */
+function SceneryPicker({ passthroughAvailable }: { passthroughAvailable: boolean }) {
+  const { scenery, setScenery } = useGame()
+
+  const options = [
+    { key: 'scene' as const, Icon: XRSceneIcon, enabled: true },
+    {
+      key: 'passthrough' as const,
+      Icon: XRPassthroughIcon,
+      enabled: passthroughAvailable,
+    },
+  ]
+
+  return (
+    <group position={XR_SCENERY_PICKER_OFFSET}>
+      {options.map(({ key, Icon, enabled }, index) => {
+        const selected = scenery === key
+        return (
+          <XRPressable
+            key={key}
+            position={[index * 0.15 - 0.075, 0, selected ? 0.02 : 0]}
+            onSelect={() => setScenery(key)}
+            disabled={!enabled}
+            hitSize={[0.14, 0.12, 0.06]}
+          >
+            <mesh position={[0, 0, -0.008]}>
+              <boxGeometry args={[0.12, 0.1, 0.012]} />
+              <meshStandardMaterial
+                color={selected ? '#1d4ed8' : '#1c2634'}
+                emissive="#60a5fa"
+                emissiveIntensity={selected ? 0.45 : 0.05}
+                roughness={0.5}
+                // Apagada de verdad cuando el visor no da passthrough: el
+                // estado se distingue por opacidad y no solo por color.
+                transparent
+                opacity={enabled ? 1 : 0.35}
+              />
+            </mesh>
+            <Icon
+              position={[0, 0, 0.008]}
+              size={0.028}
+              color={enabled ? '#ffffff' : '#64748b'}
+            />
+          </XRPressable>
+        )
+      })}
+    </group>
+  )
+}
+
 export function XRMenu() {
   const mode = useXR((state) => state.mode)
   const session = useXR((state) => state.session)
@@ -155,13 +215,14 @@ export function XRMenu() {
 
   return (
     <group position={XR_MENU_POSITION}>
-      <XRPanel width={1.06} height={0.62} color={PANEL_COLOR} />
+      <XRPanel width={1.06} height={0.74} color={PANEL_COLOR} />
       <StickPicker />
       <DifficultyPicker />
+      <SceneryPicker passthroughAvailable={mode === 'immersive-ar'} />
 
       {/* Empezar */}
       <XRPressable
-        position={[0, -0.21, 0]}
+        position={[0, -0.29, 0]}
         onSelect={startGame}
         hitSize={[0.36, 0.13, 0.06]}
       >

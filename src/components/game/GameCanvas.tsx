@@ -11,13 +11,14 @@ import {
   MACHINE_RADIUS,
   PLAYER_POSITION,
 } from '@/lib/gameConfig'
-import { useGame } from '@/lib/gameStore'
+import { useGame, type SceneryMode } from '@/lib/gameStore'
 import { xrStore } from '@/components/xr/xrStore'
 import { XRCountdown } from '@/components/xr/XRCountdown'
 import { XRGazeAnchor } from '@/components/xr/XRGazeAnchor'
 import { XRHud, XRQuitButton } from '@/components/xr/XRHud'
 import { XRMenu } from '@/components/xr/XRMenu'
 import { XRSessionController } from '@/components/xr/XRSessionController'
+import { SceneryFade } from './SceneryFade'
 import { StickMachine } from './StickMachine'
 import { Ground } from './Ground'
 
@@ -33,9 +34,11 @@ import { Ground } from './Ground'
  * mantiene, pero solo como fuente de reflejos (`background={false}`): sin él la
  * máquina se vería plana y apagada sobre la sala real.
  */
-function SceneBackdrop() {
+function SceneBackdrop({ scenery }: { scenery: SceneryMode }) {
   const mode = useXR((state) => state.mode)
-  const isAR = mode === 'immersive-ar'
+  // Fuera de sesión inmersiva no hay passthrough que revelar: en el navegador
+  // el escenario va siempre puesto, pase lo que pase con el interruptor.
+  const isAR = mode != null && scenery === 'passthrough'
 
   return (
     <>
@@ -61,6 +64,17 @@ function SceneBackdrop() {
         />
       </Suspense>
     </>
+  )
+}
+
+/** Enchufa el escenario a lo que el jugador elige en el menú inmersivo. */
+function SceneryFadeBridge() {
+  const { scenery } = useGame()
+
+  return (
+    <SceneryFade mode={scenery}>
+      {(applied) => <SceneBackdrop scenery={applied} />}
+    </SceneryFade>
   )
 }
 
@@ -150,7 +164,9 @@ export function GameCanvas() {
           <StickMachine />
         </Suspense>
 
-        <SceneBackdrop />
+        {/* El decorado cambia con la cortina cerrada, para que el salto entre
+            la plaza y la habitación del jugador no se vea. */}
+        <SceneryFadeBridge />
         <DesktopControls />
       </XR>
     </Canvas>

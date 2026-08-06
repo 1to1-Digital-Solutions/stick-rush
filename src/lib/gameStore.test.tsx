@@ -223,6 +223,38 @@ describe('cuenta atrás', () => {
   })
 })
 
+describe('escenario o passthrough', () => {
+  it('se entra con el escenario puesto', () => {
+    // Es la experiencia completa; quien prefiera ver su cuarto lo quita desde
+    // el menú inmersivo.
+    const { result } = renderHook(() => useGameStoreValue())
+    expect(result.current.scenery).toBe('scene')
+  })
+
+  it('se puede alternar en cualquier momento', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+
+    act(() => result.current.setScenery('passthrough'))
+    expect(result.current.scenery).toBe('passthrough')
+
+    act(() => result.current.setScenery('scene'))
+    expect(result.current.scenery).toBe('scene')
+  })
+
+  it('la elección sobrevive a la partida', () => {
+    // Cambiar de decorado no es parte de la partida: quitarlo al empezar o al
+    // volver al menú obligaría a elegirlo cada vez.
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setScenery('passthrough'))
+
+    playRound(result, 5, 3)
+    expect(result.current.scenery).toBe('passthrough')
+
+    act(() => result.current.resetGame())
+    expect(result.current.scenery).toBe('passthrough')
+  })
+})
+
 describe('puntuación y racha', () => {
   it('atrapar suma puntos; fallar no', () => {
     const { result } = renderHook(() => useGameStoreValue())
