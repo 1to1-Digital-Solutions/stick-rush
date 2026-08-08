@@ -30,7 +30,9 @@ del modo inmersivo tras la segunda prueba con el visor.
    jugador** ya sea la buena, sin dar el paso adelante; (b) que el **tamaño** convenza
    tras el −8 %; (c) que el **selector de escenario/passthrough** funcione y el fundido
    no maree; (d) que la **cuenta atrás** dé tiempo suficiente; (e) que el destello verde
-   y los palos rojos en el suelo se lean bien con las gafas.
+   y los palos rojos en el suelo se lean bien con las gafas; (f) que los **iconos** de
+   casa y de salida se distingan de un vistazo, y si los de repetir, escenario y
+   passthrough se entienden o hay que rehacerlos igual.
    Valores a retocar: adelanto del jugador (`PLAYER_OFFSET_Z`, −0.18 m), tamaño
    (`MACHINE_RADIUS` 0.57 m y `STICK_LENGTH` 0.39 m — al cambiarlos hay que recalcular
    `DIFFICULTY_SPEEDS` para conservar los tiempos, que `gameConfig.test.ts` vigila),
@@ -302,6 +304,24 @@ prueba salieron seis mejoras, todas dentro de la rama:
 - **Escenario o passthrough se elige dentro del visor**, con fundido. Se entra siempre
   en `immersive-ar` cuando se puede, porque WebXR no deja cambiar de tipo de sesión
   sin reabrirla. La entrada del menú es ahora un solo botón.
+
+## Iconos del menú inmersivo (rama `agent/mejorar-los-iconos-del-menu-3d`)
+
+De la tercera prueba salió que la flecha de «volver» no se leía como una flecha, y que
+volver al menú y salir del visor compartían icono haciendo cosas distintas.
+
+- Los iconos se apilaban con primitivas (un prisma triangular junto a una caja) y a un
+  metro de distancia eso se ve como **dos objetos**, no como una figura. Ahora la forma es
+  un **contorno cerrado** en `src/lib/xrIcons.ts` del que sale un `ShapeGeometry`.
+- **Casa** para volver al menú (fin de partida y botón de salir durante la partida) y
+  **puerta con flecha saliendo** para cerrar la sesión (esquina del menú). La flecha
+  suelta desaparece: no queda ningún botón que signifique solo «atrás».
+- La silueta es comprobable sin navegador (`xrIcons.test.ts`, 13 casos): que el tejado
+  corone el cuerpo, que la puerta caiga dentro de la fachada, que la punta de la flecha sea
+  más ancha que el asta, que ningún contorno se cruce consigo mismo y que todos ocupen el
+  mismo cuadro, para que a igual `size` se vean del mismo tamaño.
+- Siguen **sin validar en hardware** `XRRepeatIcon`, `XRSceneIcon` y `XRPassthroughIcon`,
+  que se dejaron como estaban a falta de saber si se entienden con las gafas puestas.
 
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 

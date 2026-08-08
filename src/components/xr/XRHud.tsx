@@ -7,7 +7,7 @@ import { type StickStatus, stickStatuses } from '@/lib/stickLayout'
 import { XR_HUD_POSITION, XR_QUIT_POSITION } from '@/lib/xrLayout'
 import {
   PANEL_COLOR,
-  XRBackIcon,
+  XRHomeIcon,
   XRPanel,
   XRPressable,
   XRRepeatIcon,
@@ -205,7 +205,7 @@ export function XRHud() {
                 roughness={0.5}
               />
             </mesh>
-            <XRBackIcon position={[-0.008, 0, 0.008]} size={0.024} />
+            <XRHomeIcon position={[0, 0, 0.008]} size={0.022} />
           </XRPressable>
         </group>
       )}
@@ -243,7 +243,7 @@ export function XRQuitButton() {
           roughness={0.5}
         />
       </mesh>
-      <XRBackIcon position={[-0.008, 0, 0.012]} size={0.024} />
+      <XRHomeIcon position={[0, 0, 0.012]} size={0.024} />
     </XRPressable>
   )
 }

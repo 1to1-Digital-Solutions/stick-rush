@@ -18,7 +18,7 @@ import {
 } from '@/lib/xrLayout'
 import {
   PANEL_COLOR,
-  XRBackIcon,
+  XRExitIcon,
   XRPanel,
   XRPassthroughIcon,
   XRPlayIcon,
@@ -254,7 +254,7 @@ export function XRMenu() {
             roughness={0.5}
           />
         </mesh>
-        <XRBackIcon position={[-0.008, 0, 0.008]} size={0.026} />
+        <XRExitIcon position={[0, 0, 0.008]} size={0.024} />
       </XRPressable>
     </group>
   )

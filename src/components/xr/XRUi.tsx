@@ -1,7 +1,13 @@
 'use client'
 
-import { type ReactNode, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
+import { Path, Shape, ShapeGeometry, Vector2 } from 'three'
+import {
+  XR_EXIT_ICON,
+  XR_HOME_ICON,
+  type IconShape,
+} from '@/lib/xrIcons'
 
 /**
  * Piezas de interfaz para las sesiones inmersivas.
@@ -150,28 +156,62 @@ export function XRPlayIcon({
   )
 }
 
-/** Punta de flecha hacia la izquierda: volver. */
-export function XRBackIcon({
-  position = [0, 0, 0],
-  size = 0.04,
-  color = '#ffffff',
-}: {
+type IconProps = {
   position?: [number, number, number]
   size?: number
   color?: string
-}) {
-  return (
-    <group position={position}>
-      <mesh rotation={[Math.PI / 2, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[size, size, 0.01, 3]} />
-        <meshBasicMaterial color={color} toneMapped={false} />
-      </mesh>
-      <mesh position={[size * 0.9, 0, 0]}>
-        <boxGeometry args={[size * 1.1, size * 0.5, 0.01]} />
-        <meshBasicMaterial color={color} toneMapped={false} />
-      </mesh>
-    </group>
+}
+
+/**
+ * Icono dibujado a partir de una silueta de `@/lib/xrIcons`.
+ *
+ * Apilar primitivas (un prisma triangular junto a una caja) no funcionó en el
+ * visor: a un metro de distancia dos piezas próximas se ven como dos objetos y
+ * no como una figura. Una silueta cerrada se lee de un vistazo.
+ *
+ * `size` es la mitad del lado del icono, porque las siluetas vienen
+ * normalizadas al cuadro [-1, 1].
+ */
+function XRShapeIcon({
+  icon,
+  position = [0, 0, 0],
+  size = 0.03,
+  color = '#ffffff',
+}: IconProps & { icon: IconShape }) {
+  const geometry = useMemo(
+    () =>
+      new ShapeGeometry(
+        icon.map(({ outline, holes }) => {
+          const shape = new Shape(outline.map(([x, y]) => new Vector2(x, y)))
+          for (const hole of holes ?? []) {
+            shape.holes.push(new Path(hole.map(([x, y]) => new Vector2(x, y))))
+          }
+          return shape
+        }),
+      ),
+    [icon],
   )
+
+  useEffect(() => () => geometry.dispose(), [geometry])
+
+  return (
+    <mesh position={position} scale={size} geometry={geometry}>
+      <meshBasicMaterial color={color} toneMapped={false} />
+    </mesh>
+  )
+}
+
+/** Casa: volver al menú del juego, sin salir de la sesión. */
+export function XRHomeIcon(props: IconProps) {
+  return <XRShapeIcon icon={XR_HOME_ICON} {...props} />
+}
+
+/**
+ * Puerta con una flecha saliendo: cerrar la sesión y volver al navegador. Es
+ * un viaje distinto al de la casa, y compartir icono con ella confundía.
+ */
+export function XRExitIcon(props: IconProps) {
+  return <XRShapeIcon icon={XR_EXIT_ICON} {...props} />
 }
 
 /** Dos montañas y una luna: el escenario del juego. */
