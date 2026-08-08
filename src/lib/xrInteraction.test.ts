@@ -86,7 +86,7 @@ describe('la interfaz cae dentro del campo de visión', () => {
   const elements: Array<[string, Vec3]> = [
     ['el menú', XR_MENU_POSITION],
     ['el marcador', XR_HUD_POSITION],
-    ['el botón de salir de la partida', XR_QUIT_POSITION],
+    ['el botón de volver al menú', XR_QUIT_POSITION],
     ['el botón de salir del visor', xrMenuExitPosition()],
   ]
 
@@ -104,7 +104,7 @@ describe('la interfaz cae dentro del campo de visión', () => {
     expect(y).toBeLessThan(1.75)
   })
 
-  it('el botón de salir de la partida encara al jugador', () => {
+  it('el botón de volver al menú encara al jugador', () => {
     // Está apartado a un lado, así que es el único que gira. Y tiene que girar
     // justo lo que pide su posición: de canto, la placa se estrecha y su propio
     // borde se adelanta por delante del icono hasta comérselo.

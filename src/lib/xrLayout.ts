@@ -22,13 +22,14 @@ export const XR_MENU_POSITION: Vec3 = [0, 1.4, -0.95]
 /** Marcador, por debajo del menú para no cruzarse con los palos. */
 export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
 /**
- * Botón de salir durante la partida. Apartado a un lado para no cruzarse con
- * los palos, pero dentro del campo de visión: a 51° quedaba fuera de vista y no
- * se encontraba.
+ * Botón de volver al menú durante la partida —deja la partida, no la sesión:
+ * el de salir del visor es `XR_MENU_EXIT_OFFSET`, y por eso llevan iconos
+ * distintos—. Apartado a un lado para no cruzarse con los palos, pero dentro
+ * del campo de visión: a 51° quedaba fuera de vista y no se encontraba.
  */
 export const XR_QUIT_POSITION: Vec3 = [-0.42, 1.15, -0.75]
 /**
- * Giro del botón de salir para que su placa encare al jugador.
+ * Giro de ese botón para que su placa encare al jugador.
  *
  * Es el único elemento apartado a un lado, así que es el único que necesita
  * girar: de canto, un botón plano se estrecha y su icono se hunde en la propia
@@ -65,7 +66,7 @@ function offset([x, y, z]: Vec3, dx: number, dy: number): Vec3 {
   return [x + dx, y + dy, z]
 }
 
-/** Botón de salir durante la partida. */
+/** Botón de volver al menú durante la partida. */
 export function xrQuitButtonPosition(): Vec3 {
   return XR_QUIT_POSITION
 }

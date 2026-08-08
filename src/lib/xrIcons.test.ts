@@ -17,16 +17,16 @@ import {
 type Polygon = readonly IconPoint[]
 
 /** Puntos donde la silueta corta una horizontal, ordenados. */
-function cortesEnY(polygon: Polygon, y: number): number[] {
-  return cortes(polygon, 1, y, 0)
+function crossingsAtY(polygon: Polygon, y: number): number[] {
+  return crossings(polygon, 1, y, 0)
 }
 
 /** Puntos donde la silueta corta una vertical, ordenados. */
-function cortesEnX(polygon: Polygon, x: number): number[] {
-  return cortes(polygon, 0, x, 1)
+function crossingsAtX(polygon: Polygon, x: number): number[] {
+  return crossings(polygon, 0, x, 1)
 }
 
-function cortes(
+function crossings(
   polygon: Polygon,
   axis: 0 | 1,
   at: number,
@@ -45,12 +45,12 @@ function cortes(
 }
 
 /** Cuánto abarca la silueta a lo largo de una recta. */
-function tramo(hits: number[]): number {
+function span(hits: number[]): number {
   return hits.length < 2 ? 0 : hits[hits.length - 1] - hits[0]
 }
 
 /** Punto dentro de la silueta, por lanzamiento de rayo. */
-function dentro(polygon: Polygon, [px, py]: IconPoint): boolean {
+function contains(polygon: Polygon, [px, py]: IconPoint): boolean {
   let inside = false
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const [xi, yi] = polygon[i]
@@ -63,13 +63,13 @@ function dentro(polygon: Polygon, [px, py]: IconPoint): boolean {
 }
 
 /** ¿Se cruzan dos segmentos? */
-function seCruzan(
+function segmentsCross(
   [ax, ay]: IconPoint,
   [bx, by]: IconPoint,
   [cx, cy]: IconPoint,
   [dx, dy]: IconPoint,
 ): boolean {
-  const lado = (
+  const side = (
     px: number,
     py: number,
     qx: number,
@@ -78,43 +78,51 @@ function seCruzan(
     ry: number,
   ) => Math.sign((qx - px) * (ry - py) - (qy - py) * (rx - px))
   return (
-    lado(ax, ay, bx, by, cx, cy) !== lado(ax, ay, bx, by, dx, dy) &&
-    lado(cx, cy, dx, dy, ax, ay) !== lado(cx, cy, dx, dy, bx, by)
+    side(ax, ay, bx, by, cx, cy) !== side(ax, ay, bx, by, dx, dy) &&
+    side(cx, cy, dx, dy, ax, ay) !== side(cx, cy, dx, dy, bx, by)
   )
 }
 
-function esSimple(polygon: Polygon): boolean {
+function isSimple(polygon: Polygon): boolean {
   const n = polygon.length
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
       // Los lados contiguos comparten un extremo: tocarse ahí es normal.
       if (j === (i + 1) % n || i === (j + 1) % n) continue
-      const cruce = seCruzan(
+      const cross = segmentsCross(
         polygon[i],
         polygon[(i + 1) % n],
         polygon[j],
         polygon[(j + 1) % n],
       )
-      if (cruce) return false
+      if (cross) return false
     }
   }
   return true
 }
 
 /** Todos los contornos del icono, huecos incluidos. */
-function piezas(icon: IconShape): Polygon[] {
+function paths(icon: IconShape): Polygon[] {
   return icon.flatMap((path) => [path.outline, ...(path.holes ?? [])])
 }
 
-const ICONOS: [string, IconShape][] = [
+/** Extremos del icono a lo largo de un eje. */
+function bounds(icon: IconShape, axis: 0 | 1): [number, number] {
+  const values = paths(icon)
+    .flat()
+    .map((point) => point[axis])
+  return [Math.min(...values), Math.max(...values)]
+}
+
+const ICONS: [string, IconShape][] = [
   ['casa', XR_HOME_ICON],
   ['salida', XR_EXIT_ICON],
 ]
 
 describe('las siluetas están bien formadas', () => {
-  for (const [nombre, icon] of ICONOS) {
-    it(`la ${nombre} cabe en el cuadro normalizado`, () => {
-      for (const polygon of piezas(icon)) {
+  for (const [name, icon] of ICONS) {
+    it(`la ${name} cabe en el cuadro normalizado`, () => {
+      for (const polygon of paths(icon)) {
         for (const [x, y] of polygon) {
           expect(Math.abs(x)).toBeLessThanOrEqual(1)
           expect(Math.abs(y)).toBeLessThanOrEqual(1)
@@ -122,82 +130,92 @@ describe('las siluetas están bien formadas', () => {
       }
     })
 
-    it(`la ${nombre} aprovecha el cuadro entero`, () => {
+    it(`la ${name} aprovecha el cuadro entero`, () => {
       // Sin esto, dos iconos con el mismo `size` se verían de tamaños
       // distintos y la fila de botones parecería descuadrada.
-      const puntos = piezas(icon).flat()
-      const xs = puntos.map(([x]) => x)
-      const ys = puntos.map(([, y]) => y)
-      expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(1.7)
-      expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(1.7)
+      const [minX, maxX] = bounds(icon, 0)
+      const [minY, maxY] = bounds(icon, 1)
+      expect(maxX - minX).toBeGreaterThan(1.7)
+      expect(maxY - minY).toBeGreaterThan(1.7)
     })
 
-    it(`la ${nombre} no se cruza consigo misma`, () => {
+    it(`la ${name} va centrada en su cuadro`, () => {
+      // El icono se coloca por su origen, así que si la silueta se descentra
+      // dentro del cuadro el dibujo se va del centro de su placa. La holgura
+      // deja pasar que la casa se apoye en el suelo del cuadro —el tejado da
+      // más alto que el cuerpo— sin que se note dentro del botón.
+      const [minX, maxX] = bounds(icon, 0)
+      const [minY, maxY] = bounds(icon, 1)
+      expect(Math.abs(minX + maxX) / 2).toBeLessThan(0.1)
+      expect(Math.abs(minY + maxY) / 2).toBeLessThan(0.1)
+    })
+
+    it(`la ${name} no se cruza consigo misma`, () => {
       // Un contorno que se cruza triangula al revés y sale con huecos.
-      for (const polygon of piezas(icon)) {
-        expect(esSimple(polygon)).toBe(true)
+      for (const polygon of paths(icon)) {
+        expect(isSimple(polygon)).toBe(true)
       }
     })
   }
 })
 
 describe('la casa se lee como una casa', () => {
-  const [fachada] = XR_HOME_ICON
-  const silueta = fachada.outline
-  const cuerpo = tramo(cortesEnY(silueta, -0.5))
+  const [front] = XR_HOME_ICON
+  const outline = front.outline
+  const body = span(crossingsAtY(outline, -0.5))
 
   it('el tejado remata en punta sobre el cuerpo', () => {
     // Medido bajo la cima de la propia silueta, no a una altura fija: si el
     // tejado se aplana, el icono pasa a ser una caja cualquiera.
-    const cima = Math.max(...silueta.map(([, y]) => y))
-    expect(tramo(cortesEnY(silueta, cima - 0.1))).toBeLessThan(cuerpo / 3)
+    const peak = Math.max(...outline.map(([, y]) => y))
+    expect(span(crossingsAtY(outline, peak - 0.1))).toBeLessThan(body / 3)
   })
 
   it('el alero sobresale del cuerpo', () => {
-    const alero = Math.max(...silueta.map(([x]) => Math.abs(x))) * 2
-    expect(alero).toBeGreaterThan(cuerpo)
+    const eaves = Math.max(...outline.map(([x]) => Math.abs(x))) * 2
+    expect(eaves).toBeGreaterThan(body)
   })
 
   it('la puerta se abre en la fachada, no fuera', () => {
-    const [puerta] = fachada.holes ?? []
-    expect(puerta).toBeDefined()
-    for (const punto of puerta) {
-      expect(dentro(silueta, punto)).toBe(true)
+    const [door] = front.holes ?? []
+    expect(door).toBeDefined()
+    for (const point of door) {
+      expect(contains(outline, point)).toBe(true)
     }
     // Y abajo: una puerta a media altura es una ventana.
-    expect(Math.max(...puerta.map(([, y]) => y))).toBeLessThan(0)
+    expect(Math.max(...door.map(([, y]) => y))).toBeLessThan(0)
   })
 })
 
 describe('la salida se lee como una puerta con una flecha', () => {
-  const [marco, flecha] = XR_EXIT_ICON
+  const [frame, arrow] = XR_EXIT_ICON
 
   it('el marco deja abierto el lado por el que se sale', () => {
     // Relleno sería un cartel: lo que lo convierte en puerta es el vano.
-    expect(dentro(marco.outline, [-0.85, 0])).toBe(true)
-    expect(dentro(marco.outline, [-0.2, 0])).toBe(false)
+    expect(contains(frame.outline, [-0.85, 0])).toBe(true)
+    expect(contains(frame.outline, [-0.2, 0])).toBe(false)
   })
 
   it('la flecha sale de la puerta, no entra', () => {
-    const punta = flecha.outline.reduce((best, point) =>
+    const tip = arrow.outline.reduce((best, point) =>
       point[0] > best[0] ? point : best,
     )
-    expect(punta[0]).toBeGreaterThan(Math.max(...marco.outline.map(([x]) => x)))
-    expect(punta[1]).toBeCloseTo(0)
+    expect(tip[0]).toBeGreaterThan(Math.max(...frame.outline.map(([x]) => x)))
+    expect(tip[1]).toBeCloseTo(0)
   })
 
   it('la punta es más ancha que el asta', () => {
     // El fallo del icono anterior: punta y asta se veían como dos piezas
     // sueltas. Si apenas se ensancha, la flecha se lee como una barra.
-    const asta = tramo(cortesEnX(flecha.outline, 0))
-    const punta = tramo(cortesEnX(flecha.outline, 0.43))
-    expect(punta).toBeGreaterThan(asta * 2)
+    const shaft = span(crossingsAtX(arrow.outline, 0))
+    const head = span(crossingsAtX(arrow.outline, 0.43))
+    expect(head).toBeGreaterThan(shaft * 2)
   })
 
   it('la flecha arranca despegada del marco', () => {
     // Pegadas, las dos piezas se funden en una sola mancha.
-    const arranque = Math.min(...flecha.outline.map(([x]) => x))
-    const jamba = Math.max(...cortesEnY(marco.outline, 0))
-    expect(arranque).toBeGreaterThan(jamba + 0.1)
+    const start = Math.min(...arrow.outline.map(([x]) => x))
+    const jamb = Math.max(...crossingsAtY(frame.outline, 0))
+    expect(start).toBeGreaterThan(jamb + 0.1)
   })
 })

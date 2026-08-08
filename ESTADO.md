@@ -313,20 +313,21 @@ volver al menú y salir del visor compartían icono haciendo cosas distintas.
 - Los iconos se apilaban con primitivas (un prisma triangular junto a una caja) y a un
   metro de distancia eso se ve como **dos objetos**, no como una figura. Ahora la forma es
   un **contorno cerrado** en `src/lib/xrIcons.ts` del que sale un `ShapeGeometry`.
-- **Casa** para volver al menú (fin de partida y botón de salir durante la partida) y
+- **Casa** para volver al menú (fin de partida y botón apartado durante la partida) y
   **puerta con flecha saliendo** para cerrar la sesión (esquina del menú). La flecha
   suelta desaparece: no queda ningún botón que signifique solo «atrás».
-- La silueta es comprobable sin navegador (`xrIcons.test.ts`, 13 casos): que el tejado
+- La silueta es comprobable sin navegador (`xrIcons.test.ts`, 15 casos): que el tejado
   corone el cuerpo, que la puerta caiga dentro de la fachada, que la punta de la flecha sea
   más ancha que el asta, que ningún contorno se cruce consigo mismo y que todos ocupen el
-  mismo cuadro, para que a igual `size` se vean del mismo tamaño.
+  mismo cuadro y centrados, para que a igual `size` y `position` se vean del mismo tamaño y
+  en el mismo sitio de su placa.
 - Siguen **sin validar en hardware** `XRRepeatIcon`, `XRSceneIcon` y `XRPassthroughIcon`,
   que se dejaron como estaban a falta de saber si se entienden con las gafas puestas.
 
 En la revisión de la rama apareció la causa de fondo de que el icono anterior «no se
 leyera como una flecha», que no era solo la forma:
 
-- El **botón de salir de la partida se comía su propio icono**. Está apartado a un lado
+- El **botón de volver al menú se comía su propio icono**. Está apartado a un lado
   y su placa giraba para encarar al jugador, pero el dibujo no giraba con ella: el borde
   izquierdo de la placa se adelantaba por delante del icono y lo cortaba en diagonal
   desde ese lado, justo donde caía la punta de la flecha. Ahora el giro cuelga del botón
@@ -334,7 +335,7 @@ leyera como una flecha», que no era solo la forma:
   mueven juntos, y sale de `XR_QUIT_YAW` —derivado de la posición— en vez de un `π/7`
   puesto a ojo, que además se quedaba 3° corto. `xrInteraction.test.ts` vigila que la
   placa siga encarando al jugador si alguien mueve el botón.
-- **Un solo tamaño para las siluetas** (`ICON_SIZE`, 5,6 cm): iban a 0.022 y 0.024 y la
+- **Un solo tamaño para las siluetas** (`ICON_SIZE`, 5,6 cm): iban a 0.024 y 0.026 y la
   casa se veía claramente más pequeña que el aro de repetir a su lado en la pantalla de
   fin de partida.
 
