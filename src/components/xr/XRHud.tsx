@@ -4,7 +4,7 @@ import { useXR } from '@react-three/xr'
 import { useGame } from '@/lib/gameStore'
 import { scoreRatio } from '@/lib/scoring'
 import { type StickStatus, stickStatuses } from '@/lib/stickLayout'
-import { XR_HUD_POSITION, XR_QUIT_POSITION } from '@/lib/xrLayout'
+import { XR_HUD_POSITION, XR_QUIT_POSITION, XR_QUIT_YAW } from '@/lib/xrLayout'
 import {
   PANEL_COLOR,
   XRHomeIcon,
@@ -205,7 +205,7 @@ export function XRHud() {
                 roughness={0.5}
               />
             </mesh>
-            <XRHomeIcon position={[0, 0, 0.008]} size={0.022} />
+            <XRHomeIcon position={[0, 0, 0.008]} />
           </XRPressable>
         </group>
       )}
@@ -229,12 +229,17 @@ export function XRQuitButton() {
   }
 
   return (
+    // El giro cuelga del botón, no de la placa: girando solo la placa, su borde
+    // izquierdo se adelantaba por delante del icono y se comía el dibujo desde
+    // ese lado. Es lo que hacía ilegible al icono anterior, cuya punta de flecha
+    // caía justo en la parte que quedaba enterrada.
     <XRPressable
       position={XR_QUIT_POSITION}
+      rotation={[0, XR_QUIT_YAW, 0]}
       onSelect={resetGame}
       hitSize={[0.16, 0.14, 0.08]}
     >
-      <mesh rotation={[0, Math.PI / 7, 0]}>
+      <mesh>
         <boxGeometry args={[0.12, 0.1, 0.012]} />
         <meshStandardMaterial
           color="#334155"
@@ -243,7 +248,7 @@ export function XRQuitButton() {
           roughness={0.5}
         />
       </mesh>
-      <XRHomeIcon position={[0, 0, 0.012]} size={0.024} />
+      <XRHomeIcon position={[0, 0, 0.012]} />
     </XRPressable>
   )
 }

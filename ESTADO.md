@@ -323,6 +323,21 @@ volver al menú y salir del visor compartían icono haciendo cosas distintas.
 - Siguen **sin validar en hardware** `XRRepeatIcon`, `XRSceneIcon` y `XRPassthroughIcon`,
   que se dejaron como estaban a falta de saber si se entienden con las gafas puestas.
 
+En la revisión de la rama apareció la causa de fondo de que el icono anterior «no se
+leyera como una flecha», que no era solo la forma:
+
+- El **botón de salir de la partida se comía su propio icono**. Está apartado a un lado
+  y su placa giraba para encarar al jugador, pero el dibujo no giraba con ella: el borde
+  izquierdo de la placa se adelantaba por delante del icono y lo cortaba en diagonal
+  desde ese lado, justo donde caía la punta de la flecha. Ahora el giro cuelga del botón
+  (`rotation` de `XRPressable`), así que placa, icono, halo de foco y zona sensible se
+  mueven juntos, y sale de `XR_QUIT_YAW` —derivado de la posición— en vez de un `π/7`
+  puesto a ojo, que además se quedaba 3° corto. `xrInteraction.test.ts` vigila que la
+  placa siga encarando al jugador si alguien mueve el botón.
+- **Un solo tamaño para las siluetas** (`ICON_SIZE`, 5,6 cm): iban a 0.022 y 0.024 y la
+  casa se veía claramente más pequeña que el aro de repetir a su lado en la pantalla de
+  fin de partida.
+
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 
 Con las gafas puestas el modo inmersivo era **inutilizable**: no se veían los mandos,

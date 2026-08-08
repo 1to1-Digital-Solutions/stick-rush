@@ -254,7 +254,7 @@ export function XRMenu() {
             roughness={0.5}
           />
         </mesh>
-        <XRExitIcon position={[0, 0, 0.008]} size={0.024} />
+        <XRExitIcon position={[0, 0, 0.008]} />
       </XRPressable>
     </group>
   )

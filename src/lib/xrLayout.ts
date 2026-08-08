@@ -27,6 +27,18 @@ export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
  * se encontraba.
  */
 export const XR_QUIT_POSITION: Vec3 = [-0.42, 1.15, -0.75]
+/**
+ * Giro del botón de salir para que su placa encare al jugador.
+ *
+ * Es el único elemento apartado a un lado, así que es el único que necesita
+ * girar: de canto, un botón plano se estrecha y su icono se hunde en la propia
+ * placa. Se deriva de la posición en vez de fijarlo a ojo, para que al mover el
+ * botón el giro lo siga.
+ */
+export const XR_QUIT_YAW = Math.atan2(
+  -XR_QUIT_POSITION[0],
+  -XR_QUIT_POSITION[2],
+)
 /** Botón de salir del visor, en la esquina del panel del menú. */
 export const XR_MENU_EXIT_OFFSET: Vec3 = [-0.42, -0.29, 0]
 /** Selector de escenario o passthrough, bajo las dificultades. */

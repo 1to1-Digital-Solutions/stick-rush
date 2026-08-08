@@ -16,6 +16,7 @@ import {
   XR_HUD_POSITION,
   XR_MENU_POSITION,
   XR_QUIT_POSITION,
+  XR_QUIT_YAW,
   type Vec3,
   xrMenuExitPosition,
 } from './xrLayout'
@@ -101,6 +102,21 @@ describe('la interfaz cae dentro del campo de visión', () => {
     // Por encima de la cintura y por debajo de tener que estirar el cuello.
     expect(y).toBeGreaterThan(0.85)
     expect(y).toBeLessThan(1.75)
+  })
+
+  it('el botón de salir de la partida encara al jugador', () => {
+    // Está apartado a un lado, así que es el único que gira. Y tiene que girar
+    // justo lo que pide su posición: de canto, la placa se estrecha y su propio
+    // borde se adelanta por delante del icono hasta comérselo.
+    const [x, , z] = XR_QUIT_POSITION
+    // Normal de la placa tras el giro, en el plano horizontal.
+    const normal = [Math.sin(XR_QUIT_YAW), Math.cos(XR_QUIT_YAW)]
+    const toPlayer = [-x, -z]
+    const reach = Math.hypot(...toPlayer)
+    const alignment =
+      (normal[0] * toPlayer[0] + normal[1] * toPlayer[1]) / reach
+
+    expect(alignment).toBeCloseTo(1)
   })
 
   it.each(elements)('%s queda al alcance del rayo, sin pegarse a la cara', (_, [x, , z]) => {

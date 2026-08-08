@@ -1,13 +1,9 @@
 'use client'
 
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useMemo, useRef, useState } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
-import { Path, Shape, ShapeGeometry, Vector2 } from 'three'
-import {
-  XR_EXIT_ICON,
-  XR_HOME_ICON,
-  type IconShape,
-} from '@/lib/xrIcons'
+import { Path, Shape, Vector2 } from 'three'
+import { XR_EXIT_ICON, XR_HOME_ICON, type IconShape } from '@/lib/xrIcons'
 
 /**
  * Piezas de interfaz para las sesiones inmersivas.
@@ -78,12 +74,20 @@ const DEBOUNCE_MS = 300
  */
 export function XRPressable({
   position,
+  rotation,
   onSelect,
   children,
   hitSize,
   disabled = false,
 }: {
   position: [number, number, number]
+  /**
+   * Giro del botón entero. Los botones apartados a un lado tienen que encarar
+   * al jugador, y el giro va aquí y no en el dibujo para que la placa, el
+   * icono, el halo de foco y la zona sensible se muevan juntos: girar solo la
+   * placa deja el icono cruzado con ella y medio dibujo se pierde dentro.
+   */
+  rotation?: [number, number, number]
   onSelect: () => void
   children: ReactNode
   hitSize: [number, number, number]
@@ -110,6 +114,7 @@ export function XRPressable({
   return (
     <group
       position={position}
+      rotation={rotation}
       scale={active ? 1.08 : 1}
       onPointerDown={handle}
       onPointerOver={(event) => {
@@ -138,28 +143,37 @@ export function XRPressable({
   )
 }
 
+/**
+ * Firma común de los iconos. `size` es la medida característica del dibujo en
+ * metros —radio en los que salen de una primitiva, semilado en las siluetas—,
+ * y cada icono trae la suya, elegida para pesar lo mismo dentro de su botón.
+ */
+type IconProps = {
+  position?: [number, number, number]
+  size?: number
+  color?: string
+}
+
+/**
+ * Semilado de las siluetas, en metros: unos cinco centímetros y medio de icono.
+ * Uno solo para todas, porque comparten cuadro y así no se descuadran entre
+ * ellas; con menos, la casa quedaba visiblemente más pequeña que el aro de
+ * repetir en la misma fila de botones.
+ */
+const ICON_SIZE = 0.028
+
 /** Triángulo de «reproducir»: el símbolo de empezar, sin idioma. */
 export function XRPlayIcon({
   position = [0, 0, 0],
   size = 0.05,
   color = '#ffffff',
-}: {
-  position?: [number, number, number]
-  size?: number
-  color?: string
-}) {
+}: IconProps) {
   return (
     <mesh position={position} rotation={[Math.PI / 2, 0, -Math.PI / 2]}>
       <cylinderGeometry args={[size, size, 0.01, 3]} />
       <meshBasicMaterial color={color} toneMapped={false} />
     </mesh>
   )
-}
-
-type IconProps = {
-  position?: [number, number, number]
-  size?: number
-  color?: string
 }
 
 /**
@@ -175,27 +189,24 @@ type IconProps = {
 function XRShapeIcon({
   icon,
   position = [0, 0, 0],
-  size = 0.03,
+  size = ICON_SIZE,
   color = '#ffffff',
 }: IconProps & { icon: IconShape }) {
-  const geometry = useMemo(
+  const shapes = useMemo(
     () =>
-      new ShapeGeometry(
-        icon.map(({ outline, holes }) => {
-          const shape = new Shape(outline.map(([x, y]) => new Vector2(x, y)))
-          for (const hole of holes ?? []) {
-            shape.holes.push(new Path(hole.map(([x, y]) => new Vector2(x, y))))
-          }
-          return shape
-        }),
-      ),
+      icon.map(({ outline, holes }) => {
+        const shape = new Shape(outline.map(([x, y]) => new Vector2(x, y)))
+        for (const hole of holes ?? []) {
+          shape.holes.push(new Path(hole.map(([x, y]) => new Vector2(x, y))))
+        }
+        return shape
+      }),
     [icon],
   )
 
-  useEffect(() => () => geometry.dispose(), [geometry])
-
   return (
-    <mesh position={position} scale={size} geometry={geometry}>
+    <mesh position={position} scale={size}>
+      <shapeGeometry args={[shapes]} />
       <meshBasicMaterial color={color} toneMapped={false} />
     </mesh>
   )
@@ -219,11 +230,7 @@ export function XRSceneIcon({
   position = [0, 0, 0],
   size = 0.04,
   color = '#ffffff',
-}: {
-  position?: [number, number, number]
-  size?: number
-  color?: string
-}) {
+}: IconProps) {
   return (
     <group position={position}>
       {[-0.5, 0.45].map((offset, index) => (
@@ -251,11 +258,7 @@ export function XRPassthroughIcon({
   position = [0, 0, 0],
   size = 0.04,
   color = '#ffffff',
-}: {
-  position?: [number, number, number]
-  size?: number
-  color?: string
-}) {
+}: IconProps) {
   const thickness = size * 0.16
 
   return (
@@ -281,11 +284,7 @@ export function XRRepeatIcon({
   position = [0, 0, 0],
   size = 0.04,
   color = '#ffffff',
-}: {
-  position?: [number, number, number]
-  size?: number
-  color?: string
-}) {
+}: IconProps) {
   return (
     <group position={position}>
       <mesh>
