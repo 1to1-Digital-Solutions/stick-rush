@@ -15,9 +15,11 @@ import {
   stickFallProgress,
 } from '@/lib/gameConfig'
 import { SWING_RELEASE_DECAY, hangingSwing } from '@/lib/stickSwing'
-import { canCatchWithPointer } from '@/lib/xrInteraction'
-
-type StickState = 'hanging' | 'falling' | 'caught' | 'missed'
+import {
+  type StickState,
+  canCatchStick,
+  canCatchWithPointer,
+} from '@/lib/xrInteraction'
 
 /**
  * Tipo de puntero que ha disparado el evento, si lo trae. Los eventos de ratón
@@ -141,10 +143,8 @@ export function Stick({
     if (!canCatchWithPointer(pointerTypeOf(event))) return
     event?.stopPropagation()
     if (resolved.current) return
-    // Con la partida parada no se coge nada. Sin esto, durante la cuenta atrás
-    // se podía vaciar el aro entero a clics antes de que empezara a caer nada.
-    if (paused) return
-    if (state !== 'falling' && state !== 'hanging') return
+    // Cuándo se deja coger un palo: ver `canCatchStick`.
+    if (!canCatchStick(state, paused)) return
     resolved.current = true
     setState('caught')
     flash.current = 1
@@ -271,9 +271,9 @@ export function Stick({
         onPointerDown={handleCatch}
         onPointerOver={(e) => {
           e.stopPropagation()
-          // El cursor promete que el palo se puede coger, así que tiene que
-          // decir la verdad también mientras la partida está parada.
-          if (!paused && (state === 'falling' || state === 'hanging')) {
+          // El cursor promete que el palo se puede coger, así que responde a la
+          // misma regla que la captura y no a una copia suya.
+          if (canCatchStick(state, paused)) {
             hovering.current = true
             document.body.style.cursor = 'pointer'
           }

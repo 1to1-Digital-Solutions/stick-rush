@@ -11,7 +11,7 @@ import {
   machinePoint,
 } from './gameConfig'
 import { XR_ANCHOR_DEADZONE } from './xrAnchor'
-import { canCatchWithPointer } from './xrInteraction'
+import { canCatchStick, canCatchWithPointer } from './xrInteraction'
 import {
   XR_HUD_POSITION,
   XR_MENU_POSITION,
@@ -153,5 +153,37 @@ describe('un palo se coge con la mano, no apuntando', () => {
     // Preferimos que algo desconocido funcione a que deje de responder sin que
     // nadie se entere: el único caso que se cierra es el rayo, explícitamente.
     expect(canCatchWithPointer('lines')).toBe(true)
+  })
+})
+
+describe('un palo se coge hasta que toca el suelo', () => {
+  it('vale cogerlo mientras todavía cuelga del aro', () => {
+    // Decisión de producto: adelantarse al palo es jugar, no hacer trampa. Si
+    // este caso se cerrara habría que rehacer el bonus por reflejos, que hoy
+    // paga el máximo justo por cogerlo antes de que caiga.
+    expect(canCatchStick('hanging', false)).toBe(true)
+  })
+
+  it('vale cogerlo al vuelo, que es el caso normal', () => {
+    expect(canCatchStick('falling', false)).toBe(true)
+  })
+
+  it('el palo que ya tocó el suelo no se recoge', () => {
+    // Se queda tirado para que el suelo cuente los fallos, pero es decorado:
+    // recogerlo borraría un fallo ya consumado.
+    expect(canCatchStick('missed', false)).toBe(false)
+  })
+
+  it('el palo ya atrapado no vuelve a contar', () => {
+    // Los dos mandos del visor pueden alcanzar el mismo palo en el mismo frame.
+    expect(canCatchStick('caught', false)).toBe(false)
+  })
+
+  it('con la partida parada no se coge nada, cuelgue o caiga', () => {
+    // La cuenta atrás entra aquí: durante esos tres segundos los palos cuelgan
+    // a la vista y quietos, y sin esta guarda se vaciaba el aro a clics antes
+    // de que empezara la partida.
+    expect(canCatchStick('hanging', true)).toBe(false)
+    expect(canCatchStick('falling', true)).toBe(false)
   })
 })

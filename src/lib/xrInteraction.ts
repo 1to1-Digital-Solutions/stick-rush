@@ -25,3 +25,30 @@ export type PointerKind = 'grab' | 'touch' | 'ray' | 'mouse' | (string & {})
 export function canCatchWithPointer(pointerType: PointerKind | undefined) {
   return pointerType !== 'ray'
 }
+
+/** Vida de un palo: cuelga del aro, cae, y acaba atrapado o en el suelo. */
+export type StickState = 'hanging' | 'falling' | 'caught' | 'missed'
+
+/**
+ * ¿Se puede atrapar este palo ahora mismo?
+ *
+ * **Un palo se coge hasta que toca el suelo, colgando incluido.** Es una
+ * decisión de producto, no un descuido: la ventana empieza en cuanto arranca la
+ * partida y se cierra cuando el palo se resuelve. Vaciar el aro sin esperar a
+ * que caiga nada es una forma legítima de jugar, y el bonus por reflejos
+ * (`reflexMultiplier`) la premia precisamente por eso — quien espera el palo
+ * abajo se lleva la mitad de puntos.
+ *
+ * Lo que sí se cierra:
+ *
+ * - Un palo **ya resuelto** (atrapado o tocado el suelo) no vuelve a contar. El
+ *   palo perdido se queda tirado para que el suelo cuente los fallos, pero es
+ *   decorado: recogerlo del suelo borraría el fallo.
+ * - Con la partida **parada** no se coge nada, y eso incluye la cuenta atrás:
+ *   antes se podía vaciar el aro entero a clics antes de que empezara a caer
+ *   nada.
+ */
+export function canCatchStick(state: StickState, paused: boolean) {
+  if (paused) return false
+  return state === 'hanging' || state === 'falling'
+}
