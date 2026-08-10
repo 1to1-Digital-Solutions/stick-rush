@@ -121,6 +121,7 @@ src/
     gameConfig.ts       Constants: difficulties, speeds, colours, geometry
     gameStore.ts        Global game state (Context API)
     stickLayout.ts      Stick layout, shuffled fall order and score token states
+    stickSwing.ts       Idle sway of the hanging sticks
     sound.ts            Synthesised game sounds (Web Audio, no files)
 e2e/                    Playwright tests
 docs/                   README screenshots

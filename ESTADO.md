@@ -371,6 +371,36 @@ El sonido no se podía ni bajar ni quitar, y en el visor va pegado a los oídos.
   con las gafas puestas, y si con `MASTER_GAIN` a 0.28 hace falta además un
   control de volumen intermedio.
 
+## Balanceo de los palos (rama `agent/balanceo-de-los-palos-colgando-p-2b20f4`)
+
+Hasta que caía el primero no se movía nada: con el visor puesto la máquina
+parecía congelada mientras se elegían opciones y durante los tres segundos de
+cuenta atrás.
+
+- Los palos colgados se mecen. La receta es un dato puro (`src/lib/stickSwing.ts`,
+  `hangingSwing`): unos 3° de amplitud a 0.55 Hz, con un segundo eje más corto y
+  a otro ritmo para que describan una elipse lenta en vez de ir como
+  limpiaparabrisas. Cada palo lleva su fase (`swingPhase`, de `buildStickLayout`),
+  que además le afina la frecuencia: sin ella los trece se moverían en bloque,
+  que se ve más mecánico que la quietud.
+- **El vaivén corre también con la partida parada.** `Stick` lleva un reloj
+  aparte del que gestiona el retardo de caída, porque justamente el menú y la
+  cuenta atrás son el momento en que hace falta. No toca ni cuándo se suelta un
+  palo ni desde qué altura: es rotación del grupo alrededor del gancho.
+- Al soltarse el palo se endereza en ~0.25 s (`SWING_RELEASE_DECAY`): uno que
+  cae inclinándose cuesta de seguir con la mano.
+- **Se respeta `prefers-reduced-motion`** (`useReducedMotion`, el equivalente
+  para la escena 3D de lo que `globals.css` ya hacía con las animaciones del
+  menú). Quien lo activa ve la máquina quieta, como antes de esta rama.
+- Los e2e del menú miran la escena de verdad: apartan el panel opaco del menú,
+  esperan a que el HDRI esté pintado y comparan dos capturas del canvas
+  separadas 600 ms. Con movimiento normal tienen que diferir; con el reducido,
+  ser idénticas. Ese par es lo que hace la comprobación fiable: si la captura
+  fuera ciega, el primero se pondría rojo.
+- **Sin validar en hardware**: falta ver con las gafas si tres grados se notan lo
+  justo o si conviene subir `SWING_AMPLITUDE`, y que el aro no se vea inquieto
+  con 13 palos meciéndose a la vez.
+
 ## Iconos del menú inmersivo (rama `agent/mejorar-los-iconos-del-menu-3d`)
 
 De la tercera prueba salió que la flecha de «volver» no se leía como una flecha, y que
@@ -477,8 +507,9 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 ## Pendiente / próximos pasos
 
 - Validar y pulir la interacción XR con mandos en hardware real.
-- Posibles mejoras: animación de "vibración" de los palos colgando,
-  temporizador/puntuación por tiempo, escenario VR más elaborado.
+- Posibles mejoras: ~~animación de "vibración" de los palos colgando~~ (hecha, ver
+  "Balanceo de los palos"), temporizador/puntuación por tiempo, escenario VR más
+  elaborado.
 - **Decidir si un palo debe poder atraparse mientras aún cuelga.** Hoy `Stick.handleCatch`
   acepta los estados `hanging` y `falling`, así que se puede vaciar el aro a clics nada más
   empezar, sin esperar a que caiga nada. Puede ser deliberado (premia la puntería), pero con
