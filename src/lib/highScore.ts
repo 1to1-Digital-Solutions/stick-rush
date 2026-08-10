@@ -92,11 +92,20 @@ export function getServerBestPoints(): number {
   return 0
 }
 
-/** Suscripción para `useSyncExternalStore`. */
+/**
+ * Suscripción para `useSyncExternalStore`.
+ *
+ * Además del aviso propio se escucha el evento `storage`, que es como el
+ * navegador cuenta que **otra pestaña** ha tocado el almacenamiento. Sin él,
+ * batir el récord en una pestaña dejaría a las demás enseñando el anterior, y
+ * el almacenamiento dejaría de ser la única fuente de verdad que dice ser.
+ */
 export function subscribeBestPoints(listener: () => void): () => void {
   listeners.add(listener)
+  window.addEventListener('storage', listener)
   return () => {
     listeners.delete(listener)
+    window.removeEventListener('storage', listener)
   }
 }
 

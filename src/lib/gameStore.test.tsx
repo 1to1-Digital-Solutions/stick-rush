@@ -470,6 +470,22 @@ describe('mejor puntuación', () => {
     expect(reopened.result.current.isRecord).toBe(false)
   })
 
+  it('sin poder guardar no se anuncia un récord que no existe', () => {
+    // Modo privado: `localStorage` existe pero lanza al escribir. Ahí la marca
+    // a batir se queda a cero para siempre, así que sin comprobar que el
+    // récord llegó a guardarse toda partida con puntos sería "nuevo récord".
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('bloqueado', 'SecurityError')
+    })
+
+    const { result } = renderHook(() => useGameStoreValue())
+    playRound(result, 5, 5)
+
+    expect(result.current.points).toBeGreaterThan(0)
+    expect(result.current.bestPoints).toBe(0)
+    expect(result.current.isRecord).toBe(false)
+  })
+
   it('un récord ilegible en el navegador no rompe el juego', () => {
     localStorage.setItem('stick-rush:best-points', 'lo que sea')
 

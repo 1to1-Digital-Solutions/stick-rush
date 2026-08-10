@@ -144,4 +144,19 @@ describe('el récord que ve el juego', () => {
     saveBestPoints(9000)
     expect(listener).toHaveBeenCalledTimes(1)
   })
+
+  it('se entera de que el récord lo ha cambiado otra pestaña', () => {
+    const listener = vi.fn()
+    const unsubscribe = subscribeBestPoints(listener)
+
+    localStorage.setItem(HIGH_SCORE_KEY, '7000')
+    window.dispatchEvent(new StorageEvent('storage', { key: HIGH_SCORE_KEY }))
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(getBestPoints()).toBe(7000)
+
+    unsubscribe()
+    window.dispatchEvent(new StorageEvent('storage', { key: HIGH_SCORE_KEY }))
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
 })

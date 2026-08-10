@@ -70,6 +70,10 @@ test.describe('Mejor puntuación', () => {
     expect(await readPoints(page)).toBeGreaterThan(0)
 
     await waitForGameOver(page)
+    // Sin dónde guardarlo no hay récord: anunciarlo en cada partida sería
+    // prometer una marca que al volver al menú ya no está.
+    await expect(page.getByRole('dialog')).not.toContainText('¡Nuevo récord!')
+
     await page.getByRole('button', { name: 'Volver al menú' }).click()
 
     // La partida se juega y se cierra con normalidad; lo único que falta es el

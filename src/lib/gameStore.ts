@@ -175,9 +175,13 @@ export function useGameStoreValue(): GameStore {
     saveBestPoints(points)
   }, [gameState, points])
 
-  // La partida ha batido el récord con el que empezó. Derivado y no guardado:
+  // La partida ha batido el récord con el que empezó *y* el navegador lo ha
+  // aceptado (`bestPoints` ya lo refleja). Sin esta segunda condición, con el
+  // almacenamiento bloqueado la marca a batir se quedaría a cero para siempre y
+  // cada partida con puntos se anunciaría como récord. Derivado y no guardado:
   // dura lo que dure la pantalla de fin de partida.
-  const isRecord = gameState === 'finished' && points > recordToBeat
+  const isRecord =
+    gameState === 'finished' && points > recordToBeat && bestPoints >= points
 
   const setStickCount = useCallback((count: number) => {
     setStickCountState(clampStickCount(count))

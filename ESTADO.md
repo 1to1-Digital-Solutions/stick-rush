@@ -452,6 +452,12 @@ batir.
   cada acierto, al acabar sería siempre igual a la puntuación y no habría forma
   de saber si se ha batido. Para eso `startGame` congela la marca a batir
   (`recordToBeat`) y `isRecord` se deriva de comparar con ella.
+- **«¡Nuevo récord!» solo si de verdad se guardó** (revisión): `isRecord` exige
+  además que `bestPoints` ya recoja la puntuación. Sin eso, con el
+  almacenamiento bloqueado la marca a batir se quedaba a cero para siempre y
+  toda partida con puntos se anunciaba como récord, uno que al volver al menú no
+  estaba. Cuesta un frame de retraso —el aviso aparece tras guardar—, que la
+  animación de entrada tapa.
 - **Dónde se ve**: píldora bajo el reclamo del menú (solo si hay récord), y en
   el fin de partida «¡Nuevo récord!» o «Tu récord: N». En el visor no hay texto,
   así que es una **marca dorada sobre la barra de puntuación**, en la escala de
@@ -459,6 +465,10 @@ batir.
 - **Sin almacenamiento no hay récord, pero se juega igual**: en modo privado
   `localStorage` lanza al tocarlo en vez de devolver `null`, así que todo el
   acceso va envuelto. Lo cubre un e2e que bloquea `localStorage` de verdad.
+- **Dos pestañas ven el mismo récord** (revisión): la suscripción escucha además
+  el evento `storage`, que es como el navegador avisa de que otra pestaña ha
+  escrito. Sin él, la que estuviera en el menú seguiría enseñando la marca
+  anterior pese a que el almacenamiento es la única fuente de verdad.
 - **Sin validar en hardware**: falta ver si la marca del récord se distingue del
   relleno de la barra con las gafas puestas.
 
