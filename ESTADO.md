@@ -335,8 +335,40 @@ se notaban si dabas la vuelta a la cabeza.
   el audio de vuelta y se pierde ese sonido. Al probar con las gafas: si al
   ponérselas otra vez el primer palo no suena y el siguiente sí, es esto y está
   bien.
-- **No hay forma de silenciarlo todavía**: queda como tarea aparte (control de
-  volumen en el menú de escritorio y en el inmersivo).
+- **Se puede silenciar** desde los dos menús (ver abajo).
+
+## Silencio (rama `agent/poder-silenciar-el-juego-menu-de-7fbe05`)
+
+El sonido no se podía ni bajar ni quitar, y en el visor va pegado a los oídos.
+
+- La preferencia es una bandera del store (`muted`, como `scenery`) y **no se
+  guarda entre visitas**: la auditoría dejó el juego sin storage y persistirla
+  es una decisión aparte, no un efecto colateral de esta tarea. Sí sobrevive a
+  la partida y a volver al menú.
+- **En silencio no se toca la Web Audio API**: ni contexto, ni nodos, ni
+  permiso de reproducción. `useGameSound` crea el contexto solo cuando hay
+  gesto del jugador *y* el sonido está activo; al silenciar a media partida, la
+  limpieza del efecto cierra el que hubiera abierto.
+- Para eso, el gesto que desbloquea el audio pasó de `pointerdown` a **`click`**
+  (y «ya hubo gesto» de ref a estado). El primer clic de la página puede ser el
+  propio botón de silenciar: con `pointerdown` el gesto y la orden de callar
+  llegan en eventos distintos, así que el juego abría un contexto para cerrarlo
+  en el render siguiente. Escuchando el mismo evento que activa el botón, React
+  ve las dos cosas en el mismo render. El teclado sigue cubierto: activar un
+  botón con Enter dispara su clic. Lo vigila un unitario que pulsa un botón de
+  verdad (`useGameSound.test.tsx`), no dos llamadas al store en el mismo lote —
+  eso pasaba en verde con el fallo puesto.
+- Quitar el silencio devuelve el sonido **sin esperar otro clic**: el propio
+  botón es el gesto que exige el navegador.
+- En escritorio, botón bajo el CTA con `aria-pressed` y altavoz tachado (el
+  e2e de móvil ya vigila los 44 px). En el visor, botón en la esquina del panel
+  del menú, simétrico al de salir, con la silueta de `xrIcons.ts`: altavoz con
+  ondas o con un aspa. El aspa ocupa el sitio de las ondas en vez de cruzar el
+  altavoz —tacharlo con el mismo relleno se ve como una mancha, no como un
+  tachón—. `xrIcons.test.ts` fija esa forma.
+- **Sin validar en hardware**: falta ver si el botón se distingue del de salir
+  con las gafas puestas, y si con `MASTER_GAIN` a 0.28 hace falta además un
+  control de volumen intermedio.
 
 ## Iconos del menú inmersivo (rama `agent/mejorar-los-iconos-del-menu-3d`)
 

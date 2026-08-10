@@ -59,7 +59,11 @@ files — a handful of oscillators, so there is nothing to download and no
 `media-src` to open up in the CSP. Catching a stick rings a short chime that goes
 up a semitone per stick in your streak, losing one drops a low buzz, and each
 second of the countdown ticks, rising as the start approaches. It only starts
-after your first click or keypress: browsers refuse to play audio before that.
+after your first click — pressing Enter on a button counts, since that fires one
+too: browsers refuse to play audio before that.
+Both menus — the desktop one and the immersive one — can mute it, and while
+muted the game never touches the Web Audio API at all. The choice is not
+persisted: the game uses no storage.
 
 It is a fully static site — no middleware, no Server Actions, no API routes. Security
 headers (CSP, `Permissions-Policy`, HSTS and friends) are declared in
