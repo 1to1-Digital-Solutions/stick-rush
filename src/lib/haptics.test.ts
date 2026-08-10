@@ -64,6 +64,32 @@ describe('vibración del mando', () => {
     expect(pulseHaptics(fakeController([{ playEffect: vi.fn() }]), CATCH_PULSE)).toBe(false)
   })
 
+  it('un mando que revienta al vibrar no se lleva por delante la captura', () => {
+    // La otra forma que tiene el mando de negarse: en vez de rechazar la
+    // promesa, lanzar en el acto. La excepción subiría por el manejador del
+    // agarre, que es lo único que no puede pasar por un adorno.
+    const broken = fakeController([
+      {
+        pulse: () => {
+          throw new Error('el visor ha perdido el foco')
+        },
+      },
+    ])
+
+    expect(() => pulseHaptics(broken, CATCH_PULSE)).not.toThrow()
+    expect(pulseHaptics(broken, CATCH_PULSE)).toBe(false)
+  })
+
+  it('un mando que no devuelve promesa vibra igual', () => {
+    // La especificación dice que `pulse()` devuelve una promesa, pero el
+    // navegador del visor no es quien la firma: si devuelve otra cosa, el
+    // golpe ya se ha dado y no hay rechazo que recoger.
+    const mute = fakeController([{ pulse: () => undefined }])
+
+    expect(() => pulseHaptics(mute, CATCH_PULSE)).not.toThrow()
+    expect(pulseHaptics(mute, CATCH_PULSE)).toBe(true)
+  })
+
   it('recoge el rechazo del mando en vez de dejar la promesa suelta', () => {
     // Un mando que se niega a vibrar —el visor ha perdido el foco, la sesión se
     // está cerrando— rechaza la promesa. Sin recogerla quedaría un rechazo sin

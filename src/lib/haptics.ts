@@ -60,6 +60,17 @@ function actuatorOf(event: unknown): HapticActuator | undefined {
 }
 
 /**
+ * ¿Lo devuelto por el mando es una promesa a la que agarrarse?
+ *
+ * La especificación dice que `pulse()` devuelve una, pero eso es una promesa
+ * del navegador, no una garantía: encadenarle el `catch` a ciegas convertiría
+ * un mando que devuelva otra cosa en un error en plena captura.
+ */
+function isPromise(value: unknown): value is Promise<unknown> {
+  return typeof (value as Promise<unknown> | undefined)?.catch === 'function'
+}
+
+/**
  * Hace vibrar el mando que ha disparado `event`.
  *
  * @returns si el mando llegó a recibir el golpe. Con el ratón, con la mano
@@ -71,8 +82,16 @@ export function pulseHaptics(event: unknown, pulse: HapticPulse): boolean {
 
   // Que el mando se niegue a vibrar es un desenlace previsto —el visor ha
   // perdido el foco, la sesión se está cerrando— y significa jugar sin
-  // vibración: el destello y el sonido siguen ahí. Sin este `catch` sería una
-  // promesa rechazada suelta por cada palo atrapado.
-  void actuator.pulse(pulse.intensity, pulse.durationMs).catch(() => {})
+  // vibración: el destello y el sonido siguen ahí. Se recogen sus dos formas
+  // de negarse, porque llegan por caminos distintos: la promesa rechazada
+  // (sin el `catch` sería un rechazo suelto por cada palo atrapado) y la
+  // excepción en el acto, que subiría por el manejador del agarre y sí se
+  // llevaría por delante lo que quede de la captura.
+  try {
+    const played: unknown = actuator.pulse(pulse.intensity, pulse.durationMs)
+    if (isPromise(played)) void played.catch(() => {})
+  } catch {
+    return false
+  }
   return true
 }
