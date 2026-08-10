@@ -56,9 +56,11 @@ const CATCH_ROOT_HZ = 660
 /** Cuánto sube el acierto por cada palo encadenado. */
 const CATCH_STEP_SEMITONES = 1
 /**
- * Tope de la subida: una quinta por encima de la nota inicial. Sin él, una
- * racha de 13 palos acabaría chillando —el armónico va una quinta más arriba y
- * se iría de los 3 kHz—, y en el visor el sonido va pegado a los oídos.
+ * Tope de la subida: una quinta por encima de la nota inicial, o sea 989 Hz.
+ * Sin él, una racha de 13 palos llegaría a 1320 Hz y su armónico —una octava
+ * más arriba— a 2640, ya en la banda que más taladra; y en el visor el sonido
+ * va pegado a los oídos. Con el tope la racha deja de subir en el octavo palo,
+ * que es donde el oído ya ha dado la subida por buena.
  */
 const CATCH_MAX_SEMITONES = 7
 
@@ -74,8 +76,8 @@ const COUNTDOWN_STEP_SEMITONES = 2
 const COUNTDOWN_STEPS = 2
 
 /**
- * Nota del acierto según la racha: cada palo encadenado sube dos semitonos
- * hasta el tope. Es la única confirmación sonora de que la racha sigue viva.
+ * Nota del acierto según la racha: cada palo encadenado sube un semitono hasta
+ * el tope. Es la única confirmación sonora de que la racha sigue viva.
  *
  * @param streak palos consecutivos atrapados **incluido** el actual
  */
@@ -168,9 +170,17 @@ export function createSoundEngine(context: AudioContext): SoundEngine {
 
   return {
     play(sound: Sound) {
-      // Un contexto cerrado ya no acepta nodos. Es el caso de un sonido que
-      // llega mientras se abandona la página: se juega sin él y ya está.
-      if (context.state === 'closed') return
+      // Solo suena un contexto en marcha. Cerrado (se abandona la página) ya no
+      // acepta nodos; suspendido —el jugador se ha quitado el visor, o el
+      // sistema le ha quitado el foco al navegador— sí los acepta, pero con el
+      // reloj parado: los sonidos de media partida se amontonarían todos en el
+      // mismo instante y sonarían de golpe, y a todo volumen, al reanudarlo.
+      // Callar ese sonido y pedir el audio de vuelta deja el juego mudo un
+      // momento en vez de dar un bocinazo en los oídos.
+      if (context.state !== 'running') {
+        if (context.state !== 'closed') void context.resume().catch(() => {})
+        return
+      }
 
       const now = context.currentTime
       for (const voice of soundVoices(sound)) {

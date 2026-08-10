@@ -16,15 +16,23 @@ vi.mock('@/lib/sound', () => ({
   createSoundEngine: () => ({ play, dispose: vi.fn() }),
 }))
 
+/** Los contextos creados durante el test, para vigilar que no se quedan vivos. */
+const contexts: FakeAudioContext[] = []
+
 class FakeAudioContext {
   state: AudioContextState = 'running'
   resume = vi.fn(() => Promise.resolve())
   close = vi.fn(() => Promise.resolve())
+
+  constructor() {
+    contexts.push(this)
+  }
 }
 
 beforeEach(() => {
   vi.useFakeTimers()
   vi.stubGlobal('AudioContext', FakeAudioContext)
+  contexts.length = 0
   play.mockClear()
 })
 
@@ -52,8 +60,10 @@ function renderGame() {
     )
   }
 
-  render(<Harness />)
-  return store as { current: GameStore }
+  const view = render(<Harness />)
+  return Object.assign(store as { current: GameStore }, {
+    unmount: view.unmount,
+  })
 }
 
 /** El navegador no deja sonar hasta que el usuario interactúa con la página. */
@@ -164,6 +174,36 @@ describe('sonido de la partida', () => {
     act(() => void vi.advanceTimersByTime(5000))
 
     expect(playedSounds()).not.toContainEqual({ name: 'go' })
+  })
+
+  it('un acierto y un fallo a la vez se oyen los dos', () => {
+    // Con los mandos del visor el agarre se resuelve en el mismo frame que la
+    // caída, así que las dos cosas pueden llegar en el mismo lote. Tragarse una
+    // dejaría al jugador sin saber qué acaba de pasar, que es justo para lo que
+    // está el sonido.
+    const store = renderGame()
+    interact()
+    startPlaying(store)
+    play.mockClear()
+
+    act(() => {
+      store.current.catchStick(0.5)
+      store.current.missStick()
+    })
+
+    expect(playedSounds().map((sound) => sound.name)).toEqual(['catch', 'miss'])
+  })
+
+  it('al desmontar cierra el contexto de audio', () => {
+    // Sin esto cada montaje deja un contexto vivo, y el navegador solo permite
+    // unos pocos por pestaña antes de negarse a crear más.
+    const store = renderGame()
+    interact()
+
+    store.unmount()
+
+    expect(contexts).toHaveLength(1)
+    expect(contexts[0].close).toHaveBeenCalled()
   })
 
   it('empezar otra partida no suena a acierto por el marcador a cero', () => {

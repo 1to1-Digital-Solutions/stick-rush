@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { MAX_STICKS } from './gameConfig'
 import {
   catchFrequency,
@@ -25,7 +25,8 @@ describe('recetas de los sonidos', () => {
   })
 
   it('la subida del acierto tiene tope', () => {
-    // Sin tope, una racha larga acabaría chillando: 13 palos son 24 semitonos.
+    // Sin tope, una racha larga acabaría chillando: 13 palos son 12 semitonos,
+    // una octava entera, y el armónico se iría por encima de los 2,6 kHz.
     expect(catchFrequency(MAX_STICKS)).toBe(catchFrequency(100))
   })
 
@@ -185,6 +186,7 @@ class FakeAudioContext {
   destination = new FakeNode()
   oscillators: FakeOscillator[] = []
   gains: FakeGain[] = []
+  resume = vi.fn(() => Promise.resolve())
 
   createOscillator() {
     const oscillator = new FakeOscillator()
@@ -276,5 +278,21 @@ describe('motor de sonido', () => {
     engine.play({ name: 'miss' })
 
     expect(context.oscillators).toHaveLength(0)
+    // Un contexto cerrado no se reanuda: pedirlo lanza excepción.
+    expect(context.resume).not.toHaveBeenCalled()
+  })
+
+  it('con el contexto suspendido calla y pide el audio de vuelta', () => {
+    // Pasa al quitarse el visor a media partida: el reloj del contexto se para
+    // y todo lo que se programe se amontona en el mismo instante. Sin esto, los
+    // palos perdidos mientras tanto sonarían de golpe al volver a ponérselo.
+    const { context, engine } = fakeContext()
+    context.state = 'suspended'
+
+    engine.play({ name: 'miss' })
+    engine.play({ name: 'miss' })
+
+    expect(context.oscillators).toHaveLength(0)
+    expect(context.resume).toHaveBeenCalled()
   })
 })

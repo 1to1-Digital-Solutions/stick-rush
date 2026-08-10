@@ -111,7 +111,7 @@ src/
   components/
     GameProvider.tsx    Provides the game context
     ui/StartScreen.tsx  Menu overlay (sticks, difficulty, play, VR/AR)
-    game/               R3F canvas (always mounted), machine, sticks, ground, HUD
+    game/               R3F canvas (always mounted), machine, sticks, ground, HUD, sound wiring
     xr/                 WebXR store, VR/AR buttons, immersive menu, 3D HUD
   lib/
     gameConfig.ts       Constants: difficulties, speeds, colours, geometry

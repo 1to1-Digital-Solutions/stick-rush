@@ -328,6 +328,13 @@ se notaban si dabas la vuelta a la cabeza.
 - El navegador no deja sonar hasta que el jugador interactúa, así que el
   `AudioContext` se crea con el primer clic o tecla. En el visor ese gesto es el
   botón de entrar en la sesión, que todavía es DOM.
+- **Con el contexto suspendido el juego calla a propósito** (quitarse el visor a
+  media partida, o que el sistema le quite el foco al navegador): ahí el reloj
+  del audio se para y todo lo que se programe se amontonaría en el mismo
+  instante, para sonar de golpe y a todo volumen al volver. En su lugar se pide
+  el audio de vuelta y se pierde ese sonido. Al probar con las gafas: si al
+  ponérselas otra vez el primer palo no suena y el siguiente sí, es esto y está
+  bien.
 - **No hay forma de silenciarlo todavía**: queda como tarea aparte (control de
   volumen en el menú de escritorio y en el inmersivo).
 
