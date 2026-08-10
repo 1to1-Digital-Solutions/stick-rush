@@ -236,8 +236,8 @@ function speakerMouth(speaker: Polygon): IconPoint {
 
 describe('el sonido se lee como un altavoz sonando', () => {
   const [speaker, near, far] = XR_SOUND_ICON
-  const [mouthX] = speakerMouth(speaker.outline)
   const focus = speakerMouth(speaker.outline)
+  const [mouthX] = focus
 
   it('el cono se ensancha hacia donde sale el sonido', () => {
     // Sin cono es una caja, y una caja no es un altavoz.

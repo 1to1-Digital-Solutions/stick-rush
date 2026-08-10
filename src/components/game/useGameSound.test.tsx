@@ -277,6 +277,25 @@ describe('sonido de la partida', () => {
     expect(playedSounds()).toEqual([{ name: 'catch', streak: 1 }])
   })
 
+  it('ir y volver del silencio no deja contextos abiertos', () => {
+    // Cada vuelta abre uno nuevo, y el navegador solo permite unos pocos por
+    // pestaña: si el anterior no se cerrara, unas cuantas idas y venidas
+    // dejarían el juego mudo hasta recargar la página.
+    const store = renderGame()
+    interact()
+
+    for (let round = 0; round < 3; round++) {
+      act(() => store.current.setMuted(true))
+      act(() => store.current.setMuted(false))
+    }
+
+    expect(contexts).toHaveLength(4)
+    for (const closed of contexts.slice(0, -1)) {
+      expect(closed.close).toHaveBeenCalled()
+    }
+    expect(contexts[contexts.length - 1].close).not.toHaveBeenCalled()
+  })
+
   it('al desmontar cierra el contexto de audio', () => {
     // Sin esto cada montaje deja un contexto vivo, y el navegador solo permite
     // unos pocos por pestaña antes de negarse a crear más.

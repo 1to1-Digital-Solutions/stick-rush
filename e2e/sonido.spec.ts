@@ -89,4 +89,27 @@ test.describe('Sonido', () => {
 
     expect(await readSpy(page)).toEqual({ contexts: 0, oscillators: 0 })
   })
+
+  test('quitar el silencio devuelve el sonido sin recargar', async ({ page }) => {
+    // El fallo caro de un interruptor de sonido: que volver a activarlo deje el
+    // juego mudo el resto de la sesión porque el contexto nace ya suspendido.
+    // El unitario corre contra un contexto de mentira, así que esta —contra la
+    // política de reproducción de un navegador de verdad— es la comprobación
+    // que cuenta.
+    await installAudioSpy(page)
+    await openGame(page)
+
+    const toggle = page.getByRole('button', { name: 'Silenciar' })
+    await toggle.click()
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+
+    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+
+    // Uno solo: el clic que silencia no llega a abrirlo, y el que devuelve el
+    // sonido es el gesto que el navegador exige.
+    const spy = await readSpy(page)
+    expect(spy.contexts).toBe(1)
+    expect(spy.oscillators).toBeGreaterThan(0)
+  })
 })
