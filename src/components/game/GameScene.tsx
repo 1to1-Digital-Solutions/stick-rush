@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { useGame } from '@/lib/gameStore'
 import { StartScreen } from '@/components/ui/StartScreen'
 import { HUD } from './HUD'
+import { useGameSound } from './useGameSound'
 
 // El Canvas de R3F depende de WebGL/window, así que se carga solo en cliente.
 const GameCanvas = dynamic(
@@ -30,6 +31,9 @@ const GameCanvas = dynamic(
  */
 export function GameScene() {
   const { gameState } = useGame()
+  // Aquí y no dentro del Canvas: el sonido acompaña a la partida, no a la
+  // escena 3D, y desde fuera vale igual para el navegador y para el visor.
+  useGameSound()
 
   return (
     <div className="relative h-dvh w-full">
