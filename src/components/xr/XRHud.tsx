@@ -53,8 +53,23 @@ const TOKEN_STYLE: Record<
  * la fuente de un CDN que la CSP bloquea, así que la puntuación se lee como
  * proporción —cuánto has sacado de lo que había— que además es más útil de un
  * vistazo que una cifra absoluta sin escala.
+ *
+ * Por lo mismo, el récord es una **marca** sobre el carril y no una cifra: en la
+ * escala de esta partida, hasta dónde hay que llegar. Si con la dificultad y el
+ * número de palos elegidos el récord ni siquiera es alcanzable, la marca se
+ * queda al final del carril, que es exactamente lo que significa.
  */
-function ScoreBar({ ratio, width }: { ratio: number; width: number }) {
+function ScoreBar({
+  ratio,
+  recordRatio,
+  isRecord,
+  width,
+}: {
+  ratio: number
+  recordRatio: number
+  isRecord: boolean
+  width: number
+}) {
   const filled = Math.max(width * ratio, 0.001)
 
   return (
@@ -67,8 +82,19 @@ function ScoreBar({ ratio, width }: { ratio: number; width: number }) {
       {/* Relleno, anclado a la izquierda para que crezca hacia la derecha. */}
       <mesh position={[(filled - width) / 2, 0, 0.004]}>
         <boxGeometry args={[filled, 0.012, 0.006]} />
-        <meshBasicMaterial color="#22c55e" toneMapped={false} />
+        <meshBasicMaterial
+          color={isRecord ? '#fbbf24' : '#22c55e'}
+          toneMapped={false}
+        />
       </mesh>
+      {/* Marca del récord. Al batirlo crece además de cambiar el color de la
+          barra: con las gafas puestas el color solo no basta. */}
+      {recordRatio > 0 && (
+        <mesh position={[width * (recordRatio - 0.5), 0, 0.008]}>
+          <boxGeometry args={[0.005, isRecord ? 0.034 : 0.024, 0.006]} />
+          <meshBasicMaterial color="#fbbf24" toneMapped={false} />
+        </mesh>
+      )}
     </group>
   )
 }
@@ -125,6 +151,8 @@ export function XRHud() {
     resolved,
     points,
     streak,
+    bestPoints,
+    isRecord,
     difficulty,
     stickCount,
     gameState,
@@ -147,6 +175,7 @@ export function XRHud() {
   )
   const finished = gameState === 'finished'
   const ratio = scoreRatio(points, difficulty, stickCount)
+  const recordRatio = scoreRatio(bestPoints, difficulty, stickCount)
 
   return (
     <group position={XR_HUD_POSITION}>
@@ -164,7 +193,12 @@ export function XRHud() {
           <Token key={token.index} state={token.state} x={token.x} />
         ))}
         <StreakPips streak={streak} />
-        <ScoreBar ratio={ratio} width={Math.max(width, 0.28)} />
+        <ScoreBar
+          ratio={ratio}
+          recordRatio={recordRatio}
+          isRecord={isRecord}
+          width={Math.max(width, 0.28)}
+        />
       </group>
 
       {/*

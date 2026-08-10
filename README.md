@@ -28,6 +28,10 @@ their head. The whole scene is at human scale (1 unit = 1 metre).
    be picked back up. The round ends once every stick is resolved (caught or
    dropped) and the score screen shows the result.
 
+Your **best score** is kept between rounds and between visits, and beating it is
+announced on the score screen. In a headset it is a mark on the score bar rather
+than a figure — same reason as the rest of the immersive UI: no text.
+
 > The game's interface is in Spanish, which is the product language.
 
 | Where | How you catch | What you see |
@@ -70,7 +74,10 @@ after your first click — pressing Enter on a button counts, since that fires o
 too: browsers refuse to play audio before that.
 Both menus — the desktop one and the immersive one — can mute it, and while
 muted the game never touches the Web Audio API at all. The choice is not
-persisted: the game uses no storage.
+persisted: the only thing the game ever writes to the browser is the best score
+(a single integer in `localStorage`, see `src/lib/highScore.ts`). With storage
+unavailable — private mode, or a headset with it blocked — there is simply no
+record to show, and everything else works the same.
 
 In a headset, catching a stick also **buzzes the controller that caught it**
 (WebXR haptics): a short, firm pulse played through

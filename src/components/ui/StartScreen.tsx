@@ -70,6 +70,24 @@ function SoundToggle() {
   )
 }
 
+/**
+ * Récord del jugador. Solo aparece cuando hay uno: un "0" permanente no da nada
+ * que batir y ocupa el sitio del reclamo del menú.
+ */
+function BestScore() {
+  const { bestPoints } = useGame()
+  if (bestPoints <= 0) return null
+
+  return (
+    <p className="mt-2 inline-flex items-center gap-2 self-center rounded-full border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 px-4 py-1.5 text-sm text-white/70">
+      Mejor puntuación{' '}
+      <span className="font-bold tabular-nums text-[var(--color-accent)]">
+        {bestPoints.toLocaleString('es-ES')}
+      </span>
+    </p>
+  )
+}
+
 export function StartScreen() {
   const { stickCount, difficulty, setStickCount, setDifficulty, startGame } =
     useGame()
@@ -90,6 +108,7 @@ export function StartScreen() {
           <p className="text-sm text-white/60 sm:text-base">
             Atrapa los palos antes de que toquen el suelo.
           </p>
+          <BestScore />
         </header>
 
         {/* Selector de número de palos */}

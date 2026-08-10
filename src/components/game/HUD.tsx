@@ -10,6 +10,8 @@ export function HUD() {
     points,
     streak,
     bestStreak,
+    bestPoints,
+    isRecord,
     stickCount,
     difficulty,
     gameState,
@@ -17,7 +19,9 @@ export function HUD() {
     resetGame,
   } = useGame()
 
-  const best = maxScore(difficulty, stickCount)
+  // Renombrada frente a `bestPoints`, que es el récord del jugador: esto es el
+  // techo de esta partida y confundirlos cambia lo que se lee en pantalla.
+  const maxPossible = maxScore(difficulty, stickCount)
 
   return (
     <>
@@ -96,8 +100,25 @@ export function HUD() {
                 {points.toLocaleString('es-ES')}
               </p>
               <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-                de {best.toLocaleString('es-ES')} posibles
+                de {maxPossible.toLocaleString('es-ES')} posibles
               </p>
+              {/* El récord: batido, se anuncia; si no, se enseña la marca que
+                  había que superar, que es lo que da sentido a la cifra de
+                  arriba. Nunca los dos: dirían lo mismo. */}
+              {isRecord ? (
+                <p className="animate-fade-slide-up mt-2 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)]/15 px-3 py-1 text-sm font-bold uppercase tracking-wide text-[var(--color-accent)] motion-reduce:animate-none">
+                  ¡Nuevo récord!
+                </p>
+              ) : (
+                bestPoints > 0 && (
+                  <p className="mt-2 text-sm text-white/50">
+                    Tu récord:{' '}
+                    <span className="font-bold tabular-nums text-white/80">
+                      {bestPoints.toLocaleString('es-ES')}
+                    </span>
+                  </p>
+                )
+              )}
             </div>
 
             <p className="text-lg text-white/80">

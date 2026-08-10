@@ -364,6 +364,9 @@ El sonido no se podía ni bajar ni quitar, y en el visor va pegado a los oídos.
   guarda entre visitas**: la auditoría dejó el juego sin storage y persistirla
   es una decisión aparte, no un efecto colateral de esta tarea. Sí sobrevive a
   la partida y a volver al menú.
+  > Después se abrió el storage para el récord (ver "Mejor puntuación"), pero
+  > la decisión fue guardar **solo** eso, así que el silencio sigue durando lo
+  > que dure la visita.
 - **En silencio no se toca la Web Audio API**: ni contexto, ni nodos, ni
   permiso de reproducción. `useGameSound` crea el contexto solo cuando hay
   gesto del jugador *y* el sonido está activo; al silenciar a media partida, la
@@ -423,6 +426,41 @@ cuenta atrás.
 - **Sin validar en hardware**: falta ver con las gafas si tres grados se notan lo
   justo o si conviene subir `SWING_AMPLITUDE`, y que el aro no se vea inquieto
   con 13 palos meciéndose a la vez.
+
+## Mejor puntuación (rama `agent/guardar-la-mejor-puntuacion-entr-8926aa`)
+
+Cada partida empezaba de cero y la anterior no dejaba rastro: no había nada que
+batir.
+
+- **Se rompe el «cero almacenamiento» de la auditoría, a propósito y con el OK
+  del dueño del repo.** Lo único que el juego escribe en el navegador es un
+  entero en `localStorage` (`stick-rush:best-points`): sin identificadores, sin
+  cookies y sin nada que salga de la máquina. El silencio y el escenario siguen
+  sin persistirse; la decisión fue guardar solo el récord.
+- **Un único récord global**, no uno por dificultad ni por número de palos. La
+  puntuación ya escala con las dos cosas (ver `scoring.ts`), así que batirlo
+  empuja a subir de nivel. La contrapartida: con 5 palos en Fácil el récord es
+  inalcanzable, y eso se ve —en el visor la marca se queda pegada al final de
+  la barra—.
+- **El récord no es estado de React**: vive en `src/lib/highScore.ts` y el store
+  se suscribe con `useSyncExternalStore`. No es un capricho: el linter de React
+  19 (`react-hooks/set-state-in-effect`) prohíbe el `useEffect` que lee el
+  almacenamiento al montar y hace `setState`, y con razón —cascada de renders y
+  desajuste de hidratación—. Con un almacén externo, el servidor devuelve 0
+  (`getServerBestPoints`) y el navegador su valor, sin que React se queje.
+- **Se guarda al terminar la partida, no palo a palo.** Si el récord subiera con
+  cada acierto, al acabar sería siempre igual a la puntuación y no habría forma
+  de saber si se ha batido. Para eso `startGame` congela la marca a batir
+  (`recordToBeat`) y `isRecord` se deriva de comparar con ella.
+- **Dónde se ve**: píldora bajo el reclamo del menú (solo si hay récord), y en
+  el fin de partida «¡Nuevo récord!» o «Tu récord: N». En el visor no hay texto,
+  así que es una **marca dorada sobre la barra de puntuación**, en la escala de
+  esa partida; al batirlo la barra se vuelve dorada y la marca crece.
+- **Sin almacenamiento no hay récord, pero se juega igual**: en modo privado
+  `localStorage` lanza al tocarlo en vez de devolver `null`, así que todo el
+  acceso va envuelto. Lo cubre un e2e que bloquea `localStorage` de verdad.
+- **Sin validar en hardware**: falta ver si la marca del récord se distingue del
+  relleno de la barra con las gafas puestas.
 
 ## Iconos del menú inmersivo (rama `agent/mejorar-los-iconos-del-menu-3d`)
 
@@ -490,9 +528,13 @@ en "Tests de XR con emulador"), así que hay que probarlo con las gafas.
 ## Auditoría de seguridad y prueba en visor (2026-08-03)
 
 Auditoría completa antes de hacer el repo público: **sin secretos en el historial**
-(revisado `--all`, contenido además de nombres), sin XSS, sin red, sin storage, sin
+(revisado `--all`, contenido además de nombres), sin XSS, sin red, sin storage[^1], sin
 source maps y sin rutas locales en el bundle. La app es 100 % estática: ni middleware,
 ni Server Actions, ni API routes, ni `next/image`.
+
+[^1]: **Ya no es cierto del todo**: la mejor puntuación se guarda en
+`localStorage` (ver "Mejor puntuación" más abajo). Es un entero y nada más: sigue
+sin haber identificadores, cookies ni nada que salga del navegador.
 
 Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 
