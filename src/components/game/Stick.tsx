@@ -122,10 +122,14 @@ export function Stick({
   // capturas en el mismo frame (los dos mandos XR apuntando al mismo palo,
   // o una captura justo cuando toca el suelo) verían ambas 'falling'.
   const resolved = useRef(false)
-  // Si el puntero está encima, para devolver el cursor al desmontar.
+  // Si el puntero está sobre el palo, para mantener el cursor al día y
+  // devolverlo al desmontar.
   const hovering = useRef(false)
 
   const [anchorX, anchorY, anchorZ] = anchor
+
+  // Cuándo se deja coger un palo: ver `canCatchStick`.
+  const catchable = canCatchStick(state, paused)
 
   const releaseCursor = () => {
     if (!hovering.current) return
@@ -138,13 +142,23 @@ export function Stick({
   // quedaría en 'pointer'.
   useEffect(() => releaseCursor, [])
 
+  // La ventana de captura también se abre y se cierra sola, con el puntero
+  // quieto encima: el ratón se queda sobre un palo mientras corre la cuenta
+  // atrás, y al arrancar la partida no llega ningún `pointerover` nuevo que
+  // encienda el cursor. Lo mismo al revés cuando el palo bajo el puntero toca
+  // el suelo o se acaba la partida: el cursor seguiría ofreciendo un palo que
+  // ya no se coge.
+  useEffect(() => {
+    if (!hovering.current) return
+    document.body.style.cursor = catchable ? 'pointer' : 'auto'
+  }, [catchable])
+
   const handleCatch = (event?: ThreeEvent<PointerEvent | MouseEvent>) => {
     // Se coge con la mano, no apuntando: ver `canCatchWithPointer`.
     if (!canCatchWithPointer(pointerTypeOf(event))) return
     event?.stopPropagation()
     if (resolved.current) return
-    // Cuándo se deja coger un palo: ver `canCatchStick`.
-    if (!canCatchStick(state, paused)) return
+    if (!catchable) return
     resolved.current = true
     setState('caught')
     flash.current = 1
@@ -271,12 +285,12 @@ export function Stick({
         onPointerDown={handleCatch}
         onPointerOver={(e) => {
           e.stopPropagation()
+          hovering.current = true
           // El cursor promete que el palo se puede coger, así que responde a la
-          // misma regla que la captura y no a una copia suya.
-          if (canCatchStick(state, paused)) {
-            hovering.current = true
-            document.body.style.cursor = 'pointer'
-          }
+          // misma regla que la captura y no a una copia suya. Un palo que ya no
+          // se coge apaga el cursor en vez de dejarlo como estuviera: el puntero
+          // puede venir de otro palo que sí valía.
+          document.body.style.cursor = catchable ? 'pointer' : 'auto'
         }}
         onPointerOut={releaseCursor}
       >

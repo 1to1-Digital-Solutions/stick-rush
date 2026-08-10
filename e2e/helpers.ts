@@ -109,8 +109,37 @@ export async function findCatchableStick(
 }
 
 /** El cursor en `pointer` es la señal de que hay un palo bajo el puntero. */
-async function isPointingAtStick(page: Page): Promise<boolean> {
+export async function isPointingAtStick(page: Page): Promise<boolean> {
   return page.evaluate(() => document.body.style.cursor === 'pointer')
+}
+
+/**
+ * Localiza un punto del canvas donde hay un palo **colgado del aro**, no uno
+ * cayendo.
+ *
+ * El barrido no distingue uno de otro, así que el candidato se confirma un par
+ * de segundos después colocando el ratón encima: el palo que cuelga sigue
+ * exactamente donde estaba y el que caía ya se ha ido del sitio (en Fácil baja
+ * medio metro en ese rato). Como los anclajes del aro solo dependen de cuántos
+ * palos tenga la partida, el punto sigue valiendo en la siguiente con el mismo
+ * número de palos.
+ */
+export async function findHangingStick(
+  page: Page,
+  { attempts = 4 }: { attempts?: number } = {},
+): Promise<ScreenPoint> {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const candidate = await findCatchableStick(page)
+    if (!candidate) continue
+
+    await page.waitForTimeout(2000)
+    // Por pasos: con un solo salto la escena no llega a registrar el palo que
+    // hay debajo, igual que no lo registraría un ratón teletransportado.
+    await page.mouse.move(candidate.x, candidate.y, { steps: 8 })
+    if (await isPointingAtStick(page)) return candidate
+  }
+
+  throw new Error(`No se encontró ningún palo colgado en ${attempts} intentos`)
 }
 
 /**

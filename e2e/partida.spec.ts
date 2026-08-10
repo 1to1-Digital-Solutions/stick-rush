@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test'
 import {
   catchStick,
   findCatchableStick,
+  findHangingStick,
+  isPointingAtStick,
   openGame,
   readPoints,
   readScore,
@@ -45,6 +47,31 @@ test.describe('Partida', () => {
     // Y al acabar la cuenta, se juega con normalidad.
     await catchStick(page)
     expect(await readScore(page)).toBe(1)
+  })
+
+  test('al arrancar la partida el cursor ofrece el palo sin mover el ratón', async ({
+    page,
+  }) => {
+    // Un palo se coge hasta que toca el suelo, colgando incluido, así que quien
+    // deja el ratón sobre un palo mientras cuenta atrás tiene que ver el cursor
+    // encenderse solo: nadie mueve el ratón durante la cuenta, y sin eso el
+    // navegador no vuelve a avisar de que hay un palo debajo.
+    await startGame(page, { sticks: 13, difficulty: 'Fácil' })
+    const hanging = await findHangingStick(page)
+
+    await openGame(page)
+    await page.getByRole('button', { name: '13', exact: true }).click()
+    await page.getByRole('button', { name: 'Fácil', exact: true }).click()
+    await page.getByRole('button', { name: 'Jugar' }).click()
+
+    await expect(page.getByRole('timer')).toBeVisible()
+    // Por pasos, como llega un ratón de verdad: con un solo salto la escena no
+    // llega a registrar que hay un palo debajo.
+    await page.mouse.move(hanging.x, hanging.y, { steps: 8 })
+    expect(await isPointingAtStick(page)).toBe(false)
+
+    await expect(page.getByRole('timer')).toBeHidden()
+    await expect.poll(() => isPointingAtStick(page)).toBe(true)
   })
 
   test('atrapar un palo suma en el marcador', async ({ page }) => {

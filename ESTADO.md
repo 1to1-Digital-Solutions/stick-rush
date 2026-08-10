@@ -108,7 +108,11 @@ Pendiente para ese momento (no antes):
   incluida— no se coge nada. Que 13 palos en Fácil se puedan vaciar del aro es
   aceptado a cambio de dos contrapesos que ya existen: la cuenta atrás y el
   bonus por reflejos, que paga el doble por cogerlo arriba. La regla vive en
-  `canCatchStick` (`src/lib/xrInteraction.ts`) y la fijan unitarios.
+  `canCatchStick` (`src/lib/xrInteraction.ts`) y la fijan unitarios. El cursor
+  de escritorio la sigue también cuando la ventana se abre o se cierra sola bajo
+  un puntero quieto (acabar la cuenta atrás, el palo que toca el suelo): un
+  `useEffect` en `Stick` la revisa, porque sin mover el ratón no llega ningún
+  `pointerover` nuevo.
 
 ## Hecho hasta ahora
 
