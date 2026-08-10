@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
+  catchHangingStick,
   catchStick,
   findCatchableStick,
   findHangingStick,
@@ -72,6 +73,21 @@ test.describe('Partida', () => {
 
     await expect(page.getByRole('timer')).toBeHidden()
     await expect.poll(() => isPointingAtStick(page)).toBe(true)
+  })
+
+  test('un palo que todavía cuelga del aro se puede atrapar', async ({
+    page,
+  }) => {
+    // La decisión de producto de la partida: adelantarse al palo es jugar, no
+    // hacer trampa. `canCatchStick` lo fija como regla, pero solo un clic de
+    // verdad sobre un palo que aún cuelga demuestra que el juego la cumple: si
+    // algún día la ventana se cierra a los palos que caen, este test es el que
+    // tiene que ponerse rojo, porque el resto se apoya en el palo que pilla.
+    await startGame(page, { sticks: 13, difficulty: 'Fácil' })
+
+    await catchHangingStick(page)
+
+    expect(await readScore(page)).toBe(1)
   })
 
   test('atrapar un palo suma en el marcador', async ({ page }) => {

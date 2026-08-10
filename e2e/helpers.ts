@@ -143,6 +143,34 @@ export async function findHangingStick(
 }
 
 /**
+ * Atrapa un palo que todavía cuelga del aro y devuelve dónde estaba.
+ *
+ * Es `catchStick` restringido al caso que fija la decisión de producto: el palo
+ * se coge también antes de soltarse. Se reintenta porque entre confirmar el
+ * palo y pulsar puede haberle tocado el turno justo entonces, y ahí el clic
+ * llega a un hueco.
+ */
+export async function catchHangingStick(
+  page: Page,
+  { attempts = 2 }: { attempts?: number } = {},
+): Promise<ScreenPoint> {
+  const scoreBefore = await readScore(page)
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    // Deja el ratón sobre el palo y confirma el hover: solo falta pulsar.
+    const hanging = await findHangingStick(page)
+    await page.mouse.down()
+    await page.mouse.up()
+
+    if ((await readScore(page)) > scoreBefore) return hanging
+  }
+
+  throw new Error(
+    `No se pudo atrapar ningún palo colgado en ${attempts} intentos (marcador: ${scoreBefore})`,
+  )
+}
+
+/**
  * Atrapa un palo y devuelve el punto donde se hizo clic.
  *
  * El barrido localiza un candidato con eventos sintéticos (instantáneos), pero

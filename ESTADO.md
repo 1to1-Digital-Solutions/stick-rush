@@ -108,7 +108,9 @@ Pendiente para ese momento (no antes):
   incluida— no se coge nada. Que 13 palos en Fácil se puedan vaciar del aro es
   aceptado a cambio de dos contrapesos que ya existen: la cuenta atrás y el
   bonus por reflejos, que paga el doble por cogerlo arriba. La regla vive en
-  `canCatchStick` (`src/lib/xrInteraction.ts`) y la fijan unitarios. El cursor
+  `canCatchStick` (`src/lib/xrInteraction.ts`) y la fijan unitarios; el e2e "un
+  palo que todavía cuelga del aro se puede atrapar" comprueba que el juego la
+  cumple de verdad, con un clic sobre un palo sin soltar. El cursor
   de escritorio la sigue también cuando la ventana se abre o se cierra sola bajo
   un puntero quieto (acabar la cuenta atrás, el palo que toca el suelo): un
   `useEffect` en `Stick` la revisa, porque sin mover el ratón no llega ningún
@@ -533,7 +535,9 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
   comportamiento no cambia; lo que cambia es que la regla dejó de estar escrita dos veces
   dentro de `Stick.tsx` (captura y cursor) y pasó a `canCatchStick`, con unitarios que la
   sujetan. El e2e "atrapar un palo suma en el marcador" se queda como está: se apoya en los
-  palos colgados, que siguen siendo atrapables a propósito.
+  palos colgados, que siguen siendo atrapables a propósito, aunque no lo exige (el barrido
+  vale igual para uno que cae). Lo exige uno nuevo, "un palo que todavía cuelga del aro se
+  puede atrapar": si algún día la ventana se cierra a `falling`, es el que se pone rojo.
 - **Nada de worktrees anidados dentro del repo.** Además de los avisos de "multiple
   lockfiles" al compilar, si el worktree llega a tener un `.next/` compilado el `npm run
   lint` lo recorre entero: los `globalIgnores` de `eslint.config.mjs` son relativos
