@@ -108,8 +108,11 @@ export function Stick({
   // partida parada: mecerse mientras el jugador elige o cuenta atrás es
   // justamente para lo que está.
   const swingTime = useRef(0)
-  // Cuánto del vaivén se aplica, de 1 (colgando) a 0 (soltado o quieto).
-  const swingLevel = useRef(1)
+  // Cuánto del vaivén se aplica, de 1 (colgando) a 0 (soltado o quieto). Nace
+  // a 0 si el sistema ya pedía reducir el movimiento: empezar a 1 dejaba al
+  // palo naciendo inclinado y enderezándose durante un cuarto de segundo, que
+  // es justo el movimiento que esa preferencia quiere evitar.
+  const swingLevel = useRef(swaying ? 1 : 0)
   // Intensidad del glow al ser atrapado, que decae con el tiempo.
   const flash = useRef(0)
   // Un palo solo puede resolverse una vez. Hace falta un ref además del
@@ -184,7 +187,10 @@ export function Stick({
       group.rotation.x = tilt.x * swingLevel.current
       group.rotation.z = tilt.z * swingLevel.current
     } else if (group.rotation.x !== 0 || group.rotation.z !== 0) {
-      group.rotation.set(0, 0, 0)
+      // Solo los dos ejes del vaivén: el giro sobre Y no es suyo y borrarlo
+      // desharía cualquier orientación que el palo llegue a tener.
+      group.rotation.x = 0
+      group.rotation.z = 0
     }
 
     // Acierto: el palo se enciende en verde, da un golpe de escala y se

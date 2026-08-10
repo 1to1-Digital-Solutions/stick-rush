@@ -391,7 +391,12 @@ cuenta atrás.
   cae inclinándose cuesta de seguir con la mano.
 - **Se respeta `prefers-reduced-motion`** (`useReducedMotion`, el equivalente
   para la escena 3D de lo que `globals.css` ya hacía con las animaciones del
-  menú). Quien lo activa ve la máquina quieta, como antes de esta rama.
+  menú). Quien lo activa ve la máquina quieta, como antes de esta rama: también
+  al abrirla, porque el vaivén de cada palo nace ya apagado (si nace a 1, el
+  palo aparece inclinado y se endereza en un cuarto de segundo, que es
+  exactamente el movimiento que esa preferencia pide no tener). El e2e cubre
+  el caso de activarla con el juego abierto; el arranque no, porque el
+  enderezado dura menos de lo que tarda en pintarse el HDRI.
 - Los e2e del menú miran la escena de verdad: apartan el panel opaco del menú,
   esperan a que el HDRI esté pintado y comparan dos capturas del canvas
   separadas 600 ms. Con movimiento normal tienen que diferir; con el reducido,
