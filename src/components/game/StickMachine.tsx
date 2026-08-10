@@ -17,6 +17,7 @@ import {
 import { useGame } from '@/lib/gameStore'
 import { buildStickLayout } from '@/lib/stickLayout'
 import { Stick } from './Stick'
+import { useReducedMotion } from './useReducedMotion'
 
 type Point = [number, number, number]
 
@@ -97,8 +98,10 @@ export function StickMachine() {
     useGame()
   const speed = DIFFICULTY_SPEEDS[difficulty]
   // Fuera de la partida los palos se quedan colgando, a la vista, mientras el
-  // jugador elige opciones.
+  // jugador elige opciones. Meciéndose: es lo único que se mueve hasta que cae
+  // el primero, y sin ello la máquina parece congelada.
   const paused = gameState !== 'playing'
+  const reducedMotion = useReducedMotion()
 
   const [normalMap, roughnessMap] = useTexture([
     WOOD_TEXTURES.normalMap,
@@ -325,6 +328,8 @@ export function StickMachine() {
           roughnessMap={roughnessMap}
           speed={speed}
           delay={stick.delay}
+          swingPhase={stick.swingPhase}
+          swaying={!reducedMotion}
           paused={paused}
           onCatch={catchStick}
           onMiss={missStick}

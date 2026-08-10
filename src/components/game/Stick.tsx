@@ -14,6 +14,7 @@ import {
   STICK_RADIUS,
   stickFallProgress,
 } from '@/lib/gameConfig'
+import { SWING_RELEASE_DECAY, hangingSwing } from '@/lib/stickSwing'
 import { canCatchWithPointer } from '@/lib/xrInteraction'
 
 type StickState = 'hanging' | 'falling' | 'caught' | 'missed'
@@ -43,6 +44,14 @@ export interface StickProps {
   speed: number
   /** Retardo, en segundos, antes de empezar a caer. */
   delay: number
+  /** Hueco propio dentro del ciclo del vaivén, en [0, 1). */
+  swingPhase: number
+  /**
+   * Si el palo se mece mientras cuelga. Se apaga cuando el sistema pide reducir
+   * el movimiento: el vaivén es decorado, y quien lo desactiva prefiere la
+   * máquina quieta a que respire.
+   */
+  swaying: boolean
   /**
    * Con la partida parada (menú o fin) el palo se queda colgando: su reloj no
    * corre. Si no, los palos se soltaban mientras el jugador elegía opciones y
@@ -65,6 +74,8 @@ export function Stick({
   roughnessMap,
   speed,
   delay,
+  swingPhase,
+  swaying,
   paused,
   onCatch,
   onMiss,
@@ -93,6 +104,12 @@ export function Stick({
   const [visible, setVisible] = useState(true)
   // Tiempo acumulado desde el inicio (para gestionar el delay escalonado).
   const elapsed = useRef(0)
+  // Reloj del vaivén. Es aparte del anterior porque corre también con la
+  // partida parada: mecerse mientras el jugador elige o cuenta atrás es
+  // justamente para lo que está.
+  const swingTime = useRef(0)
+  // Cuánto del vaivén se aplica, de 1 (colgando) a 0 (soltado o quieto).
+  const swingLevel = useRef(1)
   // Intensidad del glow al ser atrapado, que decae con el tiempo.
   const flash = useRef(0)
   // Un palo solo puede resolverse una vez. Hace falta un ref además del
@@ -149,6 +166,25 @@ export function Stick({
     const delta = Math.min(rawDelta, 0.05)
     if (!paused) {
       elapsed.current += delta
+    }
+
+    // Vaivén: el palo colgado se mece; en cuanto se suelta se endereza, porque
+    // uno que cae inclinándose cuesta de seguir con la mano.
+    if (swaying && state === 'hanging') {
+      swingTime.current += delta
+      swingLevel.current = 1
+    } else if (swingLevel.current > 0) {
+      swingLevel.current = Math.max(
+        0,
+        swingLevel.current - delta * SWING_RELEASE_DECAY,
+      )
+    }
+    if (swingLevel.current > 0) {
+      const tilt = hangingSwing(swingTime.current, swingPhase)
+      group.rotation.x = tilt.x * swingLevel.current
+      group.rotation.z = tilt.z * swingLevel.current
+    } else if (group.rotation.x !== 0 || group.rotation.z !== 0) {
+      group.rotation.set(0, 0, 0)
     }
 
     // Acierto: el palo se enciende en verde, da un golpe de escala y se

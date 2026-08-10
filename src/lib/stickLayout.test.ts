@@ -105,6 +105,29 @@ describe('buildStickLayout', () => {
     expect(new Set(gaps.map((gap) => gap.toFixed(4))).size).toBeGreaterThan(1)
   })
 
+  it('da a cada palo un hueco propio en el ciclo del vaivén', () => {
+    const phases = buildStickLayout(MAX_STICKS, 4).map(
+      (stick) => stick.swingPhase,
+    )
+    for (const phase of phases) {
+      expect(phase).toBeGreaterThanOrEqual(0)
+      expect(phase).toBeLessThan(1)
+    }
+    // Si dos palos comparten fase se mecen a la vez, que es el efecto de bloque
+    // que el vaivén quiere evitar.
+    expect(new Set(phases).size).toBe(phases.length)
+  })
+
+  it('mantiene el vaivén estable dentro de la partida y lo cambia entre partidas', () => {
+    const first = buildStickLayout(MAX_STICKS, 4).map((s) => s.swingPhase)
+    expect(buildStickLayout(MAX_STICKS, 4).map((s) => s.swingPhase)).toEqual(
+      first,
+    )
+    expect(buildStickLayout(MAX_STICKS, 5).map((s) => s.swingPhase)).not.toEqual(
+      first,
+    )
+  })
+
   it('da claves únicas y distintas en cada partida', () => {
     const first = buildStickLayout(MIN_STICKS, 1).map((stick) => stick.key)
     const second = buildStickLayout(MIN_STICKS, 2).map((stick) => stick.key)

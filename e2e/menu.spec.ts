@@ -1,5 +1,42 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { openGame } from './helpers'
+
+/**
+ * Deja la máquina a la vista y espera a que esté pintada.
+ *
+ * El menú de escritorio es un panel opaco que tapa el canvas entero, así que
+ * para mirar la escena hay que apartarlo. Y hay que esperar: hasta que llegan el
+ * HDRI y las texturas de la madera, el canvas es un rectángulo de color, y una
+ * captura de eso pesa unos pocos kilobytes frente a los cientos de la plaza.
+ */
+async function revealScene(page: Page) {
+  await page.evaluate(() => {
+    const menu = document.querySelector('main')
+    if (menu instanceof HTMLElement) menu.style.display = 'none'
+  })
+
+  await expect
+    .poll(async () => (await page.locator('canvas').screenshot()).length, {
+      timeout: 30_000,
+    })
+    .toBeGreaterThan(100_000)
+}
+
+/**
+ * Si la escena cambia entre dos instantes.
+ *
+ * En el menú lo único que puede moverse son los palos meciéndose: ninguno cae,
+ * el escenario es una foto y la cámara solo gira si el jugador la arrastra. Con
+ * el panel del menú apartado y las animaciones del DOM congeladas, dos capturas
+ * distintas solo pueden venir del balanceo.
+ */
+async function sceneMoves(page: Page, pause = 600): Promise<boolean> {
+  const canvas = page.locator('canvas')
+  const before = await canvas.screenshot({ animations: 'disabled' })
+  await page.waitForTimeout(pause)
+  const after = await canvas.screenshot({ animations: 'disabled' })
+  return !before.equals(after)
+}
 
 test.describe('Menú de inicio', () => {
   test.beforeEach(async ({ page }) => {
@@ -74,6 +111,25 @@ test.describe('Menú de inicio', () => {
 
     await toggle.click()
     await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  test('los palos colgados se mecen, así que la máquina no parece congelada', async ({
+    page,
+  }) => {
+    await revealScene(page)
+
+    expect(await sceneMoves(page)).toBe(true)
+  })
+
+  test('con el movimiento reducido, la máquina espera quieta', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await revealScene(page)
+    // Los palos que ya se mecían tardan un instante en enderezarse.
+    await page.waitForTimeout(600)
+
+    expect(await sceneMoves(page)).toBe(false)
   })
 
   test('esconde la entrada al visor en un navegador sin WebXR', async ({

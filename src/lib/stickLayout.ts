@@ -8,6 +8,8 @@ export interface StickLayout {
   anchor: [number, number, number]
   /** Segundos que espera colgando antes de soltarse. */
   delay: number
+  /** Su hueco dentro del ciclo del vaivén, en [0, 1). Ver `stickSwing.ts`. */
+  swingPhase: number
 }
 
 /**
@@ -62,9 +64,17 @@ export function buildStickLayout(
       anchor: machinePoint(t),
       // Un turno por palo, más un jitter para que no suene a metrónomo.
       delay: turnOf[index] * (1 + seededRandom(index, runId) * 0.5),
+      swingPhase: seededRandom(index + SWING_PHASE_SEED, runId),
     }
   })
 }
+
+/**
+ * Desplazamiento de la semilla del vaivén. Sin él, la fase del balanceo saldría
+ * del mismo valor que el jitter del retardo y el palo que más tarda en caer
+ * sería siempre el que más adelantado va meciéndose.
+ */
+const SWING_PHASE_SEED = 977
 
 /** Cómo ha acabado (o no) cada palo, para pintar el marcador. */
 export type StickStatus = 'caught' | 'missed' | 'pending'
