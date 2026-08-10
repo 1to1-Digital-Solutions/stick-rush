@@ -326,8 +326,9 @@ se notaban si dabas la vuelta a la cabeza.
   `GameScene`: escucha el estado del juego en vez de engancharse a los
   componentes, así vale igual para el ratón y para los mandos del visor.
 - El navegador no deja sonar hasta que el jugador interactúa, así que el
-  `AudioContext` se crea con el primer clic o tecla. En el visor ese gesto es el
-  botón de entrar en la sesión, que todavía es DOM.
+  `AudioContext` se crea con el primer clic —activar un botón con el teclado
+  dispara uno, así que el teclado también vale; ver "Silencio" más abajo—. En el
+  visor ese gesto es el botón de entrar en la sesión, que todavía es DOM.
 - **Con el contexto suspendido el juego calla a propósito** (quitarse el visor a
   media partida, o que el sistema le quite el foco al navegador): ahí el reloj
   del audio se para y todo lo que se programe se amontonaría en el mismo
