@@ -16,13 +16,13 @@
     "sync:xr-profiles": "node scripts/sync-xr-profiles.mjs"
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.6.1",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
     "@react-three/xr": "^6.6.30",
     "next": "16.3.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "three": "^0.185.0"
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
@@ -32,7 +32,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/three": "^0.185.0",
+    "@types/three": "^0.185.4",
     "@webxr-input-profiles/assets": "^1.0.20",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
