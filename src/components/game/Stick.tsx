@@ -14,6 +14,7 @@ import {
   STICK_RADIUS,
   stickFallProgress,
 } from '@/lib/gameConfig'
+import { CATCH_PULSE, pulseHaptics } from '@/lib/haptics'
 import { SWING_RELEASE_DECAY, hangingSwing } from '@/lib/stickSwing'
 import {
   type StickState,
@@ -173,6 +174,10 @@ export function Stick({
     // Dónde estaba el palo al cogerlo decide el bonus por reflejos. Se lee de
     // la posición viva y no del estado, que aún no se ha vuelto a renderizar.
     onCatch(stickFallProgress(groupRef.current?.position.y ?? anchorY))
+    // El golpe en el mando va después de contar el palo: la vibración es el
+    // adorno y la puntuación es el juego, así que un mando que se porte mal no
+    // puede llevarse por delante el acierto.
+    pulseHaptics(event, CATCH_PULSE)
   }
 
   useFrame((_, rawDelta) => {
