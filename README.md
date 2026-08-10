@@ -54,6 +54,13 @@ The game **depends on no external service**: no environment variables, no databa
 no third-party requests. Assets (HDRI and textures, all CC0) are served from
 `public/`; see [`public/CREDITS.md`](public/CREDITS.md).
 
+Sound is **synthesised** with the Web Audio API rather than played back from audio
+files — a handful of oscillators, so there is nothing to download and no
+`media-src` to open up in the CSP. Catching a stick rings a short chime that goes
+up a semitone per stick in your streak, losing one drops a low buzz, and each
+second of the countdown ticks, rising as the start approaches. It only starts
+after your first click or keypress: browsers refuse to play audio before that.
+
 It is a fully static site — no middleware, no Server Actions, no API routes. Security
 headers (CSP, `Permissions-Policy`, HSTS and friends) are declared in
 `next.config.ts`; `connect-src 'self'` is what enforces the "no external requests"
@@ -110,6 +117,7 @@ src/
     gameConfig.ts       Constants: difficulties, speeds, colours, geometry
     gameStore.ts        Global game state (Context API)
     stickLayout.ts      Stick layout, shuffled fall order and score token states
+    sound.ts            Synthesised game sounds (Web Audio, no files)
 e2e/                    Playwright tests
 docs/                   README screenshots
 public/

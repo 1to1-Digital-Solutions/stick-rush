@@ -32,7 +32,9 @@ del modo inmersivo tras la segunda prueba con el visor.
    no maree; (d) que la **cuenta atrás** dé tiempo suficiente; (e) que el destello verde
    y los palos rojos en el suelo se lean bien con las gafas; (f) que los **iconos** de
    casa y de salida se distingan de un vistazo, y si los de repetir, escenario y
-   passthrough se entienden o hay que rehacerlos igual.
+   passthrough se entienden o hay que rehacerlos igual; (g) que el **sonido** se oiga
+   dentro de la sesión, que acierto y fallo se distingan sin mirar y que el volumen
+   (`MASTER_GAIN`, 0.28) no resulte invasivo pegado a los oídos.
    Valores a retocar: adelanto del jugador (`PLAYER_OFFSET_Z`, −0.18 m), tamaño
    (`MACHINE_RADIUS` 0.57 m y `STICK_LENGTH` 0.39 m — al cambiarlos hay que recalcular
    `DIFFICULTY_SPEEDS` para conservar los tiempos, que `gameConfig.test.ts` vigila),
@@ -305,6 +307,30 @@ prueba salieron seis mejoras, todas dentro de la rama:
   en `immersive-ar` cuando se puede, porque WebXR no deja cambiar de tipo de sesión
   sin reabrirla. La entrada del menú es ahora un solo botón.
 
+## Sonido (2026-08-10, rama `agent/sonido-al-atrapar-al-perder-y-en-351461`)
+
+Con el visor puesto era lo que más se echaba de menos: el marcador está a un
+lado y no se puede mirar mientras caen los palos, así que atrapar y fallar solo
+se notaban si dabas la vuelta a la cabeza.
+
+- **Sintetizado, no grabado.** `src/lib/sound.ts` describe cada sonido como
+  voces de oscilador (forma de onda, frecuencias, duración, volumen) y
+  `createSoundEngine` las programa con la Web Audio API. Así no hay ficheros que
+  servir, no hace falta abrir `media-src` en la CSP y no hay CDN de por medio.
+  La receta es un dato puro, de modo que se prueba sin navegador.
+- **Qué suena**: acierto con un timbre que sube un semitono por palo de racha
+  (con tope, o una racha larga acabaría chillando), fallo grave y descendente
+  que dura el doble, un tic por segundo de cuenta atrás —subiendo conforme se
+  acerca la salida— y un remate más largo al empezar a caer los palos.
+- **El cableado es `useGameSound`** (en `components/game/`), montado una vez en
+  `GameScene`: escucha el estado del juego en vez de engancharse a los
+  componentes, así vale igual para el ratón y para los mandos del visor.
+- El navegador no deja sonar hasta que el jugador interactúa, así que el
+  `AudioContext` se crea con el primer clic o tecla. En el visor ese gesto es el
+  botón de entrar en la sesión, que todavía es DOM.
+- **No hay forma de silenciarlo todavía**: queda como tarea aparte (control de
+  volumen en el menú de escritorio y en el inmersivo).
+
 ## Iconos del menú inmersivo (rama `agent/mejorar-los-iconos-del-menu-3d`)
 
 De la tercera prueba salió que la flecha de «volver» no se leía como una flecha, y que
@@ -411,8 +437,8 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 ## Pendiente / próximos pasos
 
 - Validar y pulir la interacción XR con mandos en hardware real.
-- Posibles mejoras: sonido al atrapar/perder, animación de "vibración" de los palos
-  colgando, temporizador/puntuación por tiempo, escenario VR más elaborado.
+- Posibles mejoras: animación de "vibración" de los palos colgando,
+  temporizador/puntuación por tiempo, escenario VR más elaborado.
 - **Decidir si un palo debe poder atraparse mientras aún cuelga.** Hoy `Stick.handleCatch`
   acepta los estados `hanging` y `falling`, así que se puede vaciar el aro a clics nada más
   empezar, sin esperar a que caiga nada. Puede ser deliberado (premia la puntería), pero con
