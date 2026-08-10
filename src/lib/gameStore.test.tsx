@@ -7,6 +7,9 @@ import { COUNTDOWN_SECONDS, useGameStoreValue } from './gameStore'
 // falsos: si no, cada partida costaría tres segundos reales de test.
 beforeEach(() => {
   vi.useFakeTimers()
+  // El récord se guarda en `localStorage`, que jsdom comparte entre tests: sin
+  // vaciarlo, una partida de un test daría por batido el récord de otro.
+  localStorage.clear()
 })
 
 afterEach(() => {
@@ -386,6 +389,97 @@ describe('puntuación y racha', () => {
     expect(result.current.points).toBe(0)
     expect(result.current.streak).toBe(0)
     expect(result.current.bestStreak).toBe(0)
+  })
+})
+
+describe('mejor puntuación', () => {
+  it('se empieza sin récord', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    expect(result.current.bestPoints).toBe(0)
+    expect(result.current.isRecord).toBe(false)
+  })
+
+  it('la marca a batir no se mueve mientras se juega', () => {
+    // Si el récord se actualizara palo a palo, al terminar sería siempre igual
+    // a los puntos de la partida y nunca se podría decir que se ha batido.
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setStickCount(5))
+    startPlaying(result)
+
+    act(() => result.current.catchStick(0))
+
+    expect(result.current.points).toBeGreaterThan(0)
+    expect(result.current.bestPoints).toBe(0)
+    expect(result.current.isRecord).toBe(false)
+  })
+
+  it('al terminar, la puntuación pasa a ser el récord', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    playRound(result, 5, 5)
+
+    expect(result.current.bestPoints).toBe(result.current.points)
+    expect(result.current.isRecord).toBe(true)
+  })
+
+  it('una partida peor no baja el récord ni lo anuncia', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    playRound(result, 5, 5)
+    const record = result.current.bestPoints
+
+    playRound(result, 5, 1)
+
+    expect(result.current.points).toBeLessThan(record)
+    expect(result.current.bestPoints).toBe(record)
+    expect(result.current.isRecord).toBe(false)
+  })
+
+  it('el récord sobrevive a volver al menú y a la siguiente partida', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    playRound(result, 5, 5)
+    const record = result.current.bestPoints
+
+    act(() => result.current.resetGame())
+    expect(result.current.bestPoints).toBe(record)
+    // Y el anuncio se apaga: pertenece a la partida que acaba de terminar.
+    expect(result.current.isRecord).toBe(false)
+
+    startPlaying(result)
+    expect(result.current.bestPoints).toBe(record)
+  })
+
+  it('una partida sin atrapar nada no cuenta como récord', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    playRound(result, 5, 0)
+
+    expect(result.current.bestPoints).toBe(0)
+    expect(result.current.isRecord).toBe(false)
+  })
+
+  it('el récord sigue ahí al volver a abrir el juego', () => {
+    // Es lo que separa "entre partidas" de "entre visitas": el segundo store
+    // no comparte nada con el primero salvo el almacenamiento del navegador.
+    const first = renderHook(() => useGameStoreValue())
+    playRound(first.result, 5, 5)
+    const record = first.result.current.bestPoints
+    expect(record).toBeGreaterThan(0)
+
+    const reopened = renderHook(() => useGameStoreValue())
+
+    expect(reopened.result.current.bestPoints).toBe(record)
+    // Recuperado, no recién batido: nadie ha jugado todavía en esta visita.
+    expect(reopened.result.current.isRecord).toBe(false)
+  })
+
+  it('un récord ilegible en el navegador no rompe el juego', () => {
+    localStorage.setItem('stick-rush:best-points', 'lo que sea')
+
+    const { result } = renderHook(() => useGameStoreValue())
+
+    expect(result.current.bestPoints).toBe(0)
+
+    // Y la primera partida lo deja bien escrito.
+    playRound(result, 5, 5)
+    expect(result.current.bestPoints).toBe(result.current.points)
   })
 })
 

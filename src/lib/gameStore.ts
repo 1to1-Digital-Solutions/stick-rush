@@ -7,12 +7,19 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from 'react'
 import {
   type Difficulty,
   MAX_STICKS,
   MIN_STICKS,
 } from './gameConfig'
+import {
+  getBestPoints,
+  getServerBestPoints,
+  saveBestPoints,
+  subscribeBestPoints,
+} from './highScore'
 import { stickPoints } from './scoring'
 
 export type GameState = 'menu' | 'countdown' | 'playing' | 'finished'
@@ -52,6 +59,17 @@ export interface GameStore {
   streak: number
   /** La mejor racha de la partida, para el resumen final. */
   bestStreak: number
+  /**
+   * Mejor puntuación conseguida, guardada entre visitas (ver `highScore.ts`).
+   * Durante una partida es la marca a batir: no incorpora los puntos en curso
+   * hasta que la partida termina.
+   */
+  bestPoints: number
+  /**
+   * La partida recién terminada ha superado el récord anterior. Se apaga al
+   * empezar la siguiente o al volver al menú.
+   */
+  isRecord: boolean
   /** Fase del juego. */
   gameState: GameState
   /**
@@ -67,8 +85,9 @@ export interface GameStore {
   /** Escenario o passthrough en sesión inmersiva. */
   scenery: SceneryMode
   /**
-   * Juego en silencio. No se guarda entre visitas: el juego no usa storage
-   * (ver la auditoría de seguridad), así que cada partida arranca con sonido.
+   * Juego en silencio. No se guarda entre visitas: lo único que el juego
+   * escribe en el navegador es el récord, y no se quiso ampliar eso a las
+   * preferencias, así que cada visita arranca con sonido.
    */
   muted: boolean
 
@@ -103,6 +122,18 @@ export function useGameStoreValue(): GameStore {
   const [points, setPoints] = useState(0)
   const [streak, setStreak] = useState(0)
   const [bestStreak, setBestStreak] = useState(0)
+  // El récord no es estado de React: vive en el navegador y el juego se
+  // suscribe a él. Así no hay que sincronizarlo con efectos ni queda una copia
+  // que pueda discrepar de lo guardado.
+  const bestPoints = useSyncExternalStore(
+    subscribeBestPoints,
+    getBestPoints,
+    getServerBestPoints,
+  )
+  // La marca a batir se congela al empezar: en cuanto la partida termina y se
+  // guarda, `bestPoints` ya incluye lo recién hecho y no serviría para saber si
+  // se ha superado nada.
+  const [recordToBeat, setRecordToBeat] = useState(0)
   // Lo único que se guarda es si hay partida en marcha. Las tres fases de una
   // partida —contando, jugando y terminada— se derivan de la cuenta atrás y de
   // los palos resueltos, así no hay fuentes de verdad que sincronizar ni
@@ -135,6 +166,19 @@ export function useGameStoreValue(): GameStore {
     return () => clearTimeout(timer)
   }, [running, countdown])
 
+  // Al terminar, la puntuación sale hacia el almacenamiento; guardar solo hace
+  // algo si mejora lo que había, así que repetirlo no cambia nada. Se guarda al
+  // final y no palo a palo para que durante la partida el récord siga siendo la
+  // marca a batir.
+  useEffect(() => {
+    if (gameState !== 'finished') return
+    saveBestPoints(points)
+  }, [gameState, points])
+
+  // La partida ha batido el récord con el que empezó. Derivado y no guardado:
+  // dura lo que dure la pantalla de fin de partida.
+  const isRecord = gameState === 'finished' && points > recordToBeat
+
   const setStickCount = useCallback((count: number) => {
     setStickCountState(clampStickCount(count))
   }, [])
@@ -149,6 +193,7 @@ export function useGameStoreValue(): GameStore {
 
   const startGame = useCallback(() => {
     clearRun()
+    setRecordToBeat(getBestPoints())
     setRunId((id) => id + 1)
     setCountdown(COUNTDOWN_SECONDS)
     setRunning(true)
@@ -193,6 +238,8 @@ export function useGameStoreValue(): GameStore {
       points,
       streak,
       bestStreak,
+      bestPoints,
+      isRecord,
       gameState,
       countdown,
       runId,
@@ -215,6 +262,8 @@ export function useGameStoreValue(): GameStore {
       points,
       streak,
       bestStreak,
+      bestPoints,
+      isRecord,
       gameState,
       countdown,
       runId,
