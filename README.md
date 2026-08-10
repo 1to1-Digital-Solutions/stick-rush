@@ -16,9 +16,16 @@ their head. The whole scene is at human scale (1 unit = 1 metre).
 2. Pick the difficulty — **Fácil, Medio, Difícil, Experto or Imposible** (easy to
    impossible) — which sets the fall speed: from about 5.7 s per stick on Fácil to
    under 1 s on Imposible.
-3. Press **Jugar** (play). The sticks drop one at a time in **random order**, with a
-   random gap between them — where a stick hangs says nothing about when it falls.
-4. Catch what you can. The round ends once every stick is resolved (caught or
+3. Press **Jugar** (play). A three-second countdown runs first — the sticks hang
+   there in plain sight but nothing can be taken yet — and then they drop one at a
+   time in **random order**, with a random gap between them: where a stick hangs
+   says nothing about when it falls.
+4. Catch what you can. A stick can be taken any time between the start of the round
+   and the moment it hits the ground, **including while it still hangs from the
+   ring** — getting ahead of a stick is playing, not cheating, and catching one up
+   there is worth double what rescuing it just above the floor is (reflex bonus).
+   Once it lands it stays on the floor, red, as a tally of what got away; it cannot
+   be picked back up. The round ends once every stick is resolved (caught or
    dropped) and the score screen shows the result.
 
 > The game's interface is in Spanish, which is the product language.

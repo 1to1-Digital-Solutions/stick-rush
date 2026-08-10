@@ -100,6 +100,15 @@ Pendiente para ese momento (no antes):
 - `npm` como gestor de paquetes (se descartó el pnpm que generó el scaffold).
 - `build` fija `NODE_ENV=production` en el script porque el entorno exporta
   `NODE_ENV=development`, que rompía la prerenderización de `/_global-error`.
+- **Un palo se coge hasta que toca el suelo, colgando incluido** (decidido el
+  2026-08-10). Adelantarse al palo es jugar, no hacer trampa: la ventana se abre
+  al arrancar la partida y se cierra cuando el palo se resuelve. Lo que se
+  cierra es el otro extremo: un palo ya resuelto no vuelve a contar (el perdido
+  se queda tirado, pero es decorado) y con la partida parada —cuenta atrás
+  incluida— no se coge nada. Que 13 palos en Fácil se puedan vaciar del aro es
+  aceptado a cambio de dos contrapesos que ya existen: la cuenta atrás y el
+  bonus por reflejos, que paga el doble por cogerlo arriba. La regla vive en
+  `canCatchStick` (`src/lib/xrInteraction.ts`) y la fijan unitarios.
 
 ## Hecho hasta ahora
 
@@ -515,13 +524,12 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 - Posibles mejoras: ~~animación de "vibración" de los palos colgando~~ (hecha, ver
   "Balanceo de los palos"), temporizador/puntuación por tiempo, escenario VR más
   elaborado.
-- **Decidir si un palo debe poder atraparse mientras aún cuelga.** Hoy `Stick.handleCatch`
-  acepta los estados `hanging` y `falling`, así que se puede vaciar el aro a clics nada más
-  empezar, sin esperar a que caiga nada. Puede ser deliberado (premia la puntería), pero con
-  13 palos en Fácil convierte la partida en trivial. Si se cierra a `falling`, hay que ajustar
-  el e2e "atrapar un palo suma en el marcador", que hoy se apoya en los palos colgados.
-  Mitigado a medias desde la cuenta atrás: durante esos tres segundos ya no se puede coger
-  nada, y el bonus por reflejos premia cogerlos arriba, no esperarlos abajo.
+- ~~**Decidir si un palo debe poder atraparse mientras aún cuelga.**~~ **DECIDIDO
+  (2026-08-10): sí, se coge hasta que toca el suelo.** Ver "Decisiones firmes". El
+  comportamiento no cambia; lo que cambia es que la regla dejó de estar escrita dos veces
+  dentro de `Stick.tsx` (captura y cursor) y pasó a `canCatchStick`, con unitarios que la
+  sujetan. El e2e "atrapar un palo suma en el marcador" se queda como está: se apoya en los
+  palos colgados, que siguen siendo atrapables a propósito.
 - **Nada de worktrees anidados dentro del repo.** Además de los avisos de "multiple
   lockfiles" al compilar, si el worktree llega a tener un `.next/` compilado el `npm run
   lint` lo recorre entero: los `globalIgnores` de `eslint.config.mjs` son relativos
