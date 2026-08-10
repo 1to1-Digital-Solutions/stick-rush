@@ -69,8 +69,9 @@ export async function readPoints(page: Page): Promise<number> {
  * No hay forma de seleccionar un objeto 3D desde el DOM, así que se usa la
  * señal que el propio juego da al jugador: `Stick` pone el cursor en `pointer`
  * mientras el palo se puede atrapar. El barrido va de arriba abajo, de modo que
- * encuentra primero los palos que aún cuelgan del aro (los más altos), que son
- * los que no se mueven mientras se hace clic.
+ * encuentra primero los palos que aún cuelgan del aro (los más altos): se mecen
+ * unos milímetros, así que apenas se mueven entre encontrarlos y hacer clic,
+ * frente a los que ya están cayendo.
  */
 export async function findCatchableStick(
   page: Page,
