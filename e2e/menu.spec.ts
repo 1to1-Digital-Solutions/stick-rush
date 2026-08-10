@@ -65,6 +65,17 @@ test.describe('Menú de inicio', () => {
     ).toHaveAttribute('aria-pressed', 'false')
   })
 
+  test('deja silenciar el juego, con el estado a la vista', async ({ page }) => {
+    const toggle = page.getByRole('button', { name: 'Silenciar' })
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  })
+
   test('esconde la entrada al visor en un navegador sin WebXR', async ({
     page,
   }) => {

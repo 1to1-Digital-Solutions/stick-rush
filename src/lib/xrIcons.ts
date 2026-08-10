@@ -58,6 +58,89 @@ export const XR_HOME_ICON: IconShape = [
 ]
 
 /**
+ * Cuerpo del altavoz, común al icono de sonido y al de silencio: caja y cono.
+ *
+ * Los dos estados comparten silueta a propósito. Lo que cambia es lo que sale
+ * del cono —ondas u aspa—, así que el botón se lee como el mismo control en dos
+ * posiciones y no como dos botones distintos.
+ */
+const SPEAKER_OUTLINE: readonly IconPoint[] = [
+  [-0.95, -0.3],
+  [-0.45, -0.3],
+  [-0.05, -0.88],
+  [-0.05, 0.88],
+  [-0.45, 0.3],
+  [-0.95, 0.3],
+]
+
+/**
+ * Altavoz con ondas: el juego suena.
+ *
+ * Las ondas son dos arcos concéntricos al vértice del cono, despegados de él y
+ * entre sí: pegados se funden en una mancha y el icono deja de leerse a un
+ * metro, que es el fallo que ya tuvieron los primeros iconos del menú.
+ */
+export const XR_SOUND_ICON: IconShape = [
+  { outline: SPEAKER_OUTLINE },
+  {
+    outline: [
+      [0.26, -0.49],
+      [0.46, -0.28],
+      [0.53, 0],
+      [0.46, 0.28],
+      [0.26, 0.49],
+      [0.16, 0.34],
+      [0.3, 0.19],
+      [0.35, 0],
+      [0.3, -0.19],
+      [0.16, -0.34],
+    ],
+  },
+  {
+    outline: [
+      [0.47, -0.83],
+      [0.81, -0.48],
+      [0.93, 0],
+      [0.81, 0.48],
+      [0.47, 0.83],
+      [0.37, 0.68],
+      [0.65, 0.39],
+      [0.75, 0],
+      [0.65, -0.39],
+      [0.37, -0.68],
+    ],
+  },
+]
+
+/**
+ * Altavoz con un aspa: el juego está en silencio.
+ *
+ * El aspa ocupa el sitio de las ondas en vez de cruzar el altavoz. Tachar la
+ * silueta con una barra del mismo color no se ve como un tachón: se ve como una
+ * sola mancha, porque el relleno de las dos piezas es el mismo.
+ */
+export const XR_MUTED_ICON: IconShape = [
+  { outline: SPEAKER_OUTLINE },
+  {
+    // Aspa de una pieza: una cruz girada 45°, con sus cuatro brazos en diagonal.
+    outline: [
+      [0.53, 0.23],
+      [0.73, 0.43],
+      [0.96, 0.21],
+      [0.76, 0],
+      [0.96, -0.21],
+      [0.73, -0.43],
+      [0.53, -0.23],
+      [0.33, -0.43],
+      [0.1, -0.21],
+      [0.3, 0],
+      [0.1, 0.21],
+      [0.33, 0.43],
+    ],
+  },
+]
+
+/**
  * Puerta con una flecha saliendo: salir del visor.
  *
  * Distinto de la casa a propósito: los dos botones compartían icono y hacían

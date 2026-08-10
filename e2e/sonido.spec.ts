@@ -74,4 +74,19 @@ test.describe('Sonido', () => {
       afterCountdown.oscillators,
     )
   })
+
+  test('silenciado desde el menú, el juego no abre el audio', async ({
+    page,
+  }) => {
+    // Silenciar no es bajar el volumen: sin contexto no hay nodos ni permiso
+    // de reproducción que pedir.
+    await installAudioSpy(page)
+    await openGame(page)
+
+    await page.getByRole('button', { name: 'Silenciar' }).click()
+    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await catchStick(page)
+
+    expect(await readSpy(page)).toEqual({ contexts: 0, oscillators: 0 })
+  })
 })

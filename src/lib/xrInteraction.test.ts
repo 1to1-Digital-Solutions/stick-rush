@@ -19,6 +19,7 @@ import {
   XR_QUIT_YAW,
   type Vec3,
   xrMenuExitPosition,
+  xrMenuSoundPosition,
 } from './xrLayout'
 
 /**
@@ -88,6 +89,7 @@ describe('la interfaz cae dentro del campo de visión', () => {
     ['el marcador', XR_HUD_POSITION],
     ['el botón de volver al menú', XR_QUIT_POSITION],
     ['el botón de salir del visor', xrMenuExitPosition()],
+    ['el botón de silenciar', xrMenuSoundPosition()],
   ]
 
   it.each(elements)('%s se puede mirar sin que la interfaz huya', (_, position) => {

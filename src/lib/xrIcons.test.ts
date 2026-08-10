@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   XR_EXIT_ICON,
   XR_HOME_ICON,
+  XR_MUTED_ICON,
+  XR_SOUND_ICON,
   type IconPoint,
   type IconShape,
 } from './xrIcons'
@@ -106,6 +108,11 @@ function paths(icon: IconShape): Polygon[] {
   return icon.flatMap((path) => [path.outline, ...(path.holes ?? [])])
 }
 
+/** Distancia de un punto a un centro. */
+function radius([x, y]: IconPoint, [cx, cy]: IconPoint): number {
+  return Math.hypot(x - cx, y - cy)
+}
+
 /** Extremos del icono a lo largo de un eje. */
 function bounds(icon: IconShape, axis: 0 | 1): [number, number] {
   const values = paths(icon)
@@ -117,6 +124,8 @@ function bounds(icon: IconShape, axis: 0 | 1): [number, number] {
 const ICONS: [string, IconShape][] = [
   ['casa', XR_HOME_ICON],
   ['salida', XR_EXIT_ICON],
+  ['sonido', XR_SOUND_ICON],
+  ['silencio', XR_MUTED_ICON],
 ]
 
 describe('las siluetas están bien formadas', () => {
@@ -217,5 +226,97 @@ describe('la salida se lee como una puerta con una flecha', () => {
     const start = Math.min(...arrow.outline.map(([x]) => x))
     const jamb = Math.max(...crossingsAtY(frame.outline, 0))
     expect(start).toBeGreaterThan(jamb + 0.1)
+  })
+})
+
+/** Boca del altavoz: de ahí salen las ondas, y ahí está el foco de sus arcos. */
+function speakerMouth(speaker: Polygon): IconPoint {
+  return [Math.max(...speaker.map(([x]) => x)), 0]
+}
+
+describe('el sonido se lee como un altavoz sonando', () => {
+  const [speaker, near, far] = XR_SOUND_ICON
+  const [mouthX] = speakerMouth(speaker.outline)
+  const focus = speakerMouth(speaker.outline)
+
+  it('el cono se ensancha hacia donde sale el sonido', () => {
+    // Sin cono es una caja, y una caja no es un altavoz.
+    const back = span(crossingsAtX(speaker.outline, -0.9))
+    const front = span(crossingsAtX(speaker.outline, mouthX - 0.05))
+    expect(front).toBeGreaterThan(back * 2)
+  })
+
+  it('las ondas salen del altavoz sin pegarse a él', () => {
+    for (const wave of [near, far]) {
+      const start = Math.min(...wave.outline.map(([x]) => x))
+      expect(start).toBeGreaterThan(mouthX + 0.1)
+    }
+  })
+
+  it('una onda va por fuera de la otra, sin solaparse', () => {
+    const inner = Math.max(...near.outline.map((point) => radius(point, focus)))
+    const outer = Math.min(...far.outline.map((point) => radius(point, focus)))
+    expect(inner).toBeLessThan(outer)
+  })
+
+  it('las ondas son arcos, no discos', () => {
+    // Rellenas serían dos manchas alrededor del altavoz; lo que se lee como
+    // sonido es el hueco entre ellas.
+    for (const wave of [near, far]) {
+      expect(contains(wave.outline, focus)).toBe(false)
+      // Pero el trazo del arco sí tiene cuerpo: a media distancia entre sus
+      // dos bordes hay silueta.
+      const radii = wave.outline.map((point) => radius(point, focus))
+      const middle = (Math.min(...radii) + Math.max(...radii)) / 2
+      expect(contains(wave.outline, [focus[0] + middle, 0])).toBe(true)
+    }
+  })
+})
+
+describe('el silencio se lee como el mismo altavoz callado', () => {
+  const [speaker, cross] = XR_MUTED_ICON
+  const [mouthX] = speakerMouth(speaker.outline)
+  const [minX, maxX] = bounds([cross], 0)
+  const center: IconPoint = [(minX + maxX) / 2, 0]
+
+  it('es el altavoz del icono de sonido, no otro dibujo', () => {
+    // Los dos estados son el mismo control: si las siluetas del altavoz se
+    // separan, al alternar el botón parece que cambia de función.
+    expect(speaker.outline).toEqual(XR_SOUND_ICON[0].outline)
+  })
+
+  it('el aspa ocupa el sitio de las ondas y no cruza el altavoz', () => {
+    // Tachar la silueta con una barra del mismo relleno no se ve como un
+    // tachón: se ve como una mancha sola.
+    expect(minX).toBeGreaterThan(mouthX + 0.1)
+  })
+
+  it('los cuatro brazos del aspa van en diagonal', () => {
+    // Enderezada sería una cruz, que se lee como "añadir", no como "apagado".
+    const arm = 0.3
+    const diagonal = arm * Math.SQRT1_2
+    for (const [dx, dy] of [
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1],
+    ]) {
+      expect(
+        contains(cross.outline, [
+          center[0] + dx * diagonal,
+          center[1] + dy * diagonal,
+        ]),
+      ).toBe(true)
+    }
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      expect(
+        contains(cross.outline, [center[0] + dx * arm, center[1] + dy * arm]),
+      ).toBe(false)
+    }
   })
 })

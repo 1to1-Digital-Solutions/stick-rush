@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { type GameState, useGame } from '@/lib/gameStore'
 import { createSoundEngine, type SoundEngine } from '@/lib/sound'
 
@@ -11,11 +11,18 @@ import { createSoundEngine, type SoundEngine } from '@/lib/sound'
  * suena igual con el ratón que con los mandos del visor —que es donde más falta
  * hace, porque allí no hay marcador que mirar sin apartar la vista de los palos.
  *
- * Se monta una sola vez, en `GameScene`.
+ * Se monta una sola vez, en `GameScene`. Con el juego silenciado (`muted` del
+ * store) no llega a tocar la Web Audio API.
  */
 export function useGameSound() {
-  const { gameState, countdown, score, resolved, streak } = useGame()
+  const { gameState, countdown, score, resolved, streak, muted } = useGame()
   const engineRef = useRef<SoundEngine | null>(null)
+  // El navegador no deja sonar hasta que el jugador ha tocado la página. Es
+  // estado y no un ref porque de él depende crear el audio, y el gesto puede
+  // ser el propio botón de silenciar: apuntarlo en un render deja que el
+  // efecto vea las dos cosas a la vez y no abra un contexto para cerrarlo acto
+  // seguido.
+  const [interacted, setInteracted] = useState(false)
   const previous = useRef({
     score: 0,
     missed: 0,
@@ -24,41 +31,44 @@ export function useGameSound() {
   })
 
   useEffect(() => {
+    if (interacted) return
+
+    // El clic y no el `pointerdown`: los botones del juego se activan al hacer
+    // clic, así que atender el gesto en ese mismo evento deja que React vea
+    // «ya ha interactuado» y «quiere silencio» en el mismo render. Con
+    // `pointerdown` llegarían en eventos distintos y silenciar con el primer
+    // clic de la página abriría un contexto de audio para cerrarlo acto
+    // seguido. El teclado también pasa por aquí: activar un botón con Enter
+    // dispara su clic. Y en el visor el gesto es el botón de entrar en la
+    // sesión, que todavía es DOM.
+    const remember = () => setInteracted(true)
+    window.addEventListener('click', remember)
+
+    return () => window.removeEventListener('click', remember)
+  }, [interacted])
+
+  useEffect(() => {
+    // En silencio no se toca la Web Audio API: ni contexto, ni nodos, ni
+    // permiso de reproducción que pedir. Y al silenciar a media partida, la
+    // limpieza de este efecto cierra el contexto que hubiera abierto.
+    if (!interacted || muted) return
+
     // Sin Web Audio (navegador antiguo, entorno de test) se juega en silencio.
     const AudioContextClass = window.AudioContext
     if (AudioContextClass == null) return
 
-    let context: AudioContext | null = null
-
-    // El navegador no deja sonar hasta que el usuario ha interactuado con la
-    // página, así que el contexto nace con el primer clic o tecla. También
-    // cubre el visor: allí el gesto es el botón de entrar en la sesión, que
-    // todavía es DOM.
-    const startAudio = () => {
-      if (context != null) return
-      stopWaiting()
-      context = new AudioContextClass()
-      engineRef.current = createSoundEngine(context)
-      // Que el navegador se niegue a reanudarlo es un desenlace previsto —su
-      // política de reproducción automática— y significa jugar sin sonido.
-      void context.resume().catch(() => {})
-    }
-
-    const stopWaiting = () => {
-      window.removeEventListener('pointerdown', startAudio)
-      window.removeEventListener('keydown', startAudio)
-    }
-
-    window.addEventListener('pointerdown', startAudio)
-    window.addEventListener('keydown', startAudio)
+    const context = new AudioContextClass()
+    engineRef.current = createSoundEngine(context)
+    // Que el navegador se niegue a reanudarlo es un desenlace previsto —su
+    // política de reproducción automática— y significa jugar sin sonido.
+    void context.resume().catch(() => {})
 
     return () => {
-      stopWaiting()
       engineRef.current?.dispose()
       engineRef.current = null
-      if (context != null && context.state !== 'closed') void context.close()
+      if (context.state !== 'closed') void context.close()
     }
-  }, [])
+  }, [interacted, muted])
 
   const missed = resolved - score
 

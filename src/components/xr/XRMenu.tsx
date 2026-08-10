@@ -13,17 +13,20 @@ import {
   XR_DIFFICULTY_SPACING,
   XR_MENU_EXIT_OFFSET,
   XR_MENU_POSITION,
+  XR_MENU_SOUND_OFFSET,
   XR_SCENERY_PICKER_OFFSET,
   XR_STICK_PICKER_SPACING,
 } from '@/lib/xrLayout'
 import {
   PANEL_COLOR,
   XRExitIcon,
+  XRMutedIcon,
   XRPanel,
   XRPassthroughIcon,
   XRPlayIcon,
   XRPressable,
   XRSceneIcon,
+  XRSoundIcon,
 } from './XRUi'
 
 /**
@@ -203,6 +206,38 @@ function SceneryPicker({ passthroughAvailable }: { passthroughAvailable: boolean
   )
 }
 
+/**
+ * Silenciar sin quitarse el visor.
+ *
+ * El botón enseña cómo suena el juego ahora mismo —altavoz con ondas o
+ * tachado— y, apagado, la placa deja de emitir: estado por dibujo y por brillo,
+ * nunca solo por color. Es un interruptor y no dos opciones como el escenario
+ * porque solo hay dos estados y uno es la ausencia del otro.
+ */
+function SoundToggle() {
+  const { muted, setMuted } = useGame()
+  const Icon = muted ? XRMutedIcon : XRSoundIcon
+
+  return (
+    <XRPressable
+      position={XR_MENU_SOUND_OFFSET}
+      onSelect={() => setMuted(!muted)}
+      hitSize={[0.16, 0.13, 0.06]}
+    >
+      <mesh position={[0, 0, -0.008]}>
+        <boxGeometry args={[0.13, 0.1, 0.014]} />
+        <meshStandardMaterial
+          color={muted ? '#1c2634' : '#334155'}
+          emissive="#94a3b8"
+          emissiveIntensity={muted ? 0.04 : 0.32}
+          roughness={0.5}
+        />
+      </mesh>
+      <Icon position={[0, 0, 0.008]} color={muted ? '#94a3b8' : '#ffffff'} />
+    </XRPressable>
+  )
+}
+
 export function XRMenu() {
   const mode = useXR((state) => state.mode)
   const session = useXR((state) => state.session)
@@ -256,6 +291,8 @@ export function XRMenu() {
         </mesh>
         <XRExitIcon position={[0, 0, 0.008]} />
       </XRPressable>
+
+      <SoundToggle />
     </group>
   )
 }

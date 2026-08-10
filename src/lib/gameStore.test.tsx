@@ -255,6 +255,37 @@ describe('escenario o passthrough', () => {
   })
 })
 
+describe('silencio', () => {
+  it('se entra con sonido', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    expect(result.current.muted).toBe(false)
+  })
+
+  it('se puede silenciar y volver a activar', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+
+    act(() => result.current.setMuted(true))
+    expect(result.current.muted).toBe(true)
+
+    act(() => result.current.setMuted(false))
+    expect(result.current.muted).toBe(false)
+  })
+
+  it('la elección sobrevive a la partida', () => {
+    // Silenciar es una preferencia del jugador, no un ajuste de la ronda:
+    // devolver el sonido al empezar o al volver al menú obligaría a apagarlo
+    // cada vez, que es justo lo que molesta con el visor puesto.
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setMuted(true))
+
+    playRound(result, 5, 3)
+    expect(result.current.muted).toBe(true)
+
+    act(() => result.current.resetGame())
+    expect(result.current.muted).toBe(true)
+  })
+})
+
 describe('puntuación y racha', () => {
   it('atrapar suma puntos; fallar no', () => {
     const { result } = renderHook(() => useGameStoreValue())

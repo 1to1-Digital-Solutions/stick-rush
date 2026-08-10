@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/react'
+import { act, cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   COUNTDOWN_SECONDS,
@@ -37,11 +37,21 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  // Sin `globals` en la config de Vitest, Testing Library no limpia sola: los
+  // montajes de un test seguirían escuchando la página en el siguiente y
+  // crearían contextos de audio que no son de nadie.
+  cleanup()
   vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 
-/** Monta el juego con sonido y devuelve su estado para manejarlo desde fuera. */
+/**
+ * Monta el juego con sonido y devuelve su estado para manejarlo desde fuera.
+ *
+ * Lleva un botón de silenciar de verdad —no basta con llamar a `setMuted`—
+ * porque parte de lo que hay que comprobar es cuándo llega ese cambio respecto
+ * del clic que desbloquea el audio.
+ */
 function renderGame() {
   const store = { current: null as GameStore | null }
 
@@ -56,6 +66,9 @@ function renderGame() {
     return (
       <GameContext.Provider value={value}>
         <Sound />
+        <button type="button" onClick={() => value.setMuted(!value.muted)}>
+          Silenciar
+        </button>
       </GameContext.Provider>
     )
   }
@@ -63,12 +76,27 @@ function renderGame() {
   const view = render(<Harness />)
   return Object.assign(store as { current: GameStore }, {
     unmount: view.unmount,
+    /**
+     * Pulsa el botón de silenciar como lo haría el jugador: con la secuencia
+     * de eventos que manda el navegador, no solo con el clic. El orden importa,
+     * porque es lo que decide si el gesto que desbloquea el audio llega antes o
+     * a la vez que la orden de callar.
+     */
+    clickMute: () => {
+      const button = view.getByRole('button', { name: 'Silenciar' })
+      fireEvent.pointerDown(button)
+      fireEvent.pointerUp(button)
+      fireEvent.click(button)
+    },
   })
 }
 
 /** El navegador no deja sonar hasta que el usuario interactúa con la página. */
 function interact() {
-  act(() => void window.dispatchEvent(new Event('pointerdown')))
+  act(() => {
+    window.dispatchEvent(new Event('pointerdown'))
+    window.dispatchEvent(new Event('click'))
+  })
 }
 
 /** Un segundo de la cuenta atrás. */
@@ -192,6 +220,61 @@ describe('sonido de la partida', () => {
     })
 
     expect(playedSounds().map((sound) => sound.name)).toEqual(['catch', 'miss'])
+  })
+
+  it('en silencio ni se crea el contexto de audio', () => {
+    // Silenciar no es bajar el volumen a cero: si se creara el contexto, el
+    // juego seguiría pidiendo permiso de reproducción y programando nodos para
+    // nada.
+    const store = renderGame()
+    act(() => store.current.setMuted(true))
+    interact()
+    startPlaying(store)
+    act(() => store.current.catchStick(0.5))
+
+    expect(contexts).toHaveLength(0)
+    expect(play).not.toHaveBeenCalled()
+  })
+
+  it('silenciar con el primer clic de la página tampoco lo abre', () => {
+    // Ese clic es a la vez el gesto que desbloquea el audio y la orden de
+    // callar. Atendidos por separado —el gesto en `pointerdown` y el botón en
+    // el clic— el juego abre un contexto para cerrarlo en el render siguiente.
+    const store = renderGame()
+
+    store.clickMute()
+    startPlaying(store)
+
+    expect(store.current.muted).toBe(true)
+    expect(contexts).toHaveLength(0)
+  })
+
+  it('silenciar a media partida cierra el contexto y calla', () => {
+    const store = renderGame()
+    interact()
+    startPlaying(store)
+
+    act(() => store.current.setMuted(true))
+    play.mockClear()
+    act(() => store.current.catchStick(0.5))
+
+    expect(contexts[0].close).toHaveBeenCalled()
+    expect(play).not.toHaveBeenCalled()
+  })
+
+  it('quitar el silencio devuelve el sonido sin esperar otro gesto', () => {
+    // El propio botón es el gesto que el navegador exige, así que volver a
+    // esperar un clic dejaría muda la partida que ya está en marcha.
+    const store = renderGame()
+    interact()
+    startPlaying(store)
+    act(() => store.current.setMuted(true))
+    act(() => store.current.setMuted(false))
+    play.mockClear()
+
+    act(() => store.current.catchStick(0.5))
+
+    expect(playedSounds()).toEqual([{ name: 'catch', streak: 1 }])
   })
 
   it('al desmontar cierra el contexto de audio', () => {

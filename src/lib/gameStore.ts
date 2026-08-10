@@ -66,8 +66,14 @@ export interface GameStore {
   runId: number
   /** Escenario o passthrough en sesión inmersiva. */
   scenery: SceneryMode
+  /**
+   * Juego en silencio. No se guarda entre visitas: el juego no usa storage
+   * (ver la auditoría de seguridad), así que cada partida arranca con sonido.
+   */
+  muted: boolean
 
   setScenery: (scenery: SceneryMode) => void
+  setMuted: (muted: boolean) => void
   setStickCount: (count: number) => void
   setDifficulty: (difficulty: Difficulty) => void
   startGame: () => void
@@ -105,6 +111,10 @@ export function useGameStoreValue(): GameStore {
   // Se entra con el escenario puesto: es la experiencia completa, y quien
   // prefiera ver su cuarto lo quita desde el menú inmersivo.
   const [scenery, setScenery] = useState<SceneryMode>('scene')
+  // Se entra con sonido: es parte de cómo se juega —en el visor es lo único
+  // que avisa de un fallo sin mirar el marcador— y quien lo prefiera mudo lo
+  // apaga desde el menú, de escritorio o inmersivo.
+  const [muted, setMuted] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [runId, setRunId] = useState(0)
 
@@ -187,7 +197,9 @@ export function useGameStoreValue(): GameStore {
       countdown,
       runId,
       scenery,
+      muted,
       setScenery,
+      setMuted,
       setStickCount,
       setDifficulty,
       startGame,
@@ -207,7 +219,9 @@ export function useGameStoreValue(): GameStore {
       countdown,
       runId,
       scenery,
+      muted,
       setScenery,
+      setMuted,
       setStickCount,
       startGame,
       catchStick,

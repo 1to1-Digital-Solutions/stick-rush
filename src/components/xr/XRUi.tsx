@@ -3,7 +3,13 @@
 import { type ReactNode, useMemo, useRef, useState } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 import { Path, Shape, Vector2 } from 'three'
-import { XR_EXIT_ICON, XR_HOME_ICON, type IconShape } from '@/lib/xrIcons'
+import {
+  XR_EXIT_ICON,
+  XR_HOME_ICON,
+  XR_MUTED_ICON,
+  XR_SOUND_ICON,
+  type IconShape,
+} from '@/lib/xrIcons'
 
 /**
  * Piezas de interfaz para las sesiones inmersivas.
@@ -223,6 +229,16 @@ export function XRHomeIcon(props: IconProps) {
  */
 export function XRExitIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_EXIT_ICON} {...props} />
+}
+
+/** Altavoz con ondas: el juego suena. */
+export function XRSoundIcon(props: IconProps) {
+  return <XRShapeIcon icon={XR_SOUND_ICON} {...props} />
+}
+
+/** Altavoz con un aspa: el juego está en silencio. */
+export function XRMutedIcon(props: IconProps) {
+  return <XRShapeIcon icon={XR_MUTED_ICON} {...props} />
 }
 
 /** Dos montañas y una luna: el escenario del juego. */

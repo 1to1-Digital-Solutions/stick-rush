@@ -42,6 +42,13 @@ export const XR_QUIT_YAW = Math.atan2(
 )
 /** Botón de salir del visor, en la esquina del panel del menú. */
 export const XR_MENU_EXIT_OFFSET: Vec3 = [-0.42, -0.29, 0]
+/**
+ * Botón de silenciar, en la esquina opuesta a la de salir del visor. Los dos
+ * ajustes de la fila de abajo quedan así uno en cada punta, con el de empezar
+ * en medio: en el visor se apunta a pulso y un vecino a pocos centímetros se
+ * pulsa por error.
+ */
+export const XR_MENU_SOUND_OFFSET: Vec3 = [0.42, -0.29, 0]
 /** Selector de escenario o passthrough, bajo las dificultades. */
 export const XR_SCENERY_PICKER_OFFSET: Vec3 = [0, -0.17, 0]
 /**
@@ -74,6 +81,12 @@ export function xrQuitButtonPosition(): Vec3 {
 /** Botón de salir del visor, dentro del panel del menú. */
 export function xrMenuExitPosition(): Vec3 {
   const [dx, dy] = XR_MENU_EXIT_OFFSET
+  return offset(XR_MENU_POSITION, dx, dy)
+}
+
+/** Botón de silenciar, dentro del panel del menú. */
+export function xrMenuSoundPosition(): Vec3 {
+  const [dx, dy] = XR_MENU_SOUND_OFFSET
   return offset(XR_MENU_POSITION, dx, dy)
 }
 
