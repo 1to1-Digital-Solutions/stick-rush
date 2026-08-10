@@ -72,6 +72,14 @@ Both menus — the desktop one and the immersive one — can mute it, and while
 muted the game never touches the Web Audio API at all. The choice is not
 persisted: the game uses no storage.
 
+In a headset, catching a stick also **buzzes the controller that caught it**
+(WebXR haptics): a short, firm pulse played through
+`XRInputSource.gamepad.hapticActuators`, so there is nothing to download here
+either. It is the one cue that still reaches you while you are looking at
+another stick with the sound muted, and it lands on the hand that did the catch.
+Bare hands and the desktop mouse have no actuator, so they simply do not
+vibrate.
+
 It is a fully static site — no middleware, no Server Actions, no API routes. Security
 headers (CSP, `Permissions-Policy`, HSTS and friends) are declared in
 `next.config.ts`; `connect-src 'self'` is what enforces the "no external requests"
