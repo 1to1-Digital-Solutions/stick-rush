@@ -9,6 +9,7 @@ import {
   STALL_RING_RADIUS,
   STALL_SIZE,
   WHEEL_CABIN_DROP,
+  WHEEL_CABIN_HEIGHT,
   WHEEL_CENTER,
   WHEEL_RADIUS,
   facingRotationY,
@@ -90,9 +91,13 @@ describe('recinto', () => {
 
   it('deja girar la noria sin arrastrar las cabinas por el suelo', () => {
     // La cabina más baja es la del punto inferior del aro, con todo su vuelo.
-    expect(
-      WHEEL_CENTER[1] - WHEEL_RADIUS - WHEEL_CABIN_DROP,
-    ).toBeGreaterThan(GROUND_Y)
+    // Lo que roza es el fondo de la góndola, no el punto del que cuelga.
+    const cabinFloor =
+      WHEEL_CENTER[1] -
+      WHEEL_RADIUS -
+      WHEEL_CABIN_DROP -
+      WHEEL_CABIN_HEIGHT / 2
+    expect(cabinFloor).toBeGreaterThan(GROUND_Y)
   })
 
   it('asoma la noria por encima de las casetas', () => {

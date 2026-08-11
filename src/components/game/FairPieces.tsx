@@ -36,8 +36,12 @@ const BULB_LIMIT = 176
  * El decorado no se toca ni se apunta: sin esto, cada movimiento del ratón —y
  * cada fotograma con los mandos del visor apuntando— lanzaría un rayo contra
  * las cientos de piezas del recinto para nada.
+ *
+ * Se exporta porque no todo el decorado son instancias: los aros de la noria
+ * son mallas sueltas y tienen que anularlo igual (y son las piezas con más
+ * triángulos de todo el recinto).
  */
-const ignoreRaycast = () => null
+export const ignoreRaycast = () => null
 
 type PieceProps = ComponentProps<typeof BoardInstance>
 

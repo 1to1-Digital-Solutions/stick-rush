@@ -3,16 +3,21 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { Group } from 'three'
-import { MACHINE_STRIPE_COLORS, MACHINE_TRUSS_COLOR } from '@/lib/gameConfig'
+import {
+  GROUND_Y,
+  MACHINE_STRIPE_COLORS,
+  MACHINE_TRUSS_COLOR,
+} from '@/lib/gameConfig'
 import {
   WHEEL_CABIN_COUNT,
   WHEEL_CABIN_DROP,
+  WHEEL_CABIN_HEIGHT,
   WHEEL_CENTER,
   WHEEL_RADIUS,
   WHEEL_SPEED,
   facingRotationY,
 } from '@/lib/sceneryLayout'
-import { Board, Bulb, Pole } from './FairPieces'
+import { Board, Bulb, Pole, ignoreRaycast } from './FairPieces'
 
 /**
  * Noria al fondo del recinto.
@@ -36,11 +41,9 @@ const RIM_GAP = 1.3
 const RIM_TUBE = 0.12
 const SPOKE_THICKNESS = 0.11
 const BULB_RADIUS = 0.14
-/** Alto de la góndola de una cabina. */
-const CABIN_HEIGHT = 0.6
 
 /** Alto del pie, del suelo al eje. */
-const LEG_HEIGHT = WHEEL_CENTER[1]
+const LEG_HEIGHT = WHEEL_CENTER[1] - GROUND_Y
 /** Cuánto se abre cada pie hacia delante y hacia atrás. */
 const LEG_SPREAD = 3.2
 
@@ -50,7 +53,7 @@ const LEG_SPREAD = 3.2
  * así que caen a plomo den la vuelta que den.
  */
 function Cabin({ color }: { color: string }) {
-  const hangerLength = WHEEL_CABIN_DROP - CABIN_HEIGHT / 2
+  const hangerLength = WHEEL_CABIN_DROP - WHEEL_CABIN_HEIGHT / 2
 
   return (
     <>
@@ -61,7 +64,7 @@ function Cabin({ color }: { color: string }) {
       />
       <Board
         position={[0, -WHEEL_CABIN_DROP, 0]}
-        scale={[0.78, CABIN_HEIGHT, 0.95]}
+        scale={[0.78, WHEEL_CABIN_HEIGHT, 0.95]}
         color={color}
       />
     </>
@@ -119,7 +122,11 @@ export function FerrisWheel({ spinning }: { spinning: boolean }) {
 
       <group ref={wheelRef}>
         {[-1, 1].map((side) => (
-          <mesh key={`rim-${side}`} position={[0, 0, (side * RIM_GAP) / 2]}>
+          <mesh
+            key={`rim-${side}`}
+            position={[0, 0, (side * RIM_GAP) / 2]}
+            raycast={ignoreRaycast}
+          >
             <torusGeometry args={[WHEEL_RADIUS, RIM_TUBE, 6, 48]} />
             <meshStandardMaterial
               color={MACHINE_TRUSS_COLOR}

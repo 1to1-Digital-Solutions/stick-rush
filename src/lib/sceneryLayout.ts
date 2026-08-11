@@ -19,9 +19,9 @@ export type Vec3 = [number, number, number]
 
 /**
  * Radio libre alrededor del jugador: ahí dentro no entra ni una pieza del
- * decorado. La máquina, con sus postes abiertos y sus riostras, llega a ~1.4 m;
- * el resto es sitio para moverse y para que nada aparezca pegado a la cara al
- * girarse.
+ * decorado. La máquina, con sus postes abiertos y sus riostras, llega a ~1.7 m
+ * (el pie del tirante, ver `legs` en `StickMachine`); el resto es sitio para
+ * moverse y para que nada aparezca pegado a la cara al girarse.
  */
 export const SCENERY_CLEARANCE = 3
 
@@ -52,8 +52,13 @@ export const GARLAND_BULBS_PER_SPAN = 7
 export const WHEEL_CENTER: Vec3 = [-7.4, 7.4, -10.6]
 export const WHEEL_RADIUS = 5.6
 export const WHEEL_CABIN_COUNT = 12
-/** Cuánto baja una cabina por debajo del punto del aro del que cuelga. */
+/**
+ * Cuánto baja el **centro** de una cabina por debajo del punto del aro del que
+ * cuelga. Lo que roza el suelo es su fondo, media góndola más abajo.
+ */
 export const WHEEL_CABIN_DROP = 1.05
+/** Alto de la góndola de una cabina. */
+export const WHEEL_CABIN_HEIGHT = 0.6
 /** Velocidad de giro en radianes por segundo: una vuelta cada ~85 s. */
 export const WHEEL_SPEED = 0.074
 
