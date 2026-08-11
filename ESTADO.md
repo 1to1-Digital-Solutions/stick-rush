@@ -37,7 +37,9 @@ del modo inmersivo tras la segunda prueba con el visor.
    (`MASTER_GAIN`, 0.28) no resulte invasivo pegado a los oídos; (h) que la
    **vibración del mando** al atrapar un palo se note con el brazo en movimiento y que
    una racha larga no la convierta en un zumbido continuo (`CATCH_PULSE` en
-   `src/lib/haptics.ts`: 0.7 de intensidad, 45 ms).
+   `src/lib/haptics.ts`: 0.7 de intensidad, 45 ms); (i) que la **marca del récord**
+   sobre la barra de puntuación se distinga del relleno con las gafas puestas, y que
+   al batirlo se note que la barra cambia (`ScoreBar` en `src/components/xr/XRHud.tsx`).
    Valores a retocar: adelanto del jugador (`PLAYER_OFFSET_Z`, −0.18 m), tamaño
    (`MACHINE_RADIUS` 0.57 m y `STICK_LENGTH` 0.39 m — al cambiarlos hay que recalcular
    `DIFFICULTY_SPEEDS` para conservar los tiempos, que `gameConfig.test.ts` vigila),
