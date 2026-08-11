@@ -68,6 +68,22 @@ export const MACHINE_BULB_COLOR = '#ffd479'
 /** Fondo y niebla fuera de AR: noche de plaza, a juego con el escenario. */
 export const BACKDROP_COLOR = '#0d1017'
 
+/**
+ * Tonos del recinto de feria que rodea al jugador (ver `sceneryLayout.ts`). Los
+ * toldos, las bombillas y el herraje son los mismos de la máquina: el recinto
+ * tiene que parecer el sitio del que ha salido, no otro decorado.
+ */
+export const FAIR_WOOD_COLOR = '#4a3a2c'
+/** Tablero del mostrador: lo más claro de la caseta, para que se lea de noche. */
+export const FAIR_COUNTER_COLOR = '#cbb894'
+/**
+ * Carteles de las casetas. Son varios para que el círculo no parezca la misma
+ * caseta repetida seis veces, que es justo lo que delata un decorado generado.
+ */
+export const FAIR_SIGN_COLORS = ['#1d3557', '#7a1f2b', '#1f5f4a']
+/** Premios apilados dentro de la caseta, a la vista sobre el mostrador. */
+export const FAIR_PRIZE_COLORS = ['#e8b93f', '#c1121f', '#4c8fbd']
+
 /** Límites de palos seleccionables. */
 export const MIN_STICKS = 5
 export const MAX_STICKS = 13

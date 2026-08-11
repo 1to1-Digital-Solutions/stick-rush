@@ -18,19 +18,22 @@ import { XRGazeAnchor } from '@/components/xr/XRGazeAnchor'
 import { XRHud, XRQuitButton } from '@/components/xr/XRHud'
 import { XRMenu } from '@/components/xr/XRMenu'
 import { XRSessionController } from '@/components/xr/XRSessionController'
+import { Fairground } from './Fairground'
 import { SceneryFade } from './SceneryFade'
 import { StickMachine } from './StickMachine'
 import { Ground } from './Ground'
 
 /**
- * Escenario: fondo, suelo e iluminación de entorno.
+ * Escenario: recinto de feria, fondo, suelo e iluminación de entorno.
  *
- * El HDRI (una plaza de pueblo de noche, CC0, servido desde `public/`) hace de
- * escenario en VR y en escritorio: envuelve la escena, se proyecta sobre el
- * suelo y además ilumina la máquina con la luz cálida de las farolas.
+ * El HDRI (una plaza de pueblo de noche, CC0, servido desde `public/`) envuelve
+ * la escena, se proyecta sobre el suelo y le da la luz cálida de las farolas.
+ * Delante de esa foto está el recinto de verdad —casetas, guirnaldas y noria,
+ * ver `<Fairground>`—, que es lo que da volumen: una foto de fondo no cambia al
+ * mover la cabeza, y en el visor eso se nota enseguida.
  *
- * En AR no se dibuja ni fondo ni suelo: el escenario es la habitación del
- * jugador y taparla con un decorado rompería el passthrough. El HDRI sí se
+ * En AR no se dibuja ni recinto, ni fondo, ni suelo: el escenario es la
+ * habitación del jugador y taparla rompería el passthrough. El HDRI sí se
  * mantiene, pero solo como fuente de reflejos (`background={false}`): sin él la
  * máquina se vería plana y apagada sobre la sala real.
  */
@@ -47,6 +50,7 @@ function SceneBackdrop({ scenery }: { scenery: SceneryMode }) {
           {/* Solo se ve mientras carga el HDRI; luego lo sustituye el fondo. */}
           <color attach="background" args={[BACKDROP_COLOR]} />
           <Ground />
+          <Fairground />
         </>
       )}
 
