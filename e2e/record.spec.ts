@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { HIGH_SCORE_KEY } from '@/lib/highScore'
 import {
   catchStick,
   openGame,
@@ -45,6 +46,34 @@ test.describe('Mejor puntuación', () => {
     // así que si el récord sigue en el menú es que salió del navegador.
     await openGame(page)
     expect(await readMenuRecord(page)).toBe(points)
+  })
+
+  test('una partida que no bate el récord recuerda la marca a batir', async ({
+    page,
+  }) => {
+    // El récord se siembra en el navegador en vez de jugar una primera partida:
+    // lo que se prueba aquí es qué enseña el fin de partida al no batirlo, y
+    // una partida de más solo añadiría segundos y azar. Con una marca así de
+    // alta, la partida termina sin acercarse ni atrapando todos los palos.
+    await page.addInitScript(
+      (key) => window.localStorage.setItem(key, '99999'),
+      HIGH_SCORE_KEY,
+    )
+
+    await openGame(page)
+    expect(await readMenuRecord(page)).toBe(99999)
+
+    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await waitForGameOver(page)
+
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).not.toContainText('¡Nuevo récord!')
+    await expect(dialog).toContainText('Tu récord')
+    await expect(dialog).toContainText('99.999')
+
+    // Y una partida peor no rebaja lo guardado.
+    await page.getByRole('button', { name: 'Volver al menú' }).click()
+    expect(await readMenuRecord(page)).toBe(99999)
   })
 
   test('con el almacenamiento bloqueado se juega igual, sin récord', async ({
