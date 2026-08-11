@@ -143,6 +143,7 @@ src/
     gameConfig.ts       Constants: difficulties, speeds, colours, geometry
     gameStore.ts        Global game state (Context API)
     stickLayout.ts      Stick layout, shuffled fall order and score token states
+    sceneryLayout.ts    Fairground layout: stall ring, light garlands, ferris wheel
     stickSwing.ts       Idle sway of the hanging sticks
     sound.ts            Synthesised game sounds (Web Audio, no files)
 e2e/                    Playwright tests
@@ -180,9 +181,16 @@ with the scene already in the tree and it shows up inside the headset. `<XROrigi
 places the player's feet at the centre of the semicircle, at 1:1 scale, with the ring
 just above head height and within arm's reach.
 
-In **AR** neither the background, the ground nor the environment is drawn: the set is
-the player's own room and covering it would break passthrough. The HDRI is kept only
-as a reflection source, so the machine does not look flat against the real room.
+In **VR** the machine stands in a fairground built out of geometry: stalls in a ring
+around the player, light garlands strung between posts and a slowly turning ferris
+wheel in the distance, with the HDRI behind them as sky and light. A photo has no
+parallax, so on its own it gives itself away as soon as the player moves their head.
+The whole set is instanced into a handful of draw calls (see `lib/sceneryLayout.ts`).
+
+In **AR** neither the fairground, the background, the ground nor the environment is
+drawn: the set is the player's own room and covering it would break passthrough. The
+HDRI is kept only as a reflection source, so the machine does not look flat against
+the real room.
 
 ### Testing on a Quest headset
 

@@ -39,7 +39,10 @@ del modo inmersivo tras la segunda prueba con el visor.
    una racha larga no la convierta en un zumbido continuo (`CATCH_PULSE` en
    `src/lib/haptics.ts`: 0.7 de intensidad, 45 ms); (i) que la **marca del récord**
    sobre la barra de puntuación se distinga del relleno con las gafas puestas, y que
-   al batirlo se note que la barra cambia (`ScoreBar` en `src/components/xr/XRHud.tsx`).
+   al batirlo se note que la barra cambia (`ScoreBar` en `src/components/xr/XRHud.tsx`);
+   (j) que el **recinto de feria** nuevo no se coma los fotogramas en el visor, que las
+   casetas no agobien a 6.4 m y que la noria girando en la periferia no maree (ver
+   "Escenario VR: recinto de feria"; radios y distancias, en `src/lib/sceneryLayout.ts`).
    Valores a retocar: adelanto del jugador (`PLAYER_OFFSET_Z`, −0.18 m), tamaño
    (`MACHINE_RADIUS` 0.57 m y `STICK_LENGTH` 0.39 m — al cambiarlos hay que recalcular
    `DIFFICULTY_SPEEDS` para conservar los tiempos, que `gameConfig.test.ts` vigila),
@@ -477,6 +480,44 @@ batir.
 - **Sin validar en hardware**: falta ver si la marca del récord se distingue del
   relleno de la barra con las gafas puestas.
 
+## Escenario VR: recinto de feria (rama `agent/escenario-vr-mas-elaborado-que-e-ebc93a`)
+
+El escenario era **solo el HDRI**: una foto de plaza de noche envolviendo la escena y
+proyectada en el suelo. De lejos funciona, pero una foto no tiene paralaje, así que en el
+visor se delata en cuanto el jugador mueve la cabeza, y la máquina quedaba plantada en
+mitad de la nada. Ahora hay geometría alrededor y la foto se queda de cielo y de luz.
+
+- **Qué hay**: seis casetas en círculo a 6.4 m mirando al jugador (toldo a rayas con
+  bombillas, mostrador, premios en la balda y cartel), ocho postes a 4.6 m con guirnaldas
+  de bombillas colgando entre ellos, y una **noria de 11 m de diámetro** a 13 m, que gira
+  una vuelta cada ~85 s con las cabinas colgando a plomo.
+- **Dónde vive**: `src/lib/sceneryLayout.ts` decide *dónde* va cada cosa (anillos,
+  catenaria de las guirnaldas, medidas de la noria) y se prueba solo, sin navegador;
+  `Fairground.tsx`, `FairStall.tsx` y `FerrisWheel.tsx` solo pintan. Los colores están con
+  los de la máquina en `gameConfig.ts`, y son los mismos a propósito: el recinto tiene que
+  parecer el sitio del que ha salido la máquina.
+- **Cinco llamadas de dibujo para 285 piezas**: todo el recinto va instanciado en tres
+  `<Instances>` de drei —tablas, postes y bombillas— más los dos aros de la noria. En el
+  visor lo que se paga son las llamadas, no los triángulos. Los límites de instancias van
+  holgados porque drei deja de pintar lo que sobra **sin avisar** (`FairPieces.tsx`).
+- **El decorado no se toca ni se apunta**: cada pieza lleva el raycast anulado. Si no,
+  cada movimiento del ratón —y cada fotograma con los mandos apuntando— lanzaría un rayo
+  contra las 285 piezas para nada.
+- **En passthrough no se pinta nada de esto**: cuelga del mismo bloque que el suelo y el
+  fondo en `SceneBackdrop`, así que el interruptor de escenario/AR lo enciende y lo apaga
+  con su fundido, sin tocar nada más.
+- **Lo que vigilan los tests** (`sceneryLayout.test.ts`, 17): que el decorado no invade los
+  3 m libres alrededor del jugador, que las guirnaldas cuelgan por encima de la máquina
+  —si bajan hasta el aro, el jugador se encuentra bombillas donde busca palos—, que las
+  cabinas de la noria no arrastran por el suelo y que cada caseta encara al jugador.
+  Comprobado que fallan de verdad: acercar las casetas, hundir la guirnalda, bajar la noria
+  o quitar la media vuelta del giro ponen tests en rojo.
+- **Sin assets nuevos ni dependencias nuevas**: todo es geometría por código, como la
+  máquina. El HDRI sigue siendo el mismo fichero.
+- **Sin validar en hardware**: falta ver en el visor si los fotogramas aguantan con el
+  recinto puesto y si la noria girando en la periferia molesta. Con
+  `prefers-reduced-motion` se queda parada.
+
 ## Iconos del menú inmersivo (rama `agent/mejorar-los-iconos-del-menu-3d`)
 
 De la tercera prueba salió que la flecha de «volver» no se leía como una flecha, y que
@@ -588,8 +629,8 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 
 - Validar y pulir la interacción XR con mandos en hardware real.
 - Posibles mejoras: ~~animación de "vibración" de los palos colgando~~ (hecha, ver
-  "Balanceo de los palos"), temporizador/puntuación por tiempo, escenario VR más
-  elaborado.
+  "Balanceo de los palos"), temporizador/puntuación por tiempo, ~~escenario VR más
+  elaborado~~ (hecho, ver "Escenario VR: recinto de feria").
 - ~~**Decidir si un palo debe poder atraparse mientras aún cuelga.**~~ **DECIDIDO
   (2026-08-10): sí, se coge hasta que toca el suelo.** Ver "Decisiones firmes". El
   comportamiento no cambia; lo que cambia es que la regla dejó de estar escrita dos veces
