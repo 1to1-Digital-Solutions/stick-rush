@@ -17,7 +17,13 @@ import {
   WHEEL_SPEED,
   facingRotationY,
 } from '@/lib/sceneryLayout'
-import { Board, Bulb, Pole, ignoreRaycast } from './FairPieces'
+import {
+  Board,
+  Bulb,
+  Pole,
+  ignoreRaycast,
+  type PieceCounts,
+} from './FairPieces'
 
 /**
  * Noria al fondo del recinto.
@@ -46,6 +52,18 @@ const BULB_RADIUS = 0.14
 const LEG_HEIGHT = WHEEL_CENTER[1] - GROUND_Y
 /** Cuánto se abre cada pie hacia delante y hacia atrás. */
 const LEG_SPREAD = 3.2
+
+/**
+ * Lo que gasta la noria del presupuesto de instancias (ver `PieceCounts`). Los
+ * tres postes fijos son los dos pies y el eje; por cabina van un radio y la
+ * horquilla de la que cuelga, la góndola, y una bombilla en cada aro. Los aros
+ * no cuentan: son mallas sueltas, no instancias.
+ */
+export const WHEEL_PIECES: PieceCounts = {
+  boards: WHEEL_CABIN_COUNT,
+  poles: 3 + WHEEL_CABIN_COUNT * 2,
+  bulbs: WHEEL_CABIN_COUNT * 2,
+}
 
 /**
  * Cabina colgada del aro: la horquilla y la góndola, las dos por debajo del

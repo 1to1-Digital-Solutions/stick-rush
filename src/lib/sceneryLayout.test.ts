@@ -76,9 +76,13 @@ describe('facingRotationY', () => {
 
 describe('recinto', () => {
   it('deja libre el espacio de juego alrededor del jugador', () => {
-    // La pieza más cercana al centro es la esquina delantera de la caseta.
-    const halfDiagonal = Math.hypot(STALL_SIZE.width / 2, STALL_SIZE.depth / 2)
-    expect(STALL_RING_RADIUS - halfDiagonal).toBeGreaterThanOrEqual(
+    // Lo que más se acerca al centro no es la esquina de la caseta sino la
+    // punta del toldo, que vuela un buen trozo por delante de ella.
+    const stallReach = Math.hypot(
+      STALL_SIZE.width / 2,
+      STALL_SIZE.depth / 2 + STALL_SIZE.awningReach,
+    )
+    expect(STALL_RING_RADIUS - stallReach).toBeGreaterThanOrEqual(
       SCENERY_CLEARANCE,
     )
     expect(GARLAND_RING_RADIUS).toBeGreaterThanOrEqual(SCENERY_CLEARANCE)

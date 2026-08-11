@@ -22,19 +22,50 @@ async function revealScene(page: Page) {
     .toBeGreaterThan(100_000)
 }
 
+/** Cuánto se deja pasar entre las dos capturas que se comparan. */
+const MOVEMENT_WINDOW = 600
+
+async function canvasBox(page: Page) {
+  const box = await page.locator('canvas').boundingBox()
+  if (box == null) throw new Error('la escena 3D no está montada')
+  return box
+}
+
+/**
+ * Recorte centrado en la máquina, en coordenadas de página.
+ *
+ * Las cotas van en proporción al **alto** del canvas —el `fov` de la cámara es
+ * vertical— para que el recorte siga cayendo sobre la máquina aunque cambie la
+ * relación de aspecto.
+ */
+function machineClip({ x, y, width, height }: Awaited<ReturnType<typeof canvasBox>>) {
+  return {
+    x: x + width / 2 - height * 0.195,
+    y: y + height * 0.21,
+    width: height * 0.39,
+    height: height * 0.25,
+  }
+}
+
 /**
  * Si la escena cambia entre dos instantes.
  *
- * En el menú lo único que puede moverse son los palos meciéndose: ninguno cae,
- * el escenario es una foto y la cámara solo gira si el jugador la arrastra. Con
- * el panel del menú apartado y las animaciones del DOM congeladas, dos capturas
- * distintas solo pueden venir del balanceo.
+ * Con el panel del menú apartado y las animaciones del DOM congeladas, en el
+ * menú solo pueden moverse dos cosas: los palos meciéndose y la noria del
+ * recinto, que gira despacio en la periferia. Mirando el canvas entero, un
+ * cambio puede venir de cualquiera de las dos; con `onlyMachine` la captura se
+ * recorta a la máquina, muy lejos de la noria, y entonces solo puede ser el
+ * balanceo.
  */
-async function sceneMoves(page: Page, pause = 600): Promise<boolean> {
-  const canvas = page.locator('canvas')
-  const before = await canvas.screenshot({ animations: 'disabled' })
-  await page.waitForTimeout(pause)
-  const after = await canvas.screenshot({ animations: 'disabled' })
+async function sceneMoves(
+  page: Page,
+  { onlyMachine = false } = {},
+): Promise<boolean> {
+  const canvas = await canvasBox(page)
+  const clip = onlyMachine ? machineClip(canvas) : canvas
+  const before = await page.screenshot({ clip, animations: 'disabled' })
+  await page.waitForTimeout(MOVEMENT_WINDOW)
+  const after = await page.screenshot({ clip, animations: 'disabled' })
   return !before.equals(after)
 }
 
@@ -118,17 +149,19 @@ test.describe('Menú de inicio', () => {
   }) => {
     await revealScene(page)
 
-    expect(await sceneMoves(page)).toBe(true)
+    expect(await sceneMoves(page, { onlyMachine: true })).toBe(true)
   })
 
-  test('con el movimiento reducido, la máquina espera quieta', async ({
+  test('con el movimiento reducido, no se mueve nada de la escena', async ({
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await revealScene(page)
     // Los palos que ya se mecían tardan un instante en enderezarse.
-    await page.waitForTimeout(600)
+    await page.waitForTimeout(MOVEMENT_WINDOW)
 
+    // Aquí sí se mira el canvas entero: la preferencia tiene que parar tanto el
+    // balanceo de los palos como la noria del recinto.
     expect(await sceneMoves(page)).toBe(false)
   })
 

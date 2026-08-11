@@ -24,13 +24,19 @@ const [PoleInstances, PoleInstance] = createInstances()
 const [BulbInstances, BulbInstance] = createInstances()
 
 /**
- * Holgados a propósito: si las piezas superan el límite, drei deja de pintar
- * las que sobran sin avisar. Hoy el recinto usa 120 tablas, 55 postes y 110
- * bombillas, medidos sobre la escena montada.
+ * Cuántas piezas de cada familia gasta un trozo del recinto.
+ *
+ * Cada `<Instances>` se dimensiona de antemano y, si las piezas superan su
+ * límite, drei deja de pintar las que sobran **sin avisar**. Por eso el tamaño
+ * no es un número escrito a mano —que se quedaría viejo al añadir una caseta o
+ * un premio— sino la suma de lo que declara cada trozo: ver `FAIR_PIECES` en
+ * `Fairground`.
  */
-const BOARD_LIMIT = 192
-const POLE_LIMIT = 96
-const BULB_LIMIT = 176
+export interface PieceCounts {
+  boards: number
+  poles: number
+  bulbs: number
+}
 
 /**
  * El decorado no se toca ni se apunta: sin esto, cada movimiento del ratón —y
@@ -65,21 +71,30 @@ export function Bulb(props: PieceProps) {
  * `createInstances` reparte su contexto a los descendientes; el orden entre
  * ellas da igual, lo que importa es que el decorado quede dentro de las tres.
  *
+ * `limits` es el recuento exacto de piezas que va a colgar de aquí: reservar de
+ * menos las pierde en silencio y reservar de más deja búferes sin usar.
+ *
  * `frustumCulled={false}`: el mesh instanciado vive en el origen y su volumen
  * envolvente no sigue a las instancias, así que dejar que el motor decida si se
  * ve haría desaparecer el recinto entero al mirar hacia otro lado.
  */
-export function FairPieces({ children }: { children: ReactNode }) {
+export function FairPieces({
+  limits,
+  children,
+}: {
+  limits: PieceCounts
+  children: ReactNode
+}) {
   return (
-    <BoardInstances limit={BOARD_LIMIT} frustumCulled={false}>
+    <BoardInstances limit={limits.boards} frustumCulled={false}>
       <boxGeometry />
       <meshStandardMaterial roughness={0.85} metalness={0.05} />
 
-      <PoleInstances limit={POLE_LIMIT} frustumCulled={false}>
+      <PoleInstances limit={limits.poles} frustumCulled={false}>
         <cylinderGeometry args={[0.5, 0.5, 1, 8]} />
         <meshStandardMaterial roughness={0.6} metalness={0.25} />
 
-        <BulbInstances limit={BULB_LIMIT} frustumCulled={false}>
+        <BulbInstances limit={limits.bulbs} frustumCulled={false}>
           <sphereGeometry args={[1, 8, 6]} />
           <meshStandardMaterial
             color={MACHINE_BULB_COLOR}

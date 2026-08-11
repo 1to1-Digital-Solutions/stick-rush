@@ -9,7 +9,7 @@ import {
   MACHINE_TRUSS_COLOR,
 } from '@/lib/gameConfig'
 import { STALL_SIZE, type RingSlot } from '@/lib/sceneryLayout'
-import { Board, Bulb, Pole } from './FairPieces'
+import { Board, Bulb, Pole, type PieceCounts } from './FairPieces'
 
 /**
  * Una caseta de feria: trasera, laterales, mostrador, toldo a rayas con su
@@ -19,18 +19,27 @@ import { Board, Bulb, Pole } from './FairPieces'
  * `ringSlots`), así que aquí todo son medidas locales en metros.
  */
 
-const { width, height, depth } = STALL_SIZE
+const { width, height, depth, awningReach: AWNING_DEPTH } = STALL_SIZE
 
 /** Mostrador a la altura de la cintura, como el de un puesto de tiro. */
 const COUNTER_HEIGHT = 0.95
-/** Vuelo del toldo por delante del mostrador. */
-const AWNING_DEPTH = 0.9
 /** Caída del toldo hacia fuera, en radianes. */
 const AWNING_TILT = 0.32
 const AWNING_STRIPES = 8
 /** Bombillas colgadas del borde del toldo. */
 const AWNING_BULBS = 5
 const BULB_RADIUS = 0.045
+
+/**
+ * Lo que gasta una caseta del presupuesto de instancias (ver `PieceCounts`).
+ * Las siete tablas fijas son la trasera, los dos laterales, el cajón del
+ * mostrador y su tablero, la balda de los premios y el cartel.
+ */
+export const STALL_PIECES: PieceCounts = {
+  boards: 7 + FAIR_PRIZE_COLORS.length + AWNING_STRIPES,
+  poles: 2,
+  bulbs: AWNING_BULBS,
+}
 
 /**
  * Toldo: franjas alternas rojas y crema, las mismas de la máquina, colgando

@@ -28,8 +28,18 @@ export const SCENERY_CLEARANCE = 3
 /** Casetas del recinto, repartidas en círculo mirando al jugador. */
 export const STALL_COUNT = 6
 export const STALL_RING_RADIUS = 6.4
-/** Ancho, alto y fondo de una caseta, en metros. */
-export const STALL_SIZE = { width: 2.8, height: 2.35, depth: 1.6 } as const
+/**
+ * Ancho, alto y fondo de una caseta, en metros, más el vuelo del toldo por
+ * delante de ella. El toldo va aquí y no en el componente porque es la pieza de
+ * la caseta que más se acerca al jugador, y por tanto la que manda en el hueco
+ * libre que se le deja.
+ */
+export const STALL_SIZE = {
+  width: 2.8,
+  height: 2.35,
+  depth: 1.6,
+  awningReach: 0.9,
+} as const
 
 /**
  * Guirnaldas de bombillas: postes en círculo, más cerca que las casetas, con un
