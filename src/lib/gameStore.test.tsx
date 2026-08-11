@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MAX_STICKS, MIN_STICKS } from './gameConfig'
 import { COUNTDOWN_SECONDS, useGameStoreValue } from './gameStore'
+import { HIGH_SCORE_KEY } from './highScore'
 
 // La cuenta atrás usa `setTimeout`, así que todo el fichero corre con relojes
 // falsos: si no, cada partida costaría tres segundos reales de test.
@@ -483,6 +484,25 @@ describe('mejor puntuación', () => {
 
     expect(result.current.points).toBeGreaterThan(0)
     expect(result.current.bestPoints).toBe(0)
+    expect(result.current.isRecord).toBe(false)
+  })
+
+  it('no anuncia récord si otra pestaña guardó algo mejor mientras se jugaba', () => {
+    // La marca a batir se congela al empezar, así que una partida puede superar
+    // esa y aun así quedarse por debajo de lo guardado. Anunciarla sería
+    // prometer un récord que el menú va a desmentir en cuanto se vuelva.
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setStickCount(5))
+    startPlaying(result)
+
+    act(() => {
+      localStorage.setItem(HIGH_SCORE_KEY, '999999')
+      window.dispatchEvent(new StorageEvent('storage', { key: HIGH_SCORE_KEY }))
+    })
+    for (let i = 0; i < 5; i++) act(() => result.current.catchStick(0.5))
+
+    expect(result.current.points).toBeGreaterThan(0)
+    expect(result.current.bestPoints).toBe(999999)
     expect(result.current.isRecord).toBe(false)
   })
 

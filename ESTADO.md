@@ -453,11 +453,14 @@ batir.
   de saber si se ha batido. Para eso `startGame` congela la marca a batir
   (`recordToBeat`) y `isRecord` se deriva de comparar con ella.
 - **«¡Nuevo récord!» solo si de verdad se guardó** (revisión): `isRecord` exige
-  además que `bestPoints` ya recoja la puntuación. Sin eso, con el
-  almacenamiento bloqueado la marca a batir se quedaba a cero para siempre y
-  toda partida con puntos se anunciaba como récord, uno que al volver al menú no
-  estaba. Cuesta un frame de retraso —el aviso aparece tras guardar—, que la
-  animación de entrada tapa.
+  además que lo guardado sea **exactamente** esa puntuación. Sin la condición,
+  con el almacenamiento bloqueado la marca a batir se quedaba a cero para
+  siempre y toda partida con puntos se anunciaba como récord, uno que al volver
+  al menú no estaba. Y con «al menos» en vez de igualdad quedaba el mismo
+  engaño entre dos pestañas: la marca se congela al empezar, así que si la otra
+  pestaña guarda algo mejor mientras juegas, la partida supera la marca
+  congelada sin llegar a la guardada. Cuesta un frame de retraso —el aviso
+  aparece tras guardar—, que la animación de entrada tapa.
 - **Dónde se ve**: píldora bajo el reclamo del menú (solo si hay récord), y en
   el fin de partida «¡Nuevo récord!» o «Tu récord: N». En el visor no hay texto,
   así que es una **marca dorada sobre la barra de puntuación**, en la escala de
