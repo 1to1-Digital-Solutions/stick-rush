@@ -12,15 +12,16 @@ their head. The whole scene is at human scale (1 unit = 1 metre).
 
 ## How to play
 
-1. Pick how many sticks you want, **between 5 and 13**.
-2. Pick the difficulty — **Fácil, Medio, Difícil, Experto or Imposible** (easy to
+1. Pick the mode — **Práctica** (practice) or **Desafío** (challenge).
+2. Pick how many sticks you want, **between 5 and 13**.
+3. Pick the difficulty — **Fácil, Medio, Difícil, Experto or Imposible** (easy to
    impossible) — which sets the fall speed: from about 5.7 s per stick on Fácil to
    under 1 s on Imposible.
-3. Press **Jugar** (play). A three-second countdown runs first — the sticks hang
+4. Press **Jugar** (play). A three-second countdown runs first — the sticks hang
    there in plain sight but nothing can be taken yet — and then they drop one at a
    time in **random order**, with a random gap between them: where a stick hangs
    says nothing about when it falls.
-4. Catch what you can. A stick can be taken any time between the start of the round
+5. Catch what you can. A stick can be taken any time between the start of the round
    and the moment it hits the ground, **including while it still hangs from the
    ring** — getting ahead of a stick is playing, not cheating, and catching one up
    there is worth double what rescuing it just above the floor is (reflex bonus).
@@ -28,9 +29,22 @@ their head. The whole scene is at human scale (1 unit = 1 metre).
    be picked back up. The round ends once every stick is resolved (caught or
    dropped) and the score screen shows the result.
 
+**The two modes.** In *Práctica* every stick falls and missing one costs nothing:
+it is the game as it always was, to warm up. In *Desafío* you play with **three
+lives** — every stick that reaches the floor costs one, and the round is over when
+you run out of them (even with sticks still hanging) or when you clear them all.
+The lives you have left are on the scoreboard while you play, in the browser and in
+the headset, and the score screen ends with the score **and the lives you finished
+with**. Difficulty is unchanged by the mode: it is still yours to pick, and it is
+still what the scoring scales with. Lives are three regardless of sticks or
+difficulty, because those two are already the knobs that grade a round.
+
 Your **best score** is kept between rounds and between visits, and beating it is
-announced on the score screen. In a headset it is a mark on the score bar rather
-than a figure — same reason as the rest of the immersive UI: no text.
+announced on the score screen. There is **one record per mode**: a challenge stops
+when the lives run out, so with a single record the mode with something at stake
+would be the only one that could never beat it. In a headset the record is a mark
+on the score bar rather than a figure — same reason as the rest of the immersive
+UI: no text.
 
 > The game's interface is in Spanish, which is the product language.
 
@@ -47,8 +61,8 @@ still there, but only to operate the menu — pointing at a stick does nothing.
 
 There is no DOM in an immersive session, so the menu is built out of geometry and
 shown in front of you when you enter VR/AR: a row of sticks to pick how many you
-want, five tiles with growing bars for the difficulty, and a play button. **Not a
-single letter** — `<Text>` would pull fonts from a CDN, and the game has to run on a
+want, five tiles with growing bars for the difficulty, a switch with three hearts
+that turns the challenge on, and a play button. **Not a single letter** — `<Text>` would pull fonts from a CDN, and the game has to run on a
 headset with no internet access, so every control is drawn as the thing it means.
 A back button is always within reach during a round, and when it ends you choose
 between replaying and going back to the menu.

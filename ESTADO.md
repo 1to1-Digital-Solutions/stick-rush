@@ -480,6 +480,55 @@ batir.
 - **Sin validar en hardware**: falta ver si la marca del récord se distingue del
   relleno de la barra con las gafas puestas.
 
+## Modo práctica y modo desafío (rama `agent/modo-practica-y-modo-desafio-243a75`)
+
+Una partida era una tirada suelta: elegías dificultad, caían N palos y se acabó.
+Faltaba el motivo para volver a ponerse las gafas.
+
+- **Dos modos**: *Práctica* es el juego de siempre (caen todos los palos, fallar
+  no cuesta nada) y *Desafío* se juega con **tres vidas**: cada palo que toca el
+  suelo cuesta una, y la partida acaba al quedarse sin ellas —aunque queden palos
+  colgando— o al resolverlos todos, que es superar el reto.
+- **Vidas y no rondas que suben de dificultad**, que era la otra opción que
+  planteaba la tarea. La dificultad ya la elige el jugador y es la palanca con la
+  que escala la puntuación; si el desafío la fuera subiendo por su cuenta,
+  elegirla en el menú dejaría de significar nada y dos partidas de "Experto" no
+  serían la misma cosa. Con vidas, el modo cambia solo **cómo termina** la
+  partida y la dificultad sigue queriendo decir lo que decía.
+- **Tres vidas fijas**, ni escaladas con los palos ni con la dificultad: el trato
+  tiene que entenderse antes de empezar (tres fallos y fuera) y graduarlo es para
+  lo que ya están las otras dos opciones. Con 13 palos en Imposible, tres vidas
+  es el reto; con 5 en Fácil, un trámite.
+- **Dónde vive**: `src/lib/gameMode.ts` —funciones puras: cuántas vidas quedan y
+  cómo acaba la partida (`cleared` / `failed`)—, probado sin navegador como
+  `scoring.ts`. El store deriva los fallos de los contadores que ya tenía
+  (`resolved - score`) en vez de llevar un tercero que mantener a la par.
+- **Un récord por modo** (`stick-rush:best-points` y `…:challenge`). Un desafío
+  se corta al quedarse sin vidas, así que con los mismos palos y dificultad nunca
+  puede puntuar más que la práctica equivalente: con una marca común, el modo con
+  algo en juego sería el único que jamás la batiría. La clave de práctica es la
+  que ya había, así que un récord anterior no se pierde. Sigue sin haber nada más
+  en el navegador.
+- **El modo solo se cambia entre partidas.** Lo destapó un test: con el resumen
+  en pantalla —donde la puntuación sigue viva— cambiar de modo mandaba esos
+  puntos al récord del otro, uno que no se había jugado. Hoy ningún menú se ve en
+  esa fase, pero la regla es del juego y no de dónde esté el botón.
+- **Dónde se ve**: en el menú de escritorio, dos tarjetas con lo que cada modo
+  pone en juego (infinito o tres corazones) y una línea de qué significa; durante
+  la partida, los corazones en el marcador (llenos los que quedan, de contorno
+  los gastados) y dentro del `aria-label` que ya se anunciaba, para no montar un
+  segundo aviso; al acabar, el título dice si el reto se superó o si te quedaste
+  sin vidas, y el resumen añade **con cuántas vidas se acabó** junto a la
+  puntuación (son los dos datos que se comparten).
+- **En el visor**, sin letras como todo lo inmersivo: el menú lleva un
+  interruptor con tres corazones —encendidos, el desafío; apagados, la práctica—
+  y el marcador pinta las vidas bajo la barra de puntuación, encogiendo y
+  apagando la gastada. La silueta del corazón está en `xrIcons.ts` con sus tests
+  (dos lóbulos arriba, punta abajo, y el mismo cuadro que los demás iconos).
+- **Sin validar en hardware**: falta ver si el interruptor de corazones del menú
+  se entiende con las gafas puestas sin haberlo leído en ningún sitio, y si las
+  vidas del marcador se distinguen a un metro mientras caen los palos.
+
 ## Escenario VR: recinto de feria (rama `agent/escenario-vr-mas-elaborado-que-e-ebc93a`)
 
 El escenario era **solo el HDRI**: una foto de plaza de noche envolviendo la escena y
