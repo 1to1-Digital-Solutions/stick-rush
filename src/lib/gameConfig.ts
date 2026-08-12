@@ -111,12 +111,18 @@ export const MAX_STICKS = 13
  */
 export const MACHINE_RADIUS = 0.57
 /**
- * Altura del aro: justo encima de la cabeza. Los palos cuelgan hasta ~1.4 m y
- * caen atravesando la altura del pecho, que es donde la mano llega cómoda.
+ * Altura **nominal** del aro: justo encima de la cabeza. Los palos cuelgan hasta
+ * ~1.4 m y caen atravesando la altura del pecho, que es donde la mano llega
+ * cómoda.
  *
  * **No se encoge con el resto.** La máquina se redujo un 8 % porque se veía
  * demasiado grande, pero esta cota la manda la estatura del jugador, no el
  * tamaño de la máquina: bajarla dejaría el aro a la altura de los ojos.
+ *
+ * Y por eso mismo tampoco es fija: en el visor la altura de verdad sale de la
+ * del jugador (ver `hoopHeight.ts`), y esta es la que le corresponde a la
+ * estatura de referencia. Es la que se usa en escritorio y la que hace de
+ * respaldo cuando el visor no dice a qué altura está la cabeza.
  */
 export const MACHINE_HEIGHT = 1.95
 export const STICK_LENGTH = 0.39
@@ -181,10 +187,21 @@ export function fallDurationSeconds(difficulty: Difficulty): number {
  * Cuánto ha caído un palo cuyo anclaje está a la cota `y`: 0 recién soltado, 1
  * a punto de tocar el suelo. Es lo que convierte "dónde lo cogí" en el bonus de
  * reflejos de la puntuación (ver `scoring.ts`).
+ *
+ * `hoopHeight` es la cota desde la que salió ese palo: con el aro acomodado al
+ * jugador (ver `hoopHeight.ts`) el recorrido cambia, y medirlo siempre contra la
+ * altura nominal regalaría reflejos a quien lo tenga bajo y se los quitaría a
+ * quien lo tenga alto.
  */
-export function stickFallProgress(y: number): number {
-  if (!Number.isFinite(y) || STICK_FALL_DISTANCE <= 0) return 0
-  const fallen = (MACHINE_HEIGHT - y) / STICK_FALL_DISTANCE
+export function stickFallProgress(
+  y: number,
+  hoopHeight: number = MACHINE_HEIGHT,
+): number {
+  const distance = hoopHeight - STICK_MISS_Y
+  if (!Number.isFinite(y) || !Number.isFinite(distance) || distance <= 0) {
+    return 0
+  }
+  const fallen = (hoopHeight - y) / distance
   return Math.min(Math.max(fallen, 0), 1)
 }
 
@@ -193,11 +210,14 @@ export function stickFallProgress(y: number): number {
  * delante del jugador (mira hacia -Z). Es la misma curva que sigue la máquina y
  * de la que cuelgan los palos.
  */
-export function machinePoint(t: number): [number, number, number] {
+export function machinePoint(
+  t: number,
+  hoopHeight: number = MACHINE_HEIGHT,
+): [number, number, number] {
   const angle = (t - 0.5) * Math.PI
   return [
     Math.sin(angle) * MACHINE_RADIUS,
-    MACHINE_HEIGHT,
+    hoopHeight,
     -Math.cos(angle) * MACHINE_RADIUS,
   ]
 }

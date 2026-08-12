@@ -1,13 +1,15 @@
 import { type GameMode } from './gameMode'
+import { gameStorage } from './storage'
 
 /**
  * La mejor puntuación, guardada entre visitas.
  *
- * Es lo único que el juego escribe en el navegador: un entero por modo en
- * `localStorage`, sin identificadores ni nada que describa a quien juega. Rompe
- * a propósito el "cero almacenamiento" que la auditoría de seguridad dio por
- * bueno, porque un récord que se borra al recargar no es un récord; el resto de
- * preferencias (silencio, escenario, modo) siguen viviendo solo en memoria.
+ * Un entero por modo en `localStorage`, sin identificadores ni nada que describa
+ * a quien juega. Rompe a propósito el "cero almacenamiento" que la auditoría de
+ * seguridad dio por bueno, porque un récord que se borra al recargar no es un
+ * récord; lo demás que se guarda es la altura del aro (ver `hoopHeight.ts`), y
+ * el resto de preferencias (silencio, escenario, modo) siguen viviendo solo en
+ * memoria.
  *
  * **Un récord por modo** y no uno global: un desafío se corta al quedarse sin
  * vidas, así que con los mismos palos y la misma dificultad nunca puede puntuar
@@ -51,15 +53,6 @@ export function parseBestPoints(raw: string | null): number {
   return value
 }
 
-/** `localStorage` si el navegador lo ofrece; `null` si no hay o está vetado. */
-export function scoreStorage(): Storage | null {
-  try {
-    return typeof window === 'undefined' ? null : window.localStorage
-  } catch {
-    return null
-  }
-}
-
 /** Récord guardado de ese modo, o 0 si no hay ninguno legible. */
 export function readBestPoints(
   storage: Storage | null,
@@ -101,7 +94,7 @@ const listeners = new Set<() => void>()
  * versiones que puedan discrepar.
  */
 export function getBestPoints(mode: GameMode): number {
-  return readBestPoints(scoreStorage(), mode)
+  return readBestPoints(gameStorage(), mode)
 }
 
 /**
@@ -136,6 +129,6 @@ export function subscribeBestPoints(listener: () => void): () => void {
  */
 export function saveBestPoints(mode: GameMode, points: number): void {
   if (!Number.isSafeInteger(points) || points <= getBestPoints(mode)) return
-  writeBestPoints(scoreStorage(), mode, points)
+  writeBestPoints(gameStorage(), mode, points)
   for (const listener of listeners) listener()
 }

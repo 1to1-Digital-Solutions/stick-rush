@@ -15,6 +15,7 @@ import {
   machinePoint,
 } from '@/lib/gameConfig'
 import { useGame } from '@/lib/gameStore'
+import { hoopFallSpeed } from '@/lib/hoopHeight'
 import { buildStickLayout } from '@/lib/stickLayout'
 import { Stick } from './Stick'
 import { useReducedMotion } from './useReducedMotion'
@@ -94,9 +95,18 @@ function raise([x, y, z]: Point, dy: number): Point {
  * lo que da sensación de rigidez son las diagonales.
  */
 export function StickMachine() {
-  const { stickCount, difficulty, runId, gameState, catchStick, missStick } =
-    useGame()
-  const speed = DIFFICULTY_SPEEDS[difficulty]
+  const {
+    stickCount,
+    difficulty,
+    runId,
+    gameState,
+    hoopHeight,
+    catchStick,
+    missStick,
+  } = useGame()
+  // Corregida para la altura del aro: acomodarlo al jugador no puede cambiar
+  // cuánto dura la caída (ver `hoopHeight.ts`).
+  const speed = hoopFallSpeed(DIFFICULTY_SPEEDS[difficulty], hoopHeight)
   // Fuera de la partida los palos se quedan colgando, a la vista, mientras el
   // jugador elige opciones. Meciéndose: es lo único que se mueve hasta que cae
   // el primero, y sin ello la máquina parece congelada.
@@ -125,8 +135,8 @@ export function StickMachine() {
     const lower: { key: number; from: Point; to: Point; color: string }[] = []
     const upper: { key: number; from: Point; to: Point }[] = []
     for (let i = 0; i < ARC_SEGMENTS; i++) {
-      const from = machinePoint(i / ARC_SEGMENTS)
-      const to = machinePoint((i + 1) / ARC_SEGMENTS)
+      const from = machinePoint(i / ARC_SEGMENTS, hoopHeight)
+      const to = machinePoint((i + 1) / ARC_SEGMENTS, hoopHeight)
       lower.push({
         key: i,
         from,
@@ -136,17 +146,17 @@ export function StickMachine() {
       upper.push({ key: i, from: raise(from, TRUSS_RISE), to: raise(to, TRUSS_RISE) })
     }
     return { lower, upper }
-  }, [])
+  }, [hoopHeight])
 
   // Celosía: montantes verticales y diagonales en zigzag entre ellos.
   const truss = useMemo(() => {
     const posts: { key: number; from: Point; to: Point }[] = []
     const braces: { key: number; from: Point; to: Point }[] = []
     for (let i = 0; i < TRUSS_POSTS; i++) {
-      const base = machinePoint(i / (TRUSS_POSTS - 1))
+      const base = machinePoint(i / (TRUSS_POSTS - 1), hoopHeight)
       posts.push({ key: i, from: base, to: raise(base, TRUSS_RISE) })
       if (i < TRUSS_POSTS - 1) {
-        const next = machinePoint((i + 1) / (TRUSS_POSTS - 1))
+        const next = machinePoint((i + 1) / (TRUSS_POSTS - 1), hoopHeight)
         // Alterna el sentido de la diagonal para formar el zigzag.
         braces.push(
           i % 2 === 0
@@ -156,27 +166,28 @@ export function StickMachine() {
       }
     }
     return { posts, braces }
-  }, [])
+  }, [hoopHeight])
 
   // Bombillas sobre el aro superior, cada una con su casquillo.
   const bulbs = useMemo(
     () =>
       Array.from({ length: TRUSS_POSTS - 1 }, (_, index) => {
-        const point = machinePoint((index + 0.5) / (TRUSS_POSTS - 1))
+        const point = machinePoint((index + 0.5) / (TRUSS_POSTS - 1), hoopHeight)
         return {
           key: index,
           socket: raise(point, TRUSS_RISE + 0.03),
           bulb: raise(point, TRUSS_RISE + 0.085),
         }
       }),
-    [],
+    [hoopHeight],
   )
 
-  // Anclajes y retardos escalonados. Se recalculan en cada partida (runId)
-  // y cuando cambia el número de palos.
+  // Anclajes y retardos escalonados. Se recalculan en cada partida (runId),
+  // cuando cambia el número de palos y cuando el aro cambia de altura —lo que
+  // solo pasa en el menú, con los palos colgando quietos.
   const sticks = useMemo(
-    () => buildStickLayout(stickCount, runId),
-    [stickCount, runId],
+    () => buildStickLayout(stickCount, runId, hoopHeight),
+    [stickCount, runId, hoopHeight],
   )
 
   // Postes de los extremos, arriostrados hacia fuera como los de un escenario.
@@ -186,7 +197,7 @@ export function StickMachine() {
   // hombros del jugador y le cerrarían el paso.
   const legs = useMemo(() => {
     return [0, 1].map((side) => {
-      const top = raise(machinePoint(side), TRUSS_RISE)
+      const top = raise(machinePoint(side, hoopHeight), TRUSS_RISE)
       const [x, , z] = top
       const foot: Point = [x * 1.9, GROUND_Y, z + 0.45]
       const braceFoot: Point = [x * 2.3, GROUND_Y, z + 1.05]
@@ -194,11 +205,11 @@ export function StickMachine() {
         key: side,
         top,
         foot,
-        braceTop: raise(machinePoint(side), TRUSS_RISE * 0.35),
+        braceTop: raise(machinePoint(side, hoopHeight), TRUSS_RISE * 0.35),
         braceFoot,
       }
     })
-  }, [])
+  }, [hoopHeight])
 
   return (
     <group>

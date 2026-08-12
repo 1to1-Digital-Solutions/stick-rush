@@ -1,4 +1,4 @@
-import { machinePoint } from './gameConfig'
+import { MACHINE_HEIGHT, machinePoint } from './gameConfig'
 
 /** Posición y momento de salida de un palo dentro de una partida. */
 export interface StickLayout {
@@ -50,6 +50,7 @@ export function fallOrder(stickCount: number, runId: number): number[] {
 export function buildStickLayout(
   stickCount: number,
   runId: number,
+  hoopHeight: number = MACHINE_HEIGHT,
 ): StickLayout[] {
   const order = fallOrder(stickCount, runId)
   const turnOf: number[] = []
@@ -61,7 +62,7 @@ export function buildStickLayout(
     const t = stickCount === 1 ? 0.5 : (index + 1) / (stickCount + 1)
     return {
       key: `${runId}-${index}`,
-      anchor: machinePoint(t),
+      anchor: machinePoint(t, hoopHeight),
       // Un turno por palo, más un jitter para que no suene a metrónomo.
       delay: turnOf[index] * (1 + seededRandom(index, runId) * 0.5),
       swingPhase: seededRandom(index + SWING_PHASE_SEED, runId),

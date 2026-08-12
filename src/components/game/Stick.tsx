@@ -172,8 +172,10 @@ export function Stick({
     }
     releaseCursor()
     // Dónde estaba el palo al cogerlo decide el bonus por reflejos. Se lee de
-    // la posición viva y no del estado, que aún no se ha vuelto a renderizar.
-    onCatch(stickFallProgress(groupRef.current?.position.y ?? anchorY))
+    // la posición viva y no del estado, que aún no se ha vuelto a renderizar, y
+    // se mide contra su propio anclaje: el aro se acomoda a quien juega, así que
+    // no todos los palos salen de la misma altura.
+    onCatch(stickFallProgress(groupRef.current?.position.y ?? anchorY, anchorY))
     // El golpe en el mando va después de contar el palo: la vibración es el
     // adorno y la puntuación es el juego, así que un mando que se porte mal no
     // puede llevarse por delante el acierto.

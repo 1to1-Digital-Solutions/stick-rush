@@ -26,6 +26,13 @@ import {
   saveBestPoints,
   subscribeBestPoints,
 } from './highScore'
+import {
+  HOOP_ADJUST_STEP,
+  clampHoopAdjustment,
+  getHoopAdjustment,
+  hoopHeightFor,
+  saveHoopAdjustment,
+} from './hoopHeight'
 import { stickPoints } from './scoring'
 
 export type GameState = 'menu' | 'countdown' | 'playing' | 'finished'
@@ -103,11 +110,18 @@ export interface GameStore {
   /** Escenario o passthrough en sesión inmersiva. */
   scenery: SceneryMode
   /**
-   * Juego en silencio. No se guarda entre visitas: lo único que el juego
-   * escribe en el navegador es el récord, y no se quiso ampliar eso a las
-   * preferencias, así que cada visita arranca con sonido.
+   * Juego en silencio. No se guarda entre visitas: se guarda lo que cuesta
+   * rehacer —el récord y la altura del aro—, y volver a pulsar un botón del
+   * menú no lo es, así que cada visita arranca con sonido.
    */
   muted: boolean
+  /**
+   * Altura del aro, en metros, ya acomodada a quien juega: sale de la altura
+   * del visor más la corrección manual (ver `hoopHeight.ts`).
+   */
+  hoopHeight: number
+  /** Corrección manual sobre esa altura, en metros. Se guarda entre visitas. */
+  hoopAdjustment: number
 
   setScenery: (scenery: SceneryMode) => void
   setMuted: (muted: boolean) => void
@@ -118,6 +132,17 @@ export interface GameStore {
    * resumen en pantalla, no hace nada (ver el porqué en la implementación).
    */
   setGameMode: (mode: GameMode) => void
+  /**
+   * Sube (pasos positivos) o baja (negativos) el aro. Cada paso son
+   * `HOOP_ADJUST_STEP` metros y el recorrido está acotado, así que el aro no
+   * puede acabar fuera del alcance ni dentro del suelo.
+   */
+  adjustHoop: (steps: number) => void
+  /**
+   * Altura de ojos que mide el visor, o `null` cuando no hay sesión o su
+   * espacio de referencia no permite saberla.
+   */
+  setPlayerEyeHeight: (height: number | null) => void
   startGame: () => void
   /**
    * Palo atrapado. `fallProgress` (0 recién soltado, 1 a ras de suelo) decide
@@ -180,6 +205,14 @@ export function useGameStoreValue(): GameStore {
   const [muted, setMuted] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [runId, setRunId] = useState(0)
+  // La corrección de la altura del aro sale de lo guardado en visitas
+  // anteriores. En el servidor no hay almacenamiento y vale 0, pero eso no
+  // desajusta la hidratación: el aro solo se pinta dentro del Canvas, que se
+  // carga en cliente.
+  const [hoopAdjustment, setHoopAdjustmentState] = useState(getHoopAdjustment)
+  // Lo que mide el visor, mientras dure la sesión. Fuera de ella no hay a quién
+  // medir y el aro se queda a la altura de referencia.
+  const [playerEyeHeight, setPlayerEyeHeight] = useState<number | null>(null)
 
   // Los palos que se han escapado. Se deriva en vez de contarse aparte: un
   // tercer contador que hay que mantener a la par de los otros dos es un
@@ -229,9 +262,27 @@ export function useGameStoreValue(): GameStore {
   const isRecord =
     gameState === 'finished' && points > recordToBeat && bestPoints === points
 
+  const hoopHeight = hoopHeightFor({
+    eyeHeight: playerEyeHeight,
+    adjustment: hoopAdjustment,
+  })
+
   const setStickCount = useCallback((count: number) => {
     setStickCountState(clampStickCount(count))
   }, [])
+
+  // Se guarda al tocarlo y no al salir: en el visor no hay "salir", uno se
+  // quita las gafas. Y solo cuando el valor cambia de verdad, para no escribir
+  // en cada pulsación una vez alcanzado el tope.
+  const adjustHoop = useCallback(
+    (steps: number) => {
+      const next = clampHoopAdjustment(hoopAdjustment + steps * HOOP_ADJUST_STEP)
+      if (next === hoopAdjustment) return
+      saveHoopAdjustment(next)
+      setHoopAdjustmentState(next)
+    },
+    [hoopAdjustment],
+  )
 
   /**
    * El modo es de la partida entera, así que solo se cambia entre partidas.
@@ -316,11 +367,15 @@ export function useGameStoreValue(): GameStore {
       runId,
       scenery,
       muted,
+      hoopHeight,
+      hoopAdjustment,
       setScenery,
       setMuted,
       setStickCount,
       setDifficulty,
       setGameMode,
+      adjustHoop,
+      setPlayerEyeHeight,
       startGame,
       catchStick,
       missStick,
@@ -344,10 +399,13 @@ export function useGameStoreValue(): GameStore {
       runId,
       scenery,
       muted,
+      hoopHeight,
+      hoopAdjustment,
       setScenery,
       setMuted,
       setStickCount,
       setGameMode,
+      adjustHoop,
       startGame,
       catchStick,
       missStick,
