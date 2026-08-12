@@ -61,6 +61,19 @@ export const XR_MODE_TOGGLE_OFFSET: Vec3 = [-0.26, SETTINGS_ROW_Y, 0]
 /** Selector de escenario o passthrough. */
 export const XR_SCENERY_PICKER_OFFSET: Vec3 = [0.245, SETTINGS_ROW_Y, 0]
 /**
+ * Fila del ajuste de altura del aro, arriba del todo del panel. Va sola y por
+ * encima del resto porque es lo único que se toca **mirando la máquina**: el
+ * aro queda justo encima del panel, así que al pulsar se ve subir o bajar.
+ */
+const HOOP_ROW_Y = 0.3
+/** Botón de bajar el aro, a la izquierda de su indicador. */
+export const XR_HOOP_DOWN_OFFSET: Vec3 = [-0.13, HOOP_ROW_Y, 0]
+/** Botón de subir el aro, a la derecha de su indicador. */
+export const XR_HOOP_UP_OFFSET: Vec3 = [0.13, HOOP_ROW_Y, 0]
+/** Regla entre los dos botones: dónde está el aro dentro de su recorrido. */
+export const XR_HOOP_GAUGE_OFFSET: Vec3 = [0, HOOP_ROW_Y, 0]
+
+/**
  * Cuenta atrás: al frente y a la altura de los ojos, que es donde el jugador
  * está mirando justo después de pulsar «empezar».
  */
@@ -108,6 +121,18 @@ export function xrModeTogglePosition(): Vec3 {
 /** Selector de escenario o passthrough, dentro del panel del menú. */
 export function xrSceneryPickerPosition(): Vec3 {
   const [dx, dy] = XR_SCENERY_PICKER_OFFSET
+  return offset(XR_MENU_POSITION, dx, dy)
+}
+
+/** Botón de bajar el aro, dentro del panel del menú. */
+export function xrHoopDownPosition(): Vec3 {
+  const [dx, dy] = XR_HOOP_DOWN_OFFSET
+  return offset(XR_MENU_POSITION, dx, dy)
+}
+
+/** Botón de subir el aro, dentro del panel del menú. */
+export function xrHoopUpPosition(): Vec3 {
+  const [dx, dy] = XR_HOOP_UP_OFFSET
   return offset(XR_MENU_POSITION, dx, dy)
 }
 

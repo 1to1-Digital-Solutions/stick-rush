@@ -11,8 +11,12 @@ import {
 } from '@/lib/gameConfig'
 import { CHALLENGE_LIVES } from '@/lib/gameMode'
 import { useGame } from '@/lib/gameStore'
+import { HOOP_ADJUST_RANGE } from '@/lib/hoopHeight'
 import {
   XR_DIFFICULTY_SPACING,
+  XR_HOOP_DOWN_OFFSET,
+  XR_HOOP_GAUGE_OFFSET,
+  XR_HOOP_UP_OFFSET,
   XR_MENU_EXIT_OFFSET,
   XR_MENU_POSITION,
   XR_MENU_SOUND_OFFSET,
@@ -22,6 +26,7 @@ import {
 } from '@/lib/xrLayout'
 import {
   PANEL_COLOR,
+  XRArrowIcon,
   XRExitIcon,
   XRHeartIcon,
   XRMutedIcon,
@@ -256,6 +261,97 @@ function SceneryPicker({ passthroughAvailable }: { passthroughAvailable: boolean
   )
 }
 
+/** Alto de la regla del aro, en metros. */
+const HOOP_GAUGE_HEIGHT = 0.085
+/** Semilado del recorrido de la marca dentro de esa regla. */
+const HOOP_GAUGE_TRAVEL = HOOP_GAUGE_HEIGHT / 2 - 0.014
+
+/**
+ * Subir y bajar el aro a mano.
+ *
+ * El aro se coloca solo a partir de la altura del visor (ver `hoopHeight.ts`),
+ * pero eso no siempre acierta: el visor no siempre dice a qué altura está la
+ * cabeza, y quien juega sentado en un sofá con el espacio calibrado de pie sale
+ * medido de más. Esto es la corrección.
+ *
+ * **La respuesta es la propia máquina.** El aro está justo encima del panel, así
+ * que al pulsar se ve subir o bajar: no hace falta ninguna cifra, que además no
+ * se podría escribir (el menú inmersivo va sin una sola letra, ver arriba). La
+ * regla del medio solo dice cuánto queda de recorrido, y los botones se apagan
+ * al llegar al tope, así que el límite se ve antes de chocar con él.
+ */
+function HoopHeightPicker() {
+  const { hoopAdjustment, adjustHoop } = useGame()
+  const atTop = hoopAdjustment >= HOOP_ADJUST_RANGE
+  const atBottom = hoopAdjustment <= -HOOP_ADJUST_RANGE
+
+  const buttons = [
+    { key: 'down', up: false, offset: XR_HOOP_DOWN_OFFSET, disabled: atBottom },
+    { key: 'up', up: true, offset: XR_HOOP_UP_OFFSET, disabled: atTop },
+  ]
+
+  return (
+    <group>
+      {buttons.map(({ key, up, offset, disabled }) => (
+        <XRPressable
+          key={key}
+          position={offset}
+          onSelect={() => adjustHoop(up ? 1 : -1)}
+          disabled={disabled}
+          hitSize={[0.13, 0.1, 0.06]}
+        >
+          <mesh position={[0, 0, -0.008]}>
+            <boxGeometry args={[0.1, 0.085, 0.012]} />
+            <meshStandardMaterial
+              color="#1c2634"
+              emissive="#94a3b8"
+              emissiveIntensity={disabled ? 0.02 : 0.24}
+              roughness={0.5}
+              // Apagado de verdad en el tope: el estado se distingue por
+              // opacidad y por brillo, no solo por color.
+              transparent
+              opacity={disabled ? 0.35 : 1}
+            />
+          </mesh>
+          <XRArrowIcon
+            position={[0, 0, 0.008]}
+            up={up}
+            color={disabled ? '#64748b' : '#ffffff'}
+          />
+        </XRPressable>
+      ))}
+
+      {/* Regla: un raíl con el aro en miniatura marcando dónde está. */}
+      <group position={XR_HOOP_GAUGE_OFFSET}>
+        <mesh position={[0, 0, -0.008]}>
+          <boxGeometry args={[0.012, HOOP_GAUGE_HEIGHT, 0.008]} />
+          <meshStandardMaterial
+            color="#1c2634"
+            emissive="#94a3b8"
+            emissiveIntensity={0.08}
+            roughness={0.5}
+          />
+        </mesh>
+        <mesh
+          position={[
+            0,
+            (hoopAdjustment / HOOP_ADJUST_RANGE) * HOOP_GAUGE_TRAVEL,
+            0,
+          ]}
+        >
+          <boxGeometry args={[0.05, 0.009, 0.012]} />
+          <meshStandardMaterial
+            color={STICK_COLOR}
+            emissive={STICK_COLOR}
+            emissiveIntensity={0.55}
+            roughness={0.55}
+          />
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
 /**
  * Silenciar sin quitarse el visor.
  *
@@ -300,7 +396,10 @@ export function XRMenu() {
 
   return (
     <group position={XR_MENU_POSITION}>
-      <XRPanel width={1.06} height={0.74} color={PANEL_COLOR} />
+      {/* Más alto que antes: la fila del aro va arriba del todo y necesita
+          panel detrás para no quedar flotando fuera de él. */}
+      <XRPanel width={1.06} height={0.82} color={PANEL_COLOR} />
+      <HoopHeightPicker />
       <StickPicker />
       <DifficultyPicker />
       <ModeToggle />

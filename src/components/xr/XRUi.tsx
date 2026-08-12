@@ -184,6 +184,27 @@ export function XRPlayIcon({
 }
 
 /**
+ * Triángulo apuntando arriba o abajo: subir o bajar el aro.
+ *
+ * El giro deja el prisma de tres lados de frente (su eje pasa a apuntar al
+ * jugador) y decide hacia dónde cae la punta, que es lo único que distingue un
+ * botón del otro.
+ */
+export function XRArrowIcon({
+  position = [0, 0, 0],
+  size = 0.026,
+  color = '#ffffff',
+  up,
+}: IconProps & { up: boolean }) {
+  return (
+    <mesh position={position} rotation={[up ? -Math.PI / 2 : Math.PI / 2, 0, 0]}>
+      <cylinderGeometry args={[size, size, 0.01, 3]} />
+      <meshBasicMaterial color={color} toneMapped={false} />
+    </mesh>
+  )
+}
+
+/**
  * Icono dibujado a partir de una silueta de `@/lib/xrIcons`.
  *
  * Apilar primitivas (un prisma triangular junto a una caja) no funcionó en el

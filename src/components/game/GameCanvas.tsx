@@ -17,6 +17,7 @@ import { XRCountdown } from '@/components/xr/XRCountdown'
 import { XRGazeAnchor } from '@/components/xr/XRGazeAnchor'
 import { XRHud, XRQuitButton } from '@/components/xr/XRHud'
 import { XRMenu } from '@/components/xr/XRMenu'
+import { XRPlayerHeight } from '@/components/xr/XRPlayerHeight'
 import { XRSessionController } from '@/components/xr/XRSessionController'
 import { Fairground } from './Fairground'
 import { SceneryFade } from './SceneryFade'
@@ -148,6 +149,8 @@ export function GameCanvas() {
       <XR store={xrStore}>
         {/* Arranca/cierra partidas según el estado de la sesión inmersiva. */}
         <XRSessionController />
+        {/* Pone el aro al alcance de quien lleva el visor. */}
+        <XRPlayerHeight />
 
         {/* Jugador de pie en el centro del semicírculo. La interfaz cuelga de
             <XRGazeAnchor> y no del origen: el -Z del origen lo fija la

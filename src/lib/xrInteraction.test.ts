@@ -18,6 +18,8 @@ import {
   XR_QUIT_POSITION,
   XR_QUIT_YAW,
   type Vec3,
+  xrHoopDownPosition,
+  xrHoopUpPosition,
   xrMenuExitPosition,
   xrMenuSoundPosition,
   xrModeTogglePosition,
@@ -97,6 +99,10 @@ describe('la interfaz cae dentro del campo de visión', () => {
     // mirada y hay que comprobarlos como los demás.
     ['el interruptor de modo', xrModeTogglePosition()],
     ['el selector de escenario', xrSceneryPickerPosition()],
+    // La fila del ajuste del aro es la más alta del panel, así que es la que
+    // primero se saldría por arriba de lo que se mira sin estirar el cuello.
+    ['el botón de bajar el aro', xrHoopDownPosition()],
+    ['el botón de subir el aro', xrHoopUpPosition()],
   ]
 
   it.each(elements)('%s se puede mirar sin que la interfaz huya', (_, position) => {

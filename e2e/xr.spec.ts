@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { HOOP_ADJUST_KEY } from '@/lib/hoopHeight'
 import { xrPlayButtonPosition } from '@/lib/xrLayout'
 import { openGame } from './helpers'
 import {
@@ -128,5 +129,45 @@ test.describe('Sesión inmersiva', () => {
     // también prueba que el modo se reconoce.
     await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
     await expect(page.getByRole('status')).toHaveCount(0)
+  })
+})
+
+/**
+ * Altura del aro guardada de otra visita.
+ *
+ * Lo que se puede comprobar aquí es el **arranque**: que una corrección ya
+ * guardada entre en la escena sin romperla, incluso si lo guardado es una
+ * barbaridad que nadie pudo elegir en el menú. Pulsar los botones que la
+ * cambian sigue siendo cosa del hardware (ver la nota de arriba sobre el
+ * emulador); la regla de qué se acepta y qué se descarta está cubierta sin
+ * navegador en `src/lib/hoopHeight.test.ts`.
+ */
+test.describe('Altura del aro guardada', () => {
+  test('una corrección manipulada no rompe la escena ni la sesión', async ({
+    page,
+  }) => {
+    const errors: string[] = []
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text())
+    })
+    page.on('pageerror', (error) => errors.push(error.message))
+
+    await installXREmulator(page)
+    // Lo que de verdad puede tumbar la escena: algo que no es un número. Sin la
+    // guarda de `parseHoopAdjustment`, el `NaN` viaja hasta las posiciones del
+    // aro y three empieza a quejarse por consola de radios y cajas imposibles,
+    // con la máquina sin dibujar.
+    await page.addInitScript(
+      ([key, value]) => window.localStorage.setItem(key, value),
+      [HOOP_ADJUST_KEY, 'un palmo más arriba'] as const,
+    )
+
+    await openGame(page)
+    await enterVR(page)
+    await startGameInsideSession(page)
+    await page.waitForTimeout(2000)
+
+    expect(errors).toEqual([])
+    await expect(page.getByRole('status')).toBeVisible()
   })
 })
