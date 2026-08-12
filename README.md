@@ -89,8 +89,10 @@ after your first click — pressing Enter on a button counts, since that fires o
 too: browsers refuse to play audio before that.
 Both menus — the desktop one and the immersive one — can mute it, and while
 muted the game never touches the Web Audio API at all. The choice is not
-persisted: the only thing the game ever writes to the browser is the best score
-(a single integer in `localStorage`, see `src/lib/highScore.ts`). With storage
+persisted: the game only writes to the browser what would be tedious to redo —
+the best score (a single integer per mode, see `src/lib/highScore.ts`) and the
+ring height correction (`src/lib/hoopHeight.ts`), both plain numbers in
+`localStorage` with nothing that describes who is playing. With storage
 unavailable — private mode, or a headset with it blocked — there is simply no
 record to show, and everything else works the same.
 
@@ -157,6 +159,7 @@ src/
   lib/
     gameConfig.ts       Constants: difficulties, speeds, colours, geometry
     gameStore.ts        Global game state (Context API)
+    hoopHeight.ts       Ring height for the player: headset, manual tweak, limits
     stickLayout.ts      Stick layout, shuffled fall order and score token states
     sceneryLayout.ts    Fairground layout: stall ring, light garlands, ferris wheel
     stickSwing.ts       Idle sway of the hanging sticks
@@ -195,6 +198,17 @@ overlays on top of the 3D scene. That way, pressing "Entrar en VR" starts the se
 with the scene already in the tree and it shows up inside the headset. `<XROrigin>`
 places the player's feet at the centre of the semicircle, at 1:1 scale, with the ring
 just above head height and within arm's reach.
+
+**The ring follows the player's height**, because standing, sitting or being short
+changes the reach entirely. It is placed 35 cm above the eyes — the relation the
+machine was designed around — reading the headset height while the immersive menu
+is up, and it is left alone once sticks start falling. That reading only counts
+when the session brings a floor-level reference space: in a `local` one the head
+starts at zero and its height says nothing about the player. The top row of the
+immersive menu corrects it by hand within ±20 cm, which is what the arm allows,
+and the correction is remembered in `localStorage`. Fall speed is scaled with the
+travel so that raising the ring does not hand out extra reaction time. All of it
+lives in `src/lib/hoopHeight.ts`, tested without a browser.
 
 In **VR** the machine stands in a fairground built out of geometry: stalls in a ring
 around the player, light garlands strung between posts and a slowly turning ferris

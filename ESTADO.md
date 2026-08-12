@@ -601,6 +601,46 @@ leyera como una flecha», que no era solo la forma:
   casa se veía claramente más pequeña que el aro de repetir a su lado en la pantalla de
   fin de partida.
 
+## Altura del aro por jugador (rama `agent/ajustar-la-altura-del-aro-a-quie-cd744e`)
+
+`MACHINE_HEIGHT` (1.95 m) estaba pensada para una persona de pie de estatura media. De
+pie va bien; sentado, o siendo más bajo, el mismo aro queda por encima de la cabeza y los
+palos pasan fuera del brazo: el juego se vuelve injugable sin que nada falle.
+
+- **La altura sale del visor.** El aro se planta 35 cm por encima de los ojos
+  (`HOOP_RISE_ABOVE_EYES`, la relación con la que se diseñó la máquina), leyendo la cota
+  de la cámara **solo mientras el menú inmersivo está delante**: con los palos cayendo, un
+  aro que persiguiera la cabeza subiría al ponerse de puntillas justo cuando el jugador
+  calcula dónde va a estar la mano. Medida suavizada y con umbral de 2 cm, para que no
+  tiemble con la respiración ni repinte la máquina en cada frame (`XRPlayerHeight`).
+- **El dato solo vale con el suelo puesto.** Se exige `local-floor` en la sesión
+  (`useXRSessionFeatureEnabled`): en un espacio `local` la cabeza nace en el cero y su
+  cota no mide desde el suelo. Sin él no se inventa nada —el aro se queda a la altura de
+  siempre— y el ajuste manual es lo que lo cubre, que es justo el caso de jugar sentado
+  con el espacio calibrado de pie.
+- **Ajuste manual en la fila de arriba del menú inmersivo**, ±20 cm en pasos de 5. El
+  rango no es un número redondo: lo manda el brazo (los palos quedan a ~60 cm en
+  horizontal y el alcance cómodo son 75, así que sobran ~26 cm verticales). Los botones se
+  apagan al llegar al tope y una regla enseña cuánto queda; la respuesta de verdad es el
+  propio aro, que está encima del panel y se ve subir y bajar. Sin una letra, como el
+  resto del menú.
+- **Se recuerda en `localStorage`** (`stick-rush:hoop-adjust`), junto al récord. Lo leído
+  se acota igual que si viniera del menú: editarlo desde las herramientas del navegador no
+  puede colgar el aro del techo. El panel del menú creció de 0.74 a 0.82 de alto para que
+  la fila nueva no quedara flotando.
+- **La dificultad no cambia con la estatura**: subir el aro alarga el recorrido, así que
+  la velocidad de caída se escala con él (`hoopFallSpeed`) y cada dificultad dura lo mismo
+  para todo el mundo. Los tiempos que vigila `gameConfig.test.ts` siguen valiendo.
+- Todo el cálculo es puro y vive en `src/lib/hoopHeight.ts`, con 24 unitarios: altura alta
+  y baja, valores absurdos (0, negativos, `NaN`, 50 m), sin dato del visor, los dos topes,
+  que el aro nunca quede dentro del suelo ni por encima de la cabeza, que **ningún palo se
+  salga del brazo se ponga donde se ponga**, y la persistencia (corrupta, bloqueada,
+  ausente). Las cuatro mutaciones probadas —quitar el clamp, ignorar el tipo de espacio,
+  no corregir la velocidad y doblar el rango— ponen la suite en rojo.
+- **Sin validar en hardware**, como todo lo que se toca a botones en el visor: el emulador
+  no propaga sus punteros. El e2e cubre el arranque con una corrección guardada
+  (manipulada a `99999`) sin ensuciar la consola.
+
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 
 Con las gafas puestas el modo inmersivo era **inutilizable**: no se veían los mandos,
@@ -677,6 +717,14 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 ## Pendiente / próximos pasos
 
 - Validar y pulir la interacción XR con mandos en hardware real.
+- **Probar en el visor la altura del aro** (ver "Altura del aro por jugador"): que de pie
+  quede donde estaba, que sentado baje solo y no haya que tocar nada, que los ±20 cm de
+  `HOOP_ADJUST_RANGE` basten para acomodarlo y no dejen ningún palo lejos, y que la fila
+  de arriba del panel no obligue a estirar el cuello (queda a 1.70 m, el límite del test
+  son 1.75).
+- **El menú inmersivo sigue a altura fija** (`XR_MENU_POSITION`, 1.40 m): con el aro ya
+  acomodado, quien juega sentado se encuentra el panel a la altura de la frente. Es la
+  misma clase de problema que se acaba de resolver para el aro, pero era otro alcance.
 - Posibles mejoras: ~~animación de "vibración" de los palos colgando~~ (hecha, ver
   "Balanceo de los palos"), temporizador/puntuación por tiempo, ~~escenario VR más
   elaborado~~ (hecho, ver "Escenario VR: recinto de feria").
