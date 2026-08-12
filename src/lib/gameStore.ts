@@ -15,6 +15,12 @@ import {
   MIN_STICKS,
 } from './gameConfig'
 import {
+  type GameMode,
+  type RunOutcome,
+  remainingLives,
+  runOutcome,
+} from './gameMode'
+import {
   getBestPoints,
   getServerBestPoints,
   saveBestPoints,
@@ -46,6 +52,18 @@ export interface GameStore {
   stickCount: number
   /** Dificultad seleccionada. */
   difficulty: Difficulty
+  /** Práctica o desafío (ver `gameMode.ts`). */
+  gameMode: GameMode
+  /**
+   * Vidas que quedan en la partida, o `null` en un modo que no se juega con
+   * ellas. En el menú son las de salida: es lo que se pone en juego al empezar.
+   */
+  lives: number | null
+  /**
+   * Cómo ha acabado la partida, o `null` mientras sigue viva. Es lo que
+   * distingue superar el reto de quedarse sin vidas en la pantalla de fin.
+   */
+  outcome: RunOutcome | null
   /** Palos atrapados en la partida actual. */
   score: number
   /**
@@ -60,9 +78,9 @@ export interface GameStore {
   /** La mejor racha de la partida, para el resumen final. */
   bestStreak: number
   /**
-   * Mejor puntuación conseguida, guardada entre visitas (ver `highScore.ts`).
-   * Durante una partida es la marca a batir: no incorpora los puntos en curso
-   * hasta que la partida termina.
+   * Mejor puntuación conseguida **en el modo elegido**, guardada entre visitas
+   * (ver `highScore.ts`). Durante una partida es la marca a batir: no incorpora
+   * los puntos en curso hasta que la partida termina.
    */
   bestPoints: number
   /**
@@ -95,13 +113,21 @@ export interface GameStore {
   setMuted: (muted: boolean) => void
   setStickCount: (count: number) => void
   setDifficulty: (difficulty: Difficulty) => void
+  /**
+   * Elige modo. **Solo desde el menú**: con una partida en marcha, o con su
+   * resumen en pantalla, no hace nada (ver el porqué en la implementación).
+   */
+  setGameMode: (mode: GameMode) => void
   startGame: () => void
   /**
    * Palo atrapado. `fallProgress` (0 recién soltado, 1 a ras de suelo) decide
    * el bonus por reflejos.
    */
   catchStick: (fallProgress: number) => void
-  /** Palo perdido: rompe la racha y cuenta para cerrar la partida. */
+  /**
+   * Palo perdido: rompe la racha, cuenta para cerrar la partida y, en desafío,
+   * cuesta una vida.
+   */
   missStick: () => void
   resetGame: () => void
 }
@@ -117,6 +143,10 @@ function clampStickCount(count: number): number {
 export function useGameStoreValue(): GameStore {
   const [stickCount, setStickCountState] = useState(MIN_STICKS)
   const [difficulty, setDifficulty] = useState<Difficulty>('easy')
+  // Se entra en práctica: es el juego de siempre y quien acaba de llegar no
+  // tiene por qué estrenarse con vidas que aún no sabe cómo se pierden. El
+  // desafío está a un toque, en el mismo sitio.
+  const [gameMode, setGameModeState] = useState<GameMode>('practice')
   const [score, setScore] = useState(0)
   const [resolved, setResolved] = useState(0)
   const [points, setPoints] = useState(0)
@@ -124,10 +154,12 @@ export function useGameStoreValue(): GameStore {
   const [bestStreak, setBestStreak] = useState(0)
   // El récord no es estado de React: vive en el navegador y el juego se
   // suscribe a él. Así no hay que sincronizarlo con efectos ni queda una copia
-  // que pueda discrepar de lo guardado.
+  // que pueda discrepar de lo guardado. Cada modo tiene el suyo, así que la
+  // lectura cambia con el modo elegido.
+  const readRecord = useCallback(() => getBestPoints(gameMode), [gameMode])
   const bestPoints = useSyncExternalStore(
     subscribeBestPoints,
-    getBestPoints,
+    readRecord,
     getServerBestPoints,
   )
   // La marca a batir se congela al empezar: en cuanto la partida termina y se
@@ -149,11 +181,22 @@ export function useGameStoreValue(): GameStore {
   const [countdown, setCountdown] = useState(0)
   const [runId, setRunId] = useState(0)
 
+  // Los palos que se han escapado. Se deriva en vez de contarse aparte: un
+  // tercer contador que hay que mantener a la par de los otros dos es un
+  // desajuste esperando a pasar.
+  const misses = resolved - score
+  // Cuándo se acaba una partida lo decide el modo (ver `gameMode.ts`): en
+  // práctica, el último palo; en desafío, también quedarse sin vidas.
+  const outcome = running
+    ? runOutcome({ mode: gameMode, resolved, misses, stickCount })
+    : null
+  const lives = remainingLives(gameMode, misses)
+
   const gameState: GameState = !running
     ? 'menu'
     : countdown > 0
       ? 'countdown'
-      : resolved >= stickCount
+      : outcome
         ? 'finished'
         : 'playing'
 
@@ -172,8 +215,8 @@ export function useGameStoreValue(): GameStore {
   // marca a batir.
   useEffect(() => {
     if (gameState !== 'finished') return
-    saveBestPoints(points)
-  }, [gameState, points])
+    saveBestPoints(gameMode, points)
+  }, [gameState, gameMode, points])
 
   // La partida ha batido el récord con el que empezó *y* lo guardado es
   // exactamente esta puntuación. Sin esa segunda condición, con el
@@ -190,6 +233,24 @@ export function useGameStoreValue(): GameStore {
     setStickCountState(clampStickCount(count))
   }, [])
 
+  /**
+   * El modo es de la partida entera, así que solo se cambia entre partidas.
+   *
+   * No es una precaución teórica: los puntos conseguidos y el modo en el que se
+   * consiguieron son un par, y el récord se guarda leyendo los dos. Con el
+   * resumen en pantalla —donde la puntuación sigue viva— cambiar de modo
+   * copiaría esa puntuación al récord del otro, que no se ha jugado. Hoy ningún
+   * menú se ve en esa fase, pero la regla es del juego y no de dónde esté el
+   * botón.
+   */
+  const setGameMode = useCallback(
+    (mode: GameMode) => {
+      if (running) return
+      setGameModeState(mode)
+    },
+    [running],
+  )
+
   const clearRun = useCallback(() => {
     setScore(0)
     setResolved(0)
@@ -200,11 +261,11 @@ export function useGameStoreValue(): GameStore {
 
   const startGame = useCallback(() => {
     clearRun()
-    setRecordToBeat(getBestPoints())
+    setRecordToBeat(getBestPoints(gameMode))
     setRunId((id) => id + 1)
     setCountdown(COUNTDOWN_SECONDS)
     setRunning(true)
-  }, [clearRun])
+  }, [clearRun, gameMode])
 
   const catchStick = useCallback(
     (fallProgress: number) => {
@@ -240,6 +301,9 @@ export function useGameStoreValue(): GameStore {
     () => ({
       stickCount,
       difficulty,
+      gameMode,
+      lives,
+      outcome,
       score,
       resolved,
       points,
@@ -256,6 +320,7 @@ export function useGameStoreValue(): GameStore {
       setMuted,
       setStickCount,
       setDifficulty,
+      setGameMode,
       startGame,
       catchStick,
       missStick,
@@ -264,6 +329,9 @@ export function useGameStoreValue(): GameStore {
     [
       stickCount,
       difficulty,
+      gameMode,
+      lives,
+      outcome,
       score,
       resolved,
       points,
@@ -279,6 +347,7 @@ export function useGameStoreValue(): GameStore {
       setScenery,
       setMuted,
       setStickCount,
+      setGameMode,
       startGame,
       catchStick,
       missStick,

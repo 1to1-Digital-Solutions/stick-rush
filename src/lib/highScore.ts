@@ -1,11 +1,18 @@
+import { type GameMode } from './gameMode'
+
 /**
  * La mejor puntuación, guardada entre visitas.
  *
- * Es lo único que el juego escribe en el navegador: un entero en
+ * Es lo único que el juego escribe en el navegador: un entero por modo en
  * `localStorage`, sin identificadores ni nada que describa a quien juega. Rompe
  * a propósito el "cero almacenamiento" que la auditoría de seguridad dio por
  * bueno, porque un récord que se borra al recargar no es un récord; el resto de
- * preferencias (silencio, escenario) siguen viviendo solo en memoria.
+ * preferencias (silencio, escenario, modo) siguen viviendo solo en memoria.
+ *
+ * **Un récord por modo** y no uno global: un desafío se corta al quedarse sin
+ * vidas, así que con los mismos palos y la misma dificultad nunca puede puntuar
+ * más que la práctica equivalente. Con una sola marca, el modo con algo en juego
+ * sería el único que jamás la batiría.
  *
  * El acceso es tolerante a fallos: en modo privado, o con el almacenamiento
  * bloqueado por política, tocar `localStorage` **lanza** en vez de devolver
@@ -19,8 +26,15 @@
  * consulta, que es justo lo que evita sincronizarlo con efectos.
  */
 
-/** Clave del récord. Con prefijo para no chocar con nada más del mismo origen. */
-export const HIGH_SCORE_KEY = 'stick-rush:best-points'
+/**
+ * Clave del récord de cada modo. Con prefijo para no chocar con nada más del
+ * mismo origen. La de práctica es la que ya había: quien tuviera un récord antes
+ * de que existieran los modos lo conserva donde estaba.
+ */
+export const HIGH_SCORE_KEYS: Record<GameMode, string> = {
+  practice: 'stick-rush:best-points',
+  challenge: 'stick-rush:best-points:challenge',
+}
 
 /**
  * Interpreta lo leído del almacenamiento.
@@ -46,11 +60,14 @@ export function scoreStorage(): Storage | null {
   }
 }
 
-/** Récord guardado, o 0 si no hay ninguno legible. */
-export function readBestPoints(storage: Storage | null): number {
+/** Récord guardado de ese modo, o 0 si no hay ninguno legible. */
+export function readBestPoints(
+  storage: Storage | null,
+  mode: GameMode,
+): number {
   if (!storage) return 0
   try {
-    return parseBestPoints(storage.getItem(HIGH_SCORE_KEY))
+    return parseBestPoints(storage.getItem(HIGH_SCORE_KEYS[mode]))
   } catch {
     // Almacenamiento bloqueado: se juega sin récord previo.
     return 0
@@ -58,13 +75,17 @@ export function readBestPoints(storage: Storage | null): number {
 }
 
 /**
- * Guarda el récord. Los valores imposibles no se escriben, para no dejar en el
- * navegador algo que la lectura vaya a descartar.
+ * Guarda el récord de un modo. Los valores imposibles no se escriben, para no
+ * dejar en el navegador algo que la lectura vaya a descartar.
  */
-export function writeBestPoints(storage: Storage | null, points: number): void {
+export function writeBestPoints(
+  storage: Storage | null,
+  mode: GameMode,
+  points: number,
+): void {
   if (!storage || !Number.isSafeInteger(points) || points < 0) return
   try {
-    storage.setItem(HIGH_SCORE_KEY, String(points))
+    storage.setItem(HIGH_SCORE_KEYS[mode], String(points))
   } catch {
     // Cuota agotada o escritura prohibida: esa partida se queda sin récord.
     // Perderlo no justifica interrumpir el juego con un aviso.
@@ -75,12 +96,12 @@ export function writeBestPoints(storage: Storage | null, points: number): void {
 const listeners = new Set<() => void>()
 
 /**
- * Récord vigente. Se lee del navegador cada vez en lugar de guardar una copia:
- * el almacenamiento es la única fuente de verdad, así que no hay dos versiones
- * que puedan discrepar.
+ * Récord vigente de un modo. Se lee del navegador cada vez en lugar de guardar
+ * una copia: el almacenamiento es la única fuente de verdad, así que no hay dos
+ * versiones que puedan discrepar.
  */
-export function getBestPoints(): number {
-  return readBestPoints(scoreStorage())
+export function getBestPoints(mode: GameMode): number {
+  return readBestPoints(scoreStorage(), mode)
 }
 
 /**
@@ -109,9 +130,12 @@ export function subscribeBestPoints(listener: () => void): () => void {
   }
 }
 
-/** Guarda la puntuación si mejora el récord, y avisa a quien lo esté mirando. */
-export function saveBestPoints(points: number): void {
-  if (!Number.isSafeInteger(points) || points <= getBestPoints()) return
-  writeBestPoints(scoreStorage(), points)
+/**
+ * Guarda la puntuación si mejora el récord de ese modo, y avisa a quien lo esté
+ * mirando.
+ */
+export function saveBestPoints(mode: GameMode, points: number): void {
+  if (!Number.isSafeInteger(points) || points <= getBestPoints(mode)) return
+  writeBestPoints(scoreStorage(), mode, points)
   for (const listener of listeners) listener()
 }

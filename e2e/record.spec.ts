@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { HIGH_SCORE_KEY } from '@/lib/highScore'
+import { HIGH_SCORE_KEYS } from '@/lib/highScore'
 import {
   catchStick,
   openGame,
@@ -57,7 +57,7 @@ test.describe('Mejor puntuación', () => {
     // alta, la partida termina sin acercarse ni atrapando todos los palos.
     await page.addInitScript(
       (key) => window.localStorage.setItem(key, '99999'),
-      HIGH_SCORE_KEY,
+      HIGH_SCORE_KEYS.practice,
     )
 
     await openGame(page)

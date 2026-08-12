@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   getBestPoints,
   getServerBestPoints,
-  HIGH_SCORE_KEY,
+  HIGH_SCORE_KEYS,
   parseBestPoints,
   readBestPoints,
   saveBestPoints,
@@ -13,7 +13,7 @@ import {
 /** Almacenamiento de mentira, con lo justo que usa el récord. */
 function fakeStorage(initial?: string): Storage {
   const values = new Map<string, string>()
-  if (initial !== undefined) values.set(HIGH_SCORE_KEY, initial)
+  if (initial !== undefined) values.set(HIGH_SCORE_KEYS.practice, initial)
   return {
     getItem: (key: string) => values.get(key) ?? null,
     setItem: (key: string, value: string) => void values.set(key, value),
@@ -53,45 +53,47 @@ describe('lectura de lo guardado', () => {
   })
 
   it('lee el récord de su clave', () => {
-    expect(readBestPoints(fakeStorage('2500'))).toBe(2500)
+    expect(readBestPoints(fakeStorage('2500'), 'practice')).toBe(2500)
   })
 
   it('sin almacenamiento se juega sin récord previo', () => {
-    expect(readBestPoints(null)).toBe(0)
+    expect(readBestPoints(null, 'practice')).toBe(0)
   })
 
   it('un almacenamiento bloqueado no rompe la partida', () => {
     // En modo privado `localStorage` existe pero lanza al tocarlo.
-    expect(readBestPoints(blockedStorage())).toBe(0)
+    expect(readBestPoints(blockedStorage(), 'practice')).toBe(0)
   })
 })
 
 describe('escritura del récord', () => {
   it('guarda la puntuación en su clave', () => {
     const storage = fakeStorage()
-    writeBestPoints(storage, 3200)
-    expect(storage.getItem(HIGH_SCORE_KEY)).toBe('3200')
+    writeBestPoints(storage, 'practice', 3200)
+    expect(storage.getItem(HIGH_SCORE_KEYS.practice)).toBe('3200')
   })
 
   it('no escribe lo que la lectura descartaría', () => {
     const storage = fakeStorage()
     const setItem = vi.spyOn(storage, 'setItem')
 
-    writeBestPoints(storage, -1)
-    writeBestPoints(storage, 12.5)
-    writeBestPoints(storage, Number.NaN)
-    writeBestPoints(storage, Number.POSITIVE_INFINITY)
+    writeBestPoints(storage, 'practice', -1)
+    writeBestPoints(storage, 'practice', 12.5)
+    writeBestPoints(storage, 'practice', Number.NaN)
+    writeBestPoints(storage, 'practice', Number.POSITIVE_INFINITY)
 
     expect(setItem).not.toHaveBeenCalled()
   })
 
   it('sin almacenamiento no hace nada y no lanza', () => {
-    expect(() => writeBestPoints(null, 100)).not.toThrow()
+    expect(() => writeBestPoints(null, 'practice', 100)).not.toThrow()
   })
 
   it('si el navegador se niega a guardar, el juego sigue', () => {
     // Cuota agotada o escritura prohibida: se pierde el récord, no la partida.
-    expect(() => writeBestPoints(blockedStorage(), 100)).not.toThrow()
+    expect(() =>
+      writeBestPoints(blockedStorage(), 'practice', 100),
+    ).not.toThrow()
   })
 })
 
@@ -103,10 +105,10 @@ describe('el récord que ve el juego', () => {
   })
 
   it('empieza a cero y sale de lo guardado', () => {
-    expect(getBestPoints()).toBe(0)
+    expect(getBestPoints('practice')).toBe(0)
 
-    localStorage.setItem(HIGH_SCORE_KEY, '4100')
-    expect(getBestPoints()).toBe(4100)
+    localStorage.setItem(HIGH_SCORE_KEYS.practice, '4100')
+    expect(getBestPoints('practice')).toBe(4100)
   })
 
   it('en el servidor no hay récord que pintar', () => {
@@ -115,48 +117,68 @@ describe('el récord que ve el juego', () => {
   })
 
   it('guarda la puntuación cuando mejora la anterior', () => {
-    saveBestPoints(1500)
-    expect(getBestPoints()).toBe(1500)
-    expect(localStorage.getItem(HIGH_SCORE_KEY)).toBe('1500')
+    saveBestPoints('practice', 1500)
+    expect(getBestPoints('practice')).toBe(1500)
+    expect(localStorage.getItem(HIGH_SCORE_KEYS.practice)).toBe('1500')
   })
 
   it('una puntuación peor o igual no toca el récord', () => {
-    saveBestPoints(1500)
+    saveBestPoints('practice', 1500)
 
-    saveBestPoints(900)
-    saveBestPoints(1500)
+    saveBestPoints('practice', 900)
+    saveBestPoints('practice', 1500)
 
-    expect(getBestPoints()).toBe(1500)
+    expect(getBestPoints('practice')).toBe(1500)
   })
 
   it('avisa solo a quien sigue suscrito, y solo si hay récord nuevo', () => {
     const listener = vi.fn()
     const unsubscribe = subscribeBestPoints(listener)
 
-    saveBestPoints(2000)
+    saveBestPoints('practice', 2000)
     expect(listener).toHaveBeenCalledTimes(1)
 
     // Una partida peor no cambia nada que repintar.
-    saveBestPoints(10)
+    saveBestPoints('practice', 10)
     expect(listener).toHaveBeenCalledTimes(1)
 
     unsubscribe()
-    saveBestPoints(9000)
+    saveBestPoints('practice', 9000)
     expect(listener).toHaveBeenCalledTimes(1)
+  })
+
+  it('cada modo tiene su récord y no se pisan', () => {
+    // Un desafío se corta al quedarse sin vidas, así que nunca puede puntuar
+    // más que la práctica equivalente: con una marca compartida, el modo con
+    // algo en juego sería el único que jamás la batiría.
+    saveBestPoints('practice', 5000)
+    saveBestPoints('challenge', 1200)
+
+    expect(getBestPoints('practice')).toBe(5000)
+    expect(getBestPoints('challenge')).toBe(1200)
+
+    // Y un desafío peor que el récord de práctica sí bate el suyo.
+    saveBestPoints('challenge', 1800)
+    expect(getBestPoints('challenge')).toBe(1800)
+    expect(getBestPoints('practice')).toBe(5000)
   })
 
   it('se entera de que el récord lo ha cambiado otra pestaña', () => {
     const listener = vi.fn()
     const unsubscribe = subscribeBestPoints(listener)
 
-    localStorage.setItem(HIGH_SCORE_KEY, '7000')
-    window.dispatchEvent(new StorageEvent('storage', { key: HIGH_SCORE_KEY }))
+    localStorage.setItem(HIGH_SCORE_KEYS.practice, '7000')
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: HIGH_SCORE_KEYS.practice }),
+    )
 
     expect(listener).toHaveBeenCalledTimes(1)
-    expect(getBestPoints()).toBe(7000)
+    expect(getBestPoints('practice')).toBe(7000)
 
     unsubscribe()
-    window.dispatchEvent(new StorageEvent('storage', { key: HIGH_SCORE_KEY }))
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: HIGH_SCORE_KEYS.practice }),
+    )
     expect(listener).toHaveBeenCalledTimes(1)
   })
 })

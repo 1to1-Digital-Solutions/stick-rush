@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MAX_STICKS, MIN_STICKS } from './gameConfig'
 import { COUNTDOWN_SECONDS, useGameStoreValue } from './gameStore'
-import { HIGH_SCORE_KEY } from './highScore'
+import { HIGH_SCORE_KEYS } from './highScore'
 
 // La cuenta atrás usa `setTimeout`, así que todo el fichero corre con relojes
 // falsos: si no, cada partida costaría tres segundos reales de test.
@@ -224,6 +224,189 @@ describe('cuenta atrás', () => {
     // devolver al jugador a una partida que ha cancelado.
     act(() => void vi.advanceTimersByTime(5000))
     expect(result.current.gameState).toBe('menu')
+  })
+})
+
+describe('práctica y desafío', () => {
+  /**
+   * Arranca una partida de desafío con `total` palos y la deja en juego. Pasa
+   * por el menú primero, como el jugador: el modo solo se cambia ahí.
+   */
+  function startChallenge(
+    store: { current: ReturnType<typeof useGameStoreValue> },
+    total: number,
+  ) {
+    act(() => store.current.resetGame())
+    act(() => store.current.setGameMode('challenge'))
+    act(() => store.current.setStickCount(total))
+    startPlaying(store)
+  }
+
+  it('se entra en práctica, sin vidas que perder', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+
+    expect(result.current.gameMode).toBe('practice')
+    expect(result.current.lives).toBeNull()
+  })
+
+  it('en práctica, fallarlos todos no corta la partida antes de tiempo', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setStickCount(13))
+    startPlaying(result)
+
+    for (let i = 0; i < 12; i++) act(() => result.current.missStick())
+
+    expect(result.current.gameState).toBe('playing')
+    expect(result.current.lives).toBeNull()
+  })
+
+  it('el desafío arranca con tres vidas y cada fallo cuesta una', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    startChallenge(result, 13)
+    expect(result.current.lives).toBe(3)
+
+    act(() => result.current.missStick())
+    expect(result.current.lives).toBe(2)
+
+    act(() => result.current.missStick())
+    expect(result.current.lives).toBe(1)
+    expect(result.current.gameState).toBe('playing')
+  })
+
+  it('atrapar palos no gasta vidas', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    startChallenge(result, 13)
+
+    act(() => result.current.catchStick(0.5))
+    act(() => result.current.catchStick(0.5))
+
+    expect(result.current.lives).toBe(3)
+  })
+
+  it('quedarse sin vidas cierra la partida aunque queden palos', () => {
+    // Es lo que distingue al desafío: la partida tiene un final que no depende
+    // de que caiga todo lo que hay colgado.
+    const { result } = renderHook(() => useGameStoreValue())
+    startChallenge(result, 13)
+
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+
+    expect(result.current.lives).toBe(0)
+    expect(result.current.outcome).toBe('failed')
+    expect(result.current.gameState).toBe('finished')
+    expect(result.current.resolved).toBeLessThan(result.current.stickCount)
+  })
+
+  it('un fallo de más no deja las vidas en negativo', () => {
+    // Dos palos pueden tocar el suelo en el mismo lote justo al agotarse la
+    // última vida.
+    const { result } = renderHook(() => useGameStoreValue())
+    startChallenge(result, 13)
+
+    act(() => {
+      for (let i = 0; i < 4; i++) result.current.missStick()
+    })
+
+    expect(result.current.lives).toBe(0)
+    expect(result.current.outcome).toBe('failed')
+  })
+
+  it('resolver todos los palos con vidas es superar el reto', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    startChallenge(result, 5)
+
+    act(() => result.current.missStick())
+    for (let i = 0; i < 4; i++) act(() => result.current.catchStick(0.5))
+
+    expect(result.current.outcome).toBe('cleared')
+    expect(result.current.gameState).toBe('finished')
+    expect(result.current.lives).toBe(2)
+  })
+
+  it('la partida de práctica termina sin desenlace de reto', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    playRound(result, 5, 3)
+
+    expect(result.current.gameState).toBe('finished')
+    expect(result.current.outcome).toBe('cleared')
+    expect(result.current.lives).toBeNull()
+  })
+
+  it('el modo sobrevive a la partida y a volver al menú', () => {
+    // Como el número de palos o la dificultad: elegirlo otra vez en cada
+    // revancha sería justo lo que estorba con el visor puesto.
+    const { result } = renderHook(() => useGameStoreValue())
+    startChallenge(result, 5)
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+
+    act(() => result.current.resetGame())
+
+    expect(result.current.gameMode).toBe('challenge')
+    // Y las vidas vuelven a estar enteras: en el menú son las que se ponen en
+    // juego, no las que quedaron de la anterior.
+    expect(result.current.lives).toBe(3)
+    expect(result.current.outcome).toBeNull()
+  })
+
+  it('el modo solo se cambia entre partidas', () => {
+    // La puntuación y el modo en el que se hizo son un par: con el resumen en
+    // pantalla, cambiar de modo mandaba esos puntos al récord del otro modo,
+    // uno que no se ha jugado. Rompiendo la guarda, el récord de desafío
+    // aparece con los puntos de esta partida de práctica.
+    const { result } = renderHook(() => useGameStoreValue())
+    playRound(result, 5, 5)
+    const points = result.current.points
+    expect(points).toBeGreaterThan(0)
+
+    act(() => result.current.setGameMode('challenge'))
+    expect(result.current.gameMode).toBe('practice')
+
+    act(() => result.current.resetGame())
+    act(() => result.current.setGameMode('challenge'))
+    expect(result.current.gameMode).toBe('challenge')
+    expect(result.current.bestPoints).toBe(0)
+  })
+
+  it('cada modo lleva su propio récord', () => {
+    // Un desafío se corta al quedarse sin vidas, así que con una marca común
+    // nunca podría batir a la práctica equivalente.
+    const { result } = renderHook(() => useGameStoreValue())
+    playRound(result, 5, 5)
+    const practiceRecord = result.current.bestPoints
+    expect(practiceRecord).toBeGreaterThan(0)
+
+    startChallenge(result, 5)
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+
+    // Una partida sin puntos no deja récord, pero el de práctica tampoco se
+    // asoma al desafío: aquí no hay nada hecho todavía.
+    expect(result.current.bestPoints).toBe(0)
+    expect(result.current.isRecord).toBe(false)
+
+    act(() => result.current.resetGame())
+    act(() => result.current.setGameMode('practice'))
+    expect(result.current.bestPoints).toBe(practiceRecord)
+  })
+
+  it('un desafío bate su récord aunque quede lejos del de práctica', () => {
+    // Es el motivo de que haya dos marcas: un desafío se corta al quedarse sin
+    // vidas, así que con una sola nunca podría batir a la práctica y el modo
+    // con algo en juego sería el único sin nada que superar.
+    const { result } = renderHook(() => useGameStoreValue())
+    playRound(result, 5, 5)
+    const practiceRecord = result.current.bestPoints
+
+    startChallenge(result, 5)
+    act(() => result.current.catchStick(0.5))
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+
+    expect(result.current.points).toBeLessThan(practiceRecord)
+    expect(result.current.isRecord).toBe(true)
+    expect(result.current.bestPoints).toBe(result.current.points)
+
+    act(() => result.current.resetGame())
+    act(() => result.current.setGameMode('practice'))
+    expect(result.current.bestPoints).toBe(practiceRecord)
   })
 })
 
@@ -496,8 +679,10 @@ describe('mejor puntuación', () => {
     startPlaying(result)
 
     act(() => {
-      localStorage.setItem(HIGH_SCORE_KEY, '999999')
-      window.dispatchEvent(new StorageEvent('storage', { key: HIGH_SCORE_KEY }))
+      localStorage.setItem(HIGH_SCORE_KEYS.practice, '999999')
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: HIGH_SCORE_KEYS.practice }),
+      )
     })
     for (let i = 0; i < 5; i++) act(() => result.current.catchStick(0.5))
 
