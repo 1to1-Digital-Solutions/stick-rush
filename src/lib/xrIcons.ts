@@ -58,6 +58,51 @@ export const XR_HOME_ICON: IconShape = [
 ]
 
 /**
+ * Corazón: una vida.
+ *
+ * Es lo que el modo desafío pone en juego, y lo único que lo explica en el
+ * visor: tres corazones encendidos en el menú son las tres vidas con las que se
+ * empieza, y en el marcador las que quedan. Se dibuja de una pieza —dos lóbulos
+ * arriba y punta abajo— porque a un metro de distancia dos medios círculos y un
+ * triángulo se leen como tres objetos sueltos, que es lo que ya falló con los
+ * primeros iconos del menú.
+ */
+export const XR_HEART_ICON: IconShape = [
+  {
+    outline: [
+      [0, 0.471],
+      [0.011, 0.533],
+      [0.082, 0.682],
+      [0.242, 0.835],
+      [0.478, 0.904],
+      [0.731, 0.842],
+      [0.927, 0.66],
+      [1, 0.409],
+      [0.927, 0.143],
+      [0.731, -0.107],
+      [0.478, -0.335],
+      [0.242, -0.544],
+      [0.082, -0.726],
+      [0.011, -0.856],
+      [0, -0.904],
+      [-0.011, -0.856],
+      [-0.082, -0.726],
+      [-0.242, -0.544],
+      [-0.478, -0.335],
+      [-0.731, -0.107],
+      [-0.927, 0.143],
+      [-1, 0.409],
+      [-0.927, 0.66],
+      [-0.731, 0.842],
+      [-0.478, 0.904],
+      [-0.242, 0.835],
+      [-0.082, 0.682],
+      [-0.011, 0.533],
+    ],
+  },
+]
+
+/**
  * Cuerpo del altavoz, común al icono de sonido y al de silencio: caja y cono.
  *
  * Los dos estados comparten silueta a propósito. Lo que cambia es lo que sale

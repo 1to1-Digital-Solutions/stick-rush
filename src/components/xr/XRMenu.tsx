@@ -4,22 +4,26 @@ import { useXR } from '@react-three/xr'
 import {
   DIFFICULTY_COLORS,
   DIFFICULTY_ORDER,
+  LIFE_COLOR,
   MAX_STICKS,
   MIN_STICKS,
   STICK_COLOR,
 } from '@/lib/gameConfig'
+import { CHALLENGE_LIVES } from '@/lib/gameMode'
 import { useGame } from '@/lib/gameStore'
 import {
   XR_DIFFICULTY_SPACING,
   XR_MENU_EXIT_OFFSET,
   XR_MENU_POSITION,
   XR_MENU_SOUND_OFFSET,
+  XR_MODE_TOGGLE_OFFSET,
   XR_SCENERY_PICKER_OFFSET,
   XR_STICK_PICKER_SPACING,
 } from '@/lib/xrLayout'
 import {
   PANEL_COLOR,
   XRExitIcon,
+  XRHeartIcon,
   XRMutedIcon,
   XRPanel,
   XRPassthroughIcon,
@@ -149,6 +153,52 @@ function DifficultyPicker() {
   )
 }
 
+/** Separación entre los corazones del interruptor de modo. */
+const MODE_HEART_SPACING = 0.045
+/** Semilado de esos corazones: más pequeños que un icono de botón, van tres. */
+const MODE_HEART_SIZE = 0.016
+/**
+ * Práctica o desafío, dicho con lo único que los distingue: las vidas.
+ *
+ * Encendidos, los tres corazones son lo que se pone en juego; apagados, no hay
+ * nada que perder y la partida es la de siempre. Es un interruptor y no dos
+ * opciones como el escenario —igual que el silencio— porque uno de los dos
+ * estados es exactamente la ausencia del otro: la práctica es el desafío sin
+ * vidas. Y sin una letra, como todo el menú inmersivo: el estado se distingue
+ * por relleno, brillo y tamaño, nunca solo por color.
+ */
+function ModeToggle() {
+  const { gameMode, setGameMode } = useGame()
+  const challenge = gameMode === 'challenge'
+  const width = (CHALLENGE_LIVES - 1) * MODE_HEART_SPACING
+
+  return (
+    <XRPressable
+      position={XR_MODE_TOGGLE_OFFSET}
+      onSelect={() => setGameMode(challenge ? 'practice' : 'challenge')}
+      hitSize={[0.2, 0.13, 0.06]}
+    >
+      <mesh position={[0, 0, -0.008]}>
+        <boxGeometry args={[0.17, 0.1, 0.014]} />
+        <meshStandardMaterial
+          color={challenge ? '#4c1d24' : '#1c2634'}
+          emissive={LIFE_COLOR}
+          emissiveIntensity={challenge ? 0.4 : 0.04}
+          roughness={0.5}
+        />
+      </mesh>
+      {Array.from({ length: CHALLENGE_LIVES }, (_, index) => (
+        <XRHeartIcon
+          key={index}
+          position={[index * MODE_HEART_SPACING - width / 2, 0, 0.008]}
+          size={challenge ? MODE_HEART_SIZE : MODE_HEART_SIZE * 0.75}
+          color={challenge ? LIFE_COLOR : '#55606f'}
+        />
+      ))}
+    </XRPressable>
+  )
+}
+
 /**
  * Escenario o habitación real, sin salir de la sesión.
  *
@@ -253,6 +303,7 @@ export function XRMenu() {
       <XRPanel width={1.06} height={0.74} color={PANEL_COLOR} />
       <StickPicker />
       <DifficultyPicker />
+      <ModeToggle />
       <SceneryPicker passthroughAvailable={mode === 'immersive-ar'} />
 
       {/* Empezar */}

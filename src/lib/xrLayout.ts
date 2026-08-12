@@ -49,8 +49,17 @@ export const XR_MENU_EXIT_OFFSET: Vec3 = [-0.42, -0.29, 0]
  * pulsa por error.
  */
 export const XR_MENU_SOUND_OFFSET: Vec3 = [0.42, -0.29, 0]
-/** Selector de escenario o passthrough, bajo las dificultades. */
-export const XR_SCENERY_PICKER_OFFSET: Vec3 = [0, -0.17, 0]
+/**
+ * Fila de ajustes bajo las dificultades: a la izquierda con qué se juega
+ * (práctica o desafío) y a la derecha qué se ve alrededor. Van a las dos puntas
+ * y no juntos en el centro por lo mismo que los botones de la fila de abajo: en
+ * el visor se apunta a pulso y un vecino a pocos centímetros se pulsa por error.
+ */
+const SETTINGS_ROW_Y = -0.17
+/** Interruptor de modo: los corazones que se ponen (o no) en juego. */
+export const XR_MODE_TOGGLE_OFFSET: Vec3 = [-0.26, SETTINGS_ROW_Y, 0]
+/** Selector de escenario o passthrough. */
+export const XR_SCENERY_PICKER_OFFSET: Vec3 = [0.245, SETTINGS_ROW_Y, 0]
 /**
  * Cuenta atrás: al frente y a la altura de los ojos, que es donde el jugador
  * está mirando justo después de pulsar «empezar».
@@ -87,6 +96,12 @@ export function xrMenuExitPosition(): Vec3 {
 /** Botón de silenciar, dentro del panel del menú. */
 export function xrMenuSoundPosition(): Vec3 {
   const [dx, dy] = XR_MENU_SOUND_OFFSET
+  return offset(XR_MENU_POSITION, dx, dy)
+}
+
+/** Interruptor de modo (práctica o desafío), dentro del panel del menú. */
+export function xrModeTogglePosition(): Vec3 {
+  const [dx, dy] = XR_MODE_TOGGLE_OFFSET
   return offset(XR_MENU_POSITION, dx, dy)
 }
 

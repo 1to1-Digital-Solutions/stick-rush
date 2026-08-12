@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   XR_EXIT_ICON,
+  XR_HEART_ICON,
   XR_HOME_ICON,
   XR_MUTED_ICON,
   XR_SOUND_ICON,
@@ -126,6 +127,7 @@ const ICONS: [string, IconShape][] = [
   ['salida', XR_EXIT_ICON],
   ['sonido', XR_SOUND_ICON],
   ['silencio', XR_MUTED_ICON],
+  ['vida', XR_HEART_ICON],
 ]
 
 describe('las siluetas están bien formadas', () => {
@@ -226,6 +228,35 @@ describe('la salida se lee como una puerta con una flecha', () => {
     const start = Math.min(...arrow.outline.map(([x]) => x))
     const jamb = Math.max(...crossingsAtY(frame.outline, 0))
     expect(start).toBeGreaterThan(jamb + 0.1)
+  })
+})
+
+describe('la vida se lee como un corazón', () => {
+  const [heart] = XR_HEART_ICON
+  const outline = heart.outline
+
+  it('tiene dos lóbulos separados arriba', () => {
+    // Sin el entrante del centro queda un escudo, que no dice "vida". La
+    // horizontal que pasa por encima del valle corta cuatro veces: entra y sale
+    // de cada lóbulo.
+    expect(crossingsAtY(outline, 0.6)).toHaveLength(4)
+    expect(contains(outline, [0, 0.6])).toBe(false)
+    expect(contains(outline, [-0.5, 0.6])).toBe(true)
+    expect(contains(outline, [0.5, 0.6])).toBe(true)
+  })
+
+  it('acaba en punta abajo', () => {
+    // El corazón se pinta a cuatro centímetros y tres seguidos: lo que
+    // distingue la silueta de un círculo es la punta.
+    const waist = span(crossingsAtY(outline, 0.2))
+    expect(span(crossingsAtY(outline, -0.7))).toBeLessThan(waist / 4)
+  })
+
+  it('es macizo por dentro', () => {
+    // Un corazón de contorno hueco se pierde a distancia; el del menú se
+    // distingue del gastado por el color de su relleno, no por la silueta.
+    expect(contains(outline, [0, 0])).toBe(true)
+    expect(contains(outline, [0, 0.4])).toBe(true)
   })
 })
 

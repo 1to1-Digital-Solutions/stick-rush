@@ -1,12 +1,15 @@
 'use client'
 
 import { useXR } from '@react-three/xr'
+import { LIFE_COLOR } from '@/lib/gameConfig'
+import { startingLives } from '@/lib/gameMode'
 import { useGame } from '@/lib/gameStore'
 import { scoreRatio } from '@/lib/scoring'
 import { type StickStatus, stickStatuses } from '@/lib/stickLayout'
 import { XR_HUD_POSITION, XR_QUIT_POSITION, XR_QUIT_YAW } from '@/lib/xrLayout'
 import {
   PANEL_COLOR,
+  XRHeartIcon,
   XRHomeIcon,
   XRPanel,
   XRPressable,
@@ -123,6 +126,42 @@ function StreakPips({ streak }: { streak: number }) {
   )
 }
 
+/** Separación y tamaño de los corazones de vida en el marcador. */
+const LIFE_SPACING = 0.05
+const LIFE_SIZE = 0.019
+/** Dónde va la fila de vidas dentro del marcador, y cuánto lo alarga. */
+const LIFE_ROW_Y = -0.105
+const LIFE_ROW_HEIGHT = 0.06
+/** El gastado se apaga a gris y encoge; el vivo va del rojo de siempre. */
+const LIFE_SPENT_COLOR = '#3f4a5a'
+
+/**
+ * Vidas que quedan en un desafío: un corazón por vida, encogido y apagado el
+ * que se ha gastado. Con el visor puesto es lo que dice si la próxima que se
+ * escape cierra la partida, y por eso va debajo de la barra de puntuación, en
+ * el sitio fijo del marcador y no entre las fichas de los palos, que se mueven
+ * con cuántos haya en juego.
+ */
+function Lives({ lives, total, y }: { lives: number; total: number; y: number }) {
+  const width = (total - 1) * LIFE_SPACING
+
+  return (
+    <group position={[0, y, 0]}>
+      {Array.from({ length: total }, (_, index) => {
+        const spent = index >= lives
+        return (
+          <XRHeartIcon
+            key={index}
+            position={[index * LIFE_SPACING - width / 2, 0, 0]}
+            size={spent ? LIFE_SIZE * 0.62 : LIFE_SIZE}
+            color={spent ? LIFE_SPENT_COLOR : LIFE_COLOR}
+          />
+        )
+      })}
+    </group>
+  )
+}
+
 function Token({ state, x }: { state: StickStatus; x: number }) {
   const style = TOKEN_STYLE[state]
 
@@ -155,6 +194,8 @@ export function XRHud() {
     isRecord,
     difficulty,
     stickCount,
+    gameMode,
+    lives,
     gameState,
     startGame,
     resetGame,
@@ -176,6 +217,10 @@ export function XRHud() {
   const finished = gameState === 'finished'
   const ratio = scoreRatio(points, difficulty, stickCount)
   const recordRatio = scoreRatio(bestPoints, difficulty, stickCount)
+  // En desafío el marcador crece para dejarles sitio: las vidas se ven durante
+  // la partida y siguen ahí al acabar, que es con las que se acabó.
+  const totalLives = startingLives(gameMode)
+  const showLives = lives != null && totalLives != null
 
   return (
     <group position={XR_HUD_POSITION}>
@@ -183,7 +228,7 @@ export function XRHud() {
           pierden contraste sobre cualquier pared. */}
       <XRPanel
         width={width + 0.2}
-        height={finished ? 0.42 : 0.27}
+        height={(finished ? 0.42 : 0.27) + (showLives ? LIFE_ROW_HEIGHT : 0)}
         color={PANEL_COLOR}
         opacity={0.72}
       />
@@ -199,6 +244,7 @@ export function XRHud() {
           isRecord={isRecord}
           width={Math.max(width, 0.28)}
         />
+        {showLives && <Lives lives={lives} total={totalLives} y={LIFE_ROW_Y} />}
       </group>
 
       {/*

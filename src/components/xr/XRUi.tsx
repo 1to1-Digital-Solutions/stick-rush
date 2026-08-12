@@ -5,6 +5,7 @@ import type { ThreeEvent } from '@react-three/fiber'
 import { Path, Shape, Vector2 } from 'three'
 import {
   XR_EXIT_ICON,
+  XR_HEART_ICON,
   XR_HOME_ICON,
   XR_MUTED_ICON,
   XR_SOUND_ICON,
@@ -234,6 +235,11 @@ export function XRExitIcon(props: IconProps) {
 /** Altavoz con ondas: el juego suena. */
 export function XRSoundIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_SOUND_ICON} {...props} />
+}
+
+/** Corazón: una vida, en el selector de modo y en el marcador. */
+export function XRHeartIcon(props: IconProps) {
+  return <XRShapeIcon icon={XR_HEART_ICON} {...props} />
 }
 
 /** Altavoz con un aspa: el juego está en silencio. */
