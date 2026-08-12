@@ -20,6 +20,7 @@ import {
   MAX_EYE_HEIGHT,
   MIN_EYE_HEIGHT,
   clampHoopAdjustment,
+  hasFloorReference,
   headsetEyeHeight,
   hoopFallSpeed,
   hoopHeightFor,
@@ -48,8 +49,19 @@ function reachTo(t: number, hoopHeight: number, eyeHeight: number): number {
   return Math.hypot(x - px, center - shoulderHeightFor(eyeHeight), z - pz)
 }
 
-/** Estaturas de prueba: sentado, bajo, de referencia y muy alto. */
-const EYE_HEIGHTS = [1.05, 1.35, HOOP_REFERENCE_EYE_HEIGHT, 1.9]
+/**
+ * Estaturas de prueba: sentado, bajo, de referencia y muy alto, más los dos
+ * extremos que se aceptan como persona —que son justo donde el tope absoluto
+ * puede entrar a recortar y separar el aro del brazo—.
+ */
+const EYE_HEIGHTS = [
+  MIN_EYE_HEIGHT,
+  1.05,
+  1.35,
+  HOOP_REFERENCE_EYE_HEIGHT,
+  1.9,
+  MAX_EYE_HEIGHT,
+]
 
 describe('altura de ojos que entrega el visor', () => {
   it('con el espacio referido al suelo vale lo que mide la cabeza', () => {
@@ -71,6 +83,27 @@ describe('altura de ojos que entrega el visor', () => {
     expect(headsetEyeHeight(42, true)).toBeNull()
     expect(headsetEyeHeight(Number.NaN, true)).toBeNull()
     expect(headsetEyeHeight(Number.POSITIVE_INFINITY, true)).toBeNull()
+  })
+
+  it('el espacio de la sesión se da por bueno si trae suelo', () => {
+    expect(hasFloorReference(['local-floor', 'hand-tracking'])).toBe(true)
+    expect(hasFloorReference(['bounded-floor'])).toBe(true)
+  })
+
+  it('un espacio sin suelo se rechaza', () => {
+    expect(hasFloorReference(['local', 'hand-tracking'])).toBe(false)
+    expect(hasFloorReference([])).toBe(false)
+  })
+
+  it('un navegador que no publica sus prestaciones no impide medir', () => {
+    // `enabledFeatures` es opcional en la especificación, y `local-floor` va
+    // como requerida al abrir la sesión: si no se hubiera concedido, no habría
+    // sesión. Exigir la lista sería renunciar a medir en visores donde el dato
+    // es bueno; y si el espacio no fuera de suelo, la cota nacería junto al cero
+    // y el filtro de estaturas la descartaría igual.
+    expect(hasFloorReference(undefined)).toBe(true)
+    expect(hasFloorReference(null)).toBe(true)
+    expect(headsetEyeHeight(0.05, hasFloorReference(undefined))).toBeNull()
   })
 
   it('acepta los extremos del rango, que son personas reales', () => {

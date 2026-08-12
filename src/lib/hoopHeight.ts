@@ -108,6 +108,29 @@ export function headsetEyeHeight(
   return isPlausibleEyeHeight(cameraY) ? cameraY : null
 }
 
+/**
+ * ¿Tiene esta sesión el origen en el suelo, a la vista de las prestaciones que
+ * dice haber habilitado?
+ *
+ * `local-floor` se pide como **requerida** al abrir la sesión (lo hace
+ * @react-three/xr, ver `xrStore.ts`), así que una sesión viva la tiene por
+ * fuerza: sin ella el visor habría rechazado abrirla. Pero `enabledFeatures` es
+ * opcional en la especificación y hay navegadores que no la publican, y ahí
+ * exigirla equivale a renunciar a medir al jugador en visores donde el dato es
+ * perfectamente bueno. Cuando la lista falta se da por buena, que es lo que la
+ * sesión garantiza; y si aun así el espacio no fuera de suelo, la cota nacería
+ * cerca del cero y `isPlausibleEyeHeight` la descartaría igual.
+ */
+export function hasFloorReference(
+  enabledFeatures: readonly string[] | null | undefined,
+): boolean {
+  if (enabledFeatures == null) return true
+  return (
+    enabledFeatures.includes('local-floor') ||
+    enabledFeatures.includes('bounded-floor')
+  )
+}
+
 /** Deja la corrección manual dentro de lo que se permite mover el aro. */
 export function clampHoopAdjustment(value: number): number {
   if (!Number.isFinite(value)) return 0

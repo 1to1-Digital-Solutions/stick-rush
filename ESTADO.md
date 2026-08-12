@@ -613,11 +613,16 @@ palos pasan fuera del brazo: el juego se vuelve injugable sin que nada falle.
   aro que persiguiera la cabeza subiría al ponerse de puntillas justo cuando el jugador
   calcula dónde va a estar la mano. Medida suavizada y con umbral de 2 cm, para que no
   tiemble con la respiración ni repinte la máquina en cada frame (`XRPlayerHeight`).
-- **El dato solo vale con el suelo puesto.** Se exige `local-floor` en la sesión
-  (`useXRSessionFeatureEnabled`): en un espacio `local` la cabeza nace en el cero y su
-  cota no mide desde el suelo. Sin él no se inventa nada —el aro se queda a la altura de
-  siempre— y el ajuste manual es lo que lo cubre, que es justo el caso de jugar sentado
-  con el espacio calibrado de pie.
+- **El dato solo vale con el suelo puesto.** Se mira el `enabledFeatures` de la sesión
+  (`hasFloorReference`): en un espacio `local` la cabeza nace en el cero y su cota no mide
+  desde el suelo. Esa lista es opcional en la especificación y hay navegadores que no la
+  publican; como `local-floor` se pide **requerida** al abrir la sesión, cuando falta se
+  da por buena en vez de renunciar a medir (con `useXRSessionFeatureEnabled` esos visores
+  se quedaban sin la parte automática de la función). Si aun así el espacio no fuera de
+  suelo, la cota nacería junto al cero y el filtro de estaturas la descartaría. Cuando no
+  hay dato no se inventa nada —el aro se queda a la altura de siempre— y el ajuste manual
+  es lo que lo cubre, que es justo el caso de jugar sentado con el espacio calibrado de
+  pie.
 - **Ajuste manual en la fila de arriba del menú inmersivo**, ±20 cm en pasos de 5. El
   rango no es un número redondo: lo manda el brazo (los palos quedan a ~60 cm en
   horizontal y el alcance cómodo son 75, así que sobran ~26 cm verticales). Los botones se
@@ -631,15 +636,24 @@ palos pasan fuera del brazo: el juego se vuelve injugable sin que nada falle.
 - **La dificultad no cambia con la estatura**: subir el aro alarga el recorrido, así que
   la velocidad de caída se escala con él (`hoopFallSpeed`) y cada dificultad dura lo mismo
   para todo el mundo. Los tiempos que vigila `gameConfig.test.ts` siguen valiendo.
-- Todo el cálculo es puro y vive en `src/lib/hoopHeight.ts`, con 24 unitarios: altura alta
+- **Los palos perdidos se quedan en el suelo aunque el aro se mueva** (visto en revisión).
+  Mover el aro cambia el anclaje de cada palo, y R3F reescribe con él la posición del
+  grupo: al volver al menú tras una partida y tocar la flecha, los palos rojos tirados por
+  el suelo se levantaban hasta el aro nuevo y se quedaban colgados ahí hasta la partida
+  siguiente. `Stick` les devuelve su cota cuando el anclaje cambia.
+- Todo el cálculo es puro y vive en `src/lib/hoopHeight.ts`, con 27 unitarios: altura alta
   y baja, valores absurdos (0, negativos, `NaN`, 50 m), sin dato del visor, los dos topes,
   que el aro nunca quede dentro del suelo ni por encima de la cabeza, que **ningún palo se
-  salga del brazo se ponga donde se ponga**, y la persistencia (corrupta, bloqueada,
-  ausente). Las cuatro mutaciones probadas —quitar el clamp, ignorar el tipo de espacio,
-  no corregir la velocidad y doblar el rango— ponen la suite en rojo.
+  salga del brazo se ponga donde se ponga** (incluidos los dos extremos de estatura que se
+  aceptan, que es donde el tope absoluto puede recortar), y la persistencia (corrupta,
+  bloqueada, ausente). Las cuatro mutaciones probadas —quitar el clamp, ignorar el tipo de
+  espacio, no corregir la velocidad y doblar el rango— ponen la suite en rojo. El cableado
+  del store (pasos, topes, guardado, medida del visor y su retirada al cerrar la sesión)
+  va aparte, en `gameStore.test.tsx`.
 - **Sin validar en hardware**, como todo lo que se toca a botones en el visor: el emulador
-  no propaga sus punteros. El e2e cubre el arranque con una corrección guardada
-  (manipulada a `99999`) sin ensuciar la consola.
+  no propaga sus punteros. El e2e cubre el arranque con una corrección guardada que no es
+  ni un número (`'un palmo más arriba'`), que es lo que de verdad tumbaría la escena: sin
+  la guarda de `parseHoopAdjustment` el `NaN` llega a la geometría del aro.
 
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 

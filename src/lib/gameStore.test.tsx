@@ -1,8 +1,9 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { MAX_STICKS, MIN_STICKS } from './gameConfig'
+import { MACHINE_HEIGHT, MAX_STICKS, MIN_STICKS } from './gameConfig'
 import { COUNTDOWN_SECONDS, useGameStoreValue } from './gameStore'
 import { HIGH_SCORE_KEYS } from './highScore'
+import { HOOP_ADJUST_RANGE, HOOP_ADJUST_STEP } from './hoopHeight'
 
 // La cuenta atrás usa `setTimeout`, así que todo el fichero corre con relojes
 // falsos: si no, cada partida costaría tres segundos reales de test.
@@ -470,6 +471,104 @@ describe('silencio', () => {
 
     act(() => result.current.resetGame())
     expect(result.current.muted).toBe(true)
+  })
+})
+
+describe('altura del aro', () => {
+  it('sin visor y sin corrección guardada, el aro está donde siempre', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    expect(result.current.hoopAdjustment).toBe(0)
+    expect(result.current.hoopHeight).toBeCloseTo(MACHINE_HEIGHT, 6)
+  })
+
+  it('sube y baja a pasos, y el aro le sigue', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+
+    act(() => result.current.adjustHoop(1))
+    expect(result.current.hoopAdjustment).toBeCloseTo(HOOP_ADJUST_STEP, 6)
+    expect(result.current.hoopHeight).toBeCloseTo(
+      MACHINE_HEIGHT + HOOP_ADJUST_STEP,
+      6,
+    )
+
+    act(() => result.current.adjustHoop(-2))
+    expect(result.current.hoopAdjustment).toBeCloseTo(-HOOP_ADJUST_STEP, 6)
+  })
+
+  it('no se pasa del tope por mucho que se insista', () => {
+    // Es la valla que pide el enunciado: desde el menú no se puede dejar el aro
+    // ni por las nubes ni dentro del suelo.
+    const { result } = renderHook(() => useGameStoreValue())
+
+    for (let i = 0; i < 20; i++) act(() => result.current.adjustHoop(1))
+    expect(result.current.hoopAdjustment).toBeCloseTo(HOOP_ADJUST_RANGE, 6)
+
+    for (let i = 0; i < 40; i++) act(() => result.current.adjustHoop(-1))
+    expect(result.current.hoopAdjustment).toBeCloseTo(-HOOP_ADJUST_RANGE, 6)
+  })
+
+  it('la corrección se guarda y sigue ahí en la visita siguiente', () => {
+    const { result, unmount } = renderHook(() => useGameStoreValue())
+    act(() => result.current.adjustHoop(-2))
+    const chosen = result.current.hoopAdjustment
+    unmount()
+
+    // Otra visita: el store nace leyendo lo guardado, sin pasar por el menú.
+    const { result: later } = renderHook(() => useGameStoreValue())
+    expect(later.current.hoopAdjustment).toBeCloseTo(chosen, 6)
+  })
+
+  it('no escribe nada cuando la pulsación no cambia el valor', () => {
+    // En el tope el botón se apaga, pero un mando que insista no puede acabar
+    // escribiendo en el almacenamiento en cada pulsación.
+    const { result } = renderHook(() => useGameStoreValue())
+    for (let i = 0; i < 4; i++) act(() => result.current.adjustHoop(1))
+
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    act(() => result.current.adjustHoop(1))
+    expect(setItem).not.toHaveBeenCalled()
+    setItem.mockRestore()
+  })
+
+  it('la corrección sobrevive a la partida', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.adjustHoop(-1))
+    const chosen = result.current.hoopAdjustment
+
+    playRound(result, 5, 3)
+    expect(result.current.hoopAdjustment).toBeCloseTo(chosen, 6)
+
+    act(() => result.current.resetGame())
+    expect(result.current.hoopAdjustment).toBeCloseTo(chosen, 6)
+  })
+
+  it('con el visor midiendo, el aro se planta sobre los ojos del jugador', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+
+    act(() => result.current.setPlayerEyeHeight(1.2))
+    const seated = result.current.hoopHeight
+    expect(seated).toBeLessThan(MACHINE_HEIGHT)
+
+    // Y la corrección manual se suma a lo medido, no lo sustituye.
+    act(() => result.current.adjustHoop(1))
+    expect(result.current.hoopHeight).toBeCloseTo(seated + HOOP_ADJUST_STEP, 6)
+  })
+
+  it('al cerrarse la sesión el aro vuelve a su altura de referencia', () => {
+    // Fuera del visor no hay a quién medir, y la medida de la última sesión no
+    // dice nada de quien juegue después.
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setPlayerEyeHeight(1.9))
+    expect(result.current.hoopHeight).toBeGreaterThan(MACHINE_HEIGHT)
+
+    act(() => result.current.setPlayerEyeHeight(null))
+    expect(result.current.hoopHeight).toBeCloseTo(MACHINE_HEIGHT, 6)
+  })
+
+  it('una medida imposible del visor no mueve el aro', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setPlayerEyeHeight(Number.NaN))
+    expect(result.current.hoopHeight).toBeCloseTo(MACHINE_HEIGHT, 6)
   })
 })
 

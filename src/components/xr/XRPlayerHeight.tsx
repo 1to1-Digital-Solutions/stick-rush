@@ -2,10 +2,10 @@
 
 import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { useXR, useXRSessionFeatureEnabled } from '@react-three/xr'
+import { useXR } from '@react-three/xr'
 import { Vector3 } from 'three'
 import { useGame } from '@/lib/gameStore'
-import { headsetEyeHeight } from '@/lib/hoopHeight'
+import { hasFloorReference, headsetEyeHeight } from '@/lib/hoopHeight'
 import { followRatio } from '@/lib/xrAnchor'
 
 /**
@@ -27,8 +27,12 @@ import { followRatio } from '@/lib/xrAnchor'
 export function XRPlayerHeight() {
   const mode = useXR((state) => state.mode)
   // Solo un espacio de referencia con suelo permite saber la estatura: en uno
-  // `local` la cabeza nace en el cero y su cota no mide desde el suelo.
-  const floorLevel = useXRSessionFeatureEnabled('local-floor')
+  // `local` la cabeza nace en el cero y su cota no mide desde el suelo. Se mira
+  // la sesión y no `useXRSessionFeatureEnabled`, que da por no habilitado lo
+  // que el navegador simplemente no publica (ver `hasFloorReference`).
+  const floorLevel = useXR((state) =>
+    hasFloorReference(state.session?.enabledFeatures),
+  )
   const { gameState, setPlayerEyeHeight } = useGame()
 
   const smoothed = useRef<number | null>(null)

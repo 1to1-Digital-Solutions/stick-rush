@@ -143,6 +143,20 @@ export function Stick({
   // quedaría en 'pointer'.
   useEffect(() => releaseCursor, [])
 
+  // El palo perdido se queda en el suelo aunque el aro cambie de altura.
+  //
+  // El aro se acomoda a quien juega (ver `@/lib/hoopHeight`) y puede subir o
+  // bajar desde el menú con los palos de la partida anterior todavía tirados por
+  // el suelo. Al moverse el anclaje, React reescribe la posición del grupo y se
+  // llevaría con él a los palos ya resueltos: se levantarían del suelo hasta la
+  // altura del aro y se quedarían ahí colgados, rojos y sin cuerda, hasta la
+  // partida siguiente.
+  useEffect(() => {
+    const group = groupRef.current
+    if (!group || state !== 'missed') return
+    group.position.y = STICK_MISS_Y
+  }, [anchorY, state])
+
   // La ventana de captura también se abre y se cierra sola, con el puntero
   // quieto encima: el ratón se queda sobre un palo mientras corre la cuenta
   // atrás, y al arrancar la partida no llega ningún `pointerover` nuevo que
