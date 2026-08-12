@@ -27,11 +27,24 @@ export async function openGame(page: Page, path = '/') {
     .toBeGreaterThan(0)
 }
 
+/**
+ * Botón de un modo en el menú. Su nombre accesible arrastra la línea de ayuda
+ * ("Desafío Tres vidas: …"), así que se busca por cómo empieza.
+ */
+export function modeButton(page: Page, mode: 'Práctica' | 'Desafío') {
+  return page.getByRole('button', { name: new RegExp(`^${mode}`) })
+}
+
 /** Configura la partida en el menú y la arranca. */
 export async function startGame(
   page: Page,
-  { sticks, difficulty }: { sticks: number; difficulty: string },
+  {
+    sticks,
+    difficulty,
+    mode,
+  }: { sticks: number; difficulty: string; mode?: 'Práctica' | 'Desafío' },
 ) {
+  if (mode) await modeButton(page, mode).click()
   await page.getByRole('button', { name: String(sticks), exact: true }).click()
   await page.getByRole('button', { name: difficulty, exact: true }).click()
   await page.getByRole('button', { name: 'Jugar' }).click()
@@ -53,6 +66,17 @@ export async function readScore(page: Page): Promise<number> {
   const match = label?.match(/Atrapados (\d+) de (\d+)/)
   if (!match) throw new Error(`Marcador ilegible: ${label}`)
   return Number(match[1])
+}
+
+/**
+ * Vidas que quedan según el marcador, o `null` si la partida no se juega con
+ * ellas. Salen del mismo anuncio que la puntuación: los corazones son un dibujo
+ * y lo que un lector de pantalla oye es este texto.
+ */
+export async function readLives(page: Page): Promise<number | null> {
+  const label = await page.getByRole('status').getAttribute('aria-label')
+  const match = label?.match(/Vidas (\d+) de (\d+)/)
+  return match ? Number(match[1]) : null
 }
 
 /** Puntos acumulados según el marcador. */
