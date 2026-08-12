@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { HIGH_SCORE_KEYS } from '@/lib/highScore'
 import {
+  catchStick,
   modeButton,
   openGame,
   readLives,
@@ -109,6 +110,29 @@ test.describe('Modo de juego', () => {
     await expect(dialog).toContainText('0 / 3')
     await expect(dialog).toContainText('posibles')
     await expect(dialog).toContainText('Imposible')
+  })
+
+  test('vaciar el aro con vidas de sobra es superar el reto', async ({
+    page,
+  }) => {
+    // La otra mitad del modo: un desafío no solo se pierde. Con la caída más
+    // lenta y cinco palos —que cuelgan atrapables desde el primer segundo— da
+    // tiempo a vaciar el aro, y ahí el final es otro y las vidas sobreviven.
+    await startGame(page, { sticks: 5, difficulty: 'Fácil', mode: 'Desafío' })
+
+    const dialog = page.getByRole('dialog')
+    // Se atrapa hasta que la partida se cierra sola: si algún palo se escapa
+    // por el camino el desafío sigue vivo —para eso hay tres vidas— y quedan
+    // menos que coger, así que el tope es el número de palos.
+    for (let attempt = 0; attempt < 5 && !(await dialog.isVisible()); attempt++) {
+      await catchStick(page)
+    }
+
+    await expect(dialog).toBeVisible()
+    await expect(dialog).toContainText('¡Reto superado!')
+    // Sobrevivir con vidas es el resultado, no cuántas exactamente: un palo
+    // perdido por el camino no cambia el desenlace.
+    await expect(dialog).toContainText(/[1-3] \/ 3/)
   })
 
   test('el modo elegido sigue puesto al volver al menú', async ({ page }) => {

@@ -56,6 +56,14 @@ describe('lectura de lo guardado', () => {
     expect(readBestPoints(fakeStorage('2500'), 'practice')).toBe(2500)
   })
 
+  it('la práctica conserva la clave de antes de que hubiera modos', () => {
+    // Es la promesa de que nadie pierde su récord al actualizar: cambiarla
+    // dejaría la marca anterior huérfana en el navegador, y el juego arrancaría
+    // como si nunca se hubiera jugado.
+    expect(HIGH_SCORE_KEYS.practice).toBe('stick-rush:best-points')
+    expect(HIGH_SCORE_KEYS.challenge).not.toBe(HIGH_SCORE_KEYS.practice)
+  })
+
   it('sin almacenamiento se juega sin récord previo', () => {
     expect(readBestPoints(null, 'practice')).toBe(0)
   })

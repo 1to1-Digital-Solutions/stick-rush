@@ -105,6 +105,12 @@ export function xrModeTogglePosition(): Vec3 {
   return offset(XR_MENU_POSITION, dx, dy)
 }
 
+/** Selector de escenario o passthrough, dentro del panel del menú. */
+export function xrSceneryPickerPosition(): Vec3 {
+  const [dx, dy] = XR_SCENERY_PICKER_OFFSET
+  return offset(XR_MENU_POSITION, dx, dy)
+}
+
 /** Botón de empezar partida. */
 export function xrPlayButtonPosition(): Vec3 {
   return offset(XR_MENU_POSITION, 0, PLAY_Y)

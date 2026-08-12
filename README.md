@@ -62,8 +62,9 @@ still there, but only to operate the menu — pointing at a stick does nothing.
 There is no DOM in an immersive session, so the menu is built out of geometry and
 shown in front of you when you enter VR/AR: a row of sticks to pick how many you
 want, five tiles with growing bars for the difficulty, a switch with three hearts
-that turns the challenge on, and a play button. **Not a single letter** — `<Text>` would pull fonts from a CDN, and the game has to run on a
-headset with no internet access, so every control is drawn as the thing it means.
+that turns the challenge on, and a play button. **Not a single letter** — `<Text>`
+would pull fonts from a CDN, and the game has to run on a headset with no internet
+access, so every control is drawn as the thing it means.
 A back button is always within reach during a round, and when it ends you choose
 between replaying and going back to the menu.
 

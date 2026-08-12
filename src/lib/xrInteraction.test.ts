@@ -20,6 +20,8 @@ import {
   type Vec3,
   xrMenuExitPosition,
   xrMenuSoundPosition,
+  xrModeTogglePosition,
+  xrSceneryPickerPosition,
 } from './xrLayout'
 
 /**
@@ -90,6 +92,11 @@ describe('la interfaz cae dentro del campo de visión', () => {
     ['el botón de volver al menú', XR_QUIT_POSITION],
     ['el botón de salir del visor', xrMenuExitPosition()],
     ['el botón de silenciar', xrMenuSoundPosition()],
+    // Los dos ajustes de la fila del medio están apartados a las puntas del
+    // panel para no pulsarse por error, así que ya no caen sobre el eje de la
+    // mirada y hay que comprobarlos como los demás.
+    ['el interruptor de modo', xrModeTogglePosition()],
+    ['el selector de escenario', xrSceneryPickerPosition()],
   ]
 
   it.each(elements)('%s se puede mirar sin que la interfaz huya', (_, position) => {
