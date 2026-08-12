@@ -4,10 +4,19 @@ import {
   DIFFICULTY_COLORS,
   DIFFICULTY_LABELS,
   DIFFICULTY_ORDER,
+  LIFE_COLOR,
   MAX_STICKS,
   MIN_STICKS,
 } from '@/lib/gameConfig'
+import {
+  type GameMode,
+  GAME_MODE_HINTS,
+  GAME_MODE_LABELS,
+  GAME_MODE_ORDER,
+  startingLives,
+} from '@/lib/gameMode'
 import { useGame } from '@/lib/gameStore'
+import { HeartIcon, InfinityIcon } from './icons'
 import { XRWrapper } from '@/components/xr/XRWrapper'
 
 const STICK_OPTIONS = Array.from(
@@ -71,16 +80,20 @@ function SoundToggle() {
 }
 
 /**
- * Récord del jugador. Solo aparece cuando hay uno: un "0" permanente no da nada
- * que batir y ocupa el sitio del reclamo del menú.
+ * Récord del jugador en el modo elegido. Solo aparece cuando hay uno: un "0"
+ * permanente no da nada que batir y ocupa el sitio del reclamo del menú.
+ *
+ * Dice de qué modo es porque hay uno por cada uno (ver `highScore.ts`): sin
+ * nombrarlo, la cifra cambiaría sola al tocar el selector de modo y parecería
+ * que el récord se ha perdido.
  */
 function BestScore() {
-  const { bestPoints } = useGame()
+  const { bestPoints, gameMode } = useGame()
   if (bestPoints <= 0) return null
 
   return (
     <p className="mt-2 inline-flex items-center gap-2 self-center rounded-full border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 px-4 py-1.5 text-sm text-white/70">
-      Mejor puntuación{' '}
+      Mejor puntuación en {GAME_MODE_LABELS[gameMode]}{' '}
       <span className="font-bold tabular-nums text-[var(--color-accent)]">
         {bestPoints.toLocaleString('es-ES')}
       </span>
@@ -88,9 +101,39 @@ function BestScore() {
   )
 }
 
+/**
+ * Lo que cada modo pone en juego, dibujado: corazones en desafío, infinito en
+ * práctica. Es lo que deja entender la elección sin leerse la línea de ayuda.
+ */
+function ModeStake({ mode }: { mode: GameMode }) {
+  const lives = startingLives(mode)
+
+  return (
+    <span
+      style={{ color: LIFE_COLOR }}
+      className="flex items-center gap-1"
+    >
+      {lives == null ? (
+        <InfinityIcon className="size-6" />
+      ) : (
+        Array.from({ length: lives }, (_, index) => (
+          <HeartIcon key={index} className="size-5" />
+        ))
+      )}
+    </span>
+  )
+}
+
 export function StartScreen() {
-  const { stickCount, difficulty, setStickCount, setDifficulty, startGame } =
-    useGame()
+  const {
+    stickCount,
+    difficulty,
+    gameMode,
+    setStickCount,
+    setDifficulty,
+    setGameMode,
+    startGame,
+  } = useGame()
 
   return (
     <main className="absolute inset-0 z-20 flex w-full items-center justify-center overflow-y-auto bg-[var(--color-background)] px-6 py-12">
@@ -110,6 +153,48 @@ export function StartScreen() {
           </p>
           <BestScore />
         </header>
+
+        {/* Selector de modo. Va el primero porque decide a qué se juega: los
+            palos y la dificultad gradúan la partida, el modo dice si hay algo
+            en juego. */}
+        <section className="flex w-full flex-col gap-3" aria-labelledby="mode-label">
+          <h2
+            id="mode-label"
+            className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
+          >
+            Modo
+          </h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {GAME_MODE_ORDER.map((mode) => {
+              const selected = mode === gameMode
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setGameMode(mode)}
+                  className={`flex min-h-11 flex-col items-center gap-1.5 rounded-xl border px-4 py-3 text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] ${
+                    selected
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/15'
+                      : 'border-white/10 bg-[var(--color-muted)] hover:border-white/30'
+                  }`}
+                >
+                  <ModeStake mode={mode} />
+                  <span
+                    className={`text-base font-semibold ${
+                      selected ? 'text-white' : 'text-white/80'
+                    }`}
+                  >
+                    {GAME_MODE_LABELS[mode]}
+                  </span>
+                  <span className="text-xs leading-snug text-white/50">
+                    {GAME_MODE_HINTS[mode]}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </section>
 
         {/* Selector de número de palos */}
         <section className="flex w-full flex-col gap-3" aria-labelledby="sticks-label">

@@ -49,6 +49,13 @@ export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
   impossible: '#dc2626',
 }
 
+/**
+ * Rojo de las vidas del desafío. Uno solo para el menú de escritorio, el
+ * marcador y el visor: un corazón que cambia de color al pasar de un sitio a
+ * otro deja de leerse como lo mismo.
+ */
+export const LIFE_COLOR = '#f87171'
+
 /** Color de los palos: madera pintada de amarillo de feria. */
 export const STICK_COLOR = '#e8b93f'
 /** Verde del acierto: el palo se enciende al atraparlo. */

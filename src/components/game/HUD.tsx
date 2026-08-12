@@ -1,8 +1,32 @@
 'use client'
 
-import { DIFFICULTY_LABELS } from '@/lib/gameConfig'
+import { DIFFICULTY_LABELS, LIFE_COLOR } from '@/lib/gameConfig'
+import { startingLives } from '@/lib/gameMode'
 import { useGame } from '@/lib/gameStore'
 import { maxScore } from '@/lib/scoring'
+import { HeartIcon } from '@/components/ui/icons'
+
+/**
+ * Vidas que quedan, una por corazón: llenos los que conservas, de contorno los
+ * gastados. Solo en desafío; en práctica no hay nada que perder y una fila de
+ * corazones intactos toda la partida sería decorado.
+ *
+ * Lo lee el lector de pantalla desde el `aria-label` del marcador, del que
+ * forma parte: aquí sería un segundo anuncio compitiendo con el mismo cambio.
+ */
+function Lives({ lives, total }: { lives: number; total: number }) {
+  return (
+    <span
+      aria-hidden
+      style={{ color: LIFE_COLOR }}
+      className="flex items-center gap-1"
+    >
+      {Array.from({ length: total }, (_, index) => (
+        <HeartIcon key={index} spent={index >= lives} className="size-4" />
+      ))}
+    </span>
+  )
+}
 
 export function HUD() {
   const {
@@ -14,6 +38,9 @@ export function HUD() {
     isRecord,
     stickCount,
     difficulty,
+    gameMode,
+    lives,
+    outcome,
     gameState,
     countdown,
     resetGame,
@@ -22,6 +49,22 @@ export function HUD() {
   // Renombrada frente a `bestPoints`, que es el récord del jugador: esto es el
   // techo de esta partida y confundirlos cambia lo que se lee en pantalla.
   const maxPossible = maxScore(difficulty, stickCount)
+  const totalLives = startingLives(gameMode)
+  // Las vidas se anuncian antes que los palos y solo cuando las hay: en
+  // desafío es el dato que decide si sigues jugando.
+  const livesLabel =
+    lives != null && totalLives != null
+      ? `Vidas ${lives} de ${totalLives}. `
+      : ''
+  // El desafío se gana o se pierde, y el jugador tiene que saber cuál de las
+  // dos le ha pasado antes de mirar ninguna cifra. La práctica no se pierde:
+  // ahí el título se queda como estaba.
+  const title =
+    gameMode !== 'challenge'
+      ? '¡Partida terminada!'
+      : outcome === 'cleared'
+        ? '¡Reto superado!'
+        : 'Te has quedado sin vidas'
 
   return (
     <>
@@ -32,7 +75,7 @@ export function HUD() {
         <div
           role="status"
           aria-live="polite"
-          aria-label={`${points} puntos. Atrapados ${score} de ${stickCount}`}
+          aria-label={`${points} puntos. ${livesLabel}Atrapados ${score} de ${stickCount}`}
           className="rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 backdrop-blur"
         >
           <p className="text-xs uppercase tracking-[0.2em] text-white/50">
@@ -44,6 +87,11 @@ export function HUD() {
           <p className="text-xs font-medium text-white/50">
             {score} / {stickCount} palos
           </p>
+          {lives != null && totalLives != null && (
+            <span className="mt-1.5 flex justify-end">
+              <Lives lives={lives} total={totalLives} />
+            </span>
+          )}
         </div>
 
         {/* La racha solo aparece cuando hay algo que presumir: a partir de dos
@@ -93,7 +141,7 @@ export function HUD() {
               id="game-over-title"
               className="text-glow-primary text-3xl tracking-wide text-[var(--color-primary)]"
             >
-              ¡Partida terminada!
+              {title}
             </h2>
             <div className="flex flex-col items-center gap-1">
               <p className="text-5xl font-bold tabular-nums text-[var(--color-accent)]">
@@ -127,8 +175,21 @@ export function HUD() {
               <span className="font-bold">{stickCount}</span> palos.
             </p>
 
-            <dl className="flex w-full justify-center gap-6 text-sm">
-              <div className="flex flex-col items-center">
+            <dl className="flex w-full flex-wrap justify-center gap-x-6 gap-y-3 text-sm">
+              {/* Con cuántas vidas se acabó: junto a la puntuación, es lo que
+                  resume un desafío y lo que se comparte de él. */}
+              {lives != null && totalLives != null && (
+                <div className="flex flex-col items-center gap-1">
+                  <dt className="text-xs uppercase tracking-wide text-white/40">
+                    Vidas
+                  </dt>
+                  <dd className="flex items-center gap-2 font-bold tabular-nums text-white/80">
+                    <Lives lives={lives} total={totalLives} />
+                    {lives} / {totalLives}
+                  </dd>
+                </div>
+              )}
+              <div className="flex flex-col items-center gap-1">
                 <dt className="text-xs uppercase tracking-wide text-white/40">
                   Mejor racha
                 </dt>
@@ -136,7 +197,7 @@ export function HUD() {
                   ×{bestStreak}
                 </dd>
               </div>
-              <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center gap-1">
                 <dt className="text-xs uppercase tracking-wide text-white/40">
                   Dificultad
                 </dt>
