@@ -46,6 +46,15 @@ would be the only one that could never beat it. In a headset the record is a mar
 on the score bar rather than a figure — same reason as the rest of the immersive
 UI: no text.
 
+**Sharing the result.** The score screen has a share button in both modes: it hands
+the system a short line with the score, the mode, the difficulty, the sticks caught
+and — in *Desafío* — the lives you finished with, plus a link to the game. It uses
+the **Web Share API** where there is one and falls back to the **clipboard**, saying
+so, which is what makes the button answer inside a headset too: an immersive session
+may have nowhere to draw the system sheet, and there the text is left copied instead.
+Cancelling the sheet is not an error. Nothing is uploaded and no one else's score is
+ever stored: sharing is sending a line of text, not publishing a leaderboard.
+
 > The game's interface is in Spanish, which is the product language.
 
 | Where | How you catch | What you see |
@@ -66,7 +75,9 @@ that turns the challenge on, and a play button. **Not a single letter** — `<Te
 would pull fonts from a CDN, and the game has to run on a headset with no internet
 access, so every control is drawn as the thing it means.
 A back button is always within reach during a round, and when it ends you choose
-between replaying and going back to the menu.
+between replaying, sharing the result and going back to the menu. The share button
+answers on the spot — a tick if the result went out, a cross if the headset would
+not let it — because inside a session there is no system toast to tell you.
 
 ## Stack
 
@@ -162,6 +173,7 @@ src/
     hoopHeight.ts       Ring height for the player: headset, manual tweak, limits
     stickLayout.ts      Stick layout, shuffled fall order and score token states
     sceneryLayout.ts    Fairground layout: stall ring, light garlands, ferris wheel
+    shareResult.ts      Result text (pure) and the share sheet / clipboard fallback
     stickSwing.ts       Idle sway of the hanging sticks
     sound.ts            Synthesised game sounds (Web Audio, no files)
 e2e/                    Playwright tests

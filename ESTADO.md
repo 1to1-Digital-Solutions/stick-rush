@@ -43,6 +43,14 @@ del modo inmersivo tras la segunda prueba con el visor.
    (j) que el **recinto de feria** nuevo no se coma los fotogramas en el visor, que las
    casetas no agobien a 6.4 m y que la noria girando en la periferia no maree (ver
    "Escenario VR: recinto de feria"; radios y distancias, en `src/lib/sceneryLayout.ts`).
+   (k) que el **botón de compartir** de la pantalla de fin funcione con las gafas
+   puestas: si el visor abre la hoja del sistema, que se pueda usar sin quitárselas;
+   si no, que el avión de papel pase a marca de verificación (texto copiado) y que al
+   quitarse el visor el resultado esté de verdad en el portapapeles. El aspa roja
+   significa que el navegador del visor no deja ni compartir ni copiar: si sale, hay
+   que decidir qué se hace en su lugar. El emulador no puede pulsar botones 3D, así
+   que esto **solo se valida en hardware** (`ShareButton` en
+   `src/components/xr/XRHud.tsx`).
    Valores a retocar: adelanto del jugador (`PLAYER_OFFSET_Z`, −0.18 m), tamaño
    (`MACHINE_RADIUS` 0.57 m y `STICK_LENGTH` 0.39 m — al cambiarlos hay que recalcular
    `DIFFICULTY_SPEEDS` para conservar los tiempos, que `gameConfig.test.ts` vigila),
