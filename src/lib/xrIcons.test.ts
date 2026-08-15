@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { CylinderGeometry, Euler, Vector3 } from 'three'
 import {
   XR_CHECK_ICON,
   XR_CROSS_ICON,
@@ -8,8 +9,11 @@ import {
   XR_MUTED_ICON,
   XR_SHARE_ICON,
   XR_SOUND_ICON,
+  XR_TRIANGLE_CENTER,
+  XR_TRIANGLE_ROTATION,
   type IconPoint,
   type IconShape,
+  type TriangleTip,
 } from './xrIcons'
 
 /**
@@ -453,5 +457,112 @@ describe('el aspa se lee como un aspa', () => {
       expect(x * scale + center).toBeCloseTo(muted.outline[index][0], 2)
       expect(y * scale).toBeCloseTo(muted.outline[index][1], 2)
     })
+  })
+})
+
+/**
+ * Los triángulos no son siluetas: se pintan con un prisma de tres lados y lo
+ * único que hay que acertar es el giro. Se comprueba aquí porque a ojo una
+ * composición mala no se distingue de la buena en el código —y en el visor sí:
+ * el botón de empezar enseñaba el canto del prisma, un centímetro de grosor en
+ * lugar del símbolo de reproducir—.
+ */
+describe('los triángulos encaran al jugador', () => {
+  const TIPS: TriangleTip[] = ['up', 'down', 'right']
+
+  /** Hacia dónde tiene que caer la punta de cada uno. */
+  const TIP_DIRECTION: Record<TriangleTip, Vector3> = {
+    up: new Vector3(0, 1, 0),
+    down: new Vector3(0, -1, 0),
+    right: new Vector3(1, 0, 0),
+  }
+
+  /** Esquinas del prisma tal como lo genera three, de radio 1. */
+  function prismCorners(): Vector3[] {
+    const geometry = new CylinderGeometry(1, 1, 0.2, 3)
+    const position = geometry.attributes.position
+    const point = new Vector3()
+    const unique = new Map<string, Vector3>()
+
+    for (let i = 0; i < position.count; i++) {
+      point.fromBufferAttribute(position, i)
+      // El centro de cada tapa cae sobre el eje y no es una esquina.
+      if (Math.hypot(point.x, point.z) < 0.5) continue
+      // La vuelta se cierra repitiendo el primer vértice con un pelo de error
+      // de coma flotante, así que se redondea antes de contarlo como distinto.
+      const key = [point.x, point.y, point.z]
+        .map((n) => (Math.abs(n) < 1e-6 ? 0 : n).toFixed(3))
+        .join(':')
+      unique.set(key, point.clone())
+    }
+    return [...unique.values()]
+  }
+
+  /**
+   * Las tres esquinas del dibujo que ve el jugador, en unidades de `size`: una
+   * sola cara del prisma, ya girada y recolocada por su centro.
+   */
+  function triangleCorners(tip: TriangleTip): Vector3[] {
+    const rotation = new Euler(...XR_TRIANGLE_ROTATION[tip])
+    const [cx, cy] = XR_TRIANGLE_CENTER[tip]
+    return prismCorners()
+      .filter((corner) => corner.y > 0)
+      .map((corner) => corner.applyEuler(rotation).sub(new Vector3(cx, cy, 0)))
+  }
+
+  it('el prisma de three nace en vertical y con un vértice al frente', () => {
+    // Es la convención de la que cuelga todo lo demás: si three cambiara por
+    // dónde empieza a repartir los vértices, los giros de aquí llevarían la
+    // punta a otro sitio sin que nada más se enterase.
+    const corners = prismCorners()
+    expect(corners).toHaveLength(6)
+
+    const front = corners.filter((corner) => corner.z > 0.99)
+    expect(front).toHaveLength(2)
+    for (const corner of front) expect(corner.x).toBeCloseTo(0)
+  })
+
+  it.each(TIPS)('«%s» deja el grosor hacia el jugador, no de canto', (tip) => {
+    // El eje del prisma es su grosor: mirando al jugador, el dibujo se ve
+    // entero; apuntando a un lado, se ve la lasca de un centímetro que tenía el
+    // botón de empezar.
+    const axis = new Vector3(0, 1, 0).applyEuler(
+      new Euler(...XR_TRIANGLE_ROTATION[tip]),
+    )
+    expect(Math.abs(axis.z)).toBeCloseTo(1)
+
+    // Y el dibujo ocupa de verdad las dos direcciones que se ven.
+    const corners = triangleCorners(tip)
+    for (const axisName of ['x', 'y'] as const) {
+      const values = corners.map((corner) => corner[axisName])
+      expect(Math.max(...values) - Math.min(...values)).toBeGreaterThan(1)
+    }
+  })
+
+  it.each(TIPS)('«%s» apunta hacia donde dice su nombre', (tip) => {
+    const forward = TIP_DIRECTION[tip]
+    const across = new Vector3(-forward.y, forward.x, 0)
+    const corners = triangleCorners(tip)
+
+    // Una sola esquina se adelanta: esa es la punta, y cae sobre el eje.
+    const ahead = corners.filter((corner) => corner.dot(forward) > 0)
+    expect(ahead).toHaveLength(1)
+    expect(ahead[0].dot(across)).toBeCloseTo(0)
+
+    // Las otras dos forman el lado plano, simétrico respecto de ese mismo eje.
+    const behind = corners.filter((corner) => corner.dot(forward) < 0)
+    expect(behind).toHaveLength(2)
+    expect(behind[0].dot(across) + behind[1].dot(across)).toBeCloseTo(0)
+  })
+
+  it.each(TIPS)('«%s» queda centrado en su placa', (tip) => {
+    // A igual `position`, un triángulo y una silueta tienen que caer en el
+    // mismo sitio del botón: sin recolocarlo, el dibujo se corre hacia la punta
+    // un cuarto de su medida.
+    const corners = triangleCorners(tip)
+    for (const axis of ['x', 'y'] as const) {
+      const values = corners.map((corner) => corner[axis])
+      expect((Math.min(...values) + Math.max(...values)) / 2).toBeCloseTo(0)
+    }
   })
 })

@@ -17,7 +17,10 @@ import {
   XR_MUTED_ICON,
   XR_SHARE_ICON,
   XR_SOUND_ICON,
+  XR_TRIANGLE_CENTER,
+  XR_TRIANGLE_ROTATION,
   type IconShape,
+  type TriangleTip,
 } from '@/lib/xrIcons'
 
 /**
@@ -177,18 +180,46 @@ type IconProps = {
  */
 const ICON_SIZE = 0.028
 
-/** Triángulo de «reproducir»: el símbolo de empezar, sin idioma. */
-export function XRPlayIcon({
+/** Grosor de los triángulos, en metros: son placas, no cuñas. */
+const TRIANGLE_THICKNESS = 0.01
+
+/**
+ * Triángulo lleno, de frente al jugador y con la punta hacia donde se pida.
+ *
+ * El giro y el recentrado salen de `@/lib/xrIcons`, donde se comprueban sin
+ * navegador: acertar el giro es todo lo que hay que hacer bien aquí —una
+ * composición equivocada deja el prisma de canto y el símbolo desaparece— y a
+ * ojo no se distingue de la buena hasta que uno se pone las gafas.
+ */
+function XRTriangleIcon({
+  tip,
   position = [0, 0, 0],
-  size = 0.05,
+  size = ICON_SIZE,
   color = '#ffffff',
-}: IconProps) {
+}: IconProps & { tip: TriangleTip }) {
+  const [x, y, z] = position
+  const [cx, cy] = XR_TRIANGLE_CENTER[tip]
+
   return (
-    <mesh position={position} rotation={[Math.PI / 2, 0, -Math.PI / 2]}>
-      <cylinderGeometry args={[size, size, 0.01, 3]} />
+    <mesh
+      position={[x - cx * size, y - cy * size, z]}
+      rotation={XR_TRIANGLE_ROTATION[tip]}
+    >
+      <cylinderGeometry args={[size, size, TRIANGLE_THICKNESS, 3]} />
       <meshBasicMaterial color={color} toneMapped={false} />
     </mesh>
   )
+}
+
+/**
+ * Triángulo de «reproducir»: el símbolo de empezar, sin idioma.
+ *
+ * `size` es el radio del prisma, así que el dibujo sale algo más alto que ancho
+ * (1,7 × 1,5 veces esa medida). Con los 0,05 de cuando se veía de canto, el
+ * triángulo ocuparía ahora casi toda la placa del botón.
+ */
+export function XRPlayIcon({ size = 0.032, ...props }: IconProps) {
+  return <XRTriangleIcon tip="right" size={size} {...props} />
 }
 
 /**
@@ -203,10 +234,10 @@ export function XRSkipIcon({
   const [x, y, z] = position
 
   return (
-    // Recolocado a la izquierda medio ancho: el dibujo crece hacia la derecha,
-    // así que sin esto quedaría descentrado en su placa frente a los iconos de
-    // una sola pieza.
-    <group position={[x - size * 0.55, y, z]}>
+    // Recolocado a la izquierda: los dos triángulos y el tope ocupan de −1,55 a
+    // 1,95 veces `size`, así que sin esto el dibujo quedaría descentrado en su
+    // placa frente a los iconos de una sola pieza.
+    <group position={[x - size * 0.2, y, z]}>
       <XRPlayIcon position={[-size * 0.8, 0, 0]} size={size} color={color} />
       <XRPlayIcon position={[size * 0.7, 0, 0]} size={size} color={color} />
       <mesh position={[size * 1.75, 0, 0]}>
@@ -264,24 +295,15 @@ export function XRDifficultyBars({
 }
 
 /**
- * Triángulo apuntando arriba o abajo: subir o bajar el aro.
- *
- * El giro deja el prisma de tres lados de frente (su eje pasa a apuntar al
- * jugador) y decide hacia dónde cae la punta, que es lo único que distingue un
- * botón del otro.
+ * Triángulo apuntando arriba o abajo: subir o bajar el aro. Hacia dónde cae la
+ * punta es lo único que distingue un botón del otro.
  */
 export function XRArrowIcon({
-  position = [0, 0, 0],
   size = 0.026,
-  color = '#ffffff',
   up,
+  ...props
 }: IconProps & { up: boolean }) {
-  return (
-    <mesh position={position} rotation={[up ? -Math.PI / 2 : Math.PI / 2, 0, 0]}>
-      <cylinderGeometry args={[size, size, 0.01, 3]} />
-      <meshBasicMaterial color={color} toneMapped={false} />
-    </mesh>
-  )
+  return <XRTriangleIcon tip={up ? 'up' : 'down'} size={size} {...props} />
 }
 
 /**

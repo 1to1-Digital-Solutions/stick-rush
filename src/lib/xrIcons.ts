@@ -287,3 +287,48 @@ export const XR_EXIT_ICON: IconShape = [
     ],
   },
 ]
+
+/**
+ * Los triángulos del menú —el de empezar, los de subir y bajar el aro— no son
+ * siluetas: salen de un prisma de tres lados (`cylinderGeometry` con tres
+ * segmentos), que es una pieza sólida y no un contorno. Ahí lo único que hay
+ * que acertar es el giro, y es justo lo que se torció en el botón de empezar:
+ * al componer dos cuartos de vuelta, el eje del prisma acababa apuntando a un
+ * lado, así que en vez del símbolo de reproducir se veía su canto, una lasca de
+ * un centímetro.
+ *
+ * El prisma nace con el eje en vertical y un vértice al frente, de modo que el
+ * giro tiene que llevar ese eje hacia el jugador —para que el grosor quede de
+ * frente y el dibujo se vea entero— y el vértice hacia donde caiga la punta.
+ */
+export type TriangleTip = 'up' | 'down' | 'right'
+
+/** Giro que deja el triángulo de frente con la punta hacia cada lado. */
+export const XR_TRIANGLE_ROTATION: Record<
+  TriangleTip,
+  readonly [number, number, number]
+> = {
+  up: [-Math.PI / 2, 0, 0],
+  down: [Math.PI / 2, 0, 0],
+  // De frente y luego un cuarto de vuelta sobre el eje que mira al jugador: la
+  // punta pasa de arriba a la derecha, como en cualquier botón de reproducir.
+  right: [-Math.PI / 2, Math.PI / 2, 0],
+}
+
+/**
+ * Dónde queda el centro del dibujo respecto al eje del prisma, en unidades de
+ * `size`.
+ *
+ * La punta sale a un radio del eje y el lado opuesto se queda a medio, así que
+ * un triángulo colocado por su eje se ve corrido hacia la punta. Quien lo pinta
+ * resta esto para que a igual `position` todos los iconos caigan en el mismo
+ * sitio de su placa, como ya pasa con las siluetas.
+ */
+export const XR_TRIANGLE_CENTER: Record<
+  TriangleTip,
+  readonly [number, number]
+> = {
+  up: [0, 0.25],
+  down: [0, -0.25],
+  right: [0.25, 0],
+}
