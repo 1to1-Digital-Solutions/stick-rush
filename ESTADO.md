@@ -718,6 +718,46 @@ primero que aprendía era justo lo que no sirve para jugar.
   y = −0.075, con la ficha de 0.24 de alto). Ninguno rompe nada; se dejan sin
   tocar porque corregirlos a ciegas es cambiar un número por otro.
 
+## Compartir el resultado (rama `agent/compartir-el-resultado-al-acabar-3646d4`)
+
+El récord se quedaba en el `localStorage` del dispositivo y de ahí no salía: media
+gracia de un juego de puntuación es enseñar la marca, y la de un visor no la ve nadie.
+
+- **Compartir es mandar un texto, no publicar un ranking.** Sin servidor, sin marcas
+  ajenas y sin tabla online: eso pediría base de datos y este juego no la tiene ni la
+  va a tener. Lo único que sale del navegador es la línea que el jugador entrega al
+  sistema, y solo cuando pulsa.
+- **El texto es una función pura** (`buildShareText`, en `src/lib/shareResult.ts`), como
+  `scoring.ts` o `gameMode.ts`: es lo único del juego que lee alguien que no ha jugado,
+  así que su forma se fija con unitarios (cada dificultad, con y sin vidas, sin récord
+  previo, y una puntuación corrupta que no puede salir como `NaN`) en vez de mirarla en
+  el navegador. Cuatro líneas como mucho, porque acaba en un mensaje: modo y nivel,
+  puntos y palos —y las vidas solo en desafío, que es donde significan algo—, la marca
+  si hay algo que contar de ella, y el enlace al juego.
+- **Hoja del sistema si la hay; si no, portapapeles** (`shareOrCopy`, mismo fichero). El
+  plan B no es una cortesía: dentro de una sesión inmersiva la hoja puede no abrirse —no
+  hay dónde pintarla, o el navegador no cuenta como gesto el gatillo de un mando—, y ahí
+  un botón que no hace nada es peor que no tener botón. Recibe el navegador por
+  parámetro, así que los cuatro caminos se prueban sin uno.
+- **Cancelar no es un error y no copia por detrás**: quien cierra la hoja ha decidido no
+  compartir, y dejarle el texto en el portapapeles sería hacer lo contrario de lo que
+  acaba de pedir. Solo el `AbortError` cuenta como cancelación; cualquier otro rechazo
+  cae al portapapeles.
+- **Dónde se ve**: en escritorio, botón bajo el CTA de la pantalla de fin con una región
+  viva que confirma («¡Compartido!», «Resultado copiado al portapapeles») y avisa cuando
+  el navegador no deja ninguna de las dos cosas. En el visor, tercer botón entre repetir
+  y volver al menú, sin letras como todo lo inmersivo: avión de papel que pasa a marca de
+  verificación o a aspa, cambiando dibujo *y* color. Dentro de la sesión no hay aviso del
+  sistema que lo cuente, así que lo cuenta la propia placa.
+- **El aviso muere con su partida**: el resultado se guarda junto al `runId` que lo
+  produjo, así que el «copiado» de una partida no sigue en pantalla al acabar la
+  siguiente anunciando algo que nadie ha hecho.
+- **Sin validar en hardware**, como todo lo que se pulsa en el visor: ver el punto (k) de
+  "SIGUIENTE PASO". El emulador entrega sesión pero sus punteros no pulsan los objetos de
+  la escena, así que el e2e cubre los tres navegadores de escritorio posibles (con hoja,
+  solo portapapeles, y ninguna de las dos) y la decisión que hace funcionar el botón en el
+  visor —cuando la hoja no arranca, se copia— se sujeta con unitarios.
+
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 
 Con las gafas puestas el modo inmersivo era **inutilizable**: no se veían los mandos,
