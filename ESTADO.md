@@ -51,6 +51,13 @@ del modo inmersivo tras la segunda prueba con el visor.
    que decidir qué se hace en su lugar. El emulador no puede pulsar botones 3D, así
    que esto **solo se valida en hardware** (`ShareButton` en
    `src/components/xr/XRHud.tsx`).
+   (l) que el **botón de empezar** ya enseñe un triángulo de reproducir —hasta ahora se
+   veía de canto— y que se lea a esa distancia con los 3,2 cm de radio que tiene el
+   dibujo; y que la **interfaz a la altura de los ojos** caiga bien de pie y sentado: que
+   el panel no se cruce con la máquina si juega alguien alto, que el marcador no quede
+   demasiado bajo jugando sentado en el suelo, y que la fila del ajuste del aro siga
+   cómoda de mirar (ver "Menú inmersivo: el triángulo y su altura"; `xrUiRise` en
+   `src/lib/xrLayout.ts` es lo que hay que retocar si el conjunto queda alto o bajo).
    Valores a retocar: adelanto del jugador (`PLAYER_OFFSET_Z`, −0.18 m), tamaño
    (`MACHINE_RADIUS` 0.57 m y `STICK_LENGTH` 0.39 m — al cambiarlos hay que recalcular
    `DIFFICULTY_SPEEDS` para conservar los tiempos, que `gameConfig.test.ts` vigila),
@@ -758,6 +765,56 @@ gracia de un juego de puntuación es enseñar la marca, y la de un visor no la v
   solo portapapeles, y ninguna de las dos) y la decisión que hace funcionar el botón en el
   visor —cuando la hoja no arranca, se copia— se sujeta con unitarios.
 
+## Menú inmersivo: el triángulo y su altura (rama `agent/pulir-el-menu-inmersivo-el-trian-f18a3a`)
+
+Dos arreglos del mismo panel, juntos porque moverlo de altura cambia desde dónde se mira
+cada pieza y separarlos obligaba a revisar dos veces lo mismo con las gafas puestas.
+
+- **El triángulo de «empezar» se veía de canto.** `XRPlayIcon` componía dos cuartos de
+  vuelta (`[π/2, 0, −π/2]`) y esa composición dejaba el eje del prisma apuntando a +X, así
+  que del símbolo de reproducir solo se veía su grosor: una lasca de un centímetro en el
+  botón más pulsado de la sesión. Ahora el giro sale de `XR_TRIANGLE_ROTATION`
+  (`src/lib/xrIcons.ts`) —de frente al jugador y con la punta a la derecha, como cualquier
+  botón de reproducir— y de ahí salen también las flechas de subir y bajar el aro, que ya
+  estaban bien pero repetían la cuenta a mano.
+- **El dibujo se coloca por su centro** (`XR_TRIANGLE_CENTER`): la punta sale a un radio
+  del eje y el lado opuesto se queda a medio, así que un triángulo colocado por su eje se
+  ve corrido. Con esto, a igual `position`, triángulos y siluetas caen en el mismo sitio de
+  su placa. Y el tamaño del de empezar baja de 0,05 a 0,032: esa medida es el radio del
+  prisma, y de frente da un dibujo de 5,5 cm que antes, de canto, no se veía.
+- **De paso, el botón de saltar el tutorial**: apila dos `XRPlayIcon`, así que enseñaba dos
+  lascas y un tope. Ahora se leen los dos triángulos, y su recentrado pasa de −0,55 a
+  −0,2 veces `size`, que es lo que pide el dibujo entero.
+- **La interfaz cuelga de los ojos del jugador, no del suelo.** El aro ya se acomodaba (ver
+  "Altura del aro por jugador") pero el panel seguía clavado a 1,40 m, y con él el
+  marcador, la cuenta atrás y el botón de volver: quien juega sentado se lo encontraba a la
+  altura de la frente, con la fila del ajuste del aro por encima de la línea de visión.
+  Ahora `xrUiRise` (`src/lib/xrLayout.ts`) convierte la medida del visor en cuánto sube o
+  baja el conjunto, y lo aplica `XRGazeAnchor`, que es el único nodo que ya colocaba la
+  interfaz.
+- **Se sigue la altura de ojos entera, no una fracción.** El panel se mira, no se pisa: lo
+  único que importa es a qué altura quedan sus botones respecto a los ojos. A medias, la
+  fila de arriba se le quedaría por encima de la cabeza a quien juega sentado, que era el
+  problema. No hacen falta los topes absolutos del aro —de la interfaz no cae nada al
+  suelo—, y el margen de estaturas que se acepta como persona la deja siempre por encima de
+  él (con los ojos a 90 cm, el marcador queda a 25).
+- **Se mide en el menú y se queda quieta**, porque el dato es el mismo que usa el aro
+  (`XRPlayerHeight` solo mide con el menú delante): con los palos cayendo, un marcador que
+  persiguiera la cabeza se movería justo cuando el jugador calcula dónde va a estar la mano.
+- **Qué vigilan los tests**: la orientación de los tres triángulos se comprueba sobre la
+  geometría real de three (`xrIcons.test.ts`) —eje hacia el jugador, punta donde dice su
+  nombre y dibujo centrado—, y las tres mutaciones probadas (volver al giro que dejaba el
+  prisma de canto, mandar la punta a la izquierda y quitar el recentrado) ponen tests en
+  rojo.
+  El bloque de alturas de `xrInteraction.test.ts` deja de ser absoluto (0,85–1,75 m) y pasa
+  a medir la distancia a los ojos para las cuatro estaturas de prueba, más una valla nueva:
+  nada por debajo del suelo con el jugador más bajo. Seguir a medias, no seguir, o quitar
+  el filtro de medidas imposibles también ponen tests en rojo.
+- **Sin validar en hardware**, como todo lo que se pulsa en el visor: el emulador no
+  propaga sus punteros. Falta ver con las gafas que el triángulo se lee como «empezar», que
+  el panel cae a buena altura de pie y sentado, y que no se cruza con la máquina al subir
+  con un jugador alto.
+
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 
 Con las gafas puestas el modo inmersivo era **inutilizable**: no se veían los mandos,
@@ -837,11 +894,11 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 - **Probar en el visor la altura del aro** (ver "Altura del aro por jugador"): que de pie
   quede donde estaba, que sentado baje solo y no haya que tocar nada, que los ±20 cm de
   `HOOP_ADJUST_RANGE` basten para acomodarlo y no dejen ningún palo lejos, y que la fila
-  de arriba del panel no obligue a estirar el cuello (queda a 1.70 m, el límite del test
-  son 1.75).
-- **El menú inmersivo sigue a altura fija** (`XR_MENU_POSITION`, 1.40 m): con el aro ya
-  acomodado, quien juega sentado se encuentra el panel a la altura de la frente. Es la
-  misma clase de problema que se acaba de resolver para el aro, pero era otro alcance.
+  de arriba del panel no obligue a estirar el cuello (queda 10 cm por encima de los ojos,
+  y el límite del test son 15).
+- ~~**El menú inmersivo sigue a altura fija** (`XR_MENU_POSITION`, 1.40 m).~~ **HECHO**:
+  la interfaz entera cuelga ahora de los ojos del jugador, ver "Menú inmersivo: el
+  triángulo y su altura". Falta probarlo con las gafas.
 - **Probar en el visor el tutorial de la primera vez** (ver "Tutorial de la primera
   vez"): que el mando de la demostración se lea a 95 cm y se reconozca como el que se
   tiene en la mano, que dos ciclos de agarre basten para entender el gesto, que 13 palos
