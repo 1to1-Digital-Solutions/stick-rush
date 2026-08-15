@@ -18,16 +18,28 @@ import { openGame, startGame, waitForGameOver } from './helpers'
  * (`shareResult.test.ts`).
  */
 
-/** La hoja de compartir del sistema, apuntando lo que se le manda. */
-async function installShareSheet(page: Page) {
-  await page.addInitScript(() => {
+/**
+ * La hoja de compartir del sistema, apuntando lo que se le manda.
+ *
+ * Con `cancel` se cierra como la cierra el jugador, con el `AbortError` que
+ * mandan los navegadores. El intento queda apuntado igual: es lo que deja
+ * esperar a que haya ocurrido antes de comprobar que no ocurrió nada más.
+ */
+async function installShareSheet(page: Page, { cancel = false } = {}) {
+  await page.addInitScript((cancelled: boolean) => {
     const shared: unknown[] = []
     Object.defineProperty(window, '__shared', { value: shared })
     Object.defineProperty(navigator, 'share', {
       configurable: true,
-      value: async (data: unknown) => void shared.push(data),
+      value: async (data: unknown) => {
+        shared.push(data)
+        if (!cancelled) return
+        const error = new Error('cancelado')
+        error.name = 'AbortError'
+        throw error
+      },
     })
-  })
+  }, cancel)
 }
 
 /** Un navegador sin hoja de compartir: el caso del escritorio corriente. */
@@ -62,6 +74,20 @@ async function sharedPayloads(page: Page): Promise<{ text?: string }[]> {
   )
 }
 
+/**
+ * Espera a que la hoja de compartir se haya abierto tantas veces.
+ *
+ * Pulsar es instantáneo, armar el texto y entregarlo no: leer los envíos justo
+ * después del clic es una carrera. Importa sobre todo donde lo que se comprueba
+ * es que **no** pasó nada más —cancelar—, porque ahí una lectura adelantada
+ * pasaría en verde con el fallo puesto.
+ */
+async function waitForShareAttempts(page: Page, count: number) {
+  await expect
+    .poll(async () => (await sharedPayloads(page)).length)
+    .toBe(count)
+}
+
 function shareButton(page: Page) {
   return page.getByRole('button', { name: 'Compartir' })
 }
@@ -74,10 +100,10 @@ test.describe('Compartir el resultado', () => {
     await waitForGameOver(page)
 
     await shareButton(page).click()
+    await waitForShareAttempts(page, 1)
 
-    const shared = await sharedPayloads(page)
-    expect(shared).toHaveLength(1)
-    const text = shared[0].text ?? ''
+    const [shared] = await sharedPayloads(page)
+    const text = shared.text ?? ''
     // Lo que hace presentable al texto: de qué iba la partida, qué se sacó y
     // dónde se juega. Sin el enlace, quien lo lea no puede intentarlo.
     expect(text).toContain('Stick Rush — Práctica en Fácil')
@@ -104,6 +130,7 @@ test.describe('Compartir el resultado', () => {
     await waitForGameOver(page)
 
     await shareButton(page).click()
+    await waitForShareAttempts(page, 1)
 
     const [shared] = await sharedPayloads(page)
     expect(shared.text).toContain('Stick Rush — Desafío en Imposible')
@@ -135,16 +162,7 @@ test.describe('Compartir el resultado', () => {
     context,
   }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
-    await page.addInitScript(() => {
-      Object.defineProperty(navigator, 'share', {
-        configurable: true,
-        value: () => {
-          const error = new Error('cancelado')
-          error.name = 'AbortError'
-          return Promise.reject(error)
-        },
-      })
-    })
+    await installShareSheet(page, { cancel: true })
     await openGame(page)
     await startGame(page, { sticks: 5, difficulty: 'Fácil' })
     await waitForGameOver(page)
@@ -153,6 +171,8 @@ test.describe('Compartir el resultado', () => {
     await page.evaluate(() => navigator.clipboard.writeText('nada que ver'))
 
     await shareButton(page).click()
+    // La hoja se abrió y se cerró: lo que no puede pasar ya habría pasado.
+    await waitForShareAttempts(page, 1)
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).not.toContainText('copiado')

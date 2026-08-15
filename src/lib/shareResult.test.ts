@@ -16,7 +16,7 @@ import {
  * aquí, entera, en vez de mirarla en el navegador.
  */
 
-const URL = 'https://stick-rush.example/'
+const GAME_URL = 'https://stick-rush.example/'
 
 /**
  * Una partida de práctica corriente, sobre la que varían los demás casos. La
@@ -32,7 +32,7 @@ const PRACTICE: ShareResultInput = {
   lives: null,
   bestPoints: 0,
   isRecord: false,
-  url: URL,
+  url: GAME_URL,
 }
 
 /** El mismo resultado, jugado como desafío y acabado con una vida. */
@@ -56,9 +56,9 @@ describe('lo que cuenta el texto', () => {
 
   it('acaba con el enlace al juego', () => {
     const lines = buildShareText(PRACTICE).split('\n')
-    expect(lines.at(-1)).toBe(URL)
+    expect(lines.at(-1)).toBe(GAME_URL)
     // Una sola vez: repetido, los mensajes lo enseñan dos veces.
-    expect(buildShareText(PRACTICE).split(URL)).toHaveLength(2)
+    expect(buildShareText(PRACTICE).split(GAME_URL)).toHaveLength(2)
   })
 
   it('nombra cada dificultad como la nombra el juego', () => {
