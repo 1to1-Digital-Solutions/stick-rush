@@ -4,7 +4,8 @@ import { DIFFICULTY_LABELS, LIFE_COLOR } from '@/lib/gameConfig'
 import { startingLives } from '@/lib/gameMode'
 import { useGame } from '@/lib/gameStore'
 import { maxScore } from '@/lib/scoring'
-import { HeartIcon } from '@/components/ui/icons'
+import { type ShareStatus, useShareResult } from '@/lib/useShareResult'
+import { HeartIcon, ShareIcon } from '@/components/ui/icons'
 
 /**
  * Vidas que quedan, una por corazón: llenos los que conservas, de contorno los
@@ -25,6 +26,56 @@ function Lives({ lives, total }: { lives: number; total: number }) {
         <HeartIcon key={index} spent={index >= lives} className="size-4" />
       ))}
     </span>
+  )
+}
+
+/**
+ * Qué se le dice al jugador después de pulsar «Compartir».
+ *
+ * Compartir de verdad y copiar se confirman: el primero porque la hoja del
+ * sistema se cierra y no deja rastro en la página, el segundo porque un texto
+ * que va al portapapeles sin avisar parece un botón que no hace nada. Cancelar
+ * no dice nada, que es lo que ha pedido quien cancela.
+ */
+const SHARE_MESSAGES: Record<ShareStatus, string> = {
+  idle: '',
+  shared: '¡Compartido!',
+  copied: 'Resultado copiado al portapapeles.',
+  cancelled: '',
+  unavailable:
+    'Este navegador no deja compartir ni copiar: apunta la puntuación a mano.',
+}
+
+/**
+ * Sacar el resultado del dispositivo: la hoja de compartir del sistema si la
+ * hay y el portapapeles si no (ver `shareResult.ts`).
+ *
+ * El aviso se pinta siempre, vacío mientras no haya nada que decir: una región
+ * viva que aparece a la vez que su texto no se anuncia, porque el lector de
+ * pantalla no llega a verla antes del cambio.
+ */
+function ShareResultButton() {
+  const { status, share } = useShareResult()
+  const message = SHARE_MESSAGES[status]
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => void share()}
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/15 px-6 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/80 transition-colors hover:border-[var(--color-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+      >
+        <ShareIcon />
+        Compartir
+      </button>
+      <p
+        aria-live="polite"
+        aria-atomic="true"
+        className="min-h-5 text-xs text-white/60"
+      >
+        {message}
+      </p>
+    </>
   )
 }
 
@@ -231,13 +282,16 @@ export function HUD() {
                 </dd>
               </div>
             </dl>
-            <button
-              type="button"
-              onClick={resetGame}
-              className="cta-gradient w-full rounded-xl px-6 py-3 text-base font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
-            >
-              Volver al menú
-            </button>
+            <div className="flex w-full flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={resetGame}
+                className="cta-gradient w-full rounded-xl px-6 py-3 text-base font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              >
+                Volver al menú
+              </button>
+              <ShareResultButton />
+            </div>
           </div>
         </div>
       )}
