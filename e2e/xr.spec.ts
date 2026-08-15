@@ -184,7 +184,10 @@ test.describe('Tutorial en el visor', () => {
     await expect(skip).toHaveCount(0, {
       timeout: (TUTORIAL_SECONDS + 4) * 1000,
     })
-    await expect(page.getByRole('status')).toBeVisible()
+    // La cuenta atrás y no el marcador: el marcador ya estaba en pantalla
+    // durante la demostración —el overlay lo pinta en cuanto hay partida—, así
+    // que exigirlo aquí no probaría que el tutorial haya dado paso a nada.
+    await expect(page.getByRole('timer')).toBeVisible()
   })
 
   test('se puede saltar desde el primer segundo', async ({ page }) => {

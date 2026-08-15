@@ -96,14 +96,20 @@ function GrabDemo({
     if (!stick || !material || !flash || !flashMaterial) return
 
     // Con el movimiento reducido no hay caída ni destello: el palo se queda
-    // donde la mano lo agarra y el gatillo, marcado. Se sigue entendiendo qué
-    // botón es, que es lo que hay que enseñar.
+    // donde la mano lo agarra y el gatillo, marcado. Y **sin darlo por
+    // apretado**: el verde de la confirmación releva a la marca ámbar y apaga
+    // su onda (ver `SqueezeButton`), así que la única imagen que le queda a
+    // quien ha pedido no ver movimiento dejaría de señalar qué botón es, que es
+    // justo lo que hay que enseñar. Se reponen los valores del material porque
+    // la preferencia puede cambiar a media demostración, con el palo a medio
+    // desvanecer.
     if (reducedMotion) {
       stick.position.y = DEMO_STICK_CATCH
       stick.scale.setScalar(1)
       material.opacity = 1
+      material.emissiveIntensity = 0.35
       flash.visible = false
-      grabbed.current = true
+      grabbed.current = false
       return
     }
 

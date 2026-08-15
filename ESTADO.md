@@ -697,6 +697,18 @@ primero que aprendía era justo lo que no sirve para jugar.
 - **Sin validar en hardware**: falta ver con las gafas si el mando de la
   demostración se lee a esa distancia, si dos ciclos de agarre bastan para
   entender el gesto y si 13 palos en fila se cuentan de un vistazo.
+- **Con el movimiento reducido el gatillo se queda marcado, no apretado**
+  (revisión): dar la pulsación por hecha ponía el gatillo verde, y el verde de la
+  confirmación releva a la marca ámbar y apaga su onda (`SqueezeButton`). En la
+  única imagen fija que ve quien pide no ver movimiento, eso borraba justo lo que
+  señala qué botón agarra.
+- **Dos solapes que solo se ven con las gafas** (medidos sobre las constantes, sin
+  visor): el mango del mando de la demostración baja hasta y ≈ −0.286 del panel y
+  la barra de progreso está en −0.26, así que le cruza por delante los ~6 cm
+  centrales de sus 34; y en «Imposible» la barra más alta del nivel sobresale unos
+  3,5 cm por encima de la ficha (`XRDifficultyBars` a `scale={2.4}` desde
+  y = −0.075, con la ficha de 0.24 de alto). Ninguno rompe nada; se dejan sin
+  tocar porque corregirlos a ciegas es cambiar un número por otro.
 
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 
@@ -782,6 +794,14 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 - **El menú inmersivo sigue a altura fija** (`XR_MENU_POSITION`, 1.40 m): con el aro ya
   acomodado, quien juega sentado se encuentra el panel a la altura de la frente. Es la
   misma clase de problema que se acaba de resolver para el aro, pero era otro alcance.
+- **Probar en el visor el tutorial de la primera vez** (ver "Tutorial de la primera
+  vez"): que el mando de la demostración se lea a 95 cm y se reconozca como el que se
+  tiene en la mano, que dos ciclos de agarre basten para entender el gesto, que 13 palos
+  en fila se cuenten de un vistazo, y que los 7,4 s no se hagan largos (el guion está en
+  `TUTORIAL_STEPS`: repartir distinto no toca ningún componente). Mirar de paso los dos
+  solapes anotados en esa sección —el mango sobre la barra de progreso y las barras de
+  «Imposible» saliéndose de la ficha— y el botón de recuperarlo, que es el único mando en
+  miniatura del menú y nadie ha visto todavía si se entiende.
 - Posibles mejoras: ~~animación de "vibración" de los palos colgando~~ (hecha, ver
   "Balanceo de los palos"), temporizador/puntuación por tiempo, ~~escenario VR más
   elaborado~~ (hecho, ver "Escenario VR: recinto de feria").
