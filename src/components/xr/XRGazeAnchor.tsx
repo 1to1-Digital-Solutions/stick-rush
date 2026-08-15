@@ -4,14 +4,17 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useXR } from '@react-three/xr'
 import { Euler, Quaternion, Vector3, type Group } from 'three'
+import { useGame } from '@/lib/gameStore'
 import {
   initialAnchorState,
   stepAnchor,
   type AnchorState,
 } from '@/lib/xrAnchor'
+import { xrUiRise } from '@/lib/xrLayout'
 
 /**
- * Mantiene la interfaz inmersiva dentro del campo de visión del jugador.
+ * Mantiene la interfaz inmersiva donde el jugador la ve: delante de su cara y a
+ * la altura de sus ojos.
  *
  * Todo lo que cuelgue de aquí conserva sus coordenadas de siempre (el menú a
  * 95 cm hacia −Z, por ejemplo), pero ese −Z pasa a ser **hacia donde mira el
@@ -20,7 +23,10 @@ import {
  * podía apuntar (ver `@/lib/xrAnchor`).
  *
  * El grupo también acompaña al jugador si camina, de modo que la interfaz no se
- * queda anclada a un punto del cuarto.
+ * queda anclada a un punto del cuarto, y se acomoda a su estatura (ver
+ * `xrUiRise`): la mide `<XRPlayerHeight>` mientras el menú está delante, así
+ * que durante la partida el panel se queda quieto en vez de perseguir la
+ * cabeza.
  *
  * Toda la decisión de *cuándo* girar está en `stepAnchor`, que se prueba sin
  * navegador; aquí solo se lee la cámara y se aplica el resultado.
@@ -29,6 +35,7 @@ export function XRGazeAnchor({ children }: { children: ReactNode }) {
   const ref = useRef<Group>(null)
   const anchor = useRef<AnchorState | null>(null)
   const mode = useXR((state) => state.mode)
+  const { playerEyeHeight } = useGame()
 
   // Cada sesión empieza de cero: al entrar, la interfaz debe plantarse delante
   // del jugador de inmediato, sin el giro de reencuadre.
@@ -69,9 +76,10 @@ export function XRGazeAnchor({ children }: { children: ReactNode }) {
         : stepAnchor(previous, gazeYaw, delta)
     anchor.current = next
 
-    // Bajo los pies del jugador, no bajo su cabeza: las alturas de la interfaz
-    // se miden desde el suelo, igual que antes.
-    group.position.set(gazePosition.x, 0, gazePosition.z)
+    // A la altura de los ojos de quien juega, no a la del suelo: las cotas de
+    // `xrLayout` son las de la persona de referencia y suben o bajan con él, así
+    // que sentado no se encuentra el panel a la altura de la frente.
+    group.position.set(gazePosition.x, xrUiRise(playerEyeHeight), gazePosition.z)
     group.rotation.set(0, next.yaw, 0)
   })
 

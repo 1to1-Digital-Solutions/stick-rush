@@ -10,9 +10,15 @@ import {
   distanceFromPlayer,
   machinePoint,
 } from './gameConfig'
+import {
+  MAX_EYE_HEIGHT,
+  MIN_EYE_HEIGHT,
+  REFERENCE_EYE_HEIGHT,
+} from './hoopHeight'
 import { XR_ANCHOR_DEADZONE } from './xrAnchor'
 import { canCatchStick, canCatchWithPointer } from './xrInteraction'
 import {
+  XR_COUNTDOWN_POSITION,
   XR_HUD_POSITION,
   XR_MENU_POSITION,
   XR_QUIT_POSITION,
@@ -27,6 +33,7 @@ import {
   xrModeTogglePosition,
   xrSceneryPickerPosition,
   xrTutorialSkipPosition,
+  xrUiRise,
 } from './xrLayout'
 
 /**
@@ -112,6 +119,21 @@ describe('la interfaz cae dentro del campo de visión', () => {
     ['el tutorial', XR_TUTORIAL_POSITION],
     ['el botón de saltar el tutorial', xrTutorialSkipPosition()],
     ['el botón de volver a ver el tutorial', xrMenuTutorialPosition()],
+    // Es lo primero que se mira tras pulsar «empezar», y sube y baja con el
+    // resto de la interfaz.
+    ['la cuenta atrás', XR_COUNTDOWN_POSITION],
+  ]
+
+  /**
+   * Estaturas de ojos con las que se juega: los dos extremos que se aceptan
+   * como persona (ver `hoopHeight.ts`), la de referencia y una de alguien
+   * sentado, que es el caso que dio origen a todo esto.
+   */
+  const EYE_HEIGHTS = [
+    MIN_EYE_HEIGHT,
+    1.15,
+    REFERENCE_EYE_HEIGHT,
+    MAX_EYE_HEIGHT,
   ]
 
   it.each(elements)('%s se puede mirar sin que la interfaz huya', (_, position) => {
@@ -122,10 +144,23 @@ describe('la interfaz cae dentro del campo de visión', () => {
     expect(gazeAngle(position)).toBeLessThan(XR_ANCHOR_DEADZONE * 0.85)
   })
 
-  it.each(elements)('%s queda a una altura cómoda', (_, [, y]) => {
-    // Por encima de la cintura y por debajo de tener que estirar el cuello.
-    expect(y).toBeGreaterThan(0.85)
-    expect(y).toBeLessThan(1.75)
+  it.each(elements)('%s queda a una altura cómoda, juegue quien juegue', (_, [, y]) => {
+    // Ya no es una cota absoluta: la interfaz cuelga de los ojos del jugador,
+    // así que lo que tiene que aguantar para cualquier estatura es la distancia
+    // *a esos ojos* —por encima de la cintura y sin estirar el cuello—. Son los
+    // mismos números de cuando el panel estaba clavado (0.85 y 1.75), leídos
+    // desde la persona con la que se colocó.
+    for (const eyes of EYE_HEIGHTS) {
+      const toEyes = y + xrUiRise(eyes) - eyes
+      expect(toEyes).toBeGreaterThan(0.85 - REFERENCE_EYE_HEIGHT)
+      expect(toEyes).toBeLessThan(1.75 - REFERENCE_EYE_HEIGHT)
+    }
+  })
+
+  it.each(elements)('%s se queda por encima del suelo', (_, [, y]) => {
+    // La otra valla: seguir a los ojos hacia abajo no puede acabar enterrando
+    // la interfaz en el suelo de quien juega sentado en él.
+    expect(y + xrUiRise(MIN_EYE_HEIGHT)).toBeGreaterThan(0)
   })
 
   it('el botón de volver al menú encara al jugador', () => {
@@ -149,6 +184,41 @@ describe('la interfaz cae dentro del campo de visión', () => {
     // los objetivos pequeños del selector de palos se vuelven imposibles.
     expect(distance).toBeGreaterThan(0.5)
     expect(distance).toBeLessThan(1.5)
+  })
+})
+
+describe('la interfaz se acomoda a la altura del jugador', () => {
+  it('sentado baja con él y de pie vuelve a su sitio', () => {
+    expect(xrUiRise(1.15)).toBeCloseTo(1.15 - REFERENCE_EYE_HEIGHT, 6)
+    expect(xrUiRise(REFERENCE_EYE_HEIGHT)).toBeCloseTo(0, 6)
+    expect(xrUiRise(1.85)).toBeGreaterThan(0)
+  })
+
+  it('sigue a los ojos enteros, no a medias', () => {
+    // Es la decisión de fondo: el panel se mira, no se pisa, así que lo que
+    // tiene que conservarse es su distancia a los ojos. Siguiendo a medias, la
+    // fila de arriba se le quedaría por encima de la cabeza a quien juega
+    // sentado, que es justo lo que había que arreglar.
+    const seated = xrUiRise(1.1)
+    const standing = xrUiRise(1.8)
+    expect(standing - seated).toBeCloseTo(0.7, 6)
+  })
+
+  it('sin dato del visor la interfaz se queda donde siempre', () => {
+    // Pasa en el navegador, en los primeros fotogramas de la sesión y en los
+    // visores cuyo espacio de referencia no mide desde el suelo. Inventarse una
+    // estatura ahí movería el menú por nada.
+    expect(xrUiRise(null)).toBe(0)
+    expect(xrUiRise(undefined)).toBe(0)
+  })
+
+  it('una medida imposible no mueve la interfaz', () => {
+    // Las mismas vallas que usa el aro: lo que no puede ser la altura de ojos
+    // de una persona no es una medida, es un espacio de referencia mal
+    // entendido o un visor encima de la mesa.
+    for (const value of [Number.NaN, 0, -1.5, 50, MIN_EYE_HEIGHT - 0.01]) {
+      expect(xrUiRise(value)).toBe(0)
+    }
   })
 })
 

@@ -34,17 +34,19 @@ import { gameStorage } from './storage'
  */
 
 /**
- * Altura de ojos para la que se eligió `MACHINE_HEIGHT`: una persona de pie de
- * estatura media. Sin dato del visor, el aro se queda donde ha estado siempre.
+ * Altura de ojos de la persona con la que se diseñó la escena: una de pie, de
+ * estatura media. Para ella se eligieron `MACHINE_HEIGHT` y las cotas de la
+ * interfaz inmersiva (`@/lib/xrLayout`), así que las dos cuelgan de aquí. Sin
+ * dato del visor, todo se queda donde ha estado siempre.
  */
-export const HOOP_REFERENCE_EYE_HEIGHT = 1.6
+export const REFERENCE_EYE_HEIGHT = 1.6
 
 /**
  * Cuánto queda el aro por encima de los ojos. Es la relación que hace jugable la
  * máquina —los palos cuelgan hasta la altura del pecho, que es donde la mano
  * llega cómoda—, así que es lo que se conserva al cambiar de jugador.
  */
-export const HOOP_RISE_ABOVE_EYES = MACHINE_HEIGHT - HOOP_REFERENCE_EYE_HEIGHT
+export const HOOP_RISE_ABOVE_EYES = MACHINE_HEIGHT - REFERENCE_EYE_HEIGHT
 
 /**
  * Alturas de ojos que se aceptan como las de una persona, en metros: desde
@@ -151,7 +153,7 @@ export function hoopHeightFor({
 }: HoopHeightInput): number {
   const eyes = isPlausibleEyeHeight(eyeHeight)
     ? eyeHeight
-    : HOOP_REFERENCE_EYE_HEIGHT
+    : REFERENCE_EYE_HEIGHT
   const height = eyes + HOOP_RISE_ABOVE_EYES + clampHoopAdjustment(adjustment)
   return Math.min(HOOP_MAX_HEIGHT, Math.max(HOOP_MIN_HEIGHT, height))
 }

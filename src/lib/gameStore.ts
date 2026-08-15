@@ -137,6 +137,13 @@ export interface GameStore {
   /** Corrección manual sobre esa altura, en metros. Se guarda entre visitas. */
   hoopAdjustment: number
   /**
+   * Altura de ojos que ha medido el visor, o `null` cuando no hay sesión, aún
+   * no ha dado tiempo a medir o su espacio de referencia no permite saberla. La
+   * usa el aro y también la interfaz inmersiva, que cuelga de los ojos del
+   * jugador y no del suelo (ver `xrUiRise` en `xrLayout.ts`).
+   */
+  playerEyeHeight: number | null
+  /**
    * Si el tutorial del visor ya se vio en este navegador. Se guarda entre
    * visitas: es lo que hace que se interponga una sola vez.
    */
@@ -453,6 +460,7 @@ export function useGameStoreValue(): GameStore {
       muted,
       hoopHeight,
       hoopAdjustment,
+      playerEyeHeight,
       tutorialSeen,
       immersive,
       setScenery,
@@ -489,6 +497,7 @@ export function useGameStoreValue(): GameStore {
       muted,
       hoopHeight,
       hoopAdjustment,
+      playerEyeHeight,
       tutorialSeen,
       immersive,
       setScenery,

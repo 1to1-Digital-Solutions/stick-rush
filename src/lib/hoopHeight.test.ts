@@ -15,10 +15,10 @@ import {
   HOOP_ADJUST_STEP,
   HOOP_MAX_HEIGHT,
   HOOP_MIN_HEIGHT,
-  HOOP_REFERENCE_EYE_HEIGHT,
   HOOP_RISE_ABOVE_EYES,
   MAX_EYE_HEIGHT,
   MIN_EYE_HEIGHT,
+  REFERENCE_EYE_HEIGHT,
   clampHoopAdjustment,
   hasFloorReference,
   headsetEyeHeight,
@@ -38,7 +38,7 @@ const ARM_REACH = 0.75
  * arrastra su hombro con él.
  */
 function shoulderHeightFor(eyeHeight: number): number {
-  return eyeHeight - (HOOP_REFERENCE_EYE_HEIGHT - PLAYER_SHOULDER_HEIGHT)
+  return eyeHeight - (REFERENCE_EYE_HEIGHT - PLAYER_SHOULDER_HEIGHT)
 }
 
 /** Lo lejos que le queda al jugador el palo colgado del punto `t` del aro. */
@@ -58,7 +58,7 @@ const EYE_HEIGHTS = [
   MIN_EYE_HEIGHT,
   1.05,
   1.35,
-  HOOP_REFERENCE_EYE_HEIGHT,
+  REFERENCE_EYE_HEIGHT,
   1.9,
   MAX_EYE_HEIGHT,
 ]

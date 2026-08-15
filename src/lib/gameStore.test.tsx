@@ -719,6 +719,19 @@ describe('altura del aro', () => {
     expect(result.current.hoopHeight).toBeCloseTo(MACHINE_HEIGHT, 6)
   })
 
+  it('la medida del visor queda a la vista, no solo dentro del aro', () => {
+    // La interfaz inmersiva también cuelga de los ojos del jugador (ver
+    // `xrUiRise` en `xrLayout.ts`), así que necesita el mismo dato.
+    const { result } = renderHook(() => useGameStoreValue())
+    expect(result.current.playerEyeHeight).toBeNull()
+
+    act(() => result.current.setPlayerEyeHeight(1.2))
+    expect(result.current.playerEyeHeight).toBe(1.2)
+
+    act(() => result.current.setPlayerEyeHeight(null))
+    expect(result.current.playerEyeHeight).toBeNull()
+  })
+
   it('una medida imposible del visor no mueve el aro', () => {
     const { result } = renderHook(() => useGameStoreValue())
     act(() => result.current.setPlayerEyeHeight(Number.NaN))

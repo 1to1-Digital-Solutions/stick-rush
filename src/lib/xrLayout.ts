@@ -1,8 +1,11 @@
 import { DIFFICULTY_ORDER, MAX_STICKS, type Difficulty } from './gameConfig'
+import { REFERENCE_EYE_HEIGHT, isPlausibleEyeHeight } from './hoopHeight'
 
 /**
  * Dónde se coloca cada cosa de la interfaz inmersiva, en metros y relativo a
- * los pies del jugador.
+ * los ojos de quien juega: las cotas de aquí son las de la persona de
+ * referencia (`REFERENCE_EYE_HEIGHT`) y todo el conjunto sube o baja con el
+ * jugador, ver `xrUiRise`.
  *
  * **El −Z de aquí es hacia donde mira el jugador**, no una dirección fija de la
  * sala: todo esto cuelga de `<XRGazeAnchor>`, que gira el conjunto con él (ver
@@ -16,6 +19,32 @@ import { DIFFICULTY_ORDER, MAX_STICKS, type Difficulty } from './gameConfig'
  */
 
 export type Vec3 = [number, number, number]
+
+/**
+ * Cuánto sube o baja toda la interfaz inmersiva para acomodarse a quien juega,
+ * en metros.
+ *
+ * **El problema que resuelve.** El aro ya se planta sobre los ojos del jugador
+ * (ver `hoopHeight.ts`), pero el panel seguía clavado a 1,40 m: quien juega
+ * sentado se lo encontraba a la altura de la frente, con la fila de arriba
+ * —justo la del ajuste del aro— por encima de la línea de visión cómoda.
+ *
+ * **Se sigue la altura de ojos entera, no una fracción.** El panel no toca el
+ * suelo ni tiene nada que ver con él: es una hoja flotante que se mira, así que
+ * lo único que importa es a qué altura quedan sus botones respecto a los ojos.
+ * Seguir a medias dejaría la fila de arriba por encima de la cabeza de quien
+ * juega sentado, que es exactamente el problema. Y no hacen falta los topes
+ * absolutos que sí lleva el aro: de la interfaz no cae nada al suelo, y el
+ * margen de estaturas que se acepta como persona ya la deja siempre por encima
+ * de él.
+ *
+ * Cuando el visor no dice a qué altura está la cabeza no se inventa nada: la
+ * interfaz se queda donde ha estado siempre.
+ */
+export function xrUiRise(eyeHeight: number | null | undefined): number {
+  if (!isPlausibleEyeHeight(eyeHeight)) return 0
+  return eyeHeight - REFERENCE_EYE_HEIGHT
+}
 
 /** Panel del menú, delante del jugador y a la altura de los ojos. */
 export const XR_MENU_POSITION: Vec3 = [0, 1.4, -0.95]
