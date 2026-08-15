@@ -6,14 +6,18 @@ import { startingLives } from '@/lib/gameMode'
 import { useGame } from '@/lib/gameStore'
 import { scoreRatio } from '@/lib/scoring'
 import { type StickStatus, stickStatuses } from '@/lib/stickLayout'
+import { type ShareStatus, useShareResult } from '@/lib/useShareResult'
 import { XR_HUD_POSITION, XR_QUIT_POSITION, XR_QUIT_YAW } from '@/lib/xrLayout'
 import {
   PANEL_COLOR,
+  XRCheckIcon,
+  XRCrossIcon,
   XRHeartIcon,
   XRHomeIcon,
   XRPanel,
   XRPressable,
   XRRepeatIcon,
+  XRShareIcon,
 } from './XRUi'
 
 /**
@@ -162,6 +166,80 @@ function Lives({ lives, total, y }: { lives: number; total: number; y: number })
   )
 }
 
+/** Placas de los botones de fin de partida: la de repetir y la de las demás. */
+const PLAY_BUTTON = { color: '#15803d', emissive: '#22c55e', intensity: 0.4 }
+const NEUTRAL_BUTTON = { color: '#334155', emissive: '#94a3b8', intensity: 0.2 }
+/** Se pudo / no se pudo: el mismo verde y el mismo rojo que las fichas de palo. */
+const DONE_BUTTON = { color: '#166534', emissive: '#22c55e', intensity: 0.5 }
+const FAILED_BUTTON = { color: '#b91c1c', emissive: '#dc2626', intensity: 0.4 }
+
+/** Separación entre los botones de fin de partida, con aire entre sus zonas. */
+const BUTTON_SPACING = 0.16
+const BUTTON_HIT: [number, number, number] = [0.15, 0.11, 0.06]
+/** Lo que ocupan los tres botones de lado a lado, zonas sensibles incluidas. */
+const BUTTONS_WIDTH = BUTTON_SPACING * 2 + BUTTON_HIT[0]
+
+/** Placa de un botón de fin de partida. */
+function ButtonPlate({
+  style,
+}: {
+  style: { color: string; emissive: string; intensity: number }
+}) {
+  return (
+    <mesh position={[0, 0, -0.008]}>
+      <boxGeometry args={[0.13, 0.09, 0.012]} />
+      <meshStandardMaterial
+        color={style.color}
+        emissive={style.emissive}
+        emissiveIntensity={style.intensity}
+        roughness={0.5}
+      />
+    </mesh>
+  )
+}
+
+/**
+ * Cómo queda el botón de compartir después de pulsarlo.
+ *
+ * Con el visor puesto no hay ningún aviso del sistema que diga si el resultado
+ * salió, así que lo dice el propio botón: cambia de dibujo *y* de color, nunca
+ * solo de color. Cancelar deja el botón como estaba, porque no ha pasado nada.
+ */
+const SHARE_FEEDBACK: Record<
+  ShareStatus,
+  { style: typeof NEUTRAL_BUTTON; Icon: typeof XRShareIcon }
+> = {
+  idle: { style: NEUTRAL_BUTTON, Icon: XRShareIcon },
+  cancelled: { style: NEUTRAL_BUTTON, Icon: XRShareIcon },
+  shared: { style: DONE_BUTTON, Icon: XRCheckIcon },
+  copied: { style: DONE_BUTTON, Icon: XRCheckIcon },
+  unavailable: { style: FAILED_BUTTON, Icon: XRCrossIcon },
+}
+
+/**
+ * Compartir el resultado sin quitarse el visor.
+ *
+ * Dentro de la sesión la hoja de compartir del sistema puede no abrirse; ahí el
+ * texto se queda en el portapapeles y el jugador lo pega al salir (ver
+ * `shareResult.ts`). Lo que no puede pasar es que el botón no conteste, y por
+ * eso el resultado del intento se ve en la propia placa.
+ */
+function ShareButton({ position }: { position: [number, number, number] }) {
+  const { status, share } = useShareResult()
+  const { style, Icon } = SHARE_FEEDBACK[status]
+
+  return (
+    <XRPressable
+      position={position}
+      onSelect={() => void share()}
+      hitSize={BUTTON_HIT}
+    >
+      <ButtonPlate style={style} />
+      <Icon position={[0, 0, 0.008]} />
+    </XRPressable>
+  )
+}
+
 function Token({ state, x }: { state: StickStatus; x: number }) {
   const style = TOKEN_STYLE[state]
 
@@ -230,7 +308,10 @@ export function XRHud() {
       {/* Panel de fondo: en AR el mundo real está detrás, sin él las fichas
           pierden contraste sobre cualquier pared. */}
       <XRPanel
-        width={width + 0.2}
+        // Al acabar, el ancho no puede depender de cuántos palos se jugaran:
+        // con los pocos de una partida corta, la fila de tres botones se
+        // saldría del panel y perdería el fondo que la despega del passthrough.
+        width={Math.max(width + 0.2, finished ? BUTTONS_WIDTH + 0.06 : 0)}
         height={(finished ? 0.42 : 0.27) + (showLives ? LIFE_ROW_HEIGHT : 0)}
         color={PANEL_COLOR}
         opacity={0.72}
@@ -258,36 +339,24 @@ export function XRHud() {
       {finished && (
         <group position={[0, -0.12, 0]}>
           <XRPressable
-            position={[-0.09, 0, 0]}
+            position={[-BUTTON_SPACING, 0, 0]}
             onSelect={startGame}
-            hitSize={[0.15, 0.11, 0.06]}
+            hitSize={BUTTON_HIT}
           >
-            <mesh position={[0, 0, -0.008]}>
-              <boxGeometry args={[0.13, 0.09, 0.012]} />
-              <meshStandardMaterial
-                color="#15803d"
-                emissive="#22c55e"
-                emissiveIntensity={0.4}
-                roughness={0.5}
-              />
-            </mesh>
+            <ButtonPlate style={PLAY_BUTTON} />
             <XRRepeatIcon position={[0, 0, 0.008]} size={0.026} />
           </XRPressable>
 
+          {/* En medio: compartir es lo nuevo, y así repetir y volver al menú
+              siguen en las puntas donde ya estaban. */}
+          <ShareButton position={[0, 0, 0]} />
+
           <XRPressable
-            position={[0.09, 0, 0]}
+            position={[BUTTON_SPACING, 0, 0]}
             onSelect={resetGame}
-            hitSize={[0.15, 0.11, 0.06]}
+            hitSize={BUTTON_HIT}
           >
-            <mesh position={[0, 0, -0.008]}>
-              <boxGeometry args={[0.13, 0.09, 0.012]} />
-              <meshStandardMaterial
-                color="#334155"
-                emissive="#94a3b8"
-                emissiveIntensity={0.2}
-                roughness={0.5}
-              />
-            </mesh>
+            <ButtonPlate style={NEUTRAL_BUTTON} />
             <XRHomeIcon position={[0, 0, 0.008]} />
           </XRPressable>
         </group>

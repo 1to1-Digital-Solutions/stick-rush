@@ -186,6 +186,73 @@ export const XR_MUTED_ICON: IconShape = [
 ]
 
 /**
+ * Avión de papel: compartir el resultado.
+ *
+ * De una sola pieza, como el resto: el símbolo habitual de compartir son tres
+ * nodos unidos por dos líneas, y cinco piezas sueltas a un metro de distancia
+ * son cinco manchas. El avión conserva el significado —enviar esto a alguien—
+ * con un contorno cerrado, y lo que lo distingue de un triángulo cualquiera es
+ * la muesca de la cola.
+ */
+export const XR_SHARE_ICON: IconShape = [
+  {
+    outline: [
+      // Morro, cola de arriba, muesca y cola de abajo.
+      [1, 1],
+      [-1, 0.05],
+      [-0.3, -0.15],
+      [-0.05, -1],
+    ],
+  },
+]
+
+/**
+ * Marca de verificación: hecho.
+ *
+ * Confirma que el resultado salió del visor —compartido o, al menos, copiado—,
+ * porque dentro de la sesión no hay ningún aviso del sistema que lo diga. Es un
+ * trazo con cuerpo y no una línea: a un metro, un trazo fino desaparece.
+ */
+export const XR_CHECK_ICON: IconShape = [
+  {
+    outline: [
+      [-0.647, 0.272],
+      [-0.246, -0.364],
+      [0.65, 1],
+      [0.938, 0.811],
+      [-0.251, -1],
+      [-0.938, 0.088],
+    ],
+  },
+]
+
+/**
+ * Aspa: no se pudo.
+ *
+ * La misma figura que tacha el altavoz del icono de silencio, aquí sola y a
+ * tamaño completo. Sirve para avisar de que el resultado no salió del visor: un
+ * botón que se pulsa y no cambia nada se lee como una avería del juego.
+ */
+export const XR_CROSS_ICON: IconShape = [
+  {
+    outline: [
+      [0, 0.529],
+      [0.46, 0.989],
+      [0.989, 0.483],
+      [0.529, 0],
+      [0.989, -0.483],
+      [0.46, -0.989],
+      [0, -0.529],
+      [-0.46, -0.989],
+      [-0.989, -0.483],
+      [-0.529, 0],
+      [-0.989, 0.483],
+      [-0.46, 0.989],
+    ],
+  },
+]
+
+/**
  * Puerta con una flecha saliendo: salir del visor.
  *
  * Distinto de la casa a propósito: los dos botones compartían icono y hacían

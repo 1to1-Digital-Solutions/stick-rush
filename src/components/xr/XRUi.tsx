@@ -9,10 +9,13 @@ import {
   type Difficulty,
 } from '@/lib/gameConfig'
 import {
+  XR_CHECK_ICON,
+  XR_CROSS_ICON,
   XR_EXIT_ICON,
   XR_HEART_ICON,
   XR_HOME_ICON,
   XR_MUTED_ICON,
+  XR_SHARE_ICON,
   XR_SOUND_ICON,
   type IconShape,
 } from '@/lib/xrIcons'
@@ -338,6 +341,21 @@ export function XRSoundIcon(props: IconProps) {
 /** Corazón: una vida, en el selector de modo y en el marcador. */
 export function XRHeartIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_HEART_ICON} {...props} />
+}
+
+/** Avión de papel: compartir el resultado de la partida. */
+export function XRShareIcon(props: IconProps) {
+  return <XRShapeIcon icon={XR_SHARE_ICON} {...props} />
+}
+
+/** Marca de verificación: el resultado salió del visor. */
+export function XRCheckIcon(props: IconProps) {
+  return <XRShapeIcon icon={XR_CHECK_ICON} {...props} />
+}
+
+/** Aspa: no se pudo. */
+export function XRCrossIcon(props: IconProps) {
+  return <XRShapeIcon icon={XR_CROSS_ICON} {...props} />
 }
 
 /** Altavoz con un aspa: el juego está en silencio. */

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  XR_CHECK_ICON,
+  XR_CROSS_ICON,
   XR_EXIT_ICON,
   XR_HEART_ICON,
   XR_HOME_ICON,
   XR_MUTED_ICON,
+  XR_SHARE_ICON,
   XR_SOUND_ICON,
   type IconPoint,
   type IconShape,
@@ -128,6 +131,9 @@ const ICONS: [string, IconShape][] = [
   ['sonido', XR_SOUND_ICON],
   ['silencio', XR_MUTED_ICON],
   ['vida', XR_HEART_ICON],
+  ['compartir', XR_SHARE_ICON],
+  ['confirmación', XR_CHECK_ICON],
+  ['aspa', XR_CROSS_ICON],
 ]
 
 describe('las siluetas están bien formadas', () => {
@@ -349,5 +355,103 @@ describe('el silencio se lee como el mismo altavoz callado', () => {
         contains(cross.outline, [center[0] + dx * arm, center[1] + dy * arm]),
       ).toBe(false)
     }
+  })
+})
+
+describe('compartir se lee como un avión de papel', () => {
+  const [plane] = XR_SHARE_ICON
+  const outline = plane.outline
+  const nose = outline.reduce((best, point) => (point[0] > best[0] ? point : best))
+
+  it('tiene morro, y apunta hacia adelante', () => {
+    // Un avión sin morro es un triángulo cualquiera: la punta es lo que dice
+    // hacia dónde va, y con ella, que esto se envía a alguien.
+    expect(nose[0]).toBeCloseTo(1)
+    expect(nose[1]).toBeGreaterThan(0.5)
+  })
+
+  it('la cola lleva muesca', () => {
+    // Es lo único que distingue el avión de un triángulo relleno. Se mide en el
+    // punto medio entre las dos puntas de cola: con muesca queda fuera.
+    const tails = outline.filter((point) => point !== nose)
+    const left = tails.reduce((best, point) => (point[0] < best[0] ? point : best))
+    const bottom = tails.reduce((best, point) => (point[1] < best[1] ? point : best))
+    const middle: IconPoint = [
+      (left[0] + bottom[0]) / 2,
+      (left[1] + bottom[1]) / 2,
+    ]
+    expect(contains(outline, middle)).toBe(false)
+  })
+
+  it('es macizo por dentro', () => {
+    expect(contains(outline, [0.2, 0.3])).toBe(true)
+  })
+})
+
+describe('la confirmación se lee como una marca de verificación', () => {
+  const [check] = XR_CHECK_ICON
+  const outline = check.outline
+  const elbow = outline.reduce((best, point) => (point[1] < best[1] ? point : best))
+
+  it('el codo cae abajo y a la izquierda', () => {
+    // Con el vértice centrado sería una V, que no dice "hecho".
+    expect(elbow[0]).toBeLessThan(0)
+    expect(elbow[1]).toBeCloseTo(-1)
+  })
+
+  it('un brazo es mucho más largo que el otro', () => {
+    const tip = outline.reduce((best, point) => (point[0] > best[0] ? point : best))
+    const start = outline.reduce((best, point) => (point[0] < best[0] ? point : best))
+    const long = Math.hypot(tip[0] - elbow[0], tip[1] - elbow[1])
+    const short = Math.hypot(start[0] - elbow[0], start[1] - elbow[1])
+    expect(long).toBeGreaterThan(short * 1.5)
+  })
+
+  it('es un trazo con hueco, no una cuña rellena', () => {
+    // Lo que se lee a un metro es la línea quebrada; rellena por dentro sería
+    // una mancha triangular, indistinguible del avión de al lado.
+    expect(contains(outline, [0, 0.4])).toBe(false)
+    // Pero el trazo tiene cuerpo: sobre la línea del brazo corto hay silueta.
+    expect(contains(outline, [-0.8, 0.15])).toBe(true)
+  })
+})
+
+describe('el aspa se lee como un aspa', () => {
+  const [cross] = XR_CROSS_ICON
+
+  it('sus cuatro brazos van en diagonal', () => {
+    // Enderezada sería una cruz, que se lee como "añadir", no como "no se pudo".
+    for (const [dx, dy] of [
+      [1, 1],
+      [1, -1],
+      [-1, 1],
+      [-1, -1],
+    ]) {
+      expect(contains(cross.outline, [dx * 0.45, dy * 0.45])).toBe(true)
+    }
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      expect(contains(cross.outline, [dx * 0.75, dy * 0.75])).toBe(false)
+    }
+  })
+
+  it('es la misma figura que tacha el altavoz, no otro dibujo', () => {
+    // El aspa del silencio y esta significan lo mismo —apagado, no se pudo—, y
+    // dibujarlas distinto haría dudar de si hablan de lo mismo. Aquí va sola y
+    // a tamaño completo, así que se comparan por forma: mismo número de
+    // vértices y mismas proporciones.
+    const [, muted] = XR_MUTED_ICON
+    expect(cross.outline).toHaveLength(muted.outline.length)
+    const [mutedMinX, mutedMaxX] = bounds([muted], 0)
+    const scale = (mutedMaxX - mutedMinX) / (bounds([cross], 0)[1] * 2)
+    const center = (mutedMinX + mutedMaxX) / 2
+    cross.outline.forEach(([x, y], index) => {
+      expect(x * scale + center).toBeCloseTo(muted.outline[index][0], 2)
+      expect(y * scale).toBeCloseTo(muted.outline[index][1], 2)
+    })
   })
 })
