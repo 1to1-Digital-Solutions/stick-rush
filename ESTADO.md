@@ -795,9 +795,11 @@ cada pieza y separarlos obligaba a revisar dos veces lo mismo con las gafas pues
 - **Se sigue la altura de ojos entera, no una fracción.** El panel se mira, no se pisa: lo
   único que importa es a qué altura quedan sus botones respecto a los ojos. A medias, la
   fila de arriba se le quedaría por encima de la cabeza a quien juega sentado, que era el
-  problema. No hacen falta los topes absolutos del aro —de la interfaz no cae nada al
-  suelo—, y el margen de estaturas que se acepta como persona la deja siempre por encima de
-  él (con los ojos a 90 cm, el marcador queda a 25).
+  problema. No hacen falta los topes absolutos del aro: dentro del margen de estaturas que
+  se acepta como persona, nada de la interfaz llega al suelo. Pero no sobra sitio: los
+  paneles se dibujan centrados en su cota y el del marcador, al acabar una partida de
+  desafío, baja 24 cm, así que con los ojos a 90 cm su borde se queda a **un centímetro**
+  del suelo. Bajar una cota o hacer más alto un panel obliga a mirar ese número.
 - **Se mide en el menú y se queda quieta**, porque el dato es el mismo que usa el aro
   (`XRPlayerHeight` solo mide con el menú delante): con los palos cayendo, un marcador que
   persiguiera la cabeza se movería justo cuando el jugador calcula dónde va a estar la mano.
@@ -808,12 +810,16 @@ cada pieza y separarlos obligaba a revisar dos veces lo mismo con las gafas pues
   rojo.
   El bloque de alturas de `xrInteraction.test.ts` deja de ser absoluto (0,85–1,75 m) y pasa
   a medir la distancia a los ojos para las cuatro estaturas de prueba, más una valla nueva:
-  nada por debajo del suelo con el jugador más bajo. Seguir a medias, no seguir, o quitar
-  el filtro de medidas imposibles también ponen tests en rojo.
+  con el jugador más bajo, ni el borde de abajo del panel más alto llega al suelo. Seguir a
+  medias, no seguir, o quitar el filtro de medidas imposibles también ponen tests en rojo.
 - **Sin validar en hardware**, como todo lo que se pulsa en el visor: el emulador no
   propaga sus punteros. Falta ver con las gafas que el triángulo se lee como «empezar», que
   el panel cae a buena altura de pie y sentado, y que no se cruza con la máquina al subir
-  con un jugador alto.
+  con un jugador alto. Y una que aparece con este cambio: la medida sigue viva mientras se
+  está en el menú (`XRPlayerHeight` reporta cada 2 cm), y ahora mueve **los botones a los
+  que se apunta**, no solo el aro. Inclinarse hacia delante para ver mejor el panel lo baja
+  con uno. Si molesta al apuntar, lo que hay que tocar es cuándo se deja de medir, no
+  `xrUiRise`.
 
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 

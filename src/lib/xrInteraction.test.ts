@@ -136,6 +136,15 @@ describe('la interfaz cae dentro del campo de visión', () => {
     MAX_EYE_HEIGHT,
   ]
 
+  /**
+   * Cuánto baja el panel más alto por debajo del punto en que se cuelga, en
+   * metros: los paneles se dibujan **centrados** en su posición, y el mayor es
+   * el del marcador al acabar una partida de desafío —resultado, fila de vidas
+   * y fila de botones, 48 cm en total (`XRHud.tsx`)—. Es el hueco que hay que
+   * dejar libre por debajo para que no se hunda nada en el suelo.
+   */
+  const PANEL_DROP = 0.24
+
   it.each(elements)('%s se puede mirar sin que la interfaz huya', (_, position) => {
     // La relación que de verdad importa: si un elemento estuviera más allá de
     // la zona muerta, mirarlo haría girar todo el conjunto y el botón se
@@ -159,8 +168,12 @@ describe('la interfaz cae dentro del campo de visión', () => {
 
   it.each(elements)('%s se queda por encima del suelo', (_, [, y]) => {
     // La otra valla: seguir a los ojos hacia abajo no puede acabar enterrando
-    // la interfaz en el suelo de quien juega sentado en él.
-    expect(y + xrUiRise(MIN_EYE_HEIGHT)).toBeGreaterThan(0)
+    // la interfaz en el suelo de quien juega sentado en él. Se mide el borde de
+    // abajo del panel y no el punto del que cuelga, que es lo que de verdad
+    // toca el suelo: con el jugador más bajo que se acepta como persona, al
+    // marcador le queda **un centímetro**, así que este es el sitio donde se
+    // ve si un panel más alto o unas cotas más bajas se comen ese margen.
+    expect(y + xrUiRise(MIN_EYE_HEIGHT) - PANEL_DROP).toBeGreaterThan(0)
   })
 
   it('el botón de volver al menú encara al jugador', () => {

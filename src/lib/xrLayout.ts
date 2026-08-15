@@ -2,10 +2,11 @@ import { DIFFICULTY_ORDER, MAX_STICKS, type Difficulty } from './gameConfig'
 import { REFERENCE_EYE_HEIGHT, isPlausibleEyeHeight } from './hoopHeight'
 
 /**
- * Dónde se coloca cada cosa de la interfaz inmersiva, en metros y relativo a
- * los ojos de quien juega: las cotas de aquí son las de la persona de
- * referencia (`REFERENCE_EYE_HEIGHT`) y todo el conjunto sube o baja con el
- * jugador, ver `xrUiRise`.
+ * Dónde se coloca cada cosa de la interfaz inmersiva, en metros. Las alturas se
+ * miden desde el suelo y son las de la persona de referencia
+ * (`REFERENCE_EYE_HEIGHT`); lo que se conserva de ellas al cambiar de jugador
+ * es su distancia a los ojos, porque el conjunto entero sube o baja con él (ver
+ * `xrUiRise`).
  *
  * **El −Z de aquí es hacia donde mira el jugador**, no una dirección fija de la
  * sala: todo esto cuelga de `<XRGazeAnchor>`, que gira el conjunto con él (ver
@@ -34,9 +35,14 @@ export type Vec3 = [number, number, number]
  * lo único que importa es a qué altura quedan sus botones respecto a los ojos.
  * Seguir a medias dejaría la fila de arriba por encima de la cabeza de quien
  * juega sentado, que es exactamente el problema. Y no hacen falta los topes
- * absolutos que sí lleva el aro: de la interfaz no cae nada al suelo, y el
- * margen de estaturas que se acepta como persona ya la deja siempre por encima
- * de él.
+ * absolutos que sí lleva el aro: dentro del margen de estaturas que se acepta
+ * como persona, nada de la interfaz llega al suelo.
+ *
+ * Eso sí, no sobra: el panel del marcador se dibuja centrado en su cota y al
+ * acabar una partida de desafío baja 24 cm, así que con el jugador más bajo su
+ * borde se queda a un centímetro del suelo. Bajar una cota de aquí o hacer más
+ * alto un panel obliga a volver sobre ese número, y `xrInteraction.test.ts` lo
+ * vigila.
  *
  * Cuando el visor no dice a qué altura está la cabeza no se inventa nada: la
  * interfaz se queda donde ha estado siempre.
