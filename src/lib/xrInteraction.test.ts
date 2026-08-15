@@ -17,13 +17,16 @@ import {
   XR_MENU_POSITION,
   XR_QUIT_POSITION,
   XR_QUIT_YAW,
+  XR_TUTORIAL_POSITION,
   type Vec3,
   xrHoopDownPosition,
   xrHoopUpPosition,
   xrMenuExitPosition,
   xrMenuSoundPosition,
+  xrMenuTutorialPosition,
   xrModeTogglePosition,
   xrSceneryPickerPosition,
+  xrTutorialSkipPosition,
 } from './xrLayout'
 
 /**
@@ -103,6 +106,12 @@ describe('la interfaz cae dentro del campo de visión', () => {
     // primero se saldría por arriba de lo que se mira sin estirar el cuello.
     ['el botón de bajar el aro', xrHoopDownPosition()],
     ['el botón de subir el aro', xrHoopUpPosition()],
+    // El tutorial toma el relevo del menú durante unos segundos, así que su
+    // panel y su salida responden a las mismas reglas que todo lo demás: si el
+    // botón de saltar quedara donde no se ve, dejaría de ser saltable.
+    ['el tutorial', XR_TUTORIAL_POSITION],
+    ['el botón de saltar el tutorial', xrTutorialSkipPosition()],
+    ['el botón de volver a ver el tutorial', xrMenuTutorialPosition()],
   ]
 
   it.each(elements)('%s se puede mirar sin que la interfaz huya', (_, position) => {

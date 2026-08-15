@@ -202,7 +202,10 @@ export function XRHud() {
   } = useGame()
 
   // Fuera de sesión inmersiva manda el HUD en DOM, y en el menú manda XRMenu.
-  if (mode == null || gameState === 'menu') {
+  // Durante el tutorial tampoco: un marcador vacío al lado de la demostración
+  // es una ficha por palo compitiendo con los palos que la demostración está
+  // contando. Aparece con la cuenta atrás, que es cuando empieza a medir algo.
+  if (mode == null || gameState === 'menu' || gameState === 'tutorial') {
     return null
   }
 

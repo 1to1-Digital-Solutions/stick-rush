@@ -655,6 +655,49 @@ palos pasan fuera del brazo: el juego se vuelve injugable sin que nada falle.
   ni un número (`'un palmo más arriba'`), que es lo que de verdad tumbaría la escena: sin
   la guarda de `parseHoopAdjustment` el `NaN` llega a la geometría del aro.
 
+## Tutorial de la primera vez (rama `agent/tutorial-de-5-10-segundos-al-emp-949757`)
+
+Con las gafas puestas, quien llegaba nuevo no sabía que los palos se agarran ni
+con qué botón: el menú inmersivo se maneja **apuntando** con el rayo, así que lo
+primero que aprendía era justo lo que no sirve para jugar.
+
+- **Una fase de partida, no una pantalla.** `startGame` antepone `gameState:
+  'tutorial'` antes de la cuenta atrás, y al acabar encadena con ella entera (los
+  tres segundos son para colocarse; gastarlos mirando la demostración los
+  desperdicia). Los palos siguen colgados y quietos, como en la cuenta atrás.
+- **Lo decide el juego, no el botón**: con gafas (`immersive` en el store, que
+  mantiene al día `XRSessionController`) y sin haberlo visto. Dentro de la sesión
+  también se puede empezar desde el overlay con el teclado, y por ahí tiene que
+  pasar lo mismo. `startGame({ tutorial })` fuerza la decisión: lo usa el botón
+  de volver a verlo.
+- **7,4 s en tres tramos** (`src/lib/tutorial.ts`, guion puro y probado sin
+  navegador): el gatillo que agarra —marcado sobre el mismo mando que el jugador
+  tiene en la mano, con un palo cayéndole encima y el destello del acierto—,
+  cuántos palos van a caer (aparecen uno a uno, se cuentan) y en qué nivel (las
+  barras del menú, agrandadas). El total está **acotado entre 5 y 10 s** por un
+  test: alargar un tramo obliga a acortar otro.
+- **Sin una sola letra**, como todo lo inmersivo: la CSP bloquea las fuentes de
+  `<Text>` de drei. Cada cosa se dice con la geometría que ya significa eso en el
+  juego, y el movimiento es lo que convierte el dibujo en instrucción.
+- **Saltable desde el primer fotograma**: botón en su sitio del panel (dos
+  triángulos y un tope, como cualquier reproductor) más una barra de cuánto
+  queda, para que se vea que dura segundos. Saltarlo también cuenta como visto:
+  el jugador ya ha decidido. Dejarlo a medias volviendo al menú, no.
+- **Se recuerda en `localStorage`** (`stick-rush:tutorial-seen`), junto al récord
+  y la altura del aro. Sin almacenamiento vuelve a salir, que es preferible a dar
+  por sabido algo que quizá nadie ha visto.
+- **Se puede recuperar** desde la esquina de arriba del menú inmersivo, con el
+  mando en miniatura y su gatillo marcado: es literalmente lo que va a enseñar.
+  El dibujo del mando se sacó a `XRControllerModel.tsx` para que sea el mismo en
+  la mano, en la demostración y en ese botón.
+- **En escritorio no existe**: allí la pantalla de inicio lo explica con texto,
+  que se lee antes de lo que dura la demostración. El reflejo en DOM del botón de
+  saltar sí se monta bajo la sesión (es lo que deja saltarlo con teclado, y lo
+  que los e2e pulsan, porque el emulador no propaga los punteros de los mandos).
+- **Sin validar en hardware**: falta ver con las gafas si el mando de la
+  demostración se lee a esa distancia, si dos ciclos de agarre bastan para
+  entender el gesto y si 13 palos en fila se cuentan de un vistazo.
+
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 
 Con las gafas puestas el modo inmersivo era **inutilizable**: no se veían los mandos,

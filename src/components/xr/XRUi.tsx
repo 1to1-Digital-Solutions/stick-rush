@@ -4,6 +4,11 @@ import { type ReactNode, useMemo, useRef, useState } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 import { Path, Shape, Vector2 } from 'three'
 import {
+  DIFFICULTY_COLORS,
+  DIFFICULTY_ORDER,
+  type Difficulty,
+} from '@/lib/gameConfig'
+import {
   XR_EXIT_ICON,
   XR_HEART_ICON,
   XR_HOME_ICON,
@@ -180,6 +185,78 @@ export function XRPlayIcon({
       <cylinderGeometry args={[size, size, 0.01, 3]} />
       <meshBasicMaterial color={color} toneMapped={false} />
     </mesh>
+  )
+}
+
+/**
+ * Dos triángulos y un tope: saltarse lo que se está viendo e ir al final. Es el
+ * mismo símbolo que cualquier reproductor, así que no hace falta explicarlo.
+ */
+export function XRSkipIcon({
+  position = [0, 0, 0],
+  size = 0.017,
+  color = '#ffffff',
+}: IconProps) {
+  const [x, y, z] = position
+
+  return (
+    // Recolocado a la izquierda medio ancho: el dibujo crece hacia la derecha,
+    // así que sin esto quedaría descentrado en su placa frente a los iconos de
+    // una sola pieza.
+    <group position={[x - size * 0.55, y, z]}>
+      <XRPlayIcon position={[-size * 0.8, 0, 0]} size={size} color={color} />
+      <XRPlayIcon position={[size * 0.7, 0, 0]} size={size} color={color} />
+      <mesh position={[size * 1.75, 0, 0]}>
+        <boxGeometry args={[size * 0.4, size * 1.9, 0.008]} />
+        <meshBasicMaterial color={color} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
+/**
+ * Las barras de un nivel: tantas como su puesto en la escala y cada una más
+ * alta que la anterior, en el color que ese nivel tiene en todo el juego.
+ *
+ * Crecen desde `y = 0` hacia arriba, así que quien la coloca decide desde dónde.
+ * La comparten el selector del menú y el tutorial: el nivel tiene que verse
+ * igual donde se elige y donde se recuerda, o serían dos cosas distintas.
+ */
+export function XRDifficultyBars({
+  difficulty,
+  lit,
+  position = [0, 0, 0],
+  scale = 1,
+}: {
+  difficulty: Difficulty
+  /** Encendidas (nivel elegido) o apagadas en el color del nivel. */
+  lit: boolean
+  position?: [number, number, number]
+  scale?: number
+}) {
+  const index = DIFFICULTY_ORDER.indexOf(difficulty)
+  const color = DIFFICULTY_COLORS[difficulty]
+
+  return (
+    <group position={position} scale={scale}>
+      {Array.from({ length: index + 1 }, (_, bar) => {
+        const height = 0.028 + bar * 0.017
+        return (
+          <mesh
+            key={bar}
+            position={[(bar - index / 2) * 0.022, height / 2, 0.004]}
+          >
+            <boxGeometry args={[0.013, height, 0.008]} />
+            <meshStandardMaterial
+              color={lit ? '#ffffff' : color}
+              emissive={lit ? '#ffffff' : color}
+              emissiveIntensity={lit ? 0.7 : 0.25}
+              toneMapped={false}
+            />
+          </mesh>
+        )
+      })}
+    </group>
   )
 }
 

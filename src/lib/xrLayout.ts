@@ -72,12 +72,32 @@ export const XR_HOOP_DOWN_OFFSET: Vec3 = [-0.13, HOOP_ROW_Y, 0]
 export const XR_HOOP_UP_OFFSET: Vec3 = [0.13, HOOP_ROW_Y, 0]
 /** Regla entre los dos botones: dónde está el aro dentro de su recorrido. */
 export const XR_HOOP_GAUGE_OFFSET: Vec3 = [0, HOOP_ROW_Y, 0]
+/**
+ * Botón de volver a ver el tutorial, en la esquina de arriba del panel. Va
+ * lejos del de empezar a propósito: es una salida de emergencia para quien no
+ * se acuerda de cómo se cogen los palos, no un paso del camino normal.
+ */
+export const XR_MENU_TUTORIAL_OFFSET: Vec3 = [-0.4, HOOP_ROW_Y, 0]
 
 /**
  * Cuenta atrás: al frente y a la altura de los ojos, que es donde el jugador
  * está mirando justo después de pulsar «empezar».
  */
 export const XR_COUNTDOWN_POSITION: Vec3 = [0, 1.5, -0.9]
+
+/**
+ * Tutorial: exactamente donde estaba el menú del que viene. Toma su relevo
+ * durante unos segundos, así que aparecer en otro sitio obligaría a buscarlo.
+ */
+export const XR_TUTORIAL_POSITION: Vec3 = XR_MENU_POSITION
+/**
+ * Botón de saltar el tutorial, en la esquina de abajo de su panel. Apartado de
+ * lo que se está demostrando, pero dentro del mismo panel: tiene que verse
+ * desde el primer segundo sin competir con la demostración.
+ */
+export const XR_TUTORIAL_SKIP_OFFSET: Vec3 = [0.4, -0.24, 0]
+/** Barra de cuánto queda de tutorial, bajo la demostración. */
+export const XR_TUTORIAL_PROGRESS_OFFSET: Vec3 = [0, -0.26, 0]
 
 /** Separación entre los palos del selector de cantidad. */
 export const XR_STICK_PICKER_SPACING = 0.055
@@ -134,6 +154,18 @@ export function xrHoopDownPosition(): Vec3 {
 export function xrHoopUpPosition(): Vec3 {
   const [dx, dy] = XR_HOOP_UP_OFFSET
   return offset(XR_MENU_POSITION, dx, dy)
+}
+
+/** Botón de volver a ver el tutorial, dentro del panel del menú. */
+export function xrMenuTutorialPosition(): Vec3 {
+  const [dx, dy] = XR_MENU_TUTORIAL_OFFSET
+  return offset(XR_MENU_POSITION, dx, dy)
+}
+
+/** Botón de saltar el tutorial, dentro de su panel. */
+export function xrTutorialSkipPosition(): Vec3 {
+  const [dx, dy] = XR_TUTORIAL_SKIP_OFFSET
+  return offset(XR_TUTORIAL_POSITION, dx, dy)
 }
 
 /** Botón de empezar partida. */

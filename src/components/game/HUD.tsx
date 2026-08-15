@@ -43,6 +43,7 @@ export function HUD() {
     outcome,
     gameState,
     countdown,
+    finishTutorial,
     resetGame,
   } = useGame()
 
@@ -106,6 +107,30 @@ export function HUD() {
           {DIFFICULTY_LABELS[difficulty]}
         </span>
       </div>
+
+      {/*
+        Tutorial en marcha (solo se llega aquí dentro del visor, ver
+        `XRTutorial`). Lo que el jugador mira es la demostración en 3D; esto es
+        su reflejo en el DOM, que sigue montado bajo la sesión inmersiva: deja
+        el salto a un botón de verdad —alcanzable con teclado, como el resto del
+        overlay— y no solo a un objeto de la escena.
+      */}
+      {gameState === 'tutorial' && (
+        <div className="fixed inset-x-0 bottom-6 z-20 flex justify-center px-6">
+          <div className="animate-fade-slide-up flex items-center gap-4 rounded-xl border border-white/10 bg-[var(--color-muted)]/90 px-5 py-3 backdrop-blur motion-reduce:animate-none">
+            <p className="text-sm text-white/70">
+              Cómo se juega, en unos segundos.
+            </p>
+            <button
+              type="button"
+              onClick={finishTutorial}
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            >
+              Saltar tutorial
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Cuenta atrás antes del primer palo. No bloquea la escena: el jugador
           ve la máquina cargada mientras se prepara. */}

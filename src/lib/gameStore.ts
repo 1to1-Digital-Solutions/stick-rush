@@ -34,8 +34,22 @@ import {
   saveHoopAdjustment,
 } from './hoopHeight'
 import { stickPoints } from './scoring'
+import {
+  TUTORIAL_SECONDS,
+  getTutorialSeen,
+  saveTutorialSeen,
+} from './tutorial'
 
-export type GameState = 'menu' | 'countdown' | 'playing' | 'finished'
+export type GameState =
+  | 'menu'
+  /**
+   * Demostración de cómo se juega, antes de la cuenta atrás. Solo en el visor y
+   * solo la primera vez (ver `tutorial.ts`).
+   */
+  | 'tutorial'
+  | 'countdown'
+  | 'playing'
+  | 'finished'
 
 /**
  * Qué se ve alrededor de la máquina en una sesión inmersiva.
@@ -122,6 +136,13 @@ export interface GameStore {
   hoopHeight: number
   /** Corrección manual sobre esa altura, en metros. Se guarda entre visitas. */
   hoopAdjustment: number
+  /**
+   * Si el tutorial del visor ya se vio en este navegador. Se guarda entre
+   * visitas: es lo que hace que se interponga una sola vez.
+   */
+  tutorialSeen: boolean
+  /** Si hay una sesión inmersiva abierta, es decir, si se juega con gafas. */
+  immersive: boolean
 
   setScenery: (scenery: SceneryMode) => void
   setMuted: (muted: boolean) => void
@@ -143,7 +164,24 @@ export interface GameStore {
    * espacio de referencia no permite saberla.
    */
   setPlayerEyeHeight: (height: number | null) => void
-  startGame: () => void
+  /** Apunta si se está jugando dentro del visor. Lo lleva al día la sesión. */
+  setImmersive: (immersive: boolean) => void
+  /**
+   * Empieza una partida.
+   *
+   * Por su cuenta antepone la demostración de cómo se juega cuando toca: con
+   * las gafas puestas y sin haberla visto nunca. Es del juego y no del botón
+   * que se pulse, porque dentro de la sesión también se puede empezar desde el
+   * overlay con el teclado. `tutorial` fuerza la decisión en los dos sentidos:
+   * lo usa el botón de volver a verlo desde el menú.
+   */
+  startGame: (options?: { tutorial?: boolean }) => void
+  /**
+   * Cierra el tutorial y pasa a la cuenta atrás. Lo llaman el botón de saltar y
+   * el propio final de la demostración: las dos cosas cuentan como visto, así
+   * que a partir de ahí no vuelve a interponerse.
+   */
+  finishTutorial: () => void
   /**
    * Palo atrapado. `fallProgress` (0 recién soltado, 1 a ras de suelo) decide
    * el bonus por reflejos.
@@ -213,6 +251,16 @@ export function useGameStoreValue(): GameStore {
   // Lo que mide el visor, mientras dure la sesión. Fuera de ella no hay a quién
   // medir y el aro se queda a la altura de referencia.
   const [playerEyeHeight, setPlayerEyeHeight] = useState<number | null>(null)
+  // El tutorial se ve una vez y se recuerda, como la altura del aro. Se lee al
+  // montar y no en cada consulta porque decide qué se pinta: leer el
+  // almacenamiento en mitad de un render lo volvería impredecible.
+  const [tutorialSeen, setTutorialSeen] = useState(getTutorialSeen)
+  // Si la partida en curso arrancó enseñando cómo se juega. Es una fase de la
+  // partida y no una pantalla aparte: al acabar encadena con la cuenta atrás.
+  const [tutorialRunning, setTutorialRunning] = useState(false)
+  // Si hay gafas puestas. El juego lo necesita para saber a quién enseñar cómo
+  // se juega: en escritorio la pantalla de inicio ya lo explica con texto.
+  const [immersive, setImmersive] = useState(false)
 
   // Los palos que se han escapado. Se deriva en vez de contarse aparte: un
   // tercer contador que hay que mantener a la par de los otros dos es un
@@ -227,11 +275,13 @@ export function useGameStoreValue(): GameStore {
 
   const gameState: GameState = !running
     ? 'menu'
-    : countdown > 0
-      ? 'countdown'
-      : outcome
-        ? 'finished'
-        : 'playing'
+    : tutorialRunning
+      ? 'tutorial'
+      : countdown > 0
+        ? 'countdown'
+        : outcome
+          ? 'finished'
+          : 'playing'
 
   // Un tic por segundo hasta soltar el primer palo. La cuenta atrás da tiempo a
   // colocarse —en el visor uno acaba de pulsar un botón y tiene las manos donde
@@ -241,6 +291,27 @@ export function useGameStoreValue(): GameStore {
     const timer = setTimeout(() => setCountdown((value) => value - 1), 1000)
     return () => clearTimeout(timer)
   }, [running, countdown])
+
+  // Saltar y agotar el tiempo son la misma salida: en los dos casos el jugador
+  // ya ha decidido y el tutorial no vuelve a interponerse. Se anota como visto
+  // antes de dar paso a la cuenta atrás.
+  const finishTutorial = useCallback(() => {
+    if (!tutorialRunning) return
+    saveTutorialSeen()
+    setTutorialSeen(true)
+    setTutorialRunning(false)
+    setCountdown(COUNTDOWN_SECONDS)
+  }, [tutorialRunning])
+
+  // La demostración dura lo que dure el guion (ver `tutorial.ts`) y cierra
+  // sola. La escena lleva su propio reloj para animar, pero quien decide cuándo
+  // se acaba es el store: así el jugador entra en la cuenta atrás aunque el
+  // Canvas esté pintando a trompicones.
+  useEffect(() => {
+    if (!tutorialRunning) return
+    const timer = setTimeout(finishTutorial, TUTORIAL_SECONDS * 1000)
+    return () => clearTimeout(timer)
+  }, [tutorialRunning, finishTutorial])
 
   // Al terminar, la puntuación sale hacia el almacenamiento; guardar solo hace
   // algo si mejora lo que había, así que repetirlo no cambia nada. Se guarda al
@@ -310,13 +381,23 @@ export function useGameStoreValue(): GameStore {
     setBestStreak(0)
   }, [])
 
-  const startGame = useCallback(() => {
-    clearRun()
-    setRecordToBeat(getBestPoints(gameMode))
-    setRunId((id) => id + 1)
-    setCountdown(COUNTDOWN_SECONDS)
-    setRunning(true)
-  }, [clearRun, gameMode])
+  const startGame = useCallback(
+    (options?: { tutorial?: boolean }) => {
+      // Con las gafas puestas y sin haberlo visto nunca, la partida empieza
+      // enseñando: es el único momento en que el jugador está mirando y aún no
+      // hay palos cayéndole encima.
+      const tutorial = options?.tutorial ?? (immersive && !tutorialSeen)
+      clearRun()
+      setRecordToBeat(getBestPoints(gameMode))
+      setRunId((id) => id + 1)
+      setTutorialRunning(tutorial)
+      // Con tutorial la cuenta espera: sus tres segundos son para colocarse, y
+      // gastarlos mientras el jugador mira la demostración los desperdicia.
+      setCountdown(tutorial ? 0 : COUNTDOWN_SECONDS)
+      setRunning(true)
+    },
+    [clearRun, gameMode, immersive, tutorialSeen],
+  )
 
   const catchStick = useCallback(
     (fallProgress: number) => {
@@ -345,6 +426,9 @@ export function useGameStoreValue(): GameStore {
   const resetGame = useCallback(() => {
     clearRun()
     setCountdown(0)
+    // Dejar la demostración a medias no cuenta como haberla visto: quien vuelve
+    // al menú desde ella se la encuentra otra vez al empezar.
+    setTutorialRunning(false)
     setRunning(false)
   }, [clearRun])
 
@@ -369,6 +453,8 @@ export function useGameStoreValue(): GameStore {
       muted,
       hoopHeight,
       hoopAdjustment,
+      tutorialSeen,
+      immersive,
       setScenery,
       setMuted,
       setStickCount,
@@ -376,7 +462,9 @@ export function useGameStoreValue(): GameStore {
       setGameMode,
       adjustHoop,
       setPlayerEyeHeight,
+      setImmersive,
       startGame,
+      finishTutorial,
       catchStick,
       missStick,
       resetGame,
@@ -401,12 +489,15 @@ export function useGameStoreValue(): GameStore {
       muted,
       hoopHeight,
       hoopAdjustment,
+      tutorialSeen,
+      immersive,
       setScenery,
       setMuted,
       setStickCount,
       setGameMode,
       adjustHoop,
       startGame,
+      finishTutorial,
       catchStick,
       missStick,
       resetGame,

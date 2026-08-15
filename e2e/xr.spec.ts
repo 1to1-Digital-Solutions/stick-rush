@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { HOOP_ADJUST_KEY } from '@/lib/hoopHeight'
+import {
+  TUTORIAL_MIN_SECONDS,
+  TUTORIAL_SECONDS,
+  TUTORIAL_SEEN_KEY,
+} from '@/lib/tutorial'
 import { xrPlayButtonPosition } from '@/lib/xrLayout'
 import { openGame } from './helpers'
 import {
@@ -9,8 +14,10 @@ import {
   installXREmulator,
   placeHand,
   pressAndRelease,
+  pressPlayInsideSession,
   startGameInsideSession,
   toPoint,
+  tutorialSkipButton,
 } from './support/xr'
 
 /**
@@ -129,6 +136,123 @@ test.describe('Sesión inmersiva', () => {
     // también prueba que el modo se reconoce.
     await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
     await expect(page.getByRole('status')).toHaveCount(0)
+  })
+})
+
+/**
+ * Tutorial de la primera vez.
+ *
+ * Lo que el jugador ve es la demostración en 3D (mando, palos y nivel), y eso
+ * solo se puede juzgar con las gafas puestas. Lo que sí se comprueba aquí es el
+ * contrato: que se interponga la primera vez y solo la primera, que dure lo que
+ * dice durar, y que se pueda salir de él desde el primer segundo. El botón de
+ * saltar que se pulsa es el reflejo en DOM del que hay en la escena —los dos
+ * llaman a lo mismo—, porque el emulador no propaga los punteros de los mandos
+ * (ver la nota de arriba).
+ */
+test.describe('Tutorial en el visor', () => {
+  test.beforeEach(async ({ page }) => {
+    await installXREmulator(page)
+    await openGame(page)
+  })
+
+  test('la primera partida empieza enseñando cómo se juega', async ({ page }) => {
+    await enterVR(page)
+    await pressPlayInsideSession(page)
+
+    // Con el salto a mano desde el primer instante: sin esperas ni margen, que
+    // es justo lo que pide "saltable siempre".
+    await expect(tutorialSkipButton(page)).toBeVisible()
+    // Y sin gastar la cuenta atrás: esos tres segundos son para colocarse.
+    await expect(page.getByRole('timer')).toHaveCount(0)
+  })
+
+  test('dura unos segundos y da paso a la partida sin tocar nada', async ({
+    page,
+  }) => {
+    await enterVR(page)
+    await pressPlayInsideSession(page)
+
+    const skip = tutorialSkipButton(page)
+    await expect(skip).toBeVisible()
+
+    // Ni tan corto que no dé tiempo a verlo...
+    await page.waitForTimeout((TUTORIAL_MIN_SECONDS - 1) * 1000)
+    await expect(skip).toBeVisible()
+
+    // ...ni tan largo como para estorbar: se cierra solo y arranca la partida.
+    await expect(skip).toHaveCount(0, {
+      timeout: (TUTORIAL_SECONDS + 4) * 1000,
+    })
+    await expect(page.getByRole('status')).toBeVisible()
+  })
+
+  test('se puede saltar desde el primer segundo', async ({ page }) => {
+    await enterVR(page)
+    await pressPlayInsideSession(page)
+
+    const skip = tutorialSkipButton(page)
+    await skip.focus()
+    await page.keyboard.press('Enter')
+
+    // Saltarlo lleva a la cuenta atrás, no directo a los palos cayendo: quien
+    // se lo salta también necesita el margen para colocarse.
+    await expect(page.getByRole('timer')).toBeVisible({ timeout: 2000 })
+    await expect(skip).toHaveCount(0)
+  })
+
+  test('solo la primera vez: al volver a abrir el juego ya no aparece', async ({
+    page,
+  }) => {
+    await enterVR(page)
+    await pressPlayInsideSession(page)
+
+    // La primera vez sí sale, y saltarlo lo da por visto.
+    const skip = tutorialSkipButton(page)
+    await expect(skip).toBeVisible()
+    await skip.focus()
+    await page.keyboard.press('Enter')
+    await expect(skip).toHaveCount(0)
+
+    // Recargar reconstruye el juego desde cero: lo único que sobrevive es lo
+    // que se guardó en el navegador.
+    await openGame(page)
+    await enterVR(page)
+    await pressPlayInsideSession(page)
+
+    await expect(tutorialSkipButton(page)).toHaveCount(0)
+    await expect(page.getByRole('timer')).toBeVisible({ timeout: 2000 })
+  })
+
+  test('quien ya lo vio en otra visita entra directo a jugar', async ({ page }) => {
+    await page.addInitScript(
+      (key) => window.localStorage.setItem(key, '1'),
+      TUTORIAL_SEEN_KEY,
+    )
+    await openGame(page)
+    await enterVR(page)
+    await pressPlayInsideSession(page)
+
+    await expect(tutorialSkipButton(page)).toHaveCount(0)
+  })
+
+  test('la demostración se pinta sin ensuciar la consola', async ({ page }) => {
+    // Monta geometría que ningún otro test toca: el mando de la demostración
+    // con su gatillo, el palo que le cae encima y las barras del nivel.
+    const errors: string[] = []
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text())
+    })
+    page.on('pageerror', (error) => errors.push(error.message))
+
+    await enterVR(page)
+    await pressPlayInsideSession(page)
+    await expect(tutorialSkipButton(page)).toBeVisible()
+    // Lo suficiente para pasar por los tres tramos del guion.
+    await page.waitForTimeout((TUTORIAL_SECONDS + 1) * 1000)
+
+    expect(errors).toEqual([])
+    await expect(page.getByRole('status')).toBeVisible()
   })
 })
 

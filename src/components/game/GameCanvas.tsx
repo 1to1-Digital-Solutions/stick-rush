@@ -19,6 +19,7 @@ import { XRHud, XRQuitButton } from '@/components/xr/XRHud'
 import { XRMenu } from '@/components/xr/XRMenu'
 import { XRPlayerHeight } from '@/components/xr/XRPlayerHeight'
 import { XRSessionController } from '@/components/xr/XRSessionController'
+import { XRTutorial } from '@/components/xr/XRTutorial'
 import { Fairground } from './Fairground'
 import { SceneryFade } from './SceneryFade'
 import { StickMachine } from './StickMachine'
@@ -160,6 +161,7 @@ export function GameCanvas() {
           <XRGazeAnchor>
             <XRHud />
             <XRMenu />
+            <XRTutorial />
             <XRCountdown />
             <XRQuitButton />
           </XRGazeAnchor>

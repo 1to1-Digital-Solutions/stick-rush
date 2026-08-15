@@ -269,7 +269,10 @@ export function StartScreen() {
         <div className="flex w-full max-w-xs flex-col items-center gap-3">
           <button
             type="button"
-            onClick={startGame}
+            // Sin el envoltorio, el evento del clic viajaría como opciones de
+            // partida. En escritorio no hay tutorial que anteponer: el menú lo
+            // explica con texto, que se lee antes de lo que dura la demostración.
+            onClick={() => startGame()}
             className="cta-gradient w-full rounded-xl px-8 py-4 text-lg font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
             Jugar

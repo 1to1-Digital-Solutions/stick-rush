@@ -16,7 +16,7 @@ import { useGame } from '@/lib/gameStore'
  */
 export function XRSessionController() {
   const mode = useXR((state) => state.mode)
-  const { gameState, resetGame } = useGame()
+  const { gameState, resetGame, setImmersive } = useGame()
 
   // Recordar que hubo sesión es imprescindible: en escritorio `mode` es null
   // siempre, y sin esta guarda cualquier partida iniciada con el ratón se
@@ -24,6 +24,11 @@ export function XRSessionController() {
   const immersive = useRef(false)
 
   useEffect(() => {
+    // El juego necesita saber si hay gafas puestas para decidir a quién le
+    // enseña cómo se juega (ver `startGame`). Se apunta antes que nada: aunque
+    // la sesión no cambie de estado, el dato tiene que estar al día.
+    setImmersive(mode != null)
+
     // Entrada: si se llega con una partida de escritorio a medias, se descarta.
     // En el visor el punto de partida es siempre el menú.
     if (mode != null) {
@@ -37,7 +42,7 @@ export function XRSessionController() {
     if (!immersive.current) return
     immersive.current = false
     resetGame()
-  }, [mode, gameState, resetGame])
+  }, [mode, gameState, resetGame, setImmersive])
 
   return null
 }

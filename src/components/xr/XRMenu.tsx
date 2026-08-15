@@ -20,13 +20,16 @@ import {
   XR_MENU_EXIT_OFFSET,
   XR_MENU_POSITION,
   XR_MENU_SOUND_OFFSET,
+  XR_MENU_TUTORIAL_OFFSET,
   XR_MODE_TOGGLE_OFFSET,
   XR_SCENERY_PICKER_OFFSET,
   XR_STICK_PICKER_SPACING,
 } from '@/lib/xrLayout'
+import { ControllerModel } from './XRControllerModel'
 import {
   PANEL_COLOR,
   XRArrowIcon,
+  XRDifficultyBars,
   XRExitIcon,
   XRHeartIcon,
   XRMutedIcon,
@@ -129,28 +132,13 @@ function DifficultyPicker() {
                 roughness={0.55}
               />
             </mesh>
-            {/* Barras: tantas como nivel, cada una más alta que la anterior. */}
-            {Array.from({ length: index + 1 }, (_, bar) => {
-              const height = 0.028 + bar * 0.017
-              return (
-                <mesh
-                  key={bar}
-                  position={[
-                    (bar - index / 2) * 0.022,
-                    -0.04 + height / 2,
-                    0.004,
-                  ]}
-                >
-                  <boxGeometry args={[0.013, height, 0.008]} />
-                  <meshStandardMaterial
-                    color={selected ? '#ffffff' : color}
-                    emissive={selected ? '#ffffff' : color}
-                    emissiveIntensity={selected ? 0.7 : 0.25}
-                    toneMapped={false}
-                  />
-                </mesh>
-              )
-            })}
+            {/* Barras: tantas como nivel, cada una más alta que la anterior.
+                Las mismas que enseña el tutorial al recordar el nivel. */}
+            <XRDifficultyBars
+              difficulty={level}
+              lit={selected}
+              position={[0, -0.04, 0]}
+            />
           </XRPressable>
         )
       })}
@@ -384,6 +372,41 @@ function SoundToggle() {
   )
 }
 
+/**
+ * Volver a ver la demostración de cómo se juega.
+ *
+ * El tutorial se interpone una sola vez, así que quien lo saltó —o quien vuelve
+ * meses después— necesita una forma de recuperarlo. Lleva el mando en miniatura
+ * con su gatillo marcado: es literalmente lo que va a enseñar, y a un metro se
+ * reconoce mejor un objeto que un símbolo inventado.
+ */
+function TutorialButton() {
+  const { startGame } = useGame()
+
+  return (
+    <XRPressable
+      position={XR_MENU_TUTORIAL_OFFSET}
+      onSelect={() => startGame({ tutorial: true })}
+      hitSize={[0.14, 0.12, 0.06]}
+    >
+      <mesh position={[0, 0, -0.008]}>
+        <boxGeometry args={[0.11, 0.095, 0.014]} />
+        <meshStandardMaterial
+          color="#1c2634"
+          emissive="#94a3b8"
+          emissiveIntensity={0.22}
+          roughness={0.5}
+        />
+      </mesh>
+      {/* Quieto y sin latido: en el menú el latido competiría con el botón de
+          empezar, que es a donde va casi todo el mundo. */}
+      <group position={[0, 0.012, 0.02]} rotation={[0.25, -0.5, 0]} scale={0.5}>
+        <ControllerModel side={1} highlight pulsing={false} />
+      </group>
+    </XRPressable>
+  )
+}
+
 export function XRMenu() {
   const mode = useXR((state) => state.mode)
   const session = useXR((state) => state.session)
@@ -400,15 +423,19 @@ export function XRMenu() {
           panel detrás para no quedar flotando fuera de él. */}
       <XRPanel width={1.06} height={0.82} color={PANEL_COLOR} />
       <HoopHeightPicker />
+      <TutorialButton />
       <StickPicker />
       <DifficultyPicker />
       <ModeToggle />
       <SceneryPicker passthroughAvailable={mode === 'immersive-ar'} />
 
-      {/* Empezar */}
+      {/* Empezar. La primera vez la partida se abre con el tutorial —con las
+          gafas puestas no hay forma de saber que los palos se agarran, ni con
+          qué botón—, pero eso lo decide el juego y no este botón: dentro de la
+          sesión también se puede empezar desde el overlay con el teclado. */}
       <XRPressable
         position={[0, -0.29, 0]}
-        onSelect={startGame}
+        onSelect={() => startGame()}
         hitSize={[0.36, 0.13, 0.06]}
       >
         <mesh position={[0, 0, -0.008]}>

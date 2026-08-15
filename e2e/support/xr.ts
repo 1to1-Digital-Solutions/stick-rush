@@ -102,13 +102,16 @@ export async function pressAndRelease(
 }
 
 /**
- * Arranca una partida estando ya dentro de la sesión inmersiva.
+ * Pulsa «empezar» estando ya dentro de la sesión inmersiva.
  *
  * El canvas inmersivo se traga los clics, así que se usa el teclado sobre el
  * overlay. Se reintenta porque al entrar en sesión el documento puede perder el
  * foco durante un instante y la pulsación se va al vacío.
+ *
+ * La primera vez, esto deja el juego en el **tutorial** y no en la partida (ver
+ * `XRTutorial`): quien quiera jugar de verdad usa `startGameInsideSession`.
  */
-export async function startGameInsideSession(page: Page, attempts = 8) {
+export async function pressPlayInsideSession(page: Page, attempts = 8) {
   const score = page.getByRole('status')
   for (let attempt = 0; attempt < attempts; attempt++) {
     await page.getByRole('button', { name: 'Jugar' }).focus()
@@ -126,4 +129,32 @@ export async function startGameInsideSession(page: Page, attempts = 8) {
   throw new Error(
     `No se pudo arrancar la partida dentro de la sesión en ${attempts} intentos`,
   )
+}
+
+/**
+ * El botón de saltar el tutorial. Es el reflejo en DOM del botón 3D que ve el
+ * jugador: los dos llaman a lo mismo, y este además se alcanza con el teclado
+ * (el 3D hay que apuntarlo con el mando, que el emulador no sabe hacer).
+ */
+export function tutorialSkipButton(page: Page) {
+  return page.getByRole('button', { name: 'Saltar tutorial' })
+}
+
+/** Salta el tutorial si el juego lo ha antepuesto (solo la primera vez). */
+export async function skipTutorialIfShown(page: Page) {
+  const skip = tutorialSkipButton(page)
+  if ((await skip.count()) === 0) return
+
+  await skip.focus()
+  await page.keyboard.press('Enter')
+  await expect(skip).toHaveCount(0)
+}
+
+/**
+ * Arranca una partida estando ya dentro de la sesión inmersiva, dejando atrás
+ * el tutorial si es la primera vez en este navegador.
+ */
+export async function startGameInsideSession(page: Page, attempts = 8) {
+  await pressPlayInsideSession(page, attempts)
+  await skipTutorialIfShown(page)
 }
