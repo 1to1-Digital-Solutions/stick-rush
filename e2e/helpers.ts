@@ -9,10 +9,11 @@ export interface ScreenPoint {
 /**
  * Abre el juego y espera a que la escena 3D esté montada y pintando.
  *
- * El Canvas se carga con `dynamic(..., { ssr: false })`, así que al llegar al
- * HTML todavía no existe. Además, R3F no dimensiona el canvas hasta el primer
- * `requestAnimationFrame`, que no se ejecuta si la pestaña está en segundo
- * plano: esperar a que tenga tamaño es lo que distingue "cargando" de "listo".
+ * El Canvas se carga con `lazy()` y solo en el navegador (ver `GameScene`), así
+ * que al llegar al HTML todavía no existe. Además, R3F no dimensiona el canvas
+ * hasta el primer `requestAnimationFrame`, que no se ejecuta si la pestaña está
+ * en segundo plano: esperar a que tenga tamaño es lo que distingue "cargando"
+ * de "listo".
  */
 export async function openGame(page: Page, path = '/') {
   await page.goto(path)

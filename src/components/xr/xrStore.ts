@@ -67,3 +67,21 @@ export function getXrStore(): ReturnType<typeof createXRStore> {
   })
   return store
 }
+
+/**
+ * Cierra la sesión inmersiva, si la hay.
+ *
+ * Hace falta al desmontar el juego. El store vive fuera del árbol de React y
+ * `<XR>` no cierra nada al desmontarse: una aplicación que quite el juego con
+ * el visor puesto —el hub volviendo a su salón— dejaría viva una sesión atada a
+ * un Canvas que ya no existe, y el jugador se quedaría mirando una escena
+ * congelada, sin poder volver ni empezar otra (WebXR da una sesión por
+ * documento). En su propia web pasa lo mismo al navegar entre `/` y `/game`.
+ */
+export function endXrSession(): void {
+  const session = store?.getState().session
+  if (session == null) return
+  // Que la llamada falle es un desenlace previsto: la sesión puede estar
+  // cerrándose ya porque el jugador haya salido por su cuenta.
+  void session.end().catch(() => {})
+}

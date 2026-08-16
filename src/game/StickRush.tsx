@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import { GameProvider } from '../components/GameProvider'
 import { GameScene } from '../components/game/GameScene'
+import { endXrSession } from '../components/xr/xrStore'
 import { setAssetsBase } from '../lib/assets'
 
 export interface StickRushProps {
@@ -25,6 +27,11 @@ export function StickRush({ assetsBase }: StickRushProps) {
   // en cuanto se monta, es decir, antes de que corra ningún efecto. Escribir la
   // misma base dos veces no cambia nada, así que repetir el render es inocuo.
   if (assetsBase !== undefined) setAssetsBase(assetsBase)
+
+  // Quitar el juego tiene que devolver el visor a quien lo montó: la sesión no
+  // se cierra sola al desmontar el árbol (ver `xr/xrStore.ts`). Aquí y no en la
+  // escena porque es el borde del montaje, lo mismo que promete `unmount()`.
+  useEffect(() => () => endXrSession(), [])
 
   return (
     <GameProvider>

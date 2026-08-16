@@ -922,6 +922,12 @@ envoltorio delgado que lo monta a pantalla completa y se sigue desplegando igual
   `--color-primary` le cambiarían el aspecto a lo que las tuviera puestas. Las fuentes se
   toman de `--font-heading`/`--font-body` con respaldo del sistema; en su propia web las
   sigue poniendo el layout con `next/font`.
+- **Desmontar el juego cierra la sesión inmersiva** (`endXrSession`, en `xr/xrStore.ts`,
+  llamado desde `StickRush`). Salió de la revisión: el store vive fuera del árbol de React
+  y `<XR>` no cierra nada al desmontarse, así que el hub que quitara el juego con el visor
+  puesto dejaba viva una sesión atada a un Canvas que ya no existe —escena congelada, y sin
+  poder abrir otra, porque WebXR da una sesión por documento—. En su propia web pasaba lo
+  mismo al navegar entre `/` y `/game`.
 - **Lo que NO se hizo, a propósito**: no hay `onExit` ni ningún botón de "volver al hub".
   Sin la tarea gemela decidida, sería inventarse UI y dejar código sin usar. El hub puede
   desmontar el juego cuando quiera con `unmount()`.

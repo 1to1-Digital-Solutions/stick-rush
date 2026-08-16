@@ -11,8 +11,20 @@ vi.mock('../components/game/GameCanvas', () => ({
   GameCanvas: () => <div data-testid="escena" />,
 }))
 
+// El store de WebXR se crea fuera del árbol y sobrevive al desmontaje, así que
+// lo que hay que comprobar aquí es la llamada. Que la sesión se cierre de
+// verdad lo prueba `components/xr/xrStore.test.ts`.
+const { endXrSession } = vi.hoisted(() => ({ endXrSession: vi.fn() }))
+vi.mock('../components/xr/xrStore', () => ({
+  getXrStore: () => ({ enterAR: vi.fn(), enterVR: vi.fn() }),
+  endXrSession,
+}))
+
 afterEach(() => {
   cleanup()
+  // Después de `cleanup()`, que al desmontar el juego cierra la sesión: así
+  // cada test empieza sin las llamadas del anterior.
+  endXrSession.mockClear()
   // La base de los ficheros estáticos es estado de módulo: sin devolverla a la
   // raíz, un test le cambiaría las rutas al siguiente.
   setAssetsBase('/')
@@ -49,6 +61,18 @@ describe('montar el juego desde fuera', () => {
     expect(raiz?.className).toContain('stick-rush')
     expect(raiz?.className).toContain('h-full')
     expect(raiz?.className).not.toContain('h-dvh')
+  })
+
+  it('al quitarlo devuelve el visor a quien lo montaba', () => {
+    const { unmount } = render(<StickRush />)
+    expect(endXrSession).not.toHaveBeenCalled()
+
+    unmount()
+
+    // Sin esto, el hub que desmonta el juego con las gafas puestas deja viva
+    // una sesión atada a un Canvas que ya no existe: escena congelada y sin
+    // forma de volver, porque WebXR solo da una sesión por documento.
+    expect(endXrSession).toHaveBeenCalledTimes(1)
   })
 })
 

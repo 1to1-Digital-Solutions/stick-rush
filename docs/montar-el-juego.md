@@ -83,20 +83,26 @@ O con la función de montaje, si no la hay:
 import { mountStickRush } from 'stick-rush'
 import 'stick-rush/styles.css'
 
-const juego = mountStickRush(document.getElementById('sala'), {
-  assetsBase: '/juegos/stick-rush/',
-})
+const sala = document.getElementById('sala')
+if (sala) {
+  const juego = mountStickRush(sala, { assetsBase: '/juegos/stick-rush/' })
 
-// Al salir del juego:
-juego.unmount()
+  // Al salir del juego:
+  juego.unmount()
+}
 ```
+
+Quitar el juego —con `unmount()` o desmontando el componente— **cierra la sesión inmersiva si
+la había**. Tiene que ser así: WebXR da una sesión por documento y la que abre el juego está
+atada a su Canvas, de modo que dejarla viva después de quitarlo deja al jugador mirando una
+escena congelada y a la aplicación anfitriona sin poder abrir la suya.
 
 Toda la superficie pública es esa:
 
 | Nombre                         | Qué es                                                                                |
 | ------------------------------ | ------------------------------------------------------------------------------------- |
 | `StickRush`                    | El juego como componente de React.                                                    |
-| `mountStickRush(elemento, …)`  | Lo mismo sobre un elemento del DOM. Devuelve `{ unmount() }`.                          |
+| `mountStickRush(elemento, …)`  | Lo mismo sobre un elemento del DOM. Devuelve `{ unmount() }`, que además cierra la sesión. |
 | `assetsBase`                   | De dónde cuelgan los ficheros del paso 3. Por defecto, la raíz del sitio.              |
 | `stick-rush/styles.css`        | Los colores, la tipografía y las animaciones del juego.                                |
 
