@@ -4,7 +4,7 @@ A browser and mixed-reality game: sticks hang from a fairground machine, drop on
 after another at random intervals, and you have to catch them before they hit the
 ground.
 
-![Game in progress: the semicircular machine with sticks hanging and several already falling, score at 2 of 11](docs/partida.jpg)
+![Game in progress: the semicircular machine in the fairground with sticks hanging, one already falling, and the scoreboard reading 430 points, a ×2 streak and 2 of 11 sticks caught](docs/partida.jpg)
 
 The machine is a **horizontal semicircular ring** and the player stands at its
 centre, so the sticks fall all around them, within arm's reach, instead of onto
@@ -17,17 +17,30 @@ their head. The whole scene is at human scale (1 unit = 1 metre).
 3. Pick the difficulty — **Fácil, Medio, Difícil, Experto or Imposible** (easy to
    impossible) — which sets the fall speed: from about 5.7 s per stick on Fácil to
    under 1 s on Imposible.
-4. Press **Jugar** (play). A three-second countdown runs first — the sticks hang
-   there in plain sight but nothing can be taken yet — and then they drop one at a
-   time in **random order**, with a random gap between them: where a stick hangs
-   says nothing about when it falls.
+4. Press **Jugar** (play). A **three-second countdown** runs first — the sticks
+   hang there in plain sight but nothing can be taken yet — and then they drop one
+   at a time in **random order**, with a random gap between them: where a stick
+   hangs says nothing about when it falls. In the browser the count is a big
+   number over the scene; in a headset it is three rings that go out one per
+   second, since there is no text in there.
 5. Catch what you can. A stick can be taken any time between the start of the round
    and the moment it hits the ground, **including while it still hangs from the
-   ring** — getting ahead of a stick is playing, not cheating, and catching one up
-   there is worth double what rescuing it just above the floor is (reflex bonus).
-   Once it lands it stays on the floor, red, as a tally of what got away; it cannot
-   be picked back up. The round ends once every stick is resolved (caught or
-   dropped) and the score screen shows the result.
+   ring** — getting ahead of a stick is playing, not cheating. Once it lands it
+   stays on the floor, red, as a tally of what got away; it cannot be picked back
+   up. The round ends once every stick is resolved (caught or dropped) and the
+   score screen shows the result.
+
+**What a stick is worth.** The score is not how many you caught: each stick is
+100 points multiplied by three things, and all three pay for playing better
+rather than longer. The **difficulty** you picked (×1 on Fácil up to ×5 on
+Imposible), the **streak** of sticks caught without missing (+15% each up to
+×2.5, and one miss cuts it back to nothing) and your **reflexes** — taking a
+stick the moment it drops is worth double what rescuing it just above the floor
+is, and one still hanging from the ring counts as the best case. While you play,
+the scoreboard shows the points, the sticks caught out of the total and the
+streak once it is worth showing; the score screen adds the most that round could
+have given, so the figure has a scale, and your best streak. The whole formula is
+plain arithmetic in `src/lib/scoring.ts`, tested without a browser.
 
 **The two modes.** In *Práctica* every stick falls and missing one costs nothing:
 it is the game as it always was, to warm up. In *Desafío* you play with **three
@@ -59,9 +72,16 @@ ever stored: sharing is sending a line of text, not publishing a leaderboard.
 
 | Where | How you catch | What you see |
 | --- | --- | --- |
-| Desktop or mobile browser | Click or tap the stick | The machine in a town square, camera behind the player |
-| XR headset, **VR** mode | **Grab it with your hand** (squeeze button) | The full environment all around |
-| XR headset, **AR** mode | **Grab it with your hand** (squeeze button) | Only the machine, over your real room (passthrough) |
+| Desktop or mobile browser | Click or tap the stick | The machine in the fairground, camera behind the player |
+| XR headset | **Grab it with your hand** (squeeze button) | The fairground all around, or just the machine over your real room (passthrough) |
+
+There is a single way in — one button, **Entrar en el visor** — and the choice
+between the fairground and your own room is made *inside*, from the immersive
+menu, as often as you like. It used to be two buttons, one per mode, which tied
+the decision to before you put the headset on and gave no way back: WebXR cannot
+turn an `immersive-vr` session into an `immersive-ar` one without closing it and
+opening another. So the game always enters `immersive-ar` where the headset has
+it, and the two "modes" are the same session painted two ways.
 
 In a headset you do **not** catch sticks by pointing at them. The ring sits within
 arm's reach and you close your hand around a stick as it falls: the grab pointer is
@@ -69,9 +89,10 @@ a sphere attached to your fist, triggered by the squeeze button. The aiming ray 
 still there, but only to operate the menu — pointing at a stick does nothing.
 
 There is no DOM in an immersive session, so the menu is built out of geometry and
-shown in front of you when you enter VR/AR: a row of sticks to pick how many you
-want, five tiles with growing bars for the difficulty, a switch with three hearts
-that turns the challenge on, and a play button. **Not a single letter** — `<Text>`
+shown in front of you when you enter the headset: a row of sticks to pick how many
+you want, five tiles with growing bars for the difficulty, a switch with three
+hearts that turns the challenge on, a pair of tiles to choose between the
+fairground and your own room, and a play button. **Not a single letter** — `<Text>`
 would pull fonts from a CDN, and the game has to run on a headset with no internet
 access, so every control is drawn as the thing it means.
 A back button is always within reach during a round, and when it ends you choose
@@ -174,9 +195,10 @@ npm run capture    # regenerates docs/partida.jpg, the screenshot in this README
 Playwright needs its browser the first time: `npx playwright install chromium`.
 
 The unit tests cover the logic in `src/lib` — machine geometry, stick layout and
-release delays, fall times per difficulty, and the round lifecycle. The e2e tests
-drive the real game in Chromium against the production build: menu, round, catching
-sticks with the mouse, game over, and behaviour on a phone-sized screen.
+release delays, fall times per difficulty, what a catch is worth, the gaze anchor
+of the immersive UI, and the round lifecycle. The e2e tests drive the real game in
+Chromium against the production build: menu, round, catching sticks with the mouse,
+game over, and behaviour on a phone-sized screen.
 
 The e2e suite is served from `127.0.0.1` rather than `localhost` on purpose:
 `@react-three/xr` injects the WebXR emulator (IWER) when the hostname is exactly
@@ -199,18 +221,28 @@ src/
     styles.css          Colours, typography and screen animations
   components/
     GameProvider.tsx    Provides the game context
-    ui/StartScreen.tsx  Menu overlay (sticks, difficulty, play, VR/AR)
+    ui/StartScreen.tsx  Menu overlay (mode, sticks, difficulty, play, headset)
     game/               R3F canvas (always mounted), machine, sticks, ground, HUD, sound wiring
-    xr/                 WebXR store, VR/AR buttons, immersive menu, 3D HUD
+      SceneryFade.tsx   Curtain that hides the swap between fairground and passthrough
+    xr/                 WebXR store, entry button, immersive menu, 3D HUD
+      XRController.tsx  The controller in your hand, with the grab and ray pointers
+      XRGazeAnchor.tsx  Holds the immersive UI in front of the player's eyes
+      XRCountdown.tsx   The countdown as rings, one per second, because there is no text
   lib/
     gameConfig.ts       Constants: difficulties, speeds, colours, geometry
     gameStore.ts        Global game state (Context API)
+    gameMode.ts         Practice or challenge: lives and how a round ends
+    scoring.ts          What a stick is worth: difficulty, streak and reflexes
+    highScore.ts        Best score per mode, kept between visits
     hoopHeight.ts       Ring height for the player: headset, manual tweak, limits
+    xrAnchor.ts         Angle maths behind the gaze anchor: deadzone and follow
     stickLayout.ts      Stick layout, shuffled fall order and score token states
     sceneryLayout.ts    Fairground layout: stall ring, light garlands, ferris wheel
     shareResult.ts      Result text (pure) and the share sheet / clipboard fallback
     stickSwing.ts       Idle sway of the hanging sticks
     sound.ts            Synthesised game sounds (Web Audio, no files)
+    mutePreference.ts   The mute choice, kept between visits
+    tutorial.ts         Whether the in-headset tutorial has been seen
 e2e/                    Playwright tests
 docs/                   README screenshots and the mounting contract
 public/
@@ -218,16 +250,26 @@ public/
 godot/                  Desktop Godot port (frozen, see godot/README.md)
 ```
 
+Only what is worth naming is listed: `src/lib` also holds the smaller helpers
+(haptics, asset paths, `localStorage` access, and the icons and measurements of
+the immersive UI).
+
 Game state lives in a **Context API** store (`gameStore`), with no external library.
-It keeps only what the player decides — stick count, difficulty, caught, resolved and
-the phase — and **derives** "round over" from the resolved sticks, so there are never
-two sources of truth to keep in sync. The pure logic (where each stick hangs, when it
-drops, how the score is rendered) lives in `src/lib`, outside the 3D components,
-which is what makes it testable without a browser.
+It keeps only what the player decides — stick count, difficulty, mode, points, caught,
+resolved and the phase — and **derives** "round over" from the resolved sticks, so
+there are never two sources of truth to keep in sync. The pure logic (where each stick
+hangs, when it drops, what catching it is worth, how the score is rendered) lives in
+`src/lib`, outside the 3D components, which is what makes it testable without a
+browser.
 
 ## XR mode
 
-The VR/AR entry buttons only show up if the device supports WebXR (`navigator.xr`).
+There is a **single entry button**, and it only shows up if the device supports
+WebXR (`navigator.xr`). It opens an `immersive-ar` session where the headset offers
+one and falls back to `immersive-vr` where it does not; what tells the two "modes"
+apart is nothing but what gets drawn around the machine (`scenery` in the store),
+which is what lets the player change their mind without leaving the session. Where
+there is no passthrough to give, the option is shown disabled rather than lying.
 
 `@react-three/xr` registers two pointers per controller and the game treats them
 differently: the **grab** pointer (a sphere on your fist, fired by the squeeze
@@ -235,16 +277,29 @@ button) is what catches sticks, while the **ray** only drives the menu. `Stick`
 decides that by looking at the event's pointer type, so a stray ray can never catch
 anything. The mouse keeps working untouched, which is how you play on desktop.
 
-Controller and hand models are disabled on purpose: `@react-three/xr` downloads them
-from `cdn.jsdelivr.net`, and the game must work on a headset with no route to the
-internet — the CSP blocks it anyway. You orient yourself with the grab cursor and the
-ray, which are local geometry.
+The models `@react-three/xr` ships are disabled on purpose: it downloads them from
+`cdn.jsdelivr.net`, and the game must work on a headset with no route to the
+internet — the CSP blocks it anyway. Turning them off left the hands invisible, so
+the controller is drawn here out of four primitives
+(`components/xr/XRControllerModel.tsx`), with its squeeze trigger lit until you
+catch your first stick: that is how the grab button gets taught. The tutorial —
+shown once, the first time you put the headset on — and the button that replays it
+use that same drawing, because teaching one controller and handing over another
+would be teaching nothing.
 
 The `<Canvas>` with `<XR>` is **always mounted**: the desktop menu and HUD are DOM
-overlays on top of the 3D scene. That way, pressing "Entrar en VR" starts the session
-with the scene already in the tree and it shows up inside the headset. `<XROrigin>`
-places the player's feet at the centre of the semicircle, at 1:1 scale, with the ring
-just above head height and within arm's reach.
+overlays on top of the 3D scene. That way, pressing "Entrar en el visor" starts the
+session with the scene already in the tree and it shows up inside the headset.
+`<XROrigin>` places the player's feet at the centre of the semicircle, at 1:1 scale,
+with the ring just above head height and within arm's reach.
+
+The immersive UI hangs from the player's **gaze**, not from that origin: the −Z of
+the reference space is whatever the room was calibrated to, so entering while
+looking elsewhere used to leave the menu behind your back, invisible and impossible
+to aim at. It follows with a deadzone — turn your head a little and it stays put, so
+the ray has something still to point at; turn away for real and it comes round with
+you. The angle maths lives in `src/lib/xrAnchor.ts` and is tested without a browser
+or a headset, which is exactly what could not be done with the pointers.
 
 **The ring follows the player's height**, because standing, sitting or being short
 changes the reach entirely. It is placed 35 cm above the eyes — the relation the
@@ -257,16 +312,21 @@ and the correction is remembered in `localStorage`. Fall speed is scaled with th
 travel so that raising the ring does not hand out extra reaction time. All of it
 lives in `src/lib/hoopHeight.ts`, tested without a browser.
 
-In **VR** the machine stands in a fairground built out of geometry: stalls in a ring
-around the player, light garlands strung between posts and a slowly turning ferris
-wheel in the distance, with the HDRI behind them as sky and light. A photo has no
-parallax, so on its own it gives itself away as soon as the player moves their head.
-The whole set is instanced into a handful of draw calls (see `lib/sceneryLayout.ts`).
+With the **fairground** on, the machine stands in a set built out of geometry: stalls
+in a ring around the player, light garlands strung between posts and a slowly turning
+ferris wheel in the distance, with the HDRI behind them as sky and light. A photo has
+no parallax, so on its own it gives itself away as soon as the player moves their
+head. The whole set is instanced into a handful of draw calls (see
+`lib/sceneryLayout.ts`). This is also what the browser always draws: there is nothing
+to reveal behind it there.
 
-In **AR** neither the fairground, the background, the ground nor the environment is
-drawn: the set is the player's own room and covering it would break passthrough. The
-HDRI is kept only as a reflection source, so the machine does not look flat against
-the real room.
+With **passthrough** on, neither the fairground, the background, the ground nor the
+environment is drawn: the set is the player's own room and covering it would break
+passthrough. The HDRI is kept only as a reflection source, so the machine does not
+look flat against the real room. Switching between the two would be brutal done in
+one frame — a night-time square becomes your living room — so a curtain closes
+around the player's head, the set changes while it is shut, and it opens again
+(`components/game/SceneryFade.tsx`).
 
 ### Testing on a Quest headset
 
@@ -279,9 +339,10 @@ the local network needs HTTPS:
    macOS). The computer and the headset must be on the **same Wi-Fi network**.
 3. On the Quest browser open `https://<your-ip>:3000`.
 4. Accept the self-signed certificate warning ("advanced" → proceed).
-5. Press **Entrar en VR** or **Entrar en AR** and grant the WebXR permissions. Pick
-   your options in the floating menu, press play, and **squeeze** the grip button
-   with your hand around a stick to catch it.
+5. Press **Entrar en el visor** and grant the WebXR permissions. Pick your options in
+   the floating menu — including whether you want the fairground or your own room
+   around you — press play, and **squeeze** the grip button with your hand around a
+   stick to catch it.
 
 > Desktop mode still works with `npm run dev` (HTTP): menu → Jugar and click with the
 > mouse to catch.
