@@ -973,9 +973,10 @@ una decidida por su cuenta en la tarea que la introdujo: la mejor puntuación,
 que son dos —una por modo— (ver "Mejor puntuación"), la corrección de la altura
 del aro ("Altura del aro por jugador"), si ya se vio el tutorial del visor
 ("Tutorial de la primera vez") y si se juega en silencio ("El silencio se
-recuerda"). Todas son preferencias locales —números y banderas— y sigue sin
-haber identificadores, cookies ni nada que salga del navegador. Lo que queda
-solo en memoria es el escenario/passthrough y el modo de juego.
+recuerda") y el escenario/passthrough ("El escenario se recuerda"). Todas son
+preferencias locales —números y banderas— y sigue sin haber identificadores,
+cookies ni nada que salga del navegador. Lo que queda solo en memoria es el modo
+de juego.
 
 Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 

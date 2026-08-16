@@ -43,9 +43,15 @@ import { Ground } from './Ground'
  */
 function SceneBackdrop({ scenery }: { scenery: SceneryMode }) {
   const mode = useXR((state) => state.mode)
-  // Fuera de sesión inmersiva no hay passthrough que revelar: en el navegador
-  // el escenario va siempre puesto, pase lo que pase con el interruptor.
-  const isAR = mode != null && scenery === 'passthrough'
+  // Solo se quita el escenario cuando la sesión concedida es de verdad de
+  // realidad mixta. Fuera de sesión inmersiva no hay passthrough que revelar,
+  // y dentro de una `immersive-vr` tampoco: detrás no hay habitación, solo
+  // negro. Con la preferencia ahora recordada entre visitas, quien la dejó en
+  // passthrough podría abrir la siguiente sesión en VR —un visor sin
+  // passthrough, o uno que no conceda AR— y encontrarse mirando la nada sin
+  // saber por qué. La decisión se toma aquí, que es el único sitio que sabe
+  // qué tipo de sesión hay, y no en el botón que la eligió.
+  const isAR = mode === 'immersive-ar' && scenery === 'passthrough'
 
   return (
     <>

@@ -39,6 +39,12 @@ import {
   saveMuted,
   subscribeMuted,
 } from './mutePreference'
+import {
+  getScenery,
+  getServerScenery,
+  saveScenery,
+  subscribeScenery,
+} from './sceneryPreference'
 import { stickPoints } from './scoring'
 import {
   TUTORIAL_SECONDS,
@@ -247,9 +253,17 @@ export function useGameStoreValue(): GameStore {
   // los palos resueltos, así no hay fuentes de verdad que sincronizar ni
   // efectos que cambien de fase provocando renders en cascada.
   const [running, setRunning] = useState(false)
-  // Se entra con el escenario puesto: es la experiencia completa, y quien
-  // prefiera ver su cuarto lo quita desde el menú inmersivo.
-  const [scenery, setScenery] = useState<SceneryMode>('scene')
+  // El escenario tampoco es estado de React: vive en el navegador, como el
+  // silencio. Se entra con él puesto —es la experiencia completa— salvo que la
+  // visita anterior lo quitara. Que la preferencia diga passthrough no basta
+  // para servirlo: en una sesión sin habitación real detrás, quien pinta la
+  // escena lo ignora y mantiene el escenario.
+  const scenery = useSyncExternalStore(
+    subscribeScenery,
+    getScenery,
+    getServerScenery,
+  )
+  const setScenery = useCallback((value: SceneryMode) => saveScenery(value), [])
   // El silencio no es estado de React: vive en el navegador y el juego se
   // suscribe a él, como el récord. Se entra con sonido salvo que la visita
   // anterior lo dejara quitado, y el botón que lo cambia está en los dos menús,

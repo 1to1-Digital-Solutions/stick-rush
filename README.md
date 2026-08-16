@@ -125,11 +125,17 @@ Both menus — the desktop one and the immersive one — can mute it, and while
 muted the game never touches the Web Audio API at all. **The choice is
 remembered between visits** (`src/lib/mutePreference.ts`): in a headset, muting
 again every time you put the visor on is the most tedious gesture in the game.
+The scenery choice is remembered the same way
+(`src/lib/sceneryPreference.ts`), and for the same reason. It never overrides
+what the session can actually do: a stored `passthrough` opening as
+`immersive-vr` still gets the scenery, because behind that one there is no real
+room — only black.
+
 That is all the game ever writes to the browser — the best score (one integer
 per mode, `src/lib/highScore.ts`), the ring height correction
 (`src/lib/hoopHeight.ts`), whether the in-headset tutorial has been seen
-(`src/lib/tutorial.ts`) and this — five `localStorage` keys once you count a
-best score per mode, all of them local preferences with nothing that describes
+(`src/lib/tutorial.ts`), the scenery and this — six `localStorage` keys once you
+count a best score per mode, all of them local preferences with nothing that describes
 who is playing, no cookies and nothing that leaves the device. With storage unavailable — private mode, or a headset
 with it blocked — there is no record to show and nothing is remembered for next
 time, but everything still works: muting included, for as long as the visit
