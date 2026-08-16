@@ -2,26 +2,27 @@
 
 > **Cómo continuar tras reiniciar:** di a Claude «revisa `ESTADO.md` y continúa con el siguiente
 > paso». Este fichero es la memoria entre sesiones: mantenlo corto, veraz y al día.
+>
+> El **backlog** (qué falta por hacer) vive en **`TODO.md`**. Aquí va el estado y el
+> porqué de las decisiones; allí, la lista de tareas.
 
 ---
 
-## 📍 DÓNDE ESTAMOS (2026-08-04)
+## 📍 DÓNDE ESTAMOS (2026-08-06)
 
-El trabajo vivo está en **`fix/xr-mandos-y-menu-visible`** (10 commits sobre `main`):
-arregla el modo inmersivo —sin ella el visor es inutilizable— y recoge las mejoras de
-la tercera prueba con las gafas. Verificado ahí: lint y typecheck limpios, build OK,
-**110 unitarios** (`npm test`) y **32 e2e** (`npm run test:e2e`) en verde, y
-`npm audit` en **0 vulnerabilidades**.
+**El juego está desplegado en Vercel y probado en el visor: funciona.** Máquina y palos
+a buen tamaño, mandos bien, agarre bien, y los modos VR y AR alternan sin problema.
 
-`main` local = **371562b**, con Next 16.3.0 dentro.
-
-⚠️ **`main` va 4 commits por delante de `origin/main`.** El remoto no tiene nada que
-falte en local: para desplegar hay que **publicar**, no descargar.
+`main` = `origin/main`, y `origin` **solo tiene esa rama**. En local, solo `main` y
+`develop` (al día). Verificado: lint y typecheck limpios, build OK, **110 unitarios**
+(`npm test`) y **32 e2e** (`npm run test:e2e`) en verde, y `npm audit` en
+**0 vulnerabilidades**.
 
 Últimos hitos, en orden: primera versión jugable → tests + README → auditoría de
 seguridad → menú inmersivo y agarre tras probar con las gafas → tests de XR con
-emulador → historial reescrito para quitar el email personal → Next 16.3.0 → arreglo
-del modo inmersivo tras la segunda prueba con el visor.
+emulador → historial reescrito para quitar el email personal → Next 16.3.0 → los mandos
+no se registraban (segunda prueba) → puntuación, cuenta atrás, animaciones y selector
+VR/AR (tercera prueba) → limpieza de ramas → **desplegado y validado en hardware**.
 
 ## ⏭️ SIGUIENTE PASO (lo primero al volver)
 
@@ -78,14 +79,13 @@ del modo inmersivo tras la segunda prueba con el visor.
    Dependabot y `fix/xr-escena-y-hud` (04-08), y `master` y `agent/stick-rush-v1`
    (06-08). Dependabot recreará sus ramas solo sobre el `main` nuevo. Ojo: las PR #1 y #2
    apuntan a commits huérfanos desde la reescritura del historial.
-5. Consolidar git en local (manual): poner `develop` al día (está en el bootstrap y los
-   agentes de Organízate parten de develop). Queda el worktree muerto de
-   `agent/inicializar-proyecto-…` en `~/Proyectos/.organizate-worktrees/`, que **sí tiene
-   ~20 ficheros en staging** (el primer scaffold del 28 de junio, superado por `main`):
-   no hay nada que rescatar, pero `git worktree remove` necesitará `--force`. Ramas
-   locales ya integradas que se pueden borrar: `chore/tests-y-readme`,
-   `feat/xr-menu-inmersivo-y-seguridad`, `fix/xr-escena-y-hud`,
-   `fix/xr-mandos-y-menu-visible`, `test/xr-emulado`.
+5. ~~Consolidar git en local.~~ **HECHO (2026-08-06).** Solo quedan `main` y `develop`,
+   las dos en el mismo commit y sin worktrees sueltos. Se borraron las seis ramas ya
+   integradas y el worktree muerto de `agent/inicializar-proyecto-…` (693 MB; sus 22
+   ficheros en staging eran el scaffold del 28 de junio, con Zustand, que el proyecto
+   descartó). Antes de forzar cada borrado se comprobó que la rama no tuviera ni un
+   fichero fuera de `main`; en el caso de `fix/xr-mandos-y-menu-visible` se verificó
+   además que su árbol fuera **idéntico** al del merge de la PR #10.
 
 ## 🧭 Convenciones de trabajo aprendidas
 
@@ -1010,7 +1010,10 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 - `.claude/` y `.organizate/install-state.json` se publicarán y dejan ver el tooling
   interno. Sin secretos, pero es una decisión.
 
-## Pendiente / próximos pasos
+## Caveats y notas
+
+*(La lista de tareas pendientes está en **`TODO.md`**. Aquí solo quedan las trampas del
+entorno: no son tareas, son cosas con las que tropezar.)*
 
 - **Etiquetar `v0.2.0` al integrar la separación del juego** (ver "El juego, separado de su
   web"): es lo que xrcade instalará (`#v0.2.0`). Sin el tag, quien lo consuma se lleva
@@ -1051,9 +1054,6 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
   lint` lo recorre entero: los `globalIgnores` de `eslint.config.mjs` son relativos
   (`.next/**`) y no alcanzan `.claude/worktrees/*/.next/**`. Salían >13.000 problemas,
   ninguno del proyecto. Se resolvió eliminando el worktree, no tocando la config.
-
-## Caveats y notas
-
 - El Canvas R3F se carga con `dynamic(..., { ssr: false })`; depende de WebGL/`window`.
 - El `GameProvider` se monta a nivel de página (no en el root layout) para no
   arrastrar contexto cliente a la página interna `/_global-error`.
