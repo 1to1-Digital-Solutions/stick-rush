@@ -32,6 +32,9 @@ class FakeAudioContext {
 beforeEach(() => {
   vi.useFakeTimers()
   vi.stubGlobal('AudioContext', FakeAudioContext)
+  // El silencio se recuerda entre visitas, y jsdom comparte `localStorage`
+  // entre tests: sin vaciarlo, el que silencia dejaría mudo al siguiente.
+  localStorage.clear()
   contexts.length = 0
   play.mockClear()
 })

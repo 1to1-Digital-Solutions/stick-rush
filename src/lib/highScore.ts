@@ -7,9 +7,9 @@ import { gameStorage } from './storage'
  * Un entero por modo en `localStorage`, sin identificadores ni nada que describa
  * a quien juega. Rompe a propósito el "cero almacenamiento" que la auditoría de
  * seguridad dio por bueno, porque un récord que se borra al recargar no es un
- * récord; lo demás que se guarda es la altura del aro (ver `hoopHeight.ts`), y
- * el resto de preferencias (silencio, escenario, modo) siguen viviendo solo en
- * memoria.
+ * récord; lo demás que se guarda son la altura del aro (`hoopHeight.ts`), el
+ * tutorial ya visto (`tutorial.ts`) y el silencio (`mutePreference.ts`). El
+ * escenario y el modo siguen viviendo solo en memoria.
  *
  * **Un récord por modo** y no uno global: un desafío se corta al quedarse sin
  * vidas, así que con los mismos palos y la misma dificultad nunca puede puntuar

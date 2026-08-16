@@ -33,6 +33,12 @@ import {
   hoopHeightFor,
   saveHoopAdjustment,
 } from './hoopHeight'
+import {
+  getMuted,
+  getServerMuted,
+  saveMuted,
+  subscribeMuted,
+} from './mutePreference'
 import { stickPoints } from './scoring'
 import {
   TUTORIAL_SECONDS,
@@ -124,9 +130,9 @@ export interface GameStore {
   /** Escenario o passthrough en sesión inmersiva. */
   scenery: SceneryMode
   /**
-   * Juego en silencio. No se guarda entre visitas: se guarda lo que cuesta
-   * rehacer —el récord y la altura del aro—, y volver a pulsar un botón del
-   * menú no lo es, así que cada visita arranca con sonido.
+   * Juego en silencio. Se guarda entre visitas (ver `mutePreference.ts`): con
+   * el visor puesto, volver a apagar el sonido cada vez que uno se pone las
+   * gafas es el gesto más incómodo del juego.
    */
   muted: boolean
   /**
@@ -244,10 +250,11 @@ export function useGameStoreValue(): GameStore {
   // Se entra con el escenario puesto: es la experiencia completa, y quien
   // prefiera ver su cuarto lo quita desde el menú inmersivo.
   const [scenery, setScenery] = useState<SceneryMode>('scene')
-  // Se entra con sonido: es parte de cómo se juega —en el visor es lo único
-  // que avisa de un fallo sin mirar el marcador— y quien lo prefiera mudo lo
-  // apaga desde el menú, de escritorio o inmersivo.
-  const [muted, setMuted] = useState(false)
+  // El silencio no es estado de React: vive en el navegador y el juego se
+  // suscribe a él, como el récord. Se entra con sonido salvo que la visita
+  // anterior lo dejara quitado, y el botón que lo cambia está en los dos menús,
+  // el de escritorio y el inmersivo.
+  const muted = useSyncExternalStore(subscribeMuted, getMuted, getServerMuted)
   const [countdown, setCountdown] = useState(0)
   const [runId, setRunId] = useState(0)
   // La corrección de la altura del aro sale de lo guardado en visitas
@@ -348,6 +355,11 @@ export function useGameStoreValue(): GameStore {
   const setStickCount = useCallback((count: number) => {
     setStickCountState(clampStickCount(count))
   }, [])
+
+  // Escribir es todo lo que hace falta: el almacén avisa a quien lo mire y de
+  // ahí vuelve `muted`. Guardar además una copia en React sería tener dos
+  // versiones de lo mismo que pueden discrepar.
+  const setMuted = useCallback((value: boolean) => saveMuted(value), [])
 
   // Se guarda al tocarlo y no al salir: en el visor no hay "salir", uno se
   // quita las gafas. Y solo cuando el valor cambia de verdad, para no escribir

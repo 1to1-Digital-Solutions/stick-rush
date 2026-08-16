@@ -99,13 +99,18 @@ second of the countdown ticks, rising as the start approaches. It only starts
 after your first click — pressing Enter on a button counts, since that fires one
 too: browsers refuse to play audio before that.
 Both menus — the desktop one and the immersive one — can mute it, and while
-muted the game never touches the Web Audio API at all. The choice is not
-persisted: the game only writes to the browser what would be tedious to redo —
-the best score (a single integer per mode, see `src/lib/highScore.ts`) and the
-ring height correction (`src/lib/hoopHeight.ts`), both plain numbers in
-`localStorage` with nothing that describes who is playing. With storage
-unavailable — private mode, or a headset with it blocked — there is simply no
-record to show, and everything else works the same.
+muted the game never touches the Web Audio API at all. **The choice is
+remembered between visits** (`src/lib/mutePreference.ts`): in a headset, muting
+again every time you put the visor on is the most tedious gesture in the game.
+That is all the game ever writes to the browser — the best score (one integer
+per mode, `src/lib/highScore.ts`), the ring height correction
+(`src/lib/hoopHeight.ts`), whether the in-headset tutorial has been seen
+(`src/lib/tutorial.ts`) and this — four `localStorage` keys, all of them local
+preferences with nothing that describes who is playing, no cookies and nothing
+that leaves the device. With storage unavailable — private mode, or a headset
+with it blocked — there is no record to show and nothing is remembered for next
+time, but everything still works: muting included, for as long as the visit
+lasts.
 
 In a headset the game also **speaks through the controllers** (WebXR haptics),
 played through `XRInputSource.gamepad.hapticActuators`, so there is nothing to

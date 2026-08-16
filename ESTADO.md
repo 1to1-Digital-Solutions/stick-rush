@@ -384,13 +384,11 @@ se notaban si dabas la vuelta a la cabeza.
 
 El sonido no se podía ni bajar ni quitar, y en el visor va pegado a los oídos.
 
-- La preferencia es una bandera del store (`muted`, como `scenery`) y **no se
-  guarda entre visitas**: la auditoría dejó el juego sin storage y persistirla
-  es una decisión aparte, no un efecto colateral de esta tarea. Sí sobrevive a
-  la partida y a volver al menú.
-  > Después se abrió el storage para el récord (ver "Mejor puntuación"), pero
-  > la decisión fue guardar **solo** eso, así que el silencio sigue durando lo
-  > que dure la visita.
+- La preferencia era una bandera del store (`muted`, como `scenery`) que **no se
+  guardaba entre visitas**: la auditoría dejó el juego sin storage y persistirla
+  era una decisión aparte, no un efecto colateral de esa tarea.
+  > **Decidido después** (con el OK del dueño del repo): se guarda. Ver
+  > "El silencio se recuerda" más abajo.
 - **En silencio no se toca la Web Audio API**: ni contexto, ni nodos, ni
   permiso de reproducción. `useGameSound` crea el contexto solo cuando hay
   gesto del jugador *y* el sonido está activo; al silenciar a media partida, la
@@ -854,6 +852,39 @@ un palo y que un botón del menú ha respondido.
 - **Sin validar en hardware**, como todo lo que se pulsa en el visor: el emulador no
   propaga sus punteros. Ver el punto (h) de "SIGUIENTE PASO".
 
+## El silencio se recuerda (misma rama)
+
+Hasta ahora el silencio duraba lo que durara la pestaña: al recargar, el juego
+volvía a sonar. En el visor eso significa volver a apagarlo cada vez que uno se
+pone las gafas, para deshacer algo que ya había decidido.
+
+- **Se rompe el "sin storage" a propósito y con el OK del dueño del repo**, que es
+  como se abrió antes para el récord, la altura del aro y el tutorial. La clave es
+  `stick-rush:muted` y el argumento es el mismo que el de la altura del aro: es una
+  preferencia de cómo se juega, no un dato de la partida.
+- **Solo se escribe el silencio.** Volver al sonido borra la clave en vez de guardar
+  un cero: el arranque por defecto es con sonido, así que el navegador solo guarda
+  algo mientras el jugador se aparte de él. Y solo el valor exacto cuenta como
+  silencio: lo leído es entrada externa, y el lado seguro es sonar.
+- **No es estado de React**, por lo mismo que el récord (ver "Mejor puntuación"): el
+  botón de silenciar sí se prerenderiza —está en la pantalla de inicio— y el servidor
+  no ve el almacenamiento, así que leerlo en un efecto al montar desajustaría la
+  hidratación. Con `useSyncExternalStore` el servidor devuelve "con sonido" y el
+  navegador su valor, sin que React se queje. Lo vigila un e2e que además mira la
+  consola: un error de hidratación no se ve en el botón, se ve ahí.
+- **Sin almacenamiento el botón sigue funcionando** (`inMemory` en
+  `mutePreference.ts`). No es un adorno: si la preferencia solo viviera en lo
+  guardado, en modo privado pulsar "Silenciar" no cambiaría nada —lo guardado no
+  cambia, así que la lectura devolvería siempre lo mismo— y el juego seguiría sonando
+  por más que se pulsara. Se pierde al recargar, no durante la visita. Lo cubren un
+  unitario y un e2e que bloquea `localStorage` de verdad.
+- **Dos pestañas ven lo mismo**: se escucha el evento `storage`, igual que el récord.
+- **El escenario (`scenery`) se queda sin guardar**, y no por pereza: guardar
+  `passthrough` y entrar luego en una sesión `immersive-vr` —un visor sin
+  passthrough— dejaría al jugador mirando la nada, porque el decorado no se pinta y
+  no hay habitación real detrás. Persistirlo pide antes una caída a `scene` cuando la
+  sesión no da passthrough. Queda como tarea de seguimiento.
+
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 
 Con las gafas puestas el modo inmersivo era **inutilizable**: no se veían los mandos,
@@ -890,9 +921,14 @@ Auditoría completa antes de hacer el repo público: **sin secretos en el histor
 source maps y sin rutas locales en el bundle. La app es 100 % estática: ni middleware,
 ni Server Actions, ni API routes, ni `next/image`.
 
-[^1]: **Ya no es cierto del todo**: la mejor puntuación se guarda en
-`localStorage` (ver "Mejor puntuación" más abajo). Es un entero y nada más: sigue
-sin haber identificadores, cookies ni nada que salga del navegador.
+[^1]: **Ya no es cierto**: el juego escribe cuatro claves en `localStorage`, cada
+una decidida por su cuenta y con el OK del dueño del repo: la mejor puntuación
+por modo (ver "Mejor puntuación"), la corrección de la altura del aro ("Altura
+del aro por jugador"), si ya se vio el tutorial del visor ("Tutorial de la
+primera vez") y si se juega en silencio ("El silencio se recuerda"). Todas son
+preferencias locales —números y banderas— y sigue sin haber identificadores,
+cookies ni nada que salga del navegador. Lo que queda solo en memoria es el
+escenario/passthrough y el modo de juego.
 
 Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 

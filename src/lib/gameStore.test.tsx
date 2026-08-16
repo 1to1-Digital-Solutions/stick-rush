@@ -4,6 +4,7 @@ import { MACHINE_HEIGHT, MAX_STICKS, MIN_STICKS } from './gameConfig'
 import { COUNTDOWN_SECONDS, useGameStoreValue } from './gameStore'
 import { HIGH_SCORE_KEYS } from './highScore'
 import { HOOP_ADJUST_RANGE, HOOP_ADJUST_STEP } from './hoopHeight'
+import { MUTED_KEY } from './mutePreference'
 import { TUTORIAL_SECONDS, TUTORIAL_SEEN_KEY } from './tutorial'
 
 // La cuenta atrás usa `setTimeout`, así que todo el fichero corre con relojes
@@ -624,6 +625,42 @@ describe('silencio', () => {
     expect(result.current.muted).toBe(true)
 
     act(() => result.current.resetGame())
+    expect(result.current.muted).toBe(true)
+  })
+
+  it('la elección sobrevive a la visita', () => {
+    // Es para lo que se guarda: en el visor, apagar el sonido cada vez que uno
+    // se pone las gafas es el gesto más incómodo del juego.
+    const first = renderHook(() => useGameStoreValue())
+    act(() => first.result.current.setMuted(true))
+    first.unmount()
+
+    const { result } = renderHook(() => useGameStoreValue())
+    expect(result.current.muted).toBe(true)
+  })
+
+  it('volver al sonido también se recuerda', () => {
+    // El otro lado del mismo trato: quien lo enciende no se encuentra el juego
+    // mudo otra vez en la visita siguiente.
+    const first = renderHook(() => useGameStoreValue())
+    act(() => first.result.current.setMuted(true))
+    act(() => first.result.current.setMuted(false))
+    first.unmount()
+
+    const { result } = renderHook(() => useGameStoreValue())
+    expect(result.current.muted).toBe(false)
+  })
+
+  it('lo que silencie otra pestaña se ve aquí', () => {
+    // El navegador cuenta con el evento `storage` que otra pestaña ha escrito.
+    // Sin escucharlo, silenciar en una dejaría la otra sonando.
+    const { result } = renderHook(() => useGameStoreValue())
+
+    act(() => {
+      localStorage.setItem(MUTED_KEY, '1')
+      window.dispatchEvent(new StorageEvent('storage', { key: MUTED_KEY }))
+    })
+
     expect(result.current.muted).toBe(true)
   })
 })

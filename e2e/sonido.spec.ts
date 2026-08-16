@@ -90,6 +90,61 @@ test.describe('Sonido', () => {
     expect(await readSpy(page)).toEqual({ contexts: 0, oscillators: 0 })
   })
 
+  test('el silencio se recuerda en la visita siguiente', async ({ page }) => {
+    // Es para lo que se guarda: con el visor puesto, volver a apagar el sonido
+    // cada vez que uno se pone las gafas es el gesto más incómodo del juego.
+    // De paso vigila la consola: el botón se prerenderiza en el servidor, que
+    // no ve el almacenamiento, así que leer la preferencia por el camino
+    // equivocado daría un error de hidratación aunque el botón se vea bien.
+    const errors: string[] = []
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text())
+    })
+    page.on('pageerror', (error) => errors.push(error.message))
+
+    await installAudioSpy(page)
+    await openGame(page)
+    await page.getByRole('button', { name: 'Silenciar' }).click()
+
+    await openGame(page)
+
+    await expect(page.getByRole('button', { name: 'Silenciar' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    // Y calla de verdad, no solo en el botón.
+    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await catchStick(page)
+    expect(await readSpy(page)).toEqual({ contexts: 0, oscillators: 0 })
+
+    expect(errors).toEqual([])
+  })
+
+  test('sin poder guardar nada, silenciar funciona igual', async ({ page }) => {
+    // Modo privado y visores con el almacenamiento vetado: `localStorage`
+    // existe pero lanza al tocarlo. Ahí se pierde el recuerdo entre visitas,
+    // no el botón: silenciar es una función del juego, no un adorno.
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get() {
+          throw new DOMException('bloqueado', 'SecurityError')
+        },
+      })
+    })
+    await installAudioSpy(page)
+    await openGame(page)
+
+    const toggle = page.getByRole('button', { name: 'Silenciar' })
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+
+    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await catchStick(page)
+
+    expect(await readSpy(page)).toEqual({ contexts: 0, oscillators: 0 })
+  })
+
   test('quitar el silencio devuelve el sonido sin recargar', async ({ page }) => {
     // El fallo caro de un interruptor de sonido: que volver a activarlo deje el
     // juego mudo el resto de la sesión porque el contexto nace ya suspendido.
