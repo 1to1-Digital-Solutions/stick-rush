@@ -24,6 +24,10 @@ npm install "github:1to1-Digital-Solutions/stick-rush#v0.2.0"
 El tag `vX.Y.Z` acompaña a la `version` de `package.json`. Sin tag (`#main`) también funciona,
 pero entonces el juego cambia bajo los pies de quien lo monta.
 
+Mientras el repositorio sea privado, quien instale necesita acceso de lectura: `npm install`
+desde git usa las credenciales de git de la máquina, así que en un CI que no las tenga la
+instalación falla al clonar.
+
 React, three y las tres librerías de `@react-three/*` son **peer dependencies**: las pone la
 aplicación anfitriona y así solo hay una copia de cada una en la página. Dos copias de React
 rompen los hooks, y dos de three, la escena.
@@ -146,6 +150,15 @@ las define, y si no, del sistema.
 
 1. Sube `version` en `package.json` siguiendo semver. La superficie que versiona es la de este
    documento: cambiarla es un cambio mayor.
-2. Commitea, integra y etiqueta el commit de `main` como `vX.Y.Z`.
-3. En quien lo consuma: `npm install "github:1to1-Digital-Solutions/stick-rush#vX.Y.Z"` y
+2. Commitea e integra en `main`. Etiquetar antes de integrar deja el tag en un commit que
+   luego no está en `main`.
+3. Etiqueta ese commit de `main` y **publica** el tag: mientras no esté en el remoto, quien
+   instale por tag no lo encuentra.
+
+   ```bash
+   git tag -a vX.Y.Z <commit de main> -m "vX.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+4. En quien lo consuma: `npm install "github:1to1-Digital-Solutions/stick-rush#vX.Y.Z"` y
    `npx stick-rush-assets <destino>`.
