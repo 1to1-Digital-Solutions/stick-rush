@@ -105,9 +105,9 @@ again every time you put the visor on is the most tedious gesture in the game.
 That is all the game ever writes to the browser — the best score (one integer
 per mode, `src/lib/highScore.ts`), the ring height correction
 (`src/lib/hoopHeight.ts`), whether the in-headset tutorial has been seen
-(`src/lib/tutorial.ts`) and this — four `localStorage` keys, all of them local
-preferences with nothing that describes who is playing, no cookies and nothing
-that leaves the device. With storage unavailable — private mode, or a headset
+(`src/lib/tutorial.ts`) and this — five `localStorage` keys once you count a
+best score per mode, all of them local preferences with nothing that describes
+who is playing, no cookies and nothing that leaves the device. With storage unavailable — private mode, or a headset
 with it blocked — there is no record to show and nothing is remembered for next
 time, but everything still works: muting included, for as long as the visit
 lasts.

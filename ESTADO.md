@@ -387,7 +387,7 @@ El sonido no se podía ni bajar ni quitar, y en el visor va pegado a los oídos.
 - La preferencia era una bandera del store (`muted`, como `scenery`) que **no se
   guardaba entre visitas**: la auditoría dejó el juego sin storage y persistirla
   era una decisión aparte, no un efecto colateral de esa tarea.
-  > **Decidido después** (con el OK del dueño del repo): se guarda. Ver
+  > **Decidido después**, en la tarea que pedía decidirlo: se guarda. Ver
   > "El silencio se recuerda" más abajo.
 - **En silencio no se toca la Web Audio API**: ni contexto, ni nodos, ni
   permiso de reproducción. `useGameSound` crea el contexto solo cuando hay
@@ -858,8 +858,8 @@ Hasta ahora el silencio duraba lo que durara la pestaña: al recargar, el juego
 volvía a sonar. En el visor eso significa volver a apagarlo cada vez que uno se
 pone las gafas, para deshacer algo que ya había decidido.
 
-- **Se rompe el "sin storage" a propósito y con el OK del dueño del repo**, que es
-  como se abrió antes para el récord, la altura del aro y el tutorial. La clave es
+- **Se rompe el "sin storage" a propósito**, que es lo que la tarea pedía decidir, y
+  como ya se abrió antes para el récord, la altura del aro y el tutorial. La clave es
   `stick-rush:muted` y el argumento es el mismo que el de la altura del aro: es una
   preferencia de cómo se juega, no un dato de la partida.
 - **Solo se escribe el silencio.** Volver al sonido borra la clave en vez de guardar
@@ -921,14 +921,14 @@ Auditoría completa antes de hacer el repo público: **sin secretos en el histor
 source maps y sin rutas locales en el bundle. La app es 100 % estática: ni middleware,
 ni Server Actions, ni API routes, ni `next/image`.
 
-[^1]: **Ya no es cierto**: el juego escribe cuatro claves en `localStorage`, cada
-una decidida por su cuenta y con el OK del dueño del repo: la mejor puntuación
-por modo (ver "Mejor puntuación"), la corrección de la altura del aro ("Altura
-del aro por jugador"), si ya se vio el tutorial del visor ("Tutorial de la
-primera vez") y si se juega en silencio ("El silencio se recuerda"). Todas son
-preferencias locales —números y banderas— y sigue sin haber identificadores,
-cookies ni nada que salga del navegador. Lo que queda solo en memoria es el
-escenario/passthrough y el modo de juego.
+[^1]: **Ya no es cierto**: el juego escribe cinco claves en `localStorage`, cada
+una decidida por su cuenta en la tarea que la introdujo: la mejor puntuación,
+que son dos —una por modo— (ver "Mejor puntuación"), la corrección de la altura
+del aro ("Altura del aro por jugador"), si ya se vio el tutorial del visor
+("Tutorial de la primera vez") y si se juega en silencio ("El silencio se
+recuerda"). Todas son preferencias locales —números y banderas— y sigue sin
+haber identificadores, cookies ni nada que salga del navegador. Lo que queda
+solo en memoria es el escenario/passthrough y el modo de juego.
 
 Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 
