@@ -66,6 +66,13 @@
       no emiten eventos sobre la escena. El test queda escrito como `fixme` en
       `e2e/xr.spec.ts`. Línea abierta si alguien quiere retomarla — pero ojo, esa
       limitación ya tapó un fallo real una vez (ver `ESTADO.md`).
+- [ ] **El `package-lock.json` está escrito en el formato de npm 11** (lleva los campos
+      `libc` y no lista los paquetes empaquetados de `@tailwindcss/oxide-wasm32-wasi`).
+      El CI corre con Node 22, que trae npm 10: ahí un `npm install` reescribe unas 220
+      líneas del lock y vuelve a ensuciar el árbol, justo lo que se acaba de arreglar.
+      `npm ci` es estable con las dos versiones, así que el CI no se rompe. Para cerrarlo
+      hay que fijar la versión de npm (`packageManager` en `package.json`) o subir el CI
+      a Node 24, y regenerar el lock con esa versión.
 
 ---
 
