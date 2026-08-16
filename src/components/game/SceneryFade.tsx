@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BackSide } from 'three'
 import type { Mesh, MeshBasicMaterial } from 'three'
-import { BACKDROP_COLOR } from '@/lib/gameConfig'
-import type { SceneryMode } from '@/lib/gameStore'
+import { BACKDROP_COLOR } from '../../lib/gameConfig'
+import type { SceneryMode } from '../../lib/gameStore'
 
 /**
  * Funde entre el escenario y el passthrough.

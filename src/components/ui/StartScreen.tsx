@@ -7,17 +7,17 @@ import {
   LIFE_COLOR,
   MAX_STICKS,
   MIN_STICKS,
-} from '@/lib/gameConfig'
+} from '../../lib/gameConfig'
 import {
   type GameMode,
   GAME_MODE_HINTS,
   GAME_MODE_LABELS,
   GAME_MODE_ORDER,
   startingLives,
-} from '@/lib/gameMode'
-import { useGame } from '@/lib/gameStore'
+} from '../../lib/gameMode'
+import { useGame } from '../../lib/gameStore'
 import { HeartIcon, InfinityIcon } from './icons'
-import { XRWrapper } from '@/components/xr/XRWrapper'
+import { XRWrapper } from '../xr/XRWrapper'
 
 const STICK_OPTIONS = Array.from(
   { length: MAX_STICKS - MIN_STICKS + 1 },

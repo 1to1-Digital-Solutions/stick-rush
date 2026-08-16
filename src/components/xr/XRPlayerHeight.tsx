@@ -4,9 +4,9 @@ import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useXR } from '@react-three/xr'
 import { Vector3 } from 'three'
-import { useGame } from '@/lib/gameStore'
-import { hasFloorReference, headsetEyeHeight } from '@/lib/hoopHeight'
-import { followRatio } from '@/lib/xrAnchor'
+import { useGame } from '../../lib/gameStore'
+import { hasFloorReference, headsetEyeHeight } from '../../lib/hoopHeight'
+import { followRatio } from '../../lib/xrAnchor'
 
 /**
  * Mide a qué altura tiene la cabeza quien lleva el visor, para que el aro se

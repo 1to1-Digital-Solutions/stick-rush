@@ -1,11 +1,11 @@
 'use client'
 
-import { DIFFICULTY_LABELS, LIFE_COLOR } from '@/lib/gameConfig'
-import { startingLives } from '@/lib/gameMode'
-import { useGame } from '@/lib/gameStore'
-import { maxScore } from '@/lib/scoring'
-import { type ShareStatus, useShareResult } from '@/lib/useShareResult'
-import { HeartIcon, ShareIcon } from '@/components/ui/icons'
+import { DIFFICULTY_LABELS, LIFE_COLOR } from '../../lib/gameConfig'
+import { startingLives } from '../../lib/gameMode'
+import { useGame } from '../../lib/gameStore'
+import { maxScore } from '../../lib/scoring'
+import { type ShareStatus, useShareResult } from '../../lib/useShareResult'
+import { HeartIcon, ShareIcon } from '../ui/icons'
 
 /**
  * Vidas que quedan, una por corazón: llenos los que conservas, de contorno los

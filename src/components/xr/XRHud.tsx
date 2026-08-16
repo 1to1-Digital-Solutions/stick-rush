@@ -1,13 +1,13 @@
 'use client'
 
 import { useXR } from '@react-three/xr'
-import { LIFE_COLOR } from '@/lib/gameConfig'
-import { startingLives } from '@/lib/gameMode'
-import { useGame } from '@/lib/gameStore'
-import { scoreRatio } from '@/lib/scoring'
-import { type StickStatus, stickStatuses } from '@/lib/stickLayout'
-import { type ShareStatus, useShareResult } from '@/lib/useShareResult'
-import { XR_HUD_POSITION, XR_QUIT_POSITION, XR_QUIT_YAW } from '@/lib/xrLayout'
+import { LIFE_COLOR } from '../../lib/gameConfig'
+import { startingLives } from '../../lib/gameMode'
+import { useGame } from '../../lib/gameStore'
+import { scoreRatio } from '../../lib/scoring'
+import { type StickStatus, stickStatuses } from '../../lib/stickLayout'
+import { type ShareStatus, useShareResult } from '../../lib/useShareResult'
+import { XR_HUD_POSITION, XR_QUIT_POSITION, XR_QUIT_YAW } from '../../lib/xrLayout'
 import {
   PANEL_COLOR,
   XRCheckIcon,

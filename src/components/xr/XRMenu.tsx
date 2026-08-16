@@ -8,10 +8,10 @@ import {
   MAX_STICKS,
   MIN_STICKS,
   STICK_COLOR,
-} from '@/lib/gameConfig'
-import { CHALLENGE_LIVES } from '@/lib/gameMode'
-import { useGame } from '@/lib/gameStore'
-import { HOOP_ADJUST_RANGE } from '@/lib/hoopHeight'
+} from '../../lib/gameConfig'
+import { CHALLENGE_LIVES } from '../../lib/gameMode'
+import { useGame } from '../../lib/gameStore'
+import { HOOP_ADJUST_RANGE } from '../../lib/hoopHeight'
 import {
   XR_DIFFICULTY_SPACING,
   XR_HOOP_DOWN_OFFSET,
@@ -24,7 +24,7 @@ import {
   XR_MODE_TOGGLE_OFFSET,
   XR_SCENERY_PICKER_OFFSET,
   XR_STICK_PICKER_SPACING,
-} from '@/lib/xrLayout'
+} from '../../lib/xrLayout'
 import { ControllerModel } from './XRControllerModel'
 import {
   PANEL_COLOR,

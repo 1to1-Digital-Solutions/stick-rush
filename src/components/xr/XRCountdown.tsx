@@ -4,8 +4,8 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useXR } from '@react-three/xr'
 import type { Group, MeshBasicMaterial } from 'three'
-import { COUNTDOWN_SECONDS, useGame } from '@/lib/gameStore'
-import { XR_COUNTDOWN_POSITION } from '@/lib/xrLayout'
+import { COUNTDOWN_SECONDS, useGame } from '../../lib/gameStore'
+import { XR_COUNTDOWN_POSITION } from '../../lib/xrLayout'
 
 /**
  * Cuenta atrás para las sesiones inmersivas.

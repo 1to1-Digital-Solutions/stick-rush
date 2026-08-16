@@ -7,7 +7,7 @@ import {
   GROUND_Y,
   MACHINE_STRIPE_COLORS,
   MACHINE_TRUSS_COLOR,
-} from '@/lib/gameConfig'
+} from '../../lib/gameConfig'
 import {
   WHEEL_CABIN_COUNT,
   WHEEL_CABIN_DROP,
@@ -16,7 +16,7 @@ import {
   WHEEL_RADIUS,
   WHEEL_SPEED,
   facingRotationY,
-} from '@/lib/sceneryLayout'
+} from '../../lib/sceneryLayout'
 import {
   Board,
   Bulb,

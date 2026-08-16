@@ -13,14 +13,14 @@ import {
   STICK_MISSED_COLOR,
   STICK_RADIUS,
   stickFallProgress,
-} from '@/lib/gameConfig'
-import { CATCH_PULSE, pulseHaptics } from '@/lib/haptics'
-import { SWING_RELEASE_DECAY, hangingSwing } from '@/lib/stickSwing'
+} from '../../lib/gameConfig'
+import { CATCH_PULSE, pulseHaptics } from '../../lib/haptics'
+import { SWING_RELEASE_DECAY, hangingSwing } from '../../lib/stickSwing'
 import {
   type StickState,
   canCatchStick,
   canCatchWithPointer,
-} from '@/lib/xrInteraction'
+} from '../../lib/xrInteraction'
 
 /**
  * Tipo de puntero que ha disparado el evento, si lo trae. Los eventos de ratón

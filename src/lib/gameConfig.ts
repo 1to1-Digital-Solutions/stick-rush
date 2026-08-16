@@ -222,8 +222,12 @@ export function machinePoint(
   ]
 }
 
-/** Rutas de los assets locales (CC0, ver public/CREDITS.md). */
-export const HDRI_URL = '/hdri/plaza_pueblo_1k.exr'
+/**
+ * Rutas de los assets locales (CC0, ver public/CREDITS.md), relativas a la base
+ * desde la que se sirven: quien monta el juego decide dónde están (ver
+ * `assets.ts`), así que se resuelven al pedirlos con `assetUrl()`.
+ */
+export const HDRI_PATH = 'hdri/plaza_pueblo_1k.exr'
 
 /**
  * Mapas de la madera de los palos. Se usan el relieve y la rugosidad, que son
@@ -232,6 +236,6 @@ export const HDRI_URL = '/hdri/plaza_pueblo_1k.exr'
  * en vez de amarillos. El color va plano, como madera pintada.
  */
 export const WOOD_TEXTURES = {
-  normalMap: '/textures/wood_nor_1k.jpg',
-  roughnessMap: '/textures/wood_rough_1k.jpg',
+  normalMap: 'textures/wood_nor_1k.jpg',
+  roughnessMap: 'textures/wood_rough_1k.jpg',
 } as const

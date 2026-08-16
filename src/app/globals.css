@@ -1,23 +1,11 @@
 @import "tailwindcss";
+@import "../game/styles.css";
 
-:root {
-  --color-background: #0f172a;
-  --color-primary: #15803d;
-  --color-accent: #d97706;
-  --color-foreground: #ffffff;
-  --color-muted: #0f1f2b;
-  --color-border: rgba(255, 255, 255, 0.08);
-}
-
-@theme inline {
-  --color-background: var(--color-background);
-  --color-primary: var(--color-primary);
-  --color-accent: var(--color-accent);
-  --color-foreground: var(--color-foreground);
-  --color-muted: var(--color-muted);
-  --font-heading: var(--font-heading);
-  --font-body: var(--font-body);
-}
+/*
+ * Estilos de la página que envuelve al juego. Lo que es del juego —sus colores,
+ * su tipografía y las animaciones de sus pantallas— vive en `game/styles.css`,
+ * que es lo que se lleva consigo al montarse dentro de otra aplicación.
+ */
 
 html,
 body {
@@ -25,79 +13,10 @@ body {
 }
 
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-body), system-ui, sans-serif;
+  /* El mismo azul que el juego, para que la página no destelle en blanco
+     mientras se monta la escena. */
+  background: #0f172a;
+  color: #ffffff;
   margin: 0;
   overflow: hidden;
-}
-
-h1,
-h2,
-h3 {
-  font-family: var(--font-heading), system-ui, sans-serif;
-}
-
-/* Entrada sutil de las pantallas */
-@keyframes fade-slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-slide-up {
-  animation: fade-slide-up 0.5s ease-out both;
-}
-
-/* Golpe de cada número de la cuenta atrás: entra grande y se asienta. */
-@keyframes countdown-pop {
-  from {
-    opacity: 0;
-    transform: scale(1.6);
-  }
-  60% {
-    opacity: 1;
-  }
-  to {
-    opacity: 0.85;
-    transform: scale(1);
-  }
-}
-
-.animate-countdown-pop {
-  animation: countdown-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-/* Glow del título */
-.text-glow-primary {
-  text-shadow:
-    0 0 12px rgba(21, 128, 61, 0.55),
-    0 0 32px rgba(21, 128, 61, 0.35);
-}
-
-/* Botón CTA con gradiente metálico ámbar/dorado */
-.cta-gradient {
-  background-image: linear-gradient(180deg, #fbbf24 0%, #d97706 55%, #b45309 100%);
-  box-shadow:
-    0 0 24px rgba(217, 119, 6, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
-}
-
-.cta-gradient:hover:not(:disabled) {
-  filter: brightness(1.08);
-  box-shadow:
-    0 0 32px rgba(217, 119, 6, 0.65),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-fade-slide-up,
-  .animate-countdown-pop {
-    animation: none;
-  }
 }

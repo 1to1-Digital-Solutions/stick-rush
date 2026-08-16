@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { GameProvider } from '@/components/GameProvider'
+import { GameProvider } from '../components/GameProvider'
 import { COUNTDOWN_SECONDS, useGame } from './gameStore'
 import { useShareResult } from './useShareResult'
 

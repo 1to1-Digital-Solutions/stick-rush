@@ -7,8 +7,8 @@ import {
   DIFFICULTY_COLORS,
   DIFFICULTY_ORDER,
   type Difficulty,
-} from '@/lib/gameConfig'
-import { PRESS_PULSE, pulseHaptics } from '@/lib/haptics'
+} from '../../lib/gameConfig'
+import { PRESS_PULSE, pulseHaptics } from '../../lib/haptics'
 import {
   XR_CHECK_ICON,
   XR_CROSS_ICON,
@@ -22,7 +22,7 @@ import {
   XR_TRIANGLE_ROTATION,
   type IconShape,
   type TriangleTip,
-} from '@/lib/xrIcons'
+} from '../../lib/xrIcons'
 
 /**
  * Piezas de interfaz para las sesiones inmersivas.

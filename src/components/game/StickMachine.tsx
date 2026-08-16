@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { useTexture } from '@react-three/drei'
 import { Quaternion, RepeatWrapping, Vector3 } from 'three'
+import { assetUrl } from '../../lib/assets'
 import {
   DIFFICULTY_SPEEDS,
   GROUND_Y,
@@ -13,10 +14,10 @@ import {
   STICK_COLOR,
   WOOD_TEXTURES,
   machinePoint,
-} from '@/lib/gameConfig'
-import { useGame } from '@/lib/gameStore'
-import { hoopFallSpeed } from '@/lib/hoopHeight'
-import { buildStickLayout } from '@/lib/stickLayout'
+} from '../../lib/gameConfig'
+import { useGame } from '../../lib/gameStore'
+import { hoopFallSpeed } from '../../lib/hoopHeight'
+import { buildStickLayout } from '../../lib/stickLayout'
 import { Stick } from './Stick'
 import { useReducedMotion } from './useReducedMotion'
 
@@ -114,8 +115,8 @@ export function StickMachine() {
   const reducedMotion = useReducedMotion()
 
   const [normalMap, roughnessMap] = useTexture([
-    WOOD_TEXTURES.normalMap,
-    WOOD_TEXTURES.roughnessMap,
+    assetUrl(WOOD_TEXTURES.normalMap),
+    assetUrl(WOOD_TEXTURES.roughnessMap),
   ])
 
   // El grano corre a lo largo del palo, que es mucho más largo que ancho. Se

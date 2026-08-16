@@ -1,0 +1,96 @@
+/**
+ * Estilos propios del juego: sus colores, su tipografía y las animaciones de
+ * sus pantallas.
+ *
+ * Todo cuelga de `.stick-rush`, la clase del contenedor que monta el juego, en
+ * vez de `:root`: montado dentro de otra aplicación, unas variables globales
+ * llamadas `--color-primary` le cambiarían el aspecto a lo que las tuviera
+ * puestas. Las clases utilitarias (`flex`, `text-white/40`…) no están aquí: las
+ * genera Tailwind escaneando el código del juego, y quien lo monta tiene que
+ * incluirlo entre sus fuentes (ver `docs/montar-el-juego.md`).
+ *
+ * Las dos fuentes se toman de fuera con un respaldo del sistema: en su propia
+ * web las define el layout con `next/font`, y quien lo monta puede darle las
+ * suyas definiendo esas dos variables.
+ */
+
+.stick-rush {
+  --color-background: #0f172a;
+  --color-primary: #15803d;
+  --color-accent: #d97706;
+  --color-foreground: #ffffff;
+  --color-muted: #0f1f2b;
+  --color-border: rgba(255, 255, 255, 0.08);
+
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-body, system-ui), system-ui, sans-serif;
+}
+
+.stick-rush :is(h1, h2, h3) {
+  font-family: var(--font-heading, system-ui), system-ui, sans-serif;
+}
+
+/* Entrada sutil de las pantallas */
+@keyframes stick-rush-fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stick-rush .animate-fade-slide-up {
+  animation: stick-rush-fade-slide-up 0.5s ease-out both;
+}
+
+/* Golpe de cada número de la cuenta atrás: entra grande y se asienta. */
+@keyframes stick-rush-countdown-pop {
+  from {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+
+.stick-rush .animate-countdown-pop {
+  animation: stick-rush-countdown-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Glow del título */
+.stick-rush .text-glow-primary {
+  text-shadow:
+    0 0 12px rgba(21, 128, 61, 0.55),
+    0 0 32px rgba(21, 128, 61, 0.35);
+}
+
+/* Botón CTA con gradiente metálico ámbar/dorado */
+.stick-rush .cta-gradient {
+  background-image: linear-gradient(180deg, #fbbf24 0%, #d97706 55%, #b45309 100%);
+  box-shadow:
+    0 0 24px rgba(217, 119, 6, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.stick-rush .cta-gradient:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow:
+    0 0 32px rgba(217, 119, 6, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stick-rush .animate-fade-slide-up,
+  .stick-rush .animate-countdown-pop {
+    animation: none;
+  }
+}

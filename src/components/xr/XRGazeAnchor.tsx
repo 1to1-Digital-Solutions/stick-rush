@@ -4,13 +4,13 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useXR } from '@react-three/xr'
 import { Euler, Quaternion, Vector3, type Group } from 'three'
-import { useGame } from '@/lib/gameStore'
+import { useGame } from '../../lib/gameStore'
 import {
   initialAnchorState,
   stepAnchor,
   type AnchorState,
-} from '@/lib/xrAnchor'
-import { xrUiRise } from '@/lib/xrLayout'
+} from '../../lib/xrAnchor'
+import { xrUiRise } from '../../lib/xrLayout'
 
 /**
  * Mantiene la interfaz inmersiva donde el jugador la ve: delante de su cara y a

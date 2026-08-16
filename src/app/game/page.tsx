@@ -1,13 +1,12 @@
 'use client'
 
-import { GameProvider } from '@/components/GameProvider'
-import { GameScene } from '@/components/game/GameScene'
+import { StickRush } from '@/game'
 
-/** Ruta directa a la escena (Canvas 3D + menú/HUD como overlays). */
+/** Ruta directa al juego, la misma pantalla que la portada. */
 export default function GamePage() {
   return (
-    <GameProvider>
-      <GameScene />
-    </GameProvider>
+    <div className="h-dvh w-full">
+      <StickRush />
+    </div>
   )
 }

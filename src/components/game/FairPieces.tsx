@@ -2,7 +2,7 @@
 
 import { type ComponentProps, type ReactNode } from 'react'
 import { createInstances } from '@react-three/drei'
-import { MACHINE_BULB_COLOR } from '@/lib/gameConfig'
+import { MACHINE_BULB_COLOR } from '../../lib/gameConfig'
 
 /**
  * Las tres piezas con las que está construido el recinto de feria: tablas

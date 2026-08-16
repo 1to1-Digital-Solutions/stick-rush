@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { type GameState, useGame } from '@/lib/gameStore'
-import { createSoundEngine, type SoundEngine } from '@/lib/sound'
+import { type GameState, useGame } from '../../lib/gameStore'
+import { createSoundEngine, type SoundEngine } from '../../lib/sound'
 
 /**
  * Pone sonido a la partida: al atrapar, al perder y en la cuenta atrás.

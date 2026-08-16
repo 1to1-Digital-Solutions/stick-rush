@@ -1,13 +1,14 @@
 'use client'
 
 import { createXRStore } from '@react-three/xr'
+import { assetUrl } from '../../lib/assets'
 import { StickRushController } from './XRController'
 
 /** El mismo volumen de agarre para la mano desnuda, algo más ajustado. */
 const HAND_GRAB_RADIUS = 0.06
 
-/** Dónde viven los perfiles de mando servidos por la propia app. */
-const XR_PROFILES_PATH = '/webxr-profiles/'
+/** Dónde viven los perfiles de mando servidos junto al resto de assets. */
+const XR_PROFILES_PATH = 'webxr-profiles/'
 
 /**
  * Ruta absoluta a los perfiles.
@@ -18,14 +19,20 @@ const XR_PROFILES_PATH = '/webxr-profiles/'
  * llega a usarse nunca.
  */
 function profilesBasePath(): string {
-  if (typeof window === 'undefined') return `http://localhost${XR_PROFILES_PATH}`
-  return new URL(XR_PROFILES_PATH, window.location.origin).href
+  const path = assetUrl(XR_PROFILES_PATH)
+  if (typeof window === 'undefined') return new URL(path, 'http://localhost').href
+  return new URL(path, window.location.origin).href
 }
 
 /**
  * Store de WebXR compartido entre los botones de entrada (DOM) y el
- * componente <XR> dentro del Canvas. Se crea una sola vez a nivel de
- * módulo para que ambos lados apunten a la misma sesión.
+ * componente <XR> dentro del Canvas. Se crea una sola vez, la primera vez que
+ * alguno lo pide, para que ambos lados apunten a la misma sesión.
+ *
+ * Se crea al pedirlo y no al importar el módulo porque su `baseAssetPath`
+ * depende de dónde estén los ficheros del juego, y eso lo decide quien lo monta
+ * (ver `lib/assets.ts`): fijándolo en el import quedaría atado a la raíz antes
+ * de que nadie hubiera podido decir otra cosa.
  *
  * Dos decisiones, las dos salidas de probar con el visor puesto:
  *
@@ -45,13 +52,18 @@ function profilesBasePath(): string {
  * passthrough, y en VR el cursor del agarre basta para situarlas. Su modelo sí
  * es una descarga del CDN y no hay equivalente local ligero.
  */
-export const xrStore = createXRStore({
-  baseAssetPath: profilesBasePath(),
-  controller: StickRushController,
-  hand: {
-    model: false,
-    grabPointer: { radius: HAND_GRAB_RADIUS, cursorModel: true },
-    rayPointer: { rayModel: true, cursorModel: true },
-    teleportPointer: false,
-  },
-})
+let store: ReturnType<typeof createXRStore> | null = null
+
+export function getXrStore(): ReturnType<typeof createXRStore> {
+  store ??= createXRStore({
+    baseAssetPath: profilesBasePath(),
+    controller: StickRushController,
+    hand: {
+      model: false,
+      grabPointer: { radius: HAND_GRAB_RADIUS, cursorModel: true },
+      rayPointer: { rayModel: true, cursorModel: true },
+      teleportPointer: false,
+    },
+  })
+  return store
+}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { xrStore } from './xrStore'
+import { getXrStore } from './xrStore'
 
 type XRSupport = {
   vr: boolean
@@ -57,7 +57,9 @@ export function XRWrapper() {
     <div className="flex flex-col items-center justify-center gap-2">
       <button
         type="button"
-        onClick={() => (support.ar ? xrStore.enterAR() : xrStore.enterVR())}
+        onClick={() =>
+          support.ar ? getXrStore().enterAR() : getXrStore().enterVR()
+        }
         className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 bg-[var(--color-muted)] px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
       >
         Entrar en el visor

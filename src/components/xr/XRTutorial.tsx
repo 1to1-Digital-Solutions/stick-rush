@@ -8,15 +8,15 @@ import {
   DIFFICULTY_COLORS,
   STICK_CAUGHT_COLOR,
   STICK_COLOR,
-} from '@/lib/gameConfig'
-import { useGame } from '@/lib/gameStore'
-import { type TutorialStepKey, tutorialFrameAt } from '@/lib/tutorial'
+} from '../../lib/gameConfig'
+import { useGame } from '../../lib/gameStore'
+import { type TutorialStepKey, tutorialFrameAt } from '../../lib/tutorial'
 import {
   XR_TUTORIAL_POSITION,
   XR_TUTORIAL_PROGRESS_OFFSET,
   XR_TUTORIAL_SKIP_OFFSET,
-} from '@/lib/xrLayout'
-import { useReducedMotion } from '@/components/game/useReducedMotion'
+} from '../../lib/xrLayout'
+import { useReducedMotion } from '../game/useReducedMotion'
 import { ControllerModel } from './XRControllerModel'
 import {
   PANEL_COLOR,

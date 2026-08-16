@@ -1,7 +1,34 @@
 {
   "name": "stick-rush",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "description": "Atrapa los palos que caen de la máquina antes de que toquen el suelo. Juego web en 3D para navegador y realidad mixta (VR/AR), montable dentro de otra aplicación.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1to1-Digital-Solutions/stick-rush.git"
+  },
+  "exports": {
+    ".": "./src/game/index.ts",
+    "./styles.css": "./src/game/styles.css",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "stick-rush-assets": "scripts/copy-assets.mjs"
+  },
+  "files": [
+    "src/game",
+    "src/components",
+    "src/lib",
+    "public",
+    "scripts/copy-assets.mjs",
+    "docs/montar-el-juego.md",
+    "!**/*.test.ts",
+    "!**/*.test.tsx"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
   "scripts": {
     "dev": "next dev",
     "dev:https": "next dev --experimental-https",
@@ -15,17 +42,19 @@
     "capture": "CAPTURE=1 playwright test captura",
     "sync:xr-profiles": "node scripts/sync-xr-profiles.mjs"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@react-three/xr": "^6.6.30",
-    "next": "16.3.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "three": "^0.185.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@react-three/xr": "^6.6.30",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
@@ -37,7 +66,11 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "jsdom": "^30.0.1",
+    "next": "16.3.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
     "tailwindcss": "^4",
+    "three": "^0.185.0",
     "typescript": "^5",
     "vitest": "^3.2.7"
   }

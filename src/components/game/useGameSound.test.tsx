@@ -5,7 +5,7 @@ import {
   GameContext,
   type GameStore,
   useGameStoreValue,
-} from '@/lib/gameStore'
+} from '../../lib/gameStore'
 import { useGameSound } from './useGameSound'
 
 // El motor de verdad se prueba en `sound.test.ts` contra un contexto de

@@ -7,7 +7,7 @@ import {
   XRSpace,
   useXRInputSourceStateContext,
 } from '@react-three/xr'
-import { useGame } from '@/lib/gameStore'
+import { useGame } from '../../lib/gameStore'
 import { ControllerModel } from './XRControllerModel'
 
 /**

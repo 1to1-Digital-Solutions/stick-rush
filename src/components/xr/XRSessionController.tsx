@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useXR } from '@react-three/xr'
-import { useGame } from '@/lib/gameStore'
+import { useGame } from '../../lib/gameStore'
 
 /**
  * Puente entre el estado de la sesión WebXR y el estado del juego.

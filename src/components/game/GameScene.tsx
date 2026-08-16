@@ -1,25 +1,38 @@
 'use client'
 
-import dynamic from 'next/dynamic'
-import { useGame } from '@/lib/gameStore'
-import { StartScreen } from '@/components/ui/StartScreen'
+import { Suspense, lazy, useSyncExternalStore } from 'react'
+import { useGame } from '../../lib/gameStore'
+import { StartScreen } from '../ui/StartScreen'
 import { HUD } from './HUD'
 import { useGameSound } from './useGameSound'
 
-// El Canvas de R3F depende de WebGL/window, así que se carga solo en cliente.
-const GameCanvas = dynamic(
-  () => import('./GameCanvas').then((mod) => mod.GameCanvas),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="fixed inset-0 flex items-center justify-center bg-[var(--color-background)]">
-        <p className="animate-pulse text-sm uppercase tracking-[0.3em] text-white/40">
-          Cargando escena…
-        </p>
-      </div>
-    ),
-  },
+// El Canvas de R3F depende de WebGL/window, así que se carga aparte y solo en
+// cliente. Con `lazy` de React y no con `next/dynamic`: el juego se monta
+// también dentro de otras aplicaciones, que no tienen por qué ser Next.
+const GameCanvas = lazy(() =>
+  import('./GameCanvas').then((mod) => ({ default: mod.GameCanvas })),
 )
+
+/**
+ * Si el juego ya se está pintando en el navegador.
+ *
+ * Es una suscripción a algo que nunca cambia porque lo que distingue los dos
+ * valores es *quién* pregunta: en un render de servidor no hay WebGL con el que
+ * montar el Canvas, y pintar en la hidratación lo mismo que se prerenderizó es
+ * lo que evita el aviso de desajuste.
+ */
+const NEVER_CHANGES = () => () => {}
+const useOnClient = () => useSyncExternalStore(NEVER_CHANGES, () => true, () => false)
+
+function SceneLoading() {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-background)]">
+      <p className="animate-pulse text-sm uppercase tracking-[0.3em] text-white/40">
+        Cargando escena…
+      </p>
+    </div>
+  )
+}
 
 /**
  * Escena de juego. El Canvas 3D (con <XR>) está SIEMPRE montado para que la
@@ -31,13 +44,20 @@ const GameCanvas = dynamic(
  */
 export function GameScene() {
   const { gameState } = useGame()
+  const onClient = useOnClient()
   // Aquí y no dentro del Canvas: el sonido acompaña a la partida, no a la
   // escena 3D, y desde fuera vale igual para el navegador y para el visor.
   useGameSound()
 
   return (
-    <div className="relative h-dvh w-full">
-      <GameCanvas />
+    <div className="stick-rush relative h-full w-full">
+      {onClient ? (
+        <Suspense fallback={<SceneLoading />}>
+          <GameCanvas />
+        </Suspense>
+      ) : (
+        <SceneLoading />
+      )}
       {gameState === 'menu' ? <StartScreen /> : <HUD />}
     </div>
   )

@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 import { useXR } from '@react-three/xr'
-import { useGame } from '@/lib/gameStore'
-import { MISS_PULSE, pulseAllHaptics } from '@/lib/haptics'
+import { useGame } from '../../lib/gameStore'
+import { MISS_PULSE, pulseAllHaptics } from '../../lib/haptics'
 
 /**
  * El golpe de vibración del palo que se escapa.

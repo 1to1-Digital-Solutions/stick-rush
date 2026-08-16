@@ -1,6 +1,6 @@
 'use client'
 
-import { GROUND_Y } from '@/lib/gameConfig'
+import { GROUND_Y } from '../../lib/gameConfig'
 
 /**
  * Suelo de la escena. No pinta nada: el suelo visible es el empedrado de la

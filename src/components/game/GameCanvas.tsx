@@ -4,23 +4,24 @@ import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment } from '@react-three/drei'
 import { XR, XROrigin, useXR } from '@react-three/xr'
+import { assetUrl } from '../../lib/assets'
 import {
   BACKDROP_COLOR,
-  HDRI_URL,
+  HDRI_PATH,
   MACHINE_HEIGHT,
   MACHINE_RADIUS,
   PLAYER_POSITION,
-} from '@/lib/gameConfig'
-import { useGame, type SceneryMode } from '@/lib/gameStore'
-import { xrStore } from '@/components/xr/xrStore'
-import { XRCountdown } from '@/components/xr/XRCountdown'
-import { XRGazeAnchor } from '@/components/xr/XRGazeAnchor'
-import { XRHaptics } from '@/components/xr/XRHaptics'
-import { XRHud, XRQuitButton } from '@/components/xr/XRHud'
-import { XRMenu } from '@/components/xr/XRMenu'
-import { XRPlayerHeight } from '@/components/xr/XRPlayerHeight'
-import { XRSessionController } from '@/components/xr/XRSessionController'
-import { XRTutorial } from '@/components/xr/XRTutorial'
+} from '../../lib/gameConfig'
+import { useGame, type SceneryMode } from '../../lib/gameStore'
+import { getXrStore } from '../xr/xrStore'
+import { XRCountdown } from '../xr/XRCountdown'
+import { XRGazeAnchor } from '../xr/XRGazeAnchor'
+import { XRHaptics } from '../xr/XRHaptics'
+import { XRHud, XRQuitButton } from '../xr/XRHud'
+import { XRMenu } from '../xr/XRMenu'
+import { XRPlayerHeight } from '../xr/XRPlayerHeight'
+import { XRSessionController } from '../xr/XRSessionController'
+import { XRTutorial } from '../xr/XRTutorial'
 import { Fairground } from './Fairground'
 import { SceneryFade } from './SceneryFade'
 import { StickMachine } from './StickMachine'
@@ -61,7 +62,7 @@ function SceneBackdrop({ scenery }: { scenery: SceneryMode }) {
           ve, en vez de quedarse todo el Canvas en blanco esperándolo. */}
       <Suspense fallback={null}>
         <Environment
-          files={HDRI_URL}
+          files={assetUrl(HDRI_PATH)}
           background={!isAR}
           environmentIntensity={1.4}
           // Proyecta el HDRI también sobre el suelo, de modo que la máquina se
@@ -148,7 +149,7 @@ export function GameCanvas() {
       {/* Relleno frío por detrás, para despegar la máquina del fondo oscuro. */}
       <directionalLight position={[2.5, 4, 3]} intensity={0.35} color="#9fb6d6" />
 
-      <XR store={xrStore}>
+      <XR store={getXrStore()}>
         {/* Arranca/cierra partidas según el estado de la sesión inmersiva. */}
         <XRSessionController />
         {/* Pone el aro al alcance de quien lleva el visor. */}

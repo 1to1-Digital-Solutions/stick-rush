@@ -5,8 +5,8 @@ import {
   GameContext,
   type GameStore,
   useGameStoreValue,
-} from '@/lib/gameStore'
-import { MISS_PULSE } from '@/lib/haptics'
+} from '../../lib/gameStore'
+import { MISS_PULSE } from '../../lib/haptics'
 import { XRHaptics } from './XRHaptics'
 
 // La sesión de WebXR no existe fuera del visor, así que se sustituye por los

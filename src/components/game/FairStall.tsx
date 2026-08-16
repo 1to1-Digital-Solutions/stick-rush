@@ -7,8 +7,8 @@ import {
   FAIR_WOOD_COLOR,
   MACHINE_STRIPE_COLORS,
   MACHINE_TRUSS_COLOR,
-} from '@/lib/gameConfig'
-import { STALL_SIZE, type RingSlot } from '@/lib/sceneryLayout'
+} from '../../lib/gameConfig'
+import { STALL_SIZE, type RingSlot } from '../../lib/sceneryLayout'
 import { Board, Bulb, Pole, type PieceCounts } from './FairPieces'
 
 /**

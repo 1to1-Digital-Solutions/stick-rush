@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { MACHINE_TRUSS_COLOR } from '@/lib/gameConfig'
+import { MACHINE_TRUSS_COLOR } from '../../lib/gameConfig'
 import {
   GARLAND_BULBS_PER_SPAN,
   GARLAND_POST_COUNT,
@@ -13,7 +13,7 @@ import {
   ringSlots,
   type RingSlot,
   type Vec3,
-} from '@/lib/sceneryLayout'
+} from '../../lib/sceneryLayout'
 import { Bulb, FairPieces, Pole, type PieceCounts } from './FairPieces'
 import { FairStall, STALL_PIECES } from './FairStall'
 import { FerrisWheel, WHEEL_PIECES } from './FerrisWheel'
