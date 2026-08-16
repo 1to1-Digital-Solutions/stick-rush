@@ -261,7 +261,7 @@ planta en el centro, así que los palos le caen alrededor, al alcance del brazo.
   sobre un plano de color con un corte visible contra el horizonte. En AR se mantiene solo como
   reflejos. El suelo propio ya no pinta nada: solo recibe la sombra de la máquina.
 - Se usa el EXR de 1K (2 MB). Hay 2K disponible (~8 MB) si se quiere el fondo más nítido en el
-  visor; es cambiar el archivo y `HDRI_URL`.
+  visor; es cambiar el archivo y `HDRI_PATH`.
 
 **No se encontró ningún modelo 3D de máquina de feria** (Poly Haven solo tiene props domésticos),
 así que la máquina sigue siendo geometría por código, ahora con más detalle.
@@ -885,6 +885,47 @@ pone las gafas, para deshacer algo que ya había decidido.
   no hay habitación real detrás. Persistirlo pide antes una caída a `scene` cuando la
   sesión no da passthrough. Queda como tarea de seguimiento.
 
+## El juego, separado de su web (rama `agent/separar-el-juego-de-su-web-para--04e755`)
+
+Stick Rush era una app Next entera. Eso bastaba para desplegarse solo y probarlo con las
+gafas, pero impedía que xrcade lo cargara **dentro** de sí mismo: el hub solo podía
+enlazarlo en un iframe a otro dominio, y en VR eso rompe la sesión inmersiva al entrar y
+al volver. Ahora el repositorio son dos cosas: **el juego** (`src/game`, `src/components`,
+`src/lib`), un componente que se monta donde le digan, y **su web** (`src/app`), un
+envoltorio delgado que lo monta a pantalla completa y se sigue desplegando igual.
+
+- **La superficie pública es mínima**: `StickRush` (componente), `mountStickRush`
+  (elemento del DOM), `assetsBase` y `stick-rush/styles.css`. Nada más. El contrato entero
+  —instalación, `transpilePackages`, ficheros estáticos, Tailwind y qué espera el juego de
+  quien lo monta— está en `docs/montar-el-juego.md`, que es lo que respetará la tarea
+  gemela de xrcade.
+- **Se consume por tag del repositorio**, no por registry: `npm install
+  "github:1to1-Digital-Solutions/stick-rush#v0.2.0"`. Actualizar el juego en el salón es
+  subir esa versión. No hace falta publicar en npm ni tener credenciales de registry, y el
+  `package.json` sigue siendo `private`.
+- **React, three y `@react-three/*` pasaron a `peerDependencies`** (y siguen en
+  `devDependencies` para el desarrollo de aquí). Es lo que evita dos copias de React en la
+  página de quien lo monte, que rompen los hooks. Si algún día el despliegue instalara sin
+  `devDependencies`, el build se caería: ya pasaba con Tailwind y TypeScript, así que no es
+  un riesgo nuevo, pero conviene saberlo.
+- **Los 3 MB de `public/` no viajan en el código.** El HDRI, las texturas y los perfiles de
+  mando se copian con `npx stick-rush-assets <destino>` y se le dice al juego dónde con
+  `assetsBase`. Por eso las rutas se guardan relativas (`lib/assets.ts`) y se resuelven al
+  pedir cada recurso: el store de WebXR, que necesita la suya, pasó a crearse **al pedirlo**
+  y no al importar el módulo, que era antes de que nadie pudiera decir dónde están.
+- **Fuera `next/dynamic`**, que ataba el juego a Next. El Canvas se carga con `lazy` de
+  React y espera al navegador con un `useSyncExternalStore` que devuelve `false` en el
+  servidor: es el equivalente de `ssr: false` sin depender del framework, y sin desajustar
+  la hidratación.
+- **Los estilos del juego se separaron a `src/game/styles.css`** y cuelgan de `.stick-rush`
+  en vez de `:root`: montado dentro de otra aplicación, unas variables globales llamadas
+  `--color-primary` le cambiarían el aspecto a lo que las tuviera puestas. Las fuentes se
+  toman de `--font-heading`/`--font-body` con respaldo del sistema; en su propia web las
+  sigue poniendo el layout con `next/font`.
+- **Lo que NO se hizo, a propósito**: no hay `onExit` ni ningún botón de "volver al hub".
+  Sin la tarea gemela decidida, sería inventarse UI y dejar código sin usar. El hub puede
+  desmontar el juego cuando quiera con `unmount()`.
+
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 
 Con las gafas puestas el modo inmersivo era **inutilizable**: no se veían los mandos,
@@ -965,6 +1006,12 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 
 ## Pendiente / próximos pasos
 
+- **Etiquetar `v0.2.0` al integrar la separación del juego** (ver "El juego, separado de su
+  web"): es lo que xrcade instalará (`#v0.2.0`). Sin el tag, quien lo consuma se lleva
+  `main` y el juego le cambia bajo los pies.
+- **Probar el montaje de verdad desde xrcade**, con el visor puesto: que la sesión
+  inmersiva, los mandos y el audio sigan funcionando dentro de otra aplicación, que es un
+  contexto distinto del de aquí y no se puede validar en este repo.
 - Validar y pulir la interacción XR con mandos en hardware real.
 - **Probar en el visor la altura del aro** (ver "Altura del aro por jugador"): que de pie
   quede donde estaba, que sentado baje solo y no haya que tocar nada, que los ±20 cm de

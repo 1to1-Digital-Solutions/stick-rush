@@ -128,6 +128,29 @@ headers (CSP, `Permissions-Policy`, HSTS and friends) are declared in
 promise, and `xr-spatial-tracking=(self)` is what keeps WebXR working. Both are
 covered by tests in `e2e/seguridad.spec.ts`.
 
+## Embedding the game
+
+The repository holds two things: **the game**, a React component that mounts wherever
+you put it (`src/game`, `src/components`, `src/lib`), and **its own site**, a thin
+Next app that mounts that component full-screen (`src/app`). The game knows nothing
+about routes, layout, metadata or deployment, so another application — the
+[xrcade](https://github.com/1to1-Digital-Solutions/xrcade) hub — can load it *inside*
+itself instead of linking out to it, which is what breaks the immersive session.
+
+```tsx
+import { StickRush } from 'stick-rush'
+import 'stick-rush/styles.css'
+
+<div className="h-dvh w-full">
+  <StickRush assetsBase="/juegos/stick-rush/" />
+</div>
+```
+
+It is consumed at a fixed version (a repository tag), and the static files it needs
+are copied with `npx stick-rush-assets <dir>`. The full contract — install,
+`transpilePackages`, assets, Tailwind and what the game expects from its host — is in
+[`docs/montar-el-juego.md`](docs/montar-el-juego.md).
+
 ## Development
 
 ```bash
@@ -163,12 +186,17 @@ The e2e suite is served from `127.0.0.1` rather than `localhost` on purpose:
 
 ```
 src/
-  app/
+  app/                  The game's own site: a thin wrapper around <StickRush>
     layout.tsx          Root layout: fonts (Righteous + Poppins) and metadata
-    page.tsx            Scene with menu/HUD as overlays driven by game state
-    game/page.tsx       Direct route to the same scene
+    page.tsx            Mounts the game full-screen
+    game/page.tsx       Direct route to the same screen
     global-error.tsx    Global error boundary
-    globals.css         Design tokens and global styles
+    globals.css         Page styles (the game's own live in src/game/styles.css)
+  game/                 What the game offers to whoever mounts it
+    index.ts            Public entry point: StickRush, mountStickRush
+    StickRush.tsx       The game as a component, with its options
+    mount.tsx           The same, onto a DOM element
+    styles.css          Colours, typography and screen animations
   components/
     GameProvider.tsx    Provides the game context
     ui/StartScreen.tsx  Menu overlay (sticks, difficulty, play, VR/AR)
@@ -184,7 +212,7 @@ src/
     stickSwing.ts       Idle sway of the hanging sticks
     sound.ts            Synthesised game sounds (Web Audio, no files)
 e2e/                    Playwright tests
-docs/                   README screenshots
+docs/                   README screenshots and the mounting contract
 public/
   hdri/, textures/      CC0 assets served locally (see public/CREDITS.md)
 godot/                  Desktop Godot port (frozen, see godot/README.md)
