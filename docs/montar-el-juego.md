@@ -26,7 +26,11 @@ pero entonces el juego cambia bajo los pies de quien lo monta.
 
 Mientras el repositorio sea privado, quien instale necesita acceso de lectura: `npm install`
 desde git usa las credenciales de git de la máquina, así que en un CI que no las tenga la
-instalación falla al clonar.
+instalación falla al clonar. Las salidas son tres y **está sin decidir cuál se toma**: dar al
+runner un token de lectura desde su almacén de secretos (`git config --global
+url."https://$TOKEN@github.com/".insteadOf "https://github.com/"`, nunca escrito en el
+repositorio), hacer público el repositorio, o publicar el paquete en un registry. En local, con
+la cuenta de la organización configurada, funciona sin tocar nada.
 
 React, three y las tres librerías de `@react-three/*` son **peer dependencies**: las pone la
 aplicación anfitriona y así solo hay una copia de cada una en la página. Dos copias de React
@@ -152,12 +156,14 @@ las define, y si no, del sistema.
    documento: cambiarla es un cambio mayor.
 2. Commitea e integra en `main`. Etiquetar antes de integrar deja el tag en un commit que
    luego no está en `main`.
-3. Etiqueta ese commit de `main` y **publica** el tag: mientras no esté en el remoto, quien
-   instale por tag no lo encuentra.
+3. Etiqueta ese commit de `main` y **publica** el tag junto con la rama: mientras no esté en el
+   remoto, quien instale por tag no lo encuentra, y empujar solo el tag deja su commit fuera de
+   la `main` publicada.
 
    ```bash
+   git show <commit de main>:package.json | grep '"version"'   # que sea la del paso 1
    git tag -a vX.Y.Z <commit de main> -m "vX.Y.Z"
-   git push origin vX.Y.Z
+   git push origin main vX.Y.Z
    ```
 
 4. En quien lo consuma: `npm install "github:1to1-Digital-Solutions/stick-rush#vX.Y.Z"` y

@@ -1015,9 +1015,22 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
 *(La lista de tareas pendientes está en **`TODO.md`**. Aquí solo quedan las trampas del
 entorno: no son tareas, son cosas con las que tropezar.)*
 
-- **Etiquetar `v0.2.0` al integrar la separación del juego** (ver "El juego, separado de su
-  web"): es lo que xrcade instalará (`#v0.2.0`). Sin el tag, quien lo consuma se lleva
-  `main` y el juego le cambia bajo los pies.
+- **Etiquetar y publicar `v0.2.0`** (ver "El juego, separado de su web"): es lo que xrcade
+  instalará (`#v0.2.0`) y **todavía no existe** (2026-08-16: no hay ningún tag en el
+  repositorio). El bloqueo es que la separación está en `develop` pero **`main` no la tiene**,
+  y el tag va sobre el commit de `main`: etiquetar antes lo dejaría en un commit que luego no
+  está ahí. Orden: integrar en `main` → etiquetar ese commit → publicar tag y rama
+  (`git push origin main v0.2.0`). El procedimiento y la comprobación de que la `version` del
+  commit coincide con el tag están en "Publicar una versión nueva" de
+  `docs/montar-el-juego.md`. Sin el tag, quien lo consuma se lleva `main` y el juego le cambia
+  bajo los pies.
+- **Decidir cómo instala xrcade mientras el repositorio sea privado**: `npm install` desde git
+  usa las credenciales de git de la máquina, así que un CI sin ellas no puede clonar y la
+  instalación falla. Tres salidas, ninguna elegida: token de lectura en el runner (desde su
+  almacén de secretos, nunca en el repositorio), hacer público el repositorio —la auditoría ya
+  se hizo con esa idea, ver "Auditoría de seguridad"— o publicar en un registry, que es lo que
+  el `private: true` del `package.json` descarta hoy. En local no molesta, así que se puede
+  colar hasta el primer CI de xrcade.
 - **Probar el montaje de verdad desde xrcade**, con el visor puesto: que la sesión
   inmersiva, los mandos y el audio sigan funcionando dentro de otra aplicación, que es un
   contexto distinto del de aquí y no se puede validar en este repo.
