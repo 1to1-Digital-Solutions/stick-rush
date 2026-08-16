@@ -68,11 +68,14 @@
       limitación ya tapó un fallo real una vez (ver `ESTADO.md`).
 - [ ] **El `package-lock.json` está escrito en el formato de npm 11** (lleva los campos
       `libc` y no lista los paquetes empaquetados de `@tailwindcss/oxide-wasm32-wasi`).
-      El CI corre con Node 22, que trae npm 10: ahí un `npm install` reescribe unas 220
-      líneas del lock y vuelve a ensuciar el árbol, justo lo que se acaba de arreglar.
-      `npm ci` es estable con las dos versiones, así que el CI no se rompe. Para cerrarlo
-      hay que fijar la versión de npm (`packageManager` en `package.json`) o subir el CI
-      a Node 24, y regenerar el lock con esa versión.
+      Quien desarrolle con Node 22, que trae npm 10, verá que un `npm install` reescribe
+      unas 220 líneas del lock y vuelve a ensuciar el árbol, justo lo que se acaba de
+      arreglar. El CI no se ve afectado porque solo ejecuta `npm ci`, que instala igual
+      con las dos versiones y deja el fichero intacto (comprobado con 10.9.9 y 11.12.1).
+      Para cerrarlo hay que fijar la versión de npm (`packageManager` en `package.json`)
+      o subir el CI a Node 24, y regenerar el lock con esa versión. Ojo: hasta entonces
+      no se puede añadir al CI un guardián del tipo «`npm install` y `git diff
+      --exit-code package-lock.json`», porque hoy fallaría por esto mismo.
 
 ---
 
