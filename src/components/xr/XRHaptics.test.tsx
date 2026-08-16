@@ -26,6 +26,9 @@ let motors: ReturnType<typeof vi.fn>[] = []
 
 beforeEach(() => {
   vi.useFakeTimers()
+  // El silencio se recuerda entre visitas y jsdom comparte `localStorage`: sin
+  // vaciarlo, el test que silencia dejaría mudo al siguiente.
+  localStorage.clear()
   motors = [vi.fn(() => Promise.resolve(true)), vi.fn(() => Promise.resolve(true))]
   session.current = {
     inputSources: motors.map((pulse) => ({
@@ -117,6 +120,19 @@ describe('vibración del palo perdido', () => {
     act(() => store.current.resetGame())
 
     startPlaying(store)
+
+    expect(pulses()).toEqual([1, 1])
+  })
+
+  it('el silencio no calla la vibración', () => {
+    // Es justamente lo que sigue avisando con el sonido quitado: si el botón de
+    // silenciar apagara también los mandos, quien juega en silencio se quedaría
+    // sin ninguna señal del palo que se le escapa mientras mira otro.
+    const store = renderGame()
+    act(() => store.current.setMuted(true))
+    startPlaying(store)
+
+    act(() => store.current.missStick())
 
     expect(pulses()).toEqual([1, 1])
   })
