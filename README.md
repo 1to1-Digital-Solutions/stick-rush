@@ -107,13 +107,15 @@ ring height correction (`src/lib/hoopHeight.ts`), both plain numbers in
 unavailable — private mode, or a headset with it blocked — there is simply no
 record to show, and everything else works the same.
 
-In a headset, catching a stick also **buzzes the controller that caught it**
-(WebXR haptics): a short, firm pulse played through
-`XRInputSource.gamepad.hapticActuators`, so there is nothing to download here
-either. It is the one cue that still reaches you while you are looking at
-another stick with the sound muted, and it lands on the hand that did the catch.
-Bare hands and the desktop mouse have no actuator, so they simply do not
-vibrate.
+In a headset the game also **speaks through the controllers** (WebXR haptics),
+played through `XRInputSource.gamepad.hapticActuators`, so there is nothing to
+download here either. It is the one cue that still reaches you while you are
+looking at another stick with the sound muted. Catching a stick is a short, firm
+pulse on the hand that caught it; missing one is longer and softer — nobody
+touched it, so it goes to both hands — and pressing a button in the immersive
+menu gives the briefest tap of the three, because from a metre away your hand
+touches nothing. Bare hands and the desktop mouse have no actuator, so they
+simply do not vibrate.
 
 It is a fully static site — no middleware, no Server Actions, no API routes. Security
 headers (CSP, `Permissions-Policy`, HSTS and friends) are declared in

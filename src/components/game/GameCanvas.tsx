@@ -15,6 +15,7 @@ import { useGame, type SceneryMode } from '@/lib/gameStore'
 import { xrStore } from '@/components/xr/xrStore'
 import { XRCountdown } from '@/components/xr/XRCountdown'
 import { XRGazeAnchor } from '@/components/xr/XRGazeAnchor'
+import { XRHaptics } from '@/components/xr/XRHaptics'
 import { XRHud, XRQuitButton } from '@/components/xr/XRHud'
 import { XRMenu } from '@/components/xr/XRMenu'
 import { XRPlayerHeight } from '@/components/xr/XRPlayerHeight'
@@ -152,6 +153,8 @@ export function GameCanvas() {
         <XRSessionController />
         {/* Pone el aro al alcance de quien lleva el visor. */}
         <XRPlayerHeight />
+        {/* Avisa por los mandos del palo que se ha escapado. */}
+        <XRHaptics />
 
         {/* Jugador de pie en el centro del semicírculo. La interfaz cuelga de
             <XRGazeAnchor> y no del origen: el -Z del origen lo fija la

@@ -34,10 +34,14 @@ del modo inmersivo tras la segunda prueba con el visor.
    casa y de salida se distingan de un vistazo, y si los de repetir, escenario y
    passthrough se entienden o hay que rehacerlos igual; (g) que el **sonido** se oiga
    dentro de la sesión, que acierto y fallo se distingan sin mirar y que el volumen
-   (`MASTER_GAIN`, 0.28) no resulte invasivo pegado a los oídos; (h) que la
-   **vibración del mando** al atrapar un palo se note con el brazo en movimiento y que
-   una racha larga no la convierta en un zumbido continuo (`CATCH_PULSE` en
-   `src/lib/haptics.ts`: 0.7 de intensidad, 45 ms); (i) que la **marca del récord**
+   (`MASTER_GAIN`, 0.28) no resulte invasivo pegado a los oídos; (h) que los tres
+   **golpes de vibración** se distingan sin mirar y no acaben molestando (las tres
+   recetas, en `src/lib/haptics.ts`): el del acierto con el brazo en movimiento y sin
+   que una racha larga lo vuelva un zumbido (`CATCH_PULSE`, 0.7 y 45 ms); el del
+   fallo, que sale por los dos mandos y tiene que leerse como otra cosa y no como un
+   acierto flojo (`MISS_PULSE`, 0.35 y 140 ms); y el de los botones del menú, que con
+   trece palos son trece pulsaciones seguidas (`PRESS_PULSE`, 0.25 y 18 ms);
+   (i) que la **marca del récord**
    sobre la barra de puntuación se distinga del relleno con las gafas puestas, y que
    al batirlo se note que la barra cambia (`ScoreBar` en `src/components/xr/XRHud.tsx`);
    (j) que el **recinto de feria** nuevo no se coma los fotogramas en el visor, que las
@@ -820,6 +824,35 @@ cada pieza y separarlos obligaba a revisar dos veces lo mismo con las gafas pues
   que se apunta**, no solo el aro. Inclinarse hacia delante para ver mejor el panel lo baja
   con uno. Si molesta al apuntar, lo que hay que tocar es cuándo se deja de medir, no
   `xrUiRise`.
+
+## Vibración en el resto del juego (rama `agent/rematar-el-feedback-del-juego-vi-d6d6ce`)
+
+La vibración solo llegaba al atrapar un palo. Faltaban las dos cosas que el mando
+puede contar y ninguna otra señal alcanza con las gafas puestas: que se ha escapado
+un palo y que un botón del menú ha respondido.
+
+- **El fallo, largo y blando; el acierto, corto y seco.** Se distinguen por las dos
+  cosas a la vez (`MISS_PULSE`, 0.35 y 140 ms, frente a los 0.7 y 45 ms del acierto):
+  con una sola, y el brazo en movimiento, se sentirían igual y la vibración diría
+  menos que el sonido, que sí los distingue.
+- **El fallo sale por los dos mandos.** No hay evento de puntero del que sacar una
+  mano —el palo toca el suelo solo—, así que `pulseAllHaptics` recorre los
+  `inputSources` de la sesión. Que no se sepa en qué mano se habría notado es parte
+  de lo que significa. Por eso también es más suave: no lo ha provocado nadie.
+- **Dónde se engancha**: `XRHaptics`, un puente dentro de `<XR>` que mira los
+  contadores del store, como `useGameSound` hace con el sonido. No va en el store
+  porque el store es el juego —común al ratón y al visor— y esto solo existe con
+  gafas. Dos palos perdidos en el mismo lote dan un golpe, igual que suenan una vez.
+- **Los botones del menú inmersivo dan un toque** al activarse (`PRESS_PULSE`, 0.25 y
+  18 ms, el más discreto de los tres: elegir trece palos son trece pulsaciones). Va en
+  `XRPressable`, así que lo tienen todos —menú, marcador y fin de partida— y solo
+  cuando el botón se activa de verdad: uno apagado, o una pulsación que cae dentro del
+  antirrebote, no confirman nada. El golpe se da **antes** de la acción, porque hay
+  botones que cierran la sesión o cambian la escena entera.
+- **La vibración no la calla el silencio**: es justamente lo que sigue avisando con el
+  sonido quitado.
+- **Sin validar en hardware**, como todo lo que se pulsa en el visor: el emulador no
+  propaga sus punteros. Ver el punto (h) de "SIGUIENTE PASO".
 
 ## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
 

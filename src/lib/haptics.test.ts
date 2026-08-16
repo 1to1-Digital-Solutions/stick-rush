@@ -1,14 +1,28 @@
 import { describe, expect, it, vi } from 'vitest'
-import { CATCH_PULSE, pulseHaptics } from './haptics'
+import {
+  CATCH_PULSE,
+  MISS_PULSE,
+  PRESS_PULSE,
+  pulseAllHaptics,
+  pulseHaptics,
+} from './haptics'
+
+/** Doble de un mando de WebXR, con los motores de vibración que se le pidan. */
+function fakeInputSource(actuators: unknown[]) {
+  return { gamepad: { hapticActuators: actuators } } as unknown as XRInputSource
+}
 
 /**
- * Doble de un mando de WebXR: lo que le llega a la app es el estado del puntero
- * dentro del evento, con el `inputSource` de la sesión colgando.
+ * Doble de un evento de mando: lo que le llega a la app es el estado del
+ * puntero, con el `inputSource` de la sesión colgando.
  */
 function fakeController(actuators: unknown[]) {
-  return {
-    pointerState: { inputSource: { gamepad: { hapticActuators: actuators } } },
-  }
+  return { pointerState: { inputSource: fakeInputSource(actuators) } }
+}
+
+/** Doble de una sesión inmersiva con los mandos que se le pasen. */
+function fakeSession(...sources: XRInputSource[]) {
+  return { inputSources: sources }
 }
 
 describe('el golpe del acierto', () => {
@@ -22,6 +36,32 @@ describe('el golpe del acierto', () => {
     // pulso largo dejaría de leerse como "otro palo" y pasaría a molestar.
     expect(CATCH_PULSE.durationMs).toBeGreaterThan(10)
     expect(CATCH_PULSE.durationMs).toBeLessThan(120)
+  })
+})
+
+describe('el golpe del fallo', () => {
+  it('se distingue del acierto por las dos cosas: dura más y aprieta menos', () => {
+    // Si solo cambiara una, con el brazo en movimiento los dos se sentirían
+    // igual y la vibración diría menos que el sonido, que sí los distingue.
+    expect(MISS_PULSE.durationMs).toBeGreaterThan(CATCH_PULSE.durationMs * 2)
+    expect(MISS_PULSE.intensity).toBeLessThan(CATCH_PULSE.intensity)
+  })
+
+  it('sigue siendo un aviso y no un zumbido', () => {
+    // Suena en los dos mandos a la vez: pasado de largo o de fuerte, un par de
+    // palos escapados seguidos dejarían las manos vibrando sin parar.
+    expect(MISS_PULSE.durationMs).toBeLessThanOrEqual(250)
+    expect(MISS_PULSE.intensity).toBeGreaterThan(0.1)
+  })
+})
+
+describe('el toque de un botón', () => {
+  it('es el más discreto de los tres', () => {
+    // Elegir trece palos son trece pulsaciones seguidas: aquí lo que se pide es
+    // notar que el botón respondió, no que pase algo en la partida.
+    expect(PRESS_PULSE.durationMs).toBeLessThan(CATCH_PULSE.durationMs)
+    expect(PRESS_PULSE.intensity).toBeLessThan(CATCH_PULSE.intensity)
+    expect(PRESS_PULSE.intensity).toBeGreaterThan(0)
   })
 })
 
@@ -99,5 +139,56 @@ describe('vibración del mando', () => {
 
     expect(pulseHaptics(fakeController([{ pulse: () => pending }]), CATCH_PULSE)).toBe(true)
     expect(recover).toHaveBeenCalled()
+  })
+})
+
+describe('vibración de toda la sesión', () => {
+  it('avisa por los dos mandos, que es lo que no tiene el palo perdido', () => {
+    // Nadie lo ha tocado: no hay mano a la que cobrarle el fallo, así que el
+    // aviso va a las dos.
+    const left = vi.fn(() => Promise.resolve(true))
+    const right = vi.fn(() => Promise.resolve(true))
+    const session = fakeSession(
+      fakeInputSource([{ pulse: left }]),
+      fakeInputSource([{ pulse: right }]),
+    )
+
+    expect(pulseAllHaptics(session, MISS_PULSE)).toBe(2)
+    expect(left).toHaveBeenCalledWith(MISS_PULSE.intensity, MISS_PULSE.durationMs)
+    expect(right).toHaveBeenCalledWith(MISS_PULSE.intensity, MISS_PULSE.durationMs)
+  })
+
+  it('un mando roto no deja mudo al otro', () => {
+    // Con un solo mando encendido y el otro agotándose, el aviso tiene que
+    // llegar igual por el que funciona.
+    const good = vi.fn(() => Promise.resolve(true))
+    const session = fakeSession(
+      fakeInputSource([
+        {
+          pulse: () => {
+            throw new Error('el mando se está apagando')
+          },
+        },
+      ]),
+      fakeInputSource([{ pulse: good }]),
+    )
+
+    expect(pulseAllHaptics(session, MISS_PULSE)).toBe(1)
+    expect(good).toHaveBeenCalled()
+  })
+
+  it('las manos desnudas no cuentan como mando', () => {
+    // Jugando con las manos no hay motor que hacer vibrar: el fallo se ve y se
+    // oye, como en escritorio.
+    const hand = { handedness: 'left' } as unknown as XRInputSource
+
+    expect(pulseAllHaptics(fakeSession(hand), MISS_PULSE)).toBe(0)
+  })
+
+  it('sin sesión no ocurre nada', () => {
+    // Es el caso de escritorio, donde este mismo aviso corre en cada partida.
+    expect(pulseAllHaptics(null, MISS_PULSE)).toBe(0)
+    expect(pulseAllHaptics(undefined, MISS_PULSE)).toBe(0)
+    expect(pulseAllHaptics(fakeSession(), MISS_PULSE)).toBe(0)
   })
 })

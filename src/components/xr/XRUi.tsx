@@ -8,6 +8,7 @@ import {
   DIFFICULTY_ORDER,
   type Difficulty,
 } from '@/lib/gameConfig'
+import { PRESS_PULSE, pulseHaptics } from '@/lib/haptics'
 import {
   XR_CHECK_ICON,
   XR_CROSS_ICON,
@@ -84,6 +85,9 @@ const DEBOUNCE_MS = 300
  * - **El foco se ve.** Sin modelo de mando el jugador no tenía forma de saber
  *   a qué apuntaba. Ahora el botón apuntado crece *y* se enciende con un halo:
  *   forma y color, nunca solo color.
+ * - **La pulsación se nota.** Apuntando desde lejos la mano no toca nada, así
+ *   que el mando da un toque corto al activarse el botón (`PRESS_PULSE`). Es la
+ *   única confirmación que no depende de mirar el sitio donde ha cambiado algo.
  *
  * La zona sensible es una caja invisible más grande que el dibujo del botón:
  * apuntando en el aire, un objetivo del tamaño exacto del icono se falla
@@ -123,6 +127,12 @@ export function XRPressable({
     if (now - lastFired.current < DEBOUNCE_MS) return
     lastFired.current = now
 
+    // El toque va antes de la acción y no después: hay botones que cierran la
+    // sesión o cambian la escena entera, y con la sesión ya terminada el mando
+    // no vibra. `pulseHaptics` nunca lanza, así que adelantarlo no puede
+    // llevarse por delante la pulsación. Solo cuando el botón se activa de
+    // verdad: uno apagado o una pulsación repetida no confirman nada.
+    pulseHaptics(event, PRESS_PULSE)
     onSelect()
   }
 
