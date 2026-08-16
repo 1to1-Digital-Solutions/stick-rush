@@ -110,7 +110,9 @@ not let it — because inside a session there is no system toast to tell you.
 
 The game **depends on no external service**: no environment variables, no database,
 no third-party requests. Assets (HDRI and textures, all CC0) are served from
-`public/`; see [`public/CREDITS.md`](public/CREDITS.md).
+`public/`; see [`public/CREDITS.md`](public/CREDITS.md). So are the WebXR controller
+profiles, which used to be fetched from a CDN and are now part of the site — see
+[XR mode](#xr-mode).
 
 Sound is **synthesised** with the Web Audio API rather than played back from audio
 files — a handful of oscillators, so there is nothing to download and no
@@ -182,6 +184,11 @@ npm run build      # production build
 npm run start      # serve the production build
 ```
 
+One more script stays out of the day-to-day: `npm run sync:xr-profiles` re-copies the
+WebXR controller profiles into `public/webxr-profiles/`. Its output is committed, so a
+clone needs nothing extra and it is only worth running when
+`@webxr-input-profiles/assets` is updated — the why is in [XR mode](#xr-mode).
+
 ### Checks
 
 ```bash
@@ -198,11 +205,24 @@ The unit tests cover the logic in `src/lib` — machine geometry, stick layout a
 release delays, fall times per difficulty, what a catch is worth, the gaze anchor
 of the immersive UI, and the round lifecycle. The e2e tests drive the real game in
 Chromium against the production build: menu, round, catching sticks with the mouse,
-game over, and behaviour on a phone-sized screen.
+game over, the challenge and its lives, the record, sharing the result, sound, the
+security headers, and behaviour on a phone-sized screen.
 
-The e2e suite is served from `127.0.0.1` rather than `localhost` on purpose:
-`@react-three/xr` injects the WebXR emulator (IWER) when the hostname is exactly
+Chromium has no WebXR, so the immersive paths (`e2e/xr.spec.ts`: entering the
+headset, the first-time tutorial, the ring height being remembered) run against an
+**emulator the suite installs itself**, a Quest 3 emulated with IWER and bundled
+before the run (`e2e/support/`). It hands over a session and two input sources, but
+its pointers never reach the objects in the scene, so **catching a stick and pressing
+a 3D button can still only be proved on real hardware**. That is a limit, not an
+excuse: it once hid a real bug — the controllers were never registered, because their
+profile came from a CDN the CSP blocks — so there is now a test watching the console
+inside the session.
+
+The suite is served from `127.0.0.1` rather than `localhost` on purpose:
+`@react-three/xr` injects that same emulator on its own when the hostname is exactly
 `localhost`, which adds an "Enter XR" button that does not exist in the real game.
+The XR tests install theirs explicitly instead, so what they exercise is the game's
+own entry button.
 
 ## Layout
 
@@ -243,10 +263,12 @@ src/
     sound.ts            Synthesised game sounds (Web Audio, no files)
     mutePreference.ts   The mute choice, kept between visits
     tutorial.ts         Whether the in-headset tutorial has been seen
-e2e/                    Playwright tests
+e2e/                    Playwright tests, and the WebXR emulator they install
 docs/                   README screenshots and the mounting contract
 public/
   hdri/, textures/      CC0 assets served locally (see public/CREDITS.md)
+  webxr-profiles/       Controller profiles, served by the game instead of a CDN
+scripts/                The assets copier (stick-rush-assets) and the profile sync
 godot/                  Desktop Godot port (frozen, see godot/README.md)
 ```
 
@@ -286,6 +308,16 @@ catch your first stick: that is how the grab button gets taught. The tutorial �
 shown once, the first time you put the headset on — and the button that replays it
 use that same drawing, because teaching one controller and handing over another
 would be teaching nothing.
+
+What could not simply be turned off is the **controller profile**, the description of
+which button is which: without it the library never registers the controller at all —
+no model, no ray, no grab pointer — and it swallows the failed download in a
+`.catch(console.error)`, so on the headset it was just no controllers and nothing to
+press. They are served by the game itself instead (`public/webxr-profiles/`): the
+`profile.json` files only — 528 KB — and none of the `.glb` models, which are the
+100 MB of that package and are exactly what is drawn by hand above. Whoever mounts
+the game elsewhere has to serve them too, which is why `npx stick-rush-assets` copies
+them along with the HDRI and the textures.
 
 The `<Canvas>` with `<XR>` is **always mounted**: the desktop menu and HUD are DOM
 overlays on top of the 3D scene. That way, pressing "Entrar en el visor" starts the
