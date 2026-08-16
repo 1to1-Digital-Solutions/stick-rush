@@ -332,3 +332,34 @@ export const XR_TRIANGLE_CENTER: Record<
   down: [0, -0.25],
   right: [0.25, 0],
 }
+
+/**
+ * Las dos montañas del icono de escenario, apoyadas en la MISMA línea de suelo.
+ *
+ * Vive aquí y no en el componente por lo mismo que el resto: la forma se comprueba sin
+ * navegador. Los dos fallos que este icono puede tener —punta abajo, o una montaña flotando
+ * sobre la otra— son exactamente los que no se ven leyendo el JSX y sí con las gafas puestas,
+ * que es el sitio más caro para descubrirlos.
+ *
+ * Se colocan por la BASE y no por el centro: con la punta arriba, la base de un triángulo
+ * queda medio radio por debajo de su eje, así que dos montañas de radios distintos centradas
+ * a la misma altura se apoyan en suelos distintos.
+ */
+export type SceneMountain = { readonly radio: number; readonly x: number; readonly y: number }
+
+/** Radio y posición horizontal de cada montaña, en unidades de `size`. */
+const SCENE_MOUNTAINS: readonly { radio: number; x: number }[] = [
+  { radio: 0.62, x: -0.5 },
+  { radio: 0.48, x: 0.45 },
+]
+
+/** Altura del suelo compartido, en unidades de `size`: la base de la montaña mayor. */
+const SCENE_GROUND = -0.31
+
+export function sceneMountains(size: number): SceneMountain[] {
+  return SCENE_MOUNTAINS.map(({ radio, x }) => ({
+    radio: radio * size,
+    x: x * size,
+    y: (SCENE_GROUND + radio / 2) * size,
+  }))
+}

@@ -20,6 +20,7 @@ import {
   XR_SOUND_ICON,
   XR_TRIANGLE_CENTER,
   XR_TRIANGLE_ROTATION,
+  sceneMountains,
   type IconShape,
   type TriangleTip,
 } from '../../lib/xrIcons'
@@ -395,7 +396,18 @@ export function XRMutedIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_MUTED_ICON} {...props} />
 }
 
-/** Dos montañas y una luna: el escenario del juego. */
+/**
+ * Dos montañas y una luna: el escenario del juego.
+ *
+ * Las montañas usan el giro `up` de la tabla de triángulos, no uno propio: el que tenían
+ * dejaba la cara de frente pero con el vértice abajo, así que se veían dos cuñas invertidas
+ * y una luna en vez de un paisaje. Esa tabla está comprobada contra la geometría real de
+ * three, que es lo único que distingue «apunta arriba» de «apunta abajo» sin gafas puestas.
+ *
+ * Lo que NO se reutiliza es `XR_TRIANGLE_CENTER`: sirve para centrar un icono en su placa, y
+ * aquí lo que tiene que coincidir es el SUELO de las dos montañas. Alinearlas por su centro
+ * las dejaría flotando a alturas distintas, que es medio paisaje.
+ */
 export function XRSceneIcon({
   position = [0, 0, 0],
   size = 0.04,
@@ -403,15 +415,13 @@ export function XRSceneIcon({
 }: IconProps) {
   return (
     <group position={position}>
-      {[-0.5, 0.45].map((offset, index) => (
+      {sceneMountains(size).map(({ radio, x, y }, index) => (
         <mesh
           key={index}
-          position={[offset * size, index === 0 ? 0 : size * 0.18, 0]}
-          rotation={[Math.PI / 2, 0, 0]}
+          position={[x, y, 0]}
+          rotation={XR_TRIANGLE_ROTATION.up}
         >
-          <cylinderGeometry
-            args={[size * (index === 0 ? 0.62 : 0.48), 0, 0.008, 3]}
-          />
+          <cylinderGeometry args={[radio, radio, TRIANGLE_THICKNESS, 3]} />
           <meshBasicMaterial color={color} toneMapped={false} />
         </mesh>
       ))}

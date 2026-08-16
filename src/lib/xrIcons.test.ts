@@ -11,6 +11,7 @@ import {
   XR_SOUND_ICON,
   XR_TRIANGLE_CENTER,
   XR_TRIANGLE_ROTATION,
+  sceneMountains,
   type IconPoint,
   type IconShape,
   type TriangleTip,
@@ -563,6 +564,64 @@ describe('los triángulos encaran al jugador', () => {
     for (const axis of ['x', 'y'] as const) {
       const values = corners.map((corner) => corner[axis])
       expect((Math.min(...values) + Math.max(...values)) / 2).toBeCloseTo(0)
+    }
+  })
+})
+
+/**
+ * El icono de escenario tuvo el fallo de manual: las dos montañas con el vértice hacia
+ * abajo, o sea dos cuñas invertidas y una luna. Se comprueba contra la geometría real de
+ * three porque a ojo, en el código, una punta arriba y una punta abajo se escriben igual.
+ */
+describe('las montañas del icono de escenario', () => {
+  const SIZE = 0.04
+
+  /** Las tres esquinas de una montaña ya girada y colocada, en el plano del jugador. */
+  function corners(m: { radio: number; x: number; y: number }): Vector3[] {
+    const rotation = new Euler(...XR_TRIANGLE_ROTATION.up)
+    const geometry = new CylinderGeometry(m.radio, m.radio, 0.01, 3)
+    const position = geometry.attributes.position
+    const point = new Vector3()
+    const unique = new Map<string, Vector3>()
+    for (let i = 0; i < position.count; i++) {
+      point.fromBufferAttribute(position, i)
+      if (Math.hypot(point.x, point.z) < m.radio * 0.5) continue
+      if (point.y < 0) continue
+      const girado = point.clone().applyEuler(rotation)
+      // El cero con signo cuenta como otra esquina si no se normaliza, igual que arriba.
+      const key = [girado.x, girado.y]
+        .map((n) => (Math.abs(n) < 1e-6 ? 0 : n).toFixed(4))
+        .join(':')
+      unique.set(key, girado.add(new Vector3(m.x, m.y, 0)))
+    }
+    return [...unique.values()]
+  }
+
+  it('apuntan hacia arriba, no hacia abajo', () => {
+    for (const m of sceneMountains(SIZE)) {
+      const ys = corners(m).map((c) => c.y)
+      const cima = Math.max(...ys)
+      const base = Math.min(...ys)
+      // Una montaña tiene UN vértice arriba y DOS abajo. Del revés es justo al contrario,
+      // y esa cuenta es la que distingue las dos formas.
+      const arriba = ys.filter((y) => y > (cima + base) / 2)
+      expect(arriba).toHaveLength(1)
+    }
+  })
+
+  it('se apoyan en el mismo suelo', () => {
+    // Con radios distintos, centrarlas a la misma altura las deja a alturas distintas: una
+    // montaña flotando sobre la otra es medio paisaje.
+    const bases = sceneMountains(SIZE).map((m) => Math.min(...corners(m).map((c) => c.y)))
+    for (const base of bases) expect(base).toBeCloseTo(bases[0], 6)
+  })
+
+  it('la luna queda por encima de las dos cimas', () => {
+    // Si no, no es una luna: es una piedra encajada en la ladera.
+    const LUNA_Y = SIZE * 0.85 - SIZE * 0.2
+    for (const m of sceneMountains(SIZE)) {
+      const cima = Math.max(...corners(m).map((c) => c.y))
+      expect(LUNA_Y).toBeGreaterThan(cima)
     }
   })
 })
