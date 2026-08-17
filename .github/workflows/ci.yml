@@ -21,7 +21,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Node 24 trae npm 11, la serie que escribió el `package-lock.json`.
+          # Con el npm 10 de Node 22 un `npm install` reescribe unas 220 líneas.
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run lint
@@ -35,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - run: npm ci
       # Solo Chromium: la escena necesita WebGL y con --with-deps trae las
@@ -58,7 +60,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - run: npm ci
       # Informativo: hoy hay avisos heredados de Next que no tienen versión
