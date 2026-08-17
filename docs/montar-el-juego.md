@@ -67,6 +67,52 @@ y sin poder pulsar nada. Por eso los sirve el juego.
 
 ## 4. Montar el juego
 
+Hay **dos formas**, y la diferencia es de quién es la sesión inmersiva.
+
+### Como escena, dentro de un Canvas que ya existe
+
+Es lo que hace el salón de xrcade, y es la forma buena cuando el anfitrión también es 3D. El
+juego se pinta dentro del `<Canvas>` y de la sesión del anfitrión, así que **entrar en el juego
+y volver no tocan la sesión**: con el visor puesto se pasa de un juego al salón sin quitárselo.
+
+```tsx
+'use client'
+
+import { Canvas } from '@react-three/fiber'
+import { XR, XROrigin } from '@react-three/xr'
+import { StickRushScene } from 'stick-rush'
+
+export function Salon({ store, onExit }) {
+  return (
+    <Canvas>
+      <XR store={store}>
+        {/* El jugador es del anfitrión: el juego coloca su mundo alrededor. */}
+        <XROrigin position={[0, 0, 0]} />
+        <StickRushScene assetsBase="/juegos/stick-rush/" onExit={onExit} />
+      </XR>
+    </Canvas>
+  )
+}
+```
+
+Lo que la escena **no** hace, y por qué:
+
+- **No crea Canvas ni `XRStore`, ni abre o cierra la sesión.** WebXR da una sesión por documento
+  y va atada al Canvas que la abrió: quien es dueño del Canvas es dueño de la sesión.
+- **No pone `<XROrigin>`.** El sitio del jugador lo decide el anfitrión. El juego coloca su
+  mundo alrededor de donde esté, corriendo el decorado en vez de mover al jugador.
+- **No pinta DOM.** Dentro de un Canvas solo caben objetos de three. El menú y el marcador en 2D
+  se quedan en la web del juego; dentro del visor sus equivalentes son geometría y sí van.
+
+`onExit` es obligatorio: es cómo el juego devuelve al jugador desde su interfaz inmersiva —el
+botón de salir de su menú— sin decidir a dónde. Un anfitrión que no tenga a dónde devolverle
+puede pasar el cierre de su propia sesión, que es lo que hace la web del juego.
+
+### Como aplicación, con su propio Canvas
+
+Para una página que sea el juego y nada más. Abre su propia sesión, así que **no** se puede
+montar dentro de otro Canvas: en un documento solo cabe una sesión inmersiva.
+
 Como componente, si la aplicación anfitriona es de React:
 
 ```tsx
@@ -109,7 +155,8 @@ Toda la superficie pública es esa:
 
 | Nombre                         | Qué es                                                                                |
 | ------------------------------ | ------------------------------------------------------------------------------------- |
-| `StickRush`                    | El juego como componente de React.                                                    |
+| `StickRushScene`               | El juego como **escena**, dentro del Canvas y la sesión de otro. Props: `assetsBase`, `onExit`. |
+| `StickRush`                    | El juego como aplicación, con su propio Canvas y su propia sesión.                    |
 | `mountStickRush(elemento, …)`  | Lo mismo sobre un elemento del DOM. Devuelve `{ unmount() }`, que además cierra la sesión. |
 | `assetsBase`                   | De dónde cuelgan los ficheros del paso 3. Por defecto, la raíz del sitio.              |
 | `stick-rush/styles.css`        | Los colores, la tipografía y las animaciones del juego.                                |

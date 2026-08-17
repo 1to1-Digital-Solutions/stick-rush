@@ -66,7 +66,7 @@
       no emiten eventos sobre la escena. El test queda escrito como `fixme` en
       `e2e/xr.spec.ts`. Línea abierta si alguien quiere retomarla — pero ojo, esa
       limitación ya tapó un fallo real una vez (ver `ESTADO.md`).
-- [ ] **El `package-lock.json` está escrito en el formato de npm 11** (lleva los campos
+- [ ] **El `package-lock.json` está escrito en el formato de npm 11** (lleva los campos <!-- org:02cab77f-91f0-424d-95ce-a51a2c2ca408 -->
       `libc` y no lista los paquetes empaquetados de `@tailwindcss/oxide-wasm32-wasi`).
       Quien desarrolle con Node 22, que trae npm 10, verá que un `npm install` reescribe
       unas 220 líneas del lock y vuelve a ensuciar el árbol, justo lo que se acaba de
@@ -109,7 +109,7 @@
 
 - [x] 110 tests unitarios (Vitest) y 32 e2e (Playwright).
 - [x] Auditoría de seguridad, CSP y cabeceras. Cero peticiones a terceros.
-- [x] `npm audit` en 0 vulnerabilidades (Next 16.3.0).
+- [x] `npm audit` en 0 vulnerabilidades (Next 16.3.0). <!-- org:ff66be6e-014a-43c2-a9f3-8e72a2d810b0 -->
 - [x] CI, Dependabot y licencia MIT.
 - [x] Email personal fuera del historial **y de todas las ramas publicadas**.
 - [x] Git consolidado: `origin` solo con `main`; en local solo `main` y `develop`.
@@ -117,16 +117,19 @@
 
 ## Desde Organízate
 
+- [ ] Publicar Stick Rush como escena, sin Canvas ni sesión propios <!-- org:4b8c805f-ca36-4d47-9e5c-3c787b006c50 -->
+- [ ] Pasar la titularidad del proyecto a la cuenta personal <!-- org:668391a0-0ae9-4352-bbaf-7db6f84b8ae7 -->
+- [ ] Cerrar el desajuste de npm entre el lockfile y el CI <!-- org:d53a5f8d-1a7e-4348-b940-97f882b4b8bc -->
 - [x] Inicializar proyecto. Crear una primera version <!-- org:e1edeac8-c23f-4773-aa2f-eb24a583b9eb -->
 - [ ] Godot para Steam: retomarlo cuando el web esté cerrado <!-- org:e8a6716d-9b48-4083-b8da-8fb6827cec2b -->
 - [x] Soporte WebXR (VR/AR) con mandos en StickRush <!-- org:f282927c-c3af-48c1-a3c4-851cb69f961b -->
-- [ ] El icono de escenario del menú inmersivo dibuja las montañas del revés <!-- org:3ac2a069-c7bc-4ef1-9521-9b8d19749d80 -->
+- [x] El icono de escenario del menú inmersivo dibuja las montañas del revés <!-- org:3ac2a069-c7bc-4ef1-9521-9b8d19749d80 -->
 - [x] Añadir tests unitarios (base para integrar sin revisar PRs) <!-- org:23779941-0a8e-4ca6-a27e-450a5947cdba -->
-- [ ] Decidir si la preferencia de silencio se recuerda entre visitas <!-- org:d14d61ae-c6c8-496e-955f-12f6f73c77b9 -->
+- [x] Decidir si la preferencia de silencio se recuerda entre visitas <!-- org:d14d61ae-c6c8-496e-955f-12f6f73c77b9 -->
 - [ ] Validar en el visor el recinto de feria del modo VR <!-- org:8d3fb996-72e8-4cd8-a6fa-d442318063ba -->
 - [ ] Probar en el visor el balanceo de los palos y ajustar la amplitud <!-- org:8b4a72a2-d9d2-4c42-b2ff-54bc07b71146 -->
 - [x] Pulir el menú inmersivo: el triángulo de canto y su altura <!-- org:9a91c8a0-e4ad-48e1-a18c-2c81dca9e663 -->
-- [ ] Recordar el escenario (VR/passthrough) entre visitas, sin dejar al jugador mirando la nada <!-- org:d447b267-9926-48dc-a5ed-27c8419d74be -->
+- [x] Recordar el escenario (VR/passthrough) entre visitas, sin dejar al jugador mirando la nada <!-- org:d447b267-9926-48dc-a5ed-27c8419d74be -->
 - [x] Rematar el feedback del juego: vibración y memoria del silencio <!-- org:17b07c29-9940-49c1-9f55-6b06bf62aa1c -->
 - [x] Modo práctica y modo desafío <!-- org:2fe49a79-6016-4b2a-ba29-1f0d23b30512 -->
 - [x] Ajustar la altura del aro a quien está jugando <!-- org:0070db6b-a5c2-4c94-8c7d-dd60fbadf495 -->
@@ -137,5 +140,5 @@
 - [x] Etiquetar v0.2.0 para que xrcade pueda instalar el juego <!-- org:134c51c9-e53b-4f54-9b5d-e876e7d8a0ef -->
 - [x] Separar el juego de su web para que xrcade pueda montarlo <!-- org:91b55465-77d0-4a22-be34-e94fbd8be631 -->
 - [x] Etiquetar v0.2.0 en main y publicar el tag (bloqueada: main aún no tiene la montabilidad) <!-- org:aeea4140-de31-4ca1-aeb3-5e22d6904d80 -->
-- [ ] Regenerar package-lock.json, que quedó desfasado al separar el juego de su web <!-- org:8213b3f0-b0e6-478c-beeb-763df11f3b36 -->
+- [x] Regenerar package-lock.json, que quedó desfasado al separar el juego de su web <!-- org:8213b3f0-b0e6-478c-beeb-763df11f3b36 -->
 - [x] Decidir cómo accede xrcade al repo privado para instalar el juego (acceso al CI, repo público o registry) <!-- org:93ff12f4-a19e-4e7c-b614-38b201f9e434 -->

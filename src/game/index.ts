@@ -8,4 +8,5 @@
  */
 
 export { StickRush, type StickRushProps } from './StickRush'
+export { StickRushScene, type StickRushSceneProps } from './StickRushScene'
 export { mountStickRush, type StickRushHandle } from './mount'

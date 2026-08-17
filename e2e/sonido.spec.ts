@@ -70,9 +70,14 @@ test.describe('Sonido', () => {
 
     await catchStick(page)
 
-    expect((await readSpy(page)).oscillators).toBeGreaterThan(
-      afterCountdown.oscillators,
-    )
+    // Se espera al sonido en vez de leerlo de golpe: el juego se pinta dentro
+    // del Canvas y R3F entrega sus actualizaciones en su propio ciclo, así que
+    // el marcador del DOM puede ir un fotograma por delante del oscilador.
+    // Lo que se comprueba sigue siendo lo mismo —que atrapar un palo suena—,
+    // no cuándo exactamente.
+    await expect
+      .poll(async () => (await readSpy(page)).oscillators)
+      .toBeGreaterThan(afterCountdown.oscillators)
   })
 
   test('silenciado desde el menú, el juego no abre el audio', async ({

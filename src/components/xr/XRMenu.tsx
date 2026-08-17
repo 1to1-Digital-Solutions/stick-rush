@@ -11,6 +11,7 @@ import {
 } from '../../lib/gameConfig'
 import { CHALLENGE_LIVES } from '../../lib/gameMode'
 import { useGame } from '../../lib/gameStore'
+import { useExit } from '../../game/exit'
 import { HOOP_ADJUST_RANGE } from '../../lib/hoopHeight'
 import {
   XR_DIFFICULTY_SPACING,
@@ -409,8 +410,8 @@ function TutorialButton() {
 
 export function XRMenu() {
   const mode = useXR((state) => state.mode)
-  const session = useXR((state) => state.session)
   const { gameState, startGame } = useGame()
+  const exit = useExit()
 
   // Fuera de sesión inmersiva manda la pantalla de inicio en DOM.
   if (mode == null || gameState !== 'menu') {
@@ -450,11 +451,14 @@ export function XRMenu() {
         <XRPlayIcon position={[0, 0, 0.008]} />
       </XRPressable>
 
-      {/* Salir del visor. Desde el menú inmersivo no había forma de volver sin
-          quitarse las gafas: el botón del sistema no siempre está a mano. */}
+      {/* Salir. Desde el menú inmersivo no había forma de volver sin quitarse
+          las gafas: el botón del sistema no siempre está a mano. A dónde se
+          vuelve lo decide quien monta el juego (ver `game/exit.tsx`): en su
+          propia web es cerrar la sesión; dentro del salón de xrcade, devolverle
+          al jugador sin tocarla. */}
       <XRPressable
         position={XR_MENU_EXIT_OFFSET}
-        onSelect={() => void session?.end()}
+        onSelect={exit}
         hitSize={[0.16, 0.13, 0.06]}
       >
         <mesh position={[0, 0, -0.008]}>

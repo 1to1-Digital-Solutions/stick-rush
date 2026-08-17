@@ -4,7 +4,6 @@ import { Suspense, lazy, useSyncExternalStore } from 'react'
 import { useGame } from '../../lib/gameStore'
 import { StartScreen } from '../ui/StartScreen'
 import { HUD } from './HUD'
-import { useGameSound } from './useGameSound'
 
 // El Canvas de R3F depende de WebGL/window, así que se carga aparte y solo en
 // cliente. Con `lazy` de React y no con `next/dynamic`: el juego se monta
@@ -45,9 +44,10 @@ function SceneLoading() {
 export function GameScene() {
   const { gameState } = useGame()
   const onClient = useOnClient()
-  // Aquí y no dentro del Canvas: el sonido acompaña a la partida, no a la
-  // escena 3D, y desde fuera vale igual para el navegador y para el visor.
-  useGameSound()
+  // El sonido lo monta ahora `<GameWorld>`, dentro del Canvas: acompaña al
+  // juego, y el juego se monta también dentro del salón de xrcade, donde esta
+  // envoltura de DOM no existe. Llamarlo aquí además abría un segundo
+  // AudioContext — lo cazó el e2e del sonido.
 
   return (
     <div className="stick-rush relative h-full w-full">

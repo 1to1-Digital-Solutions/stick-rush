@@ -5,6 +5,7 @@ import { GameProvider } from '../components/GameProvider'
 import { GameScene } from '../components/game/GameScene'
 import { endXrSession } from '../components/xr/xrStore'
 import { setAssetsBase } from '../lib/assets'
+import { ExitProvider } from './exit'
 
 export interface StickRushProps {
   /**
@@ -16,11 +17,17 @@ export interface StickRushProps {
 }
 
 /**
- * El juego entero, listo para montar dentro de cualquier aplicación de React.
+ * El juego entero **con su Canvas y su sesión**, listo para montar dentro de
+ * cualquier aplicación de React que quiera una página de juego.
  *
  * Ocupa lo que mida su contenedor —dale una altura— y no sabe nada de rutas,
  * layout ni metadatos: quien lo monta decide dónde vive y qué hay alrededor.
- * El contrato completo está en `docs/montar-el-juego.md`.
+ *
+ * Para montarlo DENTRO de un Canvas y una sesión que ya existen —lo que hace el
+ * salón inmersivo de xrcade, y lo que permite volver sin quitarse el visor— hay
+ * que usar `<StickRushScene>`. Este de aquí abre su propia sesión, y en un
+ * documento solo cabe una. El contrato completo está en
+ * `docs/montar-el-juego.md`.
  */
 export function StickRush({ assetsBase }: StickRushProps) {
   // Durante el render y no en un efecto: la escena pide el HDRI y las texturas
@@ -35,7 +42,11 @@ export function StickRush({ assetsBase }: StickRushProps) {
 
   return (
     <GameProvider>
-      <GameScene />
+      {/* Aquí salir es cerrar la sesión: esta web es el juego y no hay ningún
+          sitio al que volver. En el salón significa lo contrario. */}
+      <ExitProvider onExit={endXrSession}>
+        <GameScene />
+      </ExitProvider>
     </GameProvider>
   )
 }
