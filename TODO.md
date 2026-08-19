@@ -73,9 +73,10 @@
       por fotograma del menú: 69 tubos sueltos (`Strut` en
       `src/components/game/StickMachine.tsx`) y 16 la guirnalda con sus casquillos, y en el
       visor eso se paga por ojo. Ahora van por `MachinePieces.tsx` con la misma receta que el
-      recinto usa en `FairPieces` y cuestan 5, así que la escena mide 29 en el menú. Medido y
-      justificado en `ESTADO.md`, «Validar el recinto en el visor», y vigilado por
-      `e2e/recinto.spec.ts` (`MENU_DRAW_CALL_BUDGET`, 45).
+      recinto usa en `FairPieces`, así que la escena mide 29 en el menú. El desglose de esas
+      29 y el techo que las vigila (`MENU_DRAW_CALL_BUDGET`, 45) están en
+      `e2e/recinto.spec.ts`, que es quien lo mide; el porqué, en `ESTADO.md`, «Validar el
+      recinto en el visor».
 
 ---
 

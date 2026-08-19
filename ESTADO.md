@@ -47,7 +47,7 @@ VR/AR (tercera prueba) → limpieza de ramas → **desplegado y validado en hard
    al batirlo se note que la barra cambia (`ScoreBar` en `src/components/xr/XRHud.tsx`);
    (j) que el **recinto de feria** nuevo no se coma los fotogramas en el visor, que las
    casetas no agobien a 6.4 m y que la noria girando en la periferia no maree. El coste de
-   dibujo ya está medido y descarta el recinto —5 llamadas de las 29 por fotograma—, así
+   dibujo ya está medido y descarta el recinto, así
    que el guion de qué mirar y qué constante tocar en cada caso está en "Validar el
    recinto en el visor"; radios y distancias, en `src/lib/sceneryLayout.ts`.
    (k) que el **botón de compartir** de la pantalla de fin funcione con las gafas
@@ -600,25 +600,26 @@ La validación es de las gafas y **sigue pendiente**: nadie se las ha puesto tod
 recinto delante. Lo que sí está hecho es medir la parte que *no* necesita visor, para que la
 prueba de verdad sea corta y sepa dónde mirar.
 
-- **El recinto cuesta 5 de las 29 llamadas de dibujo por fotograma.** Son las tres familias
-  instanciadas más los dos aros de la noria, que son mallas sueltas. Medido sobre el build de
-  producción en Chromium: **29 llamadas en el menú**, que es el estado comparable porque la
-  escena arranca siempre con los cinco palos de `MIN_STICKS` colgando. El total se mueve con
-  los palos —tres llamadas cada uno mientras cuelga (la cuerda, el palo y su gancho) y dos
-  cuando cae—: 53 con trece, y va bajando según se resuelven. El recinto no cambia nunca.
+- **La escena cuesta 29 llamadas de dibujo por fotograma en el menú**, y el recinto es una
+  porción pequeña de ellas. Medido sobre el build de producción en Chromium; el menú es el
+  estado comparable porque la escena arranca siempre con los cinco palos de `MIN_STICKS`
+  colgando. Qué se lleva cada parte —y cuánto sube el total con más palos— está desglosado
+  en el comentario de `MENU_DRAW_CALL_BUDGET` (`e2e/recinto.spec.ts`), que es quien lo
+  mide: ahí vive la cuenta y ahí hay que actualizarla si el coste cambia.
 - **Las 285 piezas se pintan todas**: los `instanceCount` que llegan a WebGL son 120 tablas,
   55 postes y 110 bombillas, exactamente lo que declara `FAIR_PIECES`. Ese era el riesgo real
   de esta parte —drei deja de pintar en silencio lo que pase del límite— y queda descartado.
 - **Lo caro era la máquina, y ya está instanciada.** Cuando se midió esto costaba 85 de las
   ~110 llamadas de entonces: 69 tubos sueltos (`Strut`, el cilindro de 10 lados con el que
   están hechos arcos, celosía, montantes, riostras y patas) y 16 las bombillas de su
-  guirnalda; en el visor eso se paga **por ojo**, así que eran ~170 por fotograma. Ahora
-  cuesta 5, con la misma receta del recinto (`MachinePieces.tsx`): tres familias de tubos
-  —tres y no una, porque comparten geometría pero no material— y dos para las bombillas. De
-  las 29 que quedan, 15 son los cinco palos y 4 las bases de los postes, sueltos a propósito:
-  un palo se coge con la mano y una instancia no se puede apuntar ni mover por su cuenta.
-  **Ya no queda un recorte grande esperando**, así que si en hardware hay tirones habrá que
-  buscar la causa por otro lado; recortar el recinto sigue siendo lo último que tocar.
+  guirnalda; en el visor eso se paga **por ojo**, así que eran ~170 por fotograma. Ahora va
+  con la misma receta del recinto (`MachinePieces.tsx`): tres familias de tubos —tres y no
+  una, porque comparten geometría pero no material— y dos para las bombillas, y ese ahorro es
+  lo que deja la escena en 29. Lo que queda suelto son los palos con sus ganchos y las bases
+  de los postes, a propósito: un palo se coge con la mano y una instancia no se puede apuntar
+  ni mover por su cuenta. **Ya no queda un recorte grande esperando**, así que si en hardware
+  hay tirones habrá que buscar la causa por otro lado; recortar el recinto sigue siendo lo
+  último que tocar.
 - **La medida se repite sola** (`e2e/recinto.spec.ts`), sin contadores en el código del juego:
   un `addInitScript` envuelve `drawElements` y `drawElementsInstanced` del prototipo de
   `WebGL2RenderingContext`, y un `requestAnimationFrame` registrado antes que el de la escena
@@ -636,7 +637,8 @@ prueba de verdad sea corta y sepa dónde mirar.
 `src/lib/sceneryLayout.ts`):
 
 - ¿Va fluido al girar la cabeza o hay tirón? Si lo hay, el recinto es el último sospechoso:
-  cuesta 5 llamadas de 29 y la máquina otras 5, así que hay que medir antes de recortarlo.
+  junto con la máquina pesa menos que los palos colgando (desglose en
+  `MENU_DRAW_CALL_BUDGET`), así que hay que medir antes de recortarlo.
 - ¿Las casetas agobian a 6.4 m, o el recinto se ve vacío? → `STALL_RING_RADIUS`, con
   `SCENERY_CLEARANCE` (3 m) como suelo que los tests no dejan pisar.
 - ¿La noria marea o distrae mientras caen los palos? → `WHEEL_SPEED` (0.074 rad/s, una vuelta

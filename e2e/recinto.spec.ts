@@ -31,10 +31,22 @@ const FAIR_INSTANCES = { boards: 120, poles: 55, bulbs: 110 }
  * Techo de llamadas por fotograma **en el menú**, que es el estado con medidas
  * comparables: la escena arranca siempre con los mismos cinco palos colgando.
  *
- * Medidas 29: el recinto entero cuesta 5 (tres familias instanciadas más los dos
- * aros de la noria) y la máquina 5 (tres familias de tubos y dos de bombillas).
- * El resto son los palos, sus ganchos y las bases de los postes, que van sueltos
- * a propósito — un palo se coge con la mano y una instancia no se puede apuntar.
+ * Medidas 29, y este es el sitio donde vive el desglose entero —`ESTADO.md` y
+ * `TODO.md` citan el total y remiten aquí, que es lo único que se ejecuta y falla
+ * si miente—:
+ *
+ * - **5 el recinto**: sus tres familias instanciadas más los dos aros de la noria.
+ * - **5 la máquina**: tres familias de tubos (comparten geometría pero no material)
+ *   y dos de bombillas.
+ * - **15 los cinco palos**, a tres cada uno mientras cuelgan: la cuerda, el palo y
+ *   su gancho. Al caer pasan a dos.
+ * - **4 las bases de los postes**: la del pie y la del tirante, por cada uno de los
+ *   dos postes.
+ *
+ * Los palos y sus ganchos van sueltos a propósito —un palo se coge con la mano y una
+ * instancia no se puede apuntar ni mover por su cuenta—, así que el total es lo único
+ * que se mueve con la partida: 53 con trece palos colgando, y bajando según se
+ * resuelven. El recinto y la máquina no cambian nunca.
  *
  * El margen absorbe algún palo de más. Lo que tiene que saltar es dejar de
  * instanciar: cuando la máquina iba con cada tubo suelto eran 110, así que un
