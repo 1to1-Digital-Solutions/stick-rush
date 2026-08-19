@@ -32,8 +32,8 @@ const FAIR_INSTANCES = { boards: 120, poles: 55, bulbs: 110 }
  * comparables: la escena arranca siempre con los mismos cinco palos colgando.
  *
  * Medidas 29, y este es el sitio donde vive el desglose entero —`ESTADO.md` y
- * `TODO.md` citan el total y remiten aquí, que es lo único que se ejecuta y falla
- * si miente—:
+ * `TODO.md` citan el total y remiten aquí, que es el único de los tres que se
+ * ejecuta—:
  *
  * - **5 el recinto**: sus tres familias instanciadas más los dos aros de la noria.
  * - **5 la máquina**: tres familias de tubos (comparten geometría pero no material)
@@ -47,6 +47,9 @@ const FAIR_INSTANCES = { boards: 120, poles: 55, bulbs: 110 }
  * instancia no se puede apuntar ni mover por su cuenta—, así que el total es lo único
  * que se mueve con la partida: 53 con trece palos colgando, y bajando según se
  * resuelven. El recinto y la máquina no cambian nunca.
+ *
+ * Lo que el test comprueba es el techo, no el reparto: si la escena cambia de coste,
+ * las cuatro líneas de arriba hay que rehacerlas aquí a mano —nadie va a avisar—.
  *
  * El margen absorbe algún palo de más. Lo que tiene que saltar es dejar de
  * instanciar: cuando la máquina iba con cada tubo suelto eran 110, así que un

@@ -47,9 +47,9 @@ VR/AR (tercera prueba) → limpieza de ramas → **desplegado y validado en hard
    al batirlo se note que la barra cambia (`ScoreBar` en `src/components/xr/XRHud.tsx`);
    (j) que el **recinto de feria** nuevo no se coma los fotogramas en el visor, que las
    casetas no agobien a 6.4 m y que la noria girando en la periferia no maree. El coste de
-   dibujo ya está medido y descarta el recinto, así
-   que el guion de qué mirar y qué constante tocar en cada caso está en "Validar el
-   recinto en el visor"; radios y distancias, en `src/lib/sceneryLayout.ts`.
+   dibujo ya está medido y descarta el recinto, así que el guion de qué mirar y qué
+   constante tocar en cada caso está en "Validar el recinto en el visor"; radios y
+   distancias, en `src/lib/sceneryLayout.ts`.
    (k) que el **botón de compartir** de la pantalla de fin funcione con las gafas
    puestas: si el visor abre la hoja del sistema, que se pueda usar sin quitárselas;
    si no, que el avión de papel pase a marca de verificación (texto copiado) y que al
@@ -637,8 +637,9 @@ prueba de verdad sea corta y sepa dónde mirar.
 `src/lib/sceneryLayout.ts`):
 
 - ¿Va fluido al girar la cabeza o hay tirón? Si lo hay, el recinto es el último sospechoso:
-  junto con la máquina pesa menos que los palos colgando (desglose en
-  `MENU_DRAW_CALL_BUDGET`), así que hay que medir antes de recortarlo.
+  junto con la máquina pesa menos que los palos colgando (desglose en el comentario de
+  `MENU_DRAW_CALL_BUDGET`, en `e2e/recinto.spec.ts`), así que hay que medir antes de
+  recortarlo.
 - ¿Las casetas agobian a 6.4 m, o el recinto se ve vacío? → `STALL_RING_RADIUS`, con
   `SCENERY_CLEARANCE` (3 m) como suelo que los tests no dejan pisar.
 - ¿La noria marea o distrae mientras caen los palos? → `WHEEL_SPEED` (0.074 rad/s, una vuelta
