@@ -14,9 +14,9 @@
 a buen tamaño, mandos bien, agarre bien, y los modos VR y AR alternan sin problema.
 
 `main` = `origin/main`, y `origin` **solo tiene esa rama**. En local, solo `main` y
-`develop` (al día). Verificado: lint y typecheck limpios, build OK, **110 unitarios**
-(`npm test`) y **32 e2e** (`npm run test:e2e`) en verde, y `npm audit` en
-**0 vulnerabilidades**.
+`develop` (al día). Verificado: lint y typecheck limpios, build OK, **504 unitarios**
+(`npm test`) y **73 e2e** (`npm run test:e2e`, 2 de ellos `fixme`) en verde, y `npm audit`
+en **0 vulnerabilidades**.
 
 Últimos hitos, en orden: primera versión jugable → tests + README → auditoría de
 seguridad → menú inmersivo y agarre tras probar con las gafas → tests de XR con
