@@ -30,12 +30,17 @@ const FAIR_INSTANCES = { boards: 120, poles: 55, bulbs: 110 }
 /**
  * Techo de llamadas por fotograma **en el menú**, que es el estado con medidas
  * comparables: la escena arranca siempre con los mismos cinco palos colgando.
- * Medidas 109, de las que solo 5 son del recinto (las tres familias instanciadas
- * más los dos aros de la noria); el resto es sobre todo la máquina, que va con
- * cada tubo suelto. El margen absorbe un palo de más; lo que tiene que saltar es
- * dejar de instanciar el decorado, que serían cientos de llamadas.
+ *
+ * Medidas 29: el recinto entero cuesta 5 (tres familias instanciadas más los dos
+ * aros de la noria) y la máquina 5 (tres familias de tubos y dos de bombillas).
+ * El resto son los palos, sus ganchos y las bases de los postes, que van sueltos
+ * a propósito — un palo se coge con la mano y una instancia no se puede apuntar.
+ *
+ * El margen absorbe algún palo de más. Lo que tiene que saltar es dejar de
+ * instanciar: cuando la máquina iba con cada tubo suelto eran 110, así que un
+ * techo de 45 caza esa regresión mientras que uno de 120 la dejaba pasar entera.
  */
-const MENU_DRAW_CALL_BUDGET = 120
+const MENU_DRAW_CALL_BUDGET = 45
 
 interface DrawFrame {
   /** Llamadas de dibujo del fotograma. */
