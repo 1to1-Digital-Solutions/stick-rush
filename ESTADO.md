@@ -125,6 +125,12 @@ Pendiente para ese momento (no antes):
 - Stack: Next.js 16 (App Router) + React 19 + TypeScript; R3F + drei + three +
   `@react-three/xr`; Tailwind v4. Estado global con **Context API** (sin Zustand/Redux).
 - `npm` como gestor de paquetes (se descartó el pnpm que generó el scaffold).
+- **La versión de Node se fija en `.nvmrc` (hoy 24.19.0) y el CI la lee de ahí**
+  (`node-version-file`, no `node-version`). El formato del `package-lock.json` cambia
+  entre versiones de npm: con el CI en Node 22 (npm 10) un `npm install` reescribía unas
+  220 líneas del lock, generado con npm 11. El patch va fijado a propósito —dejarlo en
+  `24` a secas volvería a dejar la versión de npm al azar—, así que subirlo es un cambio
+  manual: al hacerlo, comprobar que `npm install` sigue dejando el lock intacto.
 - `build` fija `NODE_ENV=production` en el script porque el entorno exporta
   `NODE_ENV=development`, que rompía la prerenderización de `/_global-error`.
 - **Un palo se coge hasta que toca el suelo, colgando incluido** (decidido el
