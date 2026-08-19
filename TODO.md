@@ -69,7 +69,7 @@
 - [x] **El desajuste de npm entre el lockfile y el CI está cerrado**: la versión de Node <!-- org:02cab77f-91f0-424d-95ce-a51a2c2ca408 -->
       se fija en `.nvmrc` y el CI la lee de ahí, así que el lock se escribe y se lee
       siempre con el mismo npm y un `npm install` ya no lo reescribe.
-- [ ] **Instanciar los tubos de la máquina.** De las ~110 llamadas de dibujo por fotograma
+- [x] **Instanciar los tubos de la máquina.** De las ~110 llamadas de dibujo por fotograma <!-- org:0dd891e2-8a77-4040-8993-70fc57bbea94 -->
       del menú, 85 son suyas: 69 tubos sueltos (`Strut` en
       `src/components/game/StickMachine.tsx`) y 16 la guirnalda con sus casquillos. En el
       visor eso se paga por ojo. El recinto de feria ya pasa las suyas por `FairPieces` y le
@@ -117,6 +117,10 @@
 
 ## Desde Organízate
 
+- [ ] El muestreo de 30 fotogramas esperaba con los 15 s por defecto de expect <!-- org:192936ea-49e1-4de6-ba4b-1a7615bd5fdf -->
+- [ ] El README enumera lo que cubren los e2e y no mencionaba la medida del… <!-- org:0494a4d7-33dd-4679-8dff-ea325a1a6bc7 -->
+- [ ] window.__drawFrames se declaraba obligatorio existiendo solo con el… <!-- org:e5137c06-d4dd-4e68-b9b4-28f8ca594eb9 -->
+- [x] Añadir al CI un guardián que detecte si `npm install` ensucia el lockfile <!-- org:54fdb843-b4a2-4e95-a58b-d086538d7e8d -->
 - [x] Publicar Stick Rush como escena, sin Canvas ni sesión propios <!-- org:4b8c805f-ca36-4d47-9e5c-3c787b006c50 -->
 - [ ] Pasar la titularidad del proyecto a la cuenta personal <!-- org:668391a0-0ae9-4352-bbaf-7db6f84b8ae7 -->
 - [x] Cerrar el desajuste de npm entre el lockfile y el CI <!-- org:d53a5f8d-1a7e-4348-b940-97f882b4b8bc -->
@@ -126,7 +130,7 @@
 - [x] El icono de escenario del menú inmersivo dibuja las montañas del revés <!-- org:3ac2a069-c7bc-4ef1-9521-9b8d19749d80 -->
 - [x] Añadir tests unitarios (base para integrar sin revisar PRs) <!-- org:23779941-0a8e-4ca6-a27e-450a5947cdba -->
 - [x] Decidir si la preferencia de silencio se recuerda entre visitas <!-- org:d14d61ae-c6c8-496e-955f-12f6f73c77b9 -->
-- [ ] Validar en el visor el recinto de feria del modo VR <!-- org:8d3fb996-72e8-4cd8-a6fa-d442318063ba -->
+- [x] Validar en el visor el recinto de feria del modo VR <!-- org:8d3fb996-72e8-4cd8-a6fa-d442318063ba -->
 - [ ] Probar en el visor el balanceo de los palos y ajustar la amplitud <!-- org:8b4a72a2-d9d2-4c42-b2ff-54bc07b71146 -->
 - [x] Pulir el menú inmersivo: el triángulo de canto y su altura <!-- org:9a91c8a0-e4ad-48e1-a18c-2c81dca9e663 -->
 - [x] Recordar el escenario (VR/passthrough) entre visitas, sin dejar al jugador mirando la nada <!-- org:d447b267-9926-48dc-a5ed-27c8419d74be -->
