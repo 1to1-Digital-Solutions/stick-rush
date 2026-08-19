@@ -76,16 +76,6 @@
       cuestan 5 en total; aplicar ahí lo mismo es el recorte grande que queda. Sin urgencia
       mientras el visor vaya fluido: medido y justificado en `ESTADO.md`, «Validar el recinto
       en el visor», y vigilado por `e2e/recinto.spec.ts`.
-- [ ] **El `package-lock.json` está escrito en el formato de npm 11** (lleva los campos <!-- org:02cab77f-91f0-424d-95ce-a51a2c2ca408 -->
-      `libc` y no lista los paquetes empaquetados de `@tailwindcss/oxide-wasm32-wasi`).
-      Quien desarrolle con Node 22, que trae npm 10, verá que un `npm install` reescribe
-      unas 220 líneas del lock y vuelve a ensuciar el árbol, justo lo que se acaba de
-      arreglar. El CI no se ve afectado porque solo ejecuta `npm ci`, que instala igual
-      con las dos versiones y deja el fichero intacto (comprobado con 10.9.9 y 11.12.1).
-      Para cerrarlo hay que fijar la versión de npm (`packageManager` en `package.json`)
-      o subir el CI a Node 24, y regenerar el lock con esa versión. Ojo: hasta entonces
-      no se puede añadir al CI un guardián del tipo «`npm install` y `git diff
-      --exit-code package-lock.json`», porque hoy fallaría por esto mismo.
 
 ---
 
@@ -117,7 +107,7 @@
 
 ### Calidad e infraestructura
 
-- [x] 110 tests unitarios (Vitest) y 32 e2e (Playwright).
+- [x] Tests unitarios (Vitest) y e2e (Playwright); las cifras al día, en `ESTADO.md`.
 - [x] Auditoría de seguridad, CSP y cabeceras. Cero peticiones a terceros.
 - [x] `npm audit` en 0 vulnerabilidades (Next 16.3.0). <!-- org:ff66be6e-014a-43c2-a9f3-8e72a2d810b0 -->
 - [x] CI, Dependabot y licencia MIT.
@@ -129,7 +119,7 @@
 
 - [x] Publicar Stick Rush como escena, sin Canvas ni sesión propios <!-- org:4b8c805f-ca36-4d47-9e5c-3c787b006c50 -->
 - [ ] Pasar la titularidad del proyecto a la cuenta personal <!-- org:668391a0-0ae9-4352-bbaf-7db6f84b8ae7 -->
-- [ ] Cerrar el desajuste de npm entre el lockfile y el CI <!-- org:d53a5f8d-1a7e-4348-b940-97f882b4b8bc -->
+- [x] Cerrar el desajuste de npm entre el lockfile y el CI <!-- org:d53a5f8d-1a7e-4348-b940-97f882b4b8bc -->
 - [x] Inicializar proyecto. Crear una primera version <!-- org:e1edeac8-c23f-4773-aa2f-eb24a583b9eb -->
 - [ ] Godot para Steam: retomarlo cuando el web esté cerrado <!-- org:e8a6716d-9b48-4083-b8da-8fb6827cec2b -->
 - [x] Soporte WebXR (VR/AR) con mandos en StickRush <!-- org:f282927c-c3af-48c1-a3c4-851cb69f961b -->
