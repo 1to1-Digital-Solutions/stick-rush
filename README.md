@@ -218,7 +218,9 @@ release delays, fall times per difficulty, what a catch is worth, the gaze ancho
 of the immersive UI, and the round lifecycle. The e2e tests drive the real game in
 Chromium against the production build: menu, round, catching sticks with the mouse,
 game over, the challenge and its lives, the record, sharing the result, sound, the
-security headers, and behaviour on a phone-sized screen.
+security headers, behaviour on a phone-sized screen, and what the fairground costs to
+draw (`e2e/recinto.spec.ts` counts the WebGL draw calls per frame, which is what a
+headset pays for — see `ESTADO.md`).
 
 Chromium has no WebXR, so the immersive paths (`e2e/xr.spec.ts`: entering the
 headset, the first-time tutorial, the ring height being remembered) run against an
