@@ -119,7 +119,7 @@
 
 - [ ] El muestreo de 30 fotogramas esperaba con los 15 s por defecto de expect <!-- org:192936ea-49e1-4de6-ba4b-1a7615bd5fdf -->
 - [ ] El README enumera lo que cubren los e2e y no mencionaba la medida del… <!-- org:0494a4d7-33dd-4679-8dff-ea325a1a6bc7 -->
-- [ ] window.__drawFrames se declaraba obligatorio existiendo solo con el… <!-- org:e5137c06-d4dd-4e68-b9b4-28f8ca594eb9 -->
+- [x] window.__drawFrames se declaraba obligatorio existiendo solo con el… <!-- org:e5137c06-d4dd-4e68-b9b4-28f8ca594eb9 -->
 - [x] Añadir al CI un guardián que detecte si `npm install` ensucia el lockfile <!-- org:54fdb843-b4a2-4e95-a58b-d086538d7e8d -->
 - [x] Publicar Stick Rush como escena, sin Canvas ni sesión propios <!-- org:4b8c805f-ca36-4d47-9e5c-3c787b006c50 -->
 - [ ] Pasar la titularidad del proyecto a la cuenta personal <!-- org:668391a0-0ae9-4352-bbaf-7db6f84b8ae7 -->
