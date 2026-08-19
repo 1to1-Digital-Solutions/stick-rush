@@ -182,10 +182,11 @@ are copied with `npx stick-rush-assets <dir>`. The full contract — install,
 
 ## Development
 
-The Node version is pinned in [`.nvmrc`](.nvmrc), and CI reads it from there. Run
-`nvm use` (or `fnm use`) before installing: the `package-lock.json` format changes
-between npm versions, so installing on an older Node rewrites the lockfile for
-nothing.
+The Node version is pinned in [`.nvmrc`](.nvmrc), and CI reads it from there. It pins an
+exact patch, so run `nvm install` (or `fnm use --install-if-missing`) before installing:
+both read the file and fetch the version if the machine does not have it yet. The
+`package-lock.json` format changes between npm versions, so installing on an older Node
+rewrites the lockfile for nothing.
 
 ```bash
 npm install
