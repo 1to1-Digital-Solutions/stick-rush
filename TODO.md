@@ -117,6 +117,8 @@
 
 ## Desde Organízate
 
+- [ ] e2e/recinto.spec.ts, función sampleFrames() <!-- org:24f0472d-c35b-43f6-9b3f-ec019a8a63c5 -->
+- [ ] ESTADO.md, sección «Validar el recinto en el visor» (~líneas 600-625) <!-- org:8731e61a-5bc0-43c7-b546-60c9e22fcce2 -->
 - [ ] El muestreo de 30 fotogramas esperaba con los 15 s por defecto de expect <!-- org:192936ea-49e1-4de6-ba4b-1a7615bd5fdf -->
 - [ ] El README enumera lo que cubren los e2e y no mencionaba la medida del… <!-- org:0494a4d7-33dd-4679-8dff-ea325a1a6bc7 -->
 - [x] window.__drawFrames se declaraba obligatorio existiendo solo con el… <!-- org:e5137c06-d4dd-4e68-b9b4-28f8ca594eb9 -->
