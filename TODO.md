@@ -117,7 +117,7 @@
 
 ## Desde Organízate
 
-- [ ] Publicar Stick Rush como escena, sin Canvas ni sesión propios <!-- org:4b8c805f-ca36-4d47-9e5c-3c787b006c50 -->
+- [x] Publicar Stick Rush como escena, sin Canvas ni sesión propios <!-- org:4b8c805f-ca36-4d47-9e5c-3c787b006c50 -->
 - [ ] Pasar la titularidad del proyecto a la cuenta personal <!-- org:668391a0-0ae9-4352-bbaf-7db6f84b8ae7 -->
 - [ ] Cerrar el desajuste de npm entre el lockfile y el CI <!-- org:d53a5f8d-1a7e-4348-b940-97f882b4b8bc -->
 - [x] Inicializar proyecto. Crear una primera version <!-- org:e1edeac8-c23f-4773-aa2f-eb24a583b9eb -->
