@@ -67,3 +67,23 @@ jobs:
       # Informativo: hoy hay avisos heredados de Next que no tienen versión
       # corregida publicada. Que no tumbe el CI, pero que se vean en el log.
       - run: npm audit --audit-level=critical
+
+      # Guardián del lockfile: si `package.json` y `package-lock.json` se han
+      # desincronizado, un install los reconcilia y reescribe el lock. Aquí eso
+      # salta en vez de aparecer como ruido en el diff de otra tarea.
+      #
+      # Tiene que ser un install REAL. Con `--package-lock-only` daría falso
+      # positivo: esa variante construye el árbol ideal completo y añade las
+      # dependencias empaquetadas de paquetes opcionales de otras plataformas
+      # (`@tailwindcss/oxide-wasm32-wasi`), que un install normal no escribe.
+      #
+      # Va después del `npm ci` de este job a propósito: reinstalar sobre un
+      # árbol ya montado es lo que hace quien desarrolla, y es donde el
+      # desajuste se nota.
+      - name: El lockfile está sincronizado con package.json
+        run: |
+          npm install
+          if ! git diff --exit-code package-lock.json; then
+            echo "::error::Un install ha reescrito package-lock.json: está desincronizado con package.json. Ejecuta 'npm install' en local con la versión de Node de .nvmrc y commitea el lock."
+            exit 1
+          fi
