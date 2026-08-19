@@ -46,7 +46,8 @@ interface DrawFrame {
 
 declare global {
   interface Window {
-    __drawFrames: DrawFrame[]
+    /** Solo existe con el contador puesto (`countDrawCalls`), como `__audioSpy`. */
+    __drawFrames?: DrawFrame[]
   }
 }
 
@@ -88,14 +89,18 @@ async function countDrawCalls(page: Page) {
 /** Fotogramas seguidos contados desde ya: los de la carga no cuentan. */
 async function sampleFrames(page: Page, count = 30): Promise<DrawFrame[]> {
   await page.evaluate(() => {
-    window.__drawFrames.length = 0
+    if (window.__drawFrames) window.__drawFrames.length = 0
   })
   await expect
-    .poll(() => page.evaluate(() => window.__drawFrames.length), {
+    .poll(() => page.evaluate(() => window.__drawFrames?.length ?? 0), {
       message: 'la escena no llegó a pintar fotogramas',
+      // Más que los 15 s de `expect`: en CI la escena va por software y un
+      // fotograma puede costar cientos de milisegundos, así que juntar la
+      // muestra lleva su tiempo aunque todo esté bien.
+      timeout: 45_000,
     })
     .toBeGreaterThanOrEqual(count)
-  return page.evaluate(() => window.__drawFrames.slice())
+  return page.evaluate(() => window.__drawFrames?.slice() ?? [])
 }
 
 test.describe('Coste de dibujo del recinto', () => {
