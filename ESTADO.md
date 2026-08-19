@@ -604,8 +604,8 @@ prueba de verdad sea corta y sepa dónde mirar.
   porción pequeña de ellas. Medido sobre el build de producción en Chromium; el menú es el
   estado comparable porque la escena arranca siempre con los cinco palos de `MIN_STICKS`
   colgando. Qué se lleva cada parte —y cuánto sube el total con más palos— está desglosado
-  en el comentario de `MENU_DRAW_CALL_BUDGET` (`e2e/recinto.spec.ts`), que es quien lo
-  mide: ahí vive la cuenta y ahí hay que actualizarla si el coste cambia.
+  en el comentario de `MENU_DRAW_CALLS` (`e2e/recinto.spec.ts`), que es quien lo mide: ahí
+  vive la cuenta y ahí hay que actualizarla si el coste cambia.
 - **Las 285 piezas se pintan todas**: los `instanceCount` que llegan a WebGL son 120 tablas,
   55 postes y 110 bombillas, exactamente lo que declara `FAIR_PIECES`. Ese era el riesgo real
   de esta parte —drei deja de pintar en silencio lo que pase del límite— y queda descartado.
@@ -624,23 +624,26 @@ prueba de verdad sea corta y sepa dónde mirar.
   un `addInitScript` envuelve `drawElements` y `drawElementsInstanced` del prototipo de
   `WebGL2RenderingContext`, y un `requestAnimationFrame` registrado antes que el de la escena
   cierra cada fotograma. Vigila las dos cosas que importan: que las tres familias llegan
-  enteras a WebGL —el recorte silencioso de drei— y que el menú no pasa de 45 llamadas
-  (`MENU_DRAW_CALL_BUDGET`), techo ceñido a las 29 que mide la escena: deja margen para algún
-  palo de más y salta si alguien deja de instanciar el decorado o la máquina, que es lo que
-  devolvería la escena a las ~110 de antes. Los fps de un escritorio no dicen nada del visor
-  —aquí van al tope de la pantalla—, pero las llamadas sí: son lo que se paga igual en los
-  dos sitios. La muestra ya no arranca en cuanto el canvas tiene tamaño: eso solo dice que R3F
-  pinta, y la máquina llega después con sus texturas, así que en un arranque en frío los 30
-  fotogramas se cerraban antes —medían 6, y sobre eso ningún techo comprueba nada—. Ahora se
-  espera a que la escena dibuje sus ocho familias instanciadas (tres del recinto, cinco de la
-  máquina) y solo entonces se cuenta.
+  enteras a WebGL —el recorte silencioso de drei— y que la mediana del menú se queda en las
+  29 que mide la escena, con cuatro llamadas de margen a cada lado (`MENU_DRAW_CALLS` y
+  `MENU_DRAW_CALL_MARGIN`). Fija la cifra y no solo un techo: así un cambio de coste sale en
+  rojo —y con él, el aviso de rehacer el desglose— en vez de colarse mientras quepa debajo.
+  El margen absorbe un palo colgando de más o de menos; quedarse sin el recinto o sin la
+  máquina son cinco llamadas de golpe, y dejar de instanciar devolvería la escena a las ~110
+  de antes. Los fps de un escritorio no dicen nada del visor —aquí van al tope de la
+  pantalla—, pero las llamadas sí: son lo que se paga igual en los dos sitios. La muestra ya
+  no arranca en cuanto el canvas tiene tamaño: eso solo dice que R3F pinta, y la máquina llega
+  después con sus texturas, así que en un arranque en frío los 30 fotogramas se cerraban antes
+  —medían 6, y sobre eso ninguna medida comprueba nada—. Ahora se espera a que la escena
+  dibuje sus ocho familias instanciadas (tres del recinto, cinco de la máquina) y solo
+  entonces se cuenta.
 
 **Qué mirar con las gafas puestas, y qué constante toca en cada caso** (todas en
 `src/lib/sceneryLayout.ts`):
 
 - ¿Va fluido al girar la cabeza o hay tirón? Si lo hay, el recinto es el último sospechoso:
   junto con la máquina pesa menos que los palos colgando (desglose en el comentario de
-  `MENU_DRAW_CALL_BUDGET`, en `e2e/recinto.spec.ts`), así que hay que medir antes de
+  `MENU_DRAW_CALLS`, en `e2e/recinto.spec.ts`), así que hay que medir antes de
   recortarlo.
 - ¿Las casetas agobian a 6.4 m, o el recinto se ve vacío? → `STALL_RING_RADIUS`, con
   `SCENERY_CLEARANCE` (3 m) como suelo que los tests no dejan pisar.

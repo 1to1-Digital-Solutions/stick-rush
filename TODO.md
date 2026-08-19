@@ -74,7 +74,7 @@
       `src/components/game/StickMachine.tsx`) y 16 la guirnalda con sus casquillos, y en el
       visor eso se paga por ojo. Ahora van por `MachinePieces.tsx` con la misma receta que el
       recinto usa en `FairPieces`, así que la escena mide 29 en el menú. El desglose de esas
-      29 y el techo que las vigila (`MENU_DRAW_CALL_BUDGET`, 45) están en
+      29 y el test que las clava (`MENU_DRAW_CALLS`, con cuatro de margen) están en
       `e2e/recinto.spec.ts`, que es quien lo mide; el porqué, en `ESTADO.md`, «Validar el
       recinto en el visor».
 

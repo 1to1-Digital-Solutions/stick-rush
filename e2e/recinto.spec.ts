@@ -46,8 +46,8 @@ const SCENE_INSTANCED_FAMILIES = 8
 const SAMPLE_TIMEOUT = 45_000
 
 /**
- * Techo de llamadas por fotograma **en el menú**, que es el estado con medidas
- * comparables: la escena arranca siempre con los mismos cinco palos colgando.
+ * Llamadas por fotograma que cuesta la escena **en el menú**, que es el estado con
+ * medidas comparables: arranca siempre con los mismos cinco palos colgando.
  *
  * Medidas 29, y este es el sitio donde vive el desglose entero —`ESTADO.md` y
  * `TODO.md` citan el total y remiten aquí, que es el único de los tres que se
@@ -66,14 +66,23 @@ const SAMPLE_TIMEOUT = 45_000
  * que se mueve con la partida: 53 con trece palos colgando, y bajando según se
  * resuelven. El recinto y la máquina no cambian nunca.
  *
- * Lo que el test comprueba es el techo, no el reparto: si la escena cambia de coste,
- * las cuatro líneas de arriba hay que rehacerlas aquí a mano —nadie va a avisar—.
- *
- * El margen absorbe algún palo de más. Lo que tiene que saltar es dejar de
- * instanciar: cuando la máquina iba con cada tubo suelto eran 110, así que un
- * techo de 45 caza esa regresión mientras que uno de 120 la dejaba pasar entera.
+ * Lo que el test comprueba es el total, no el reparto: si la escena cambia de coste,
+ * las cuatro líneas de arriba hay que rehacerlas aquí a mano, y quien avisa de que
+ * toca es esta cifra clavada. Un techo holgado no lo haría: la escena podría
+ * encarecerse la mitad sin que saltara nada y el desglose se quedaría desfasado en
+ * silencio, que es justo lo que no puede pasar con una cuenta que nadie recalcula.
  */
-const MENU_DRAW_CALL_BUDGET = 45
+const MENU_DRAW_CALLS = 29
+
+/**
+ * Cuánto se le deja moverse a la medida antes de exigir que se rehaga el desglose.
+ *
+ * Da para un palo colgando de más o de menos —tres llamadas cada uno— y poco más:
+ * quedarse sin el recinto, o sin la máquina, son cinco de golpe y saltan. Lo gordo
+ * salta con muchísimo margen: dejar de instanciar devolvería la escena a las ~110 de
+ * cuando la máquina iba con cada tubo suelto.
+ */
+const MENU_DRAW_CALL_MARGIN = 4
 
 interface DrawFrame {
   /** Llamadas de dibujo del fotograma. */
@@ -184,15 +193,23 @@ test.describe('Coste de dibujo del recinto', () => {
     ).toBe(true)
   })
 
-  test('el decorado no dispara las llamadas de dibujo', async ({ page }) => {
-    // Mediana: un fotograma suelto puede pillar la escena a medio montar.
+  test('el menú cuesta las llamadas de dibujo que dice el desglose', async ({
+    page,
+  }) => {
+    // Mediana: el fotograma en el que entra la máquina cuenta de más, y un pico
+    // suelto no puede mover la cifra que se compara con el desglose.
     const calls = (await sampleFrames(page))
       .map((frame) => frame.calls)
       .sort((a, b) => a - b)
     const median = calls[Math.floor(calls.length / 2)]
 
-    expect(median, 'llamadas de dibujo por fotograma en el menú').toBeLessThanOrEqual(
-      MENU_DRAW_CALL_BUDGET,
+    const measured =
+      `llamadas por fotograma en el menú (el desglose dice ${MENU_DRAW_CALLS})`
+    expect(median, measured).toBeGreaterThanOrEqual(
+      MENU_DRAW_CALLS - MENU_DRAW_CALL_MARGIN,
+    )
+    expect(median, measured).toBeLessThanOrEqual(
+      MENU_DRAW_CALLS + MENU_DRAW_CALL_MARGIN,
     )
   })
 })
