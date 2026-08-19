@@ -69,12 +69,23 @@
 - [x] **El desajuste de npm entre el lockfile y el CI está cerrado**: la versión de Node <!-- org:02cab77f-91f0-424d-95ce-a51a2c2ca408 -->
       se fija en `.nvmrc` y el CI la lee de ahí, así que el lock se escribe y se lee
       siempre con el mismo npm y un `npm install` ya no lo reescribe.
-- [ ] **Instanciar los tubos de la máquina.** De las 110 llamadas de dibujo por fotograma,
-      85 son suyas: 69 tubos sueltos (`Strut` en `src/components/game/StickMachine.tsx`) y 16
-      la guirnalda con sus casquillos. En el visor eso se paga por ojo. El recinto de feria ya
-      pasa las suyas por `FairPieces` y le cuestan 5 en total; aplicar ahí lo mismo es el
-      recorte grande que queda. Sin urgencia mientras el visor vaya fluido: medido y
-      justificado en `ESTADO.md`, «Validar el recinto en el visor».
+- [ ] **Instanciar los tubos de la máquina.** De las ~110 llamadas de dibujo por fotograma
+      del menú, 85 son suyas: 69 tubos sueltos (`Strut` en
+      `src/components/game/StickMachine.tsx`) y 16 la guirnalda con sus casquillos. En el
+      visor eso se paga por ojo. El recinto de feria ya pasa las suyas por `FairPieces` y le
+      cuestan 5 en total; aplicar ahí lo mismo es el recorte grande que queda. Sin urgencia
+      mientras el visor vaya fluido: medido y justificado en `ESTADO.md`, «Validar el recinto
+      en el visor», y vigilado por `e2e/recinto.spec.ts`.
+- [ ] **El `package-lock.json` está escrito en el formato de npm 11** (lleva los campos <!-- org:02cab77f-91f0-424d-95ce-a51a2c2ca408 -->
+      `libc` y no lista los paquetes empaquetados de `@tailwindcss/oxide-wasm32-wasi`).
+      Quien desarrolle con Node 22, que trae npm 10, verá que un `npm install` reescribe
+      unas 220 líneas del lock y vuelve a ensuciar el árbol, justo lo que se acaba de
+      arreglar. El CI no se ve afectado porque solo ejecuta `npm ci`, que instala igual
+      con las dos versiones y deja el fichero intacto (comprobado con 10.9.9 y 11.12.1).
+      Para cerrarlo hay que fijar la versión de npm (`packageManager` en `package.json`)
+      o subir el CI a Node 24, y regenerar el lock con esa versión. Ojo: hasta entonces
+      no se puede añadir al CI un guardián del tipo «`npm install` y `git diff
+      --exit-code package-lock.json`», porque hoy fallaría por esto mismo.
 
 ---
 

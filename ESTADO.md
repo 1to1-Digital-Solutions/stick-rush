@@ -572,8 +572,9 @@ mitad de la nada. Ahora hay geometría alrededor y la foto se queda de cielo y d
   parecer el sitio del que ha salido la máquina.
 - **Cinco llamadas de dibujo para 285 piezas**: todo el recinto va instanciado en tres
   `<Instances>` de drei —tablas, postes y bombillas— más los dos aros de la noria. En el
-  visor lo que se paga son las llamadas, no los triángulos. Los límites de instancias van
-  holgados porque drei deja de pintar lo que sobra **sin avisar** (`FairPieces.tsx`).
+  visor lo que se paga son las llamadas, no los triángulos. Los límites de instancias son el
+  recuento exacto de piezas, sumado trozo a trozo, porque drei deja de pintar lo que sobra
+  **sin avisar** (`FairPieces.tsx`).
 - **El decorado no se toca ni se apunta**: cada pieza lleva el raycast anulado. Si no,
   cada movimiento del ratón —y cada fotograma con los mandos apuntando— lanzaría un rayo
   contra las 285 piezas para nada.
@@ -599,22 +600,28 @@ La validación es de las gafas y **sigue pendiente**: nadie se las ha puesto tod
 recinto delante. Lo que sí está hecho es medir la parte que *no* necesita visor, para que la
 prueba de verdad sea corta y sepa dónde mirar.
 
-- **El recinto cuesta 5 de las 110 llamadas de dibujo por fotograma.** Son las tres familias
+- **El recinto cuesta 5 de las ~110 llamadas de dibujo por fotograma.** Son las tres familias
   instanciadas más los dos aros de la noria, que son mallas sueltas. Medido sobre el build de
-  producción en Chromium con GPU: 110 llamadas en el menú y 106 con la partida en marcha.
+  producción en Chromium: **109 llamadas en el menú**, que es el estado comparable porque la
+  escena arranca siempre con los cinco palos de `MIN_STICKS` colgando. El total se mueve con
+  los palos —tres llamadas cada uno mientras cuelga (la cuerda, el palo y su gancho) y dos
+  cuando cae—: 132 con trece, y va bajando según se resuelven. El recinto no cambia nunca.
 - **Las 285 piezas se pintan todas**: los `instanceCount` que llegan a WebGL son 120 tablas,
   55 postes y 110 bombillas, exactamente lo que declara `FAIR_PIECES`. Ese era el riesgo real
   de esta parte —drei deja de pintar en silencio lo que pase del límite— y queda descartado.
-- **Lo caro es la máquina, no el decorado**: de esas 110 llamadas, 69 son tubos sueltos
+- **Lo caro es la máquina, no el decorado**: de esas ~110 llamadas, 69 son tubos sueltos
   (`Strut`, el cilindro de 10 lados con el que están hechos arcos, celosía, montantes, riostras
   y patas) y 16 más las bombillas de su guirnalda. En el visor eso se paga **por ojo**. Si en
   hardware hay tirones, recortar el recinto es lo último que habría que tocar; instanciar los
   tubos de la máquina como se hizo aquí queda anotado en `TODO.md`, en deuda técnica.
-- **Cómo repetir la medida** sin tocar el código del juego: desde Playwright, un
-  `addInitScript` que envuelva `drawElements` y `drawElementsInstanced` del prototipo de
-  `WebGL2RenderingContext` y cuente llamadas por fotograma. Los fps de un escritorio no dicen
-  nada del visor —aquí van al tope de la pantalla—, pero las llamadas sí: son lo que se paga
-  igual en los dos sitios.
+- **La medida se repite sola** (`e2e/recinto.spec.ts`), sin contadores en el código del juego:
+  un `addInitScript` envuelve `drawElements` y `drawElementsInstanced` del prototipo de
+  `WebGL2RenderingContext`, y un `requestAnimationFrame` registrado antes que el de la escena
+  cierra cada fotograma. Vigila las dos cosas que importan: que las tres familias llegan
+  enteras a WebGL —el recorte silencioso de drei— y que el menú no pasa de 120 llamadas, que
+  es lo que saltaría si alguien dejara de instanciar el decorado. Los fps de un escritorio no
+  dicen nada del visor —aquí van al tope de la pantalla—, pero las llamadas sí: son lo que se
+  paga igual en los dos sitios.
 
 **Qué mirar con las gafas puestas, y qué constante toca en cada caso** (todas en
 `src/lib/sceneryLayout.ts`):
