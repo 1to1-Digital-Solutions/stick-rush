@@ -47,7 +47,7 @@ VR/AR (tercera prueba) → limpieza de ramas → **desplegado y validado en hard
    al batirlo se note que la barra cambia (`ScoreBar` en `src/components/xr/XRHud.tsx`);
    (j) que el **recinto de feria** nuevo no se coma los fotogramas en el visor, que las
    casetas no agobien a 6.4 m y que la noria girando en la periferia no maree. El coste de
-   dibujo ya está medido y descarta al recinto —5 llamadas de las 110 por fotograma—, así
+   dibujo ya está medido y descarta el recinto —5 llamadas de las 110 por fotograma—, así
    que el guion de qué mirar y qué constante tocar en cada caso está en "Validar el
    recinto en el visor"; radios y distancias, en `src/lib/sceneryLayout.ts`.
    (k) que el **botón de compartir** de la pantalla de fin funcione con las gafas
@@ -606,10 +606,10 @@ prueba de verdad sea corta y sepa dónde mirar.
   55 postes y 110 bombillas, exactamente lo que declara `FAIR_PIECES`. Ese era el riesgo real
   de esta parte —drei deja de pintar en silencio lo que pase del límite— y queda descartado.
 - **Lo caro es la máquina, no el decorado**: de esas 110 llamadas, 69 son tubos sueltos
-  (`Tube`, el cilindro de 10 lados con el que están hechos arcos, celosía, montantes, riostras
+  (`Strut`, el cilindro de 10 lados con el que están hechos arcos, celosía, montantes, riostras
   y patas) y 16 más las bombillas de su guirnalda. En el visor eso se paga **por ojo**. Si en
   hardware hay tirones, recortar el recinto es lo último que habría que tocar; instanciar los
-  tubos de la máquina como se hizo aquí queda como tarea aparte.
+  tubos de la máquina como se hizo aquí queda anotado en `TODO.md`, en deuda técnica.
 - **Cómo repetir la medida** sin tocar el código del juego: desde Playwright, un
   `addInitScript` que envuelva `drawElements` y `drawElementsInstanced` del prototipo de
   `WebGL2RenderingContext` y cuente llamadas por fotograma. Los fps de un escritorio no dicen
