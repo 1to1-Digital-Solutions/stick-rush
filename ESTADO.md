@@ -46,8 +46,10 @@ VR/AR (tercera prueba) → limpieza de ramas → **desplegado y validado en hard
    sobre la barra de puntuación se distinga del relleno con las gafas puestas, y que
    al batirlo se note que la barra cambia (`ScoreBar` en `src/components/xr/XRHud.tsx`);
    (j) que el **recinto de feria** nuevo no se coma los fotogramas en el visor, que las
-   casetas no agobien a 6.4 m y que la noria girando en la periferia no maree (ver
-   "Escenario VR: recinto de feria"; radios y distancias, en `src/lib/sceneryLayout.ts`).
+   casetas no agobien a 6.4 m y que la noria girando en la periferia no maree. El coste de
+   dibujo ya está medido y descarta al recinto —5 llamadas de las 110 por fotograma—, así
+   que el guion de qué mirar y qué constante tocar en cada caso está en "Validar el
+   recinto en el visor"; radios y distancias, en `src/lib/sceneryLayout.ts`.
    (k) que el **botón de compartir** de la pantalla de fin funcione con las gafas
    puestas: si el visor abre la hoja del sistema, que se pueda usar sin quitárselas;
    si no, que el avión de papel pase a marca de verificación (texto copiado) y que al
@@ -588,7 +590,48 @@ mitad de la nada. Ahora hay geometría alrededor y la foto se queda de cielo y d
   máquina. El HDRI sigue siendo el mismo fichero.
 - **Sin validar en hardware**: falta ver en el visor si los fotogramas aguantan con el
   recinto puesto y si la noria girando en la periferia molesta. Con
-  `prefers-reduced-motion` se queda parada.
+  `prefers-reduced-motion` se queda parada. El guion de la prueba y lo que ya se ha podido
+  medir sin gafas están en "Validar el recinto en el visor".
+
+## Validar el recinto en el visor (rama `agent/validar-en-el-visor-el-recinto-d-94e952`)
+
+La validación es de las gafas y **sigue pendiente**: nadie se las ha puesto todavía con el
+recinto delante. Lo que sí está hecho es medir la parte que *no* necesita visor, para que la
+prueba de verdad sea corta y sepa dónde mirar.
+
+- **El recinto cuesta 5 de las 110 llamadas de dibujo por fotograma.** Son las tres familias
+  instanciadas más los dos aros de la noria, que son mallas sueltas. Medido sobre el build de
+  producción en Chromium con GPU: 110 llamadas en el menú y 106 con la partida en marcha.
+- **Las 285 piezas se pintan todas**: los `instanceCount` que llegan a WebGL son 120 tablas,
+  55 postes y 110 bombillas, exactamente lo que declara `FAIR_PIECES`. Ese era el riesgo real
+  de esta parte —drei deja de pintar en silencio lo que pase del límite— y queda descartado.
+- **Lo caro es la máquina, no el decorado**: de esas 110 llamadas, 69 son tubos sueltos
+  (`Tube`, el cilindro de 10 lados con el que están hechos arcos, celosía, montantes, riostras
+  y patas) y 16 más las bombillas de su guirnalda. En el visor eso se paga **por ojo**. Si en
+  hardware hay tirones, recortar el recinto es lo último que habría que tocar; instanciar los
+  tubos de la máquina como se hizo aquí queda como tarea aparte.
+- **Cómo repetir la medida** sin tocar el código del juego: desde Playwright, un
+  `addInitScript` que envuelva `drawElements` y `drawElementsInstanced` del prototipo de
+  `WebGL2RenderingContext` y cuente llamadas por fotograma. Los fps de un escritorio no dicen
+  nada del visor —aquí van al tope de la pantalla—, pero las llamadas sí: son lo que se paga
+  igual en los dos sitios.
+
+**Qué mirar con las gafas puestas, y qué constante toca en cada caso** (todas en
+`src/lib/sceneryLayout.ts`):
+
+- ¿Va fluido al girar la cabeza o hay tirón? Si lo hay, sospechar de la máquina antes que del
+  recinto, por lo de arriba.
+- ¿Las casetas agobian a 6.4 m, o el recinto se ve vacío? → `STALL_RING_RADIUS`, con
+  `SCENERY_CLEARANCE` (3 m) como suelo que los tests no dejan pisar.
+- ¿La noria marea o distrae mientras caen los palos? → `WHEEL_SPEED` (0.074 rad/s, una vuelta
+  cada ~85 s). Si queda tapada por una caseta o demasiado al borde de la vista, `WHEEL_CENTER`.
+- ¿Las bombillas de las guirnaldas caen donde se buscan los palos, o deslumbran? →
+  `GARLAND_RING_RADIUS`, `GARLAND_POST_HEIGHT` y `GARLAND_SAG`.
+
+Al mover cualquiera de esas constantes hay que volver a pasar `sceneryLayout.test.ts`: fija los
+límites que hacen el recinto jugable (3 m libres alrededor del jugador, guirnaldas por encima
+de la máquina, cabinas que no arrastran y casetas encarando al jugador) y **no se relajan** para
+acomodar un valor nuevo. Si un ajuste los rompe, es que el ajuste se pasa.
 
 ## Iconos del menú inmersivo (rama `agent/mejorar-los-iconos-del-menu-3d`)
 
