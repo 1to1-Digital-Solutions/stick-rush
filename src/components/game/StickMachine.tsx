@@ -7,7 +7,6 @@ import { assetUrl } from '../../lib/assets'
 import {
   DIFFICULTY_SPEEDS,
   GROUND_Y,
-  MACHINE_BULB_COLOR,
   MACHINE_FRAME_COLOR,
   MACHINE_STRIPE_COLORS,
   MACHINE_TRUSS_COLOR,
@@ -18,6 +17,15 @@ import {
 import { useGame } from '../../lib/gameStore'
 import { hoopFallSpeed } from '../../lib/hoopHeight'
 import { buildStickLayout } from '../../lib/stickLayout'
+import {
+  BulbGlass,
+  BulbSocket,
+  FrameTube,
+  MachinePieces,
+  MatteTube,
+  TrussTube,
+  type MachinePieceCounts,
+} from './MachinePieces'
 import { Stick } from './Stick'
 import { useReducedMotion } from './useReducedMotion'
 
@@ -35,17 +43,16 @@ function Strut({
   to,
   radius,
   color,
-  metalness = 0.6,
-  roughness = 0.4,
+  Piece = TrussTube,
 }: {
   from: Point
   to: Point
   radius: number
   color: string
-  metalness?: number
-  roughness?: number
+  /** Familia de instancias, que es lo que decide el material. Por defecto, la celosía. */
+  Piece?: typeof TrussTube
 }) {
-  const { position, quaternion, length } = useMemo(() => {
+  const { position, quaternion, scale } = useMemo(() => {
     const a = new Vector3(...from)
     const b = new Vector3(...to)
     const direction = b.clone().sub(a)
@@ -56,19 +63,14 @@ function Strut({
         UP,
         direction.clone().normalize(),
       ),
-      length: direction.length(),
+      // La geometría instanciada es unitaria (1 m de alto, 1 de diámetro), así que la escala
+      // son directamente las medidas del tubo. El grosor va en X y Z, el largo en Y.
+      scale: new Vector3(radius * 2, direction.length(), radius * 2),
     }
-  }, [from, to])
+  }, [from, to, radius])
 
   return (
-    <mesh position={position} quaternion={quaternion}>
-      <cylinderGeometry args={[radius, radius, length, 10]} />
-      <meshStandardMaterial
-        color={color}
-        metalness={metalness}
-        roughness={roughness}
-      />
-    </mesh>
+    <Piece position={position} quaternion={quaternion} scale={scale} color={color} />
   )
 }
 
@@ -212,8 +214,21 @@ export function StickMachine() {
     })
   }, [hoopHeight])
 
+  // El recuento EXACTO de lo que va a colgar de cada familia. Sale de lo que se pinta —y no
+  // de un número escrito a mano— porque depende de la altura del aro: pasarse por abajo hace
+  // que drei deje de pintar las que sobran sin decir nada, y la máquina saldría a trozos.
+  const limits = useMemo<MachinePieceCounts>(
+    () => ({
+      matte: arcs.lower.length,
+      frame: legs.length,
+      truss: arcs.upper.length + truss.posts.length + truss.braces.length + legs.length,
+      bulbs: bulbs.length,
+    }),
+    [arcs, truss, legs, bulbs],
+  )
+
   return (
-    <group>
+    <MachinePieces limits={limits}>
       {/* Aro de los palos, a rayas */}
       {arcs.lower.map((segment) => (
         <Strut
@@ -222,8 +237,7 @@ export function StickMachine() {
           to={segment.to}
           radius={TUBE_RADIUS}
           color={segment.color}
-          metalness={0.1}
-          roughness={0.55}
+          Piece={MatteTube}
         />
       ))}
 
@@ -259,19 +273,8 @@ export function StickMachine() {
       {/* Bombillas */}
       {bulbs.map((bulb) => (
         <group key={`bulb-${bulb.key}`}>
-          <mesh position={bulb.socket}>
-            <cylinderGeometry args={[0.012, 0.015, 0.038, 8]} />
-            <meshStandardMaterial color="#3b3630" metalness={0.5} roughness={0.6} />
-          </mesh>
-          <mesh position={bulb.bulb}>
-            <sphereGeometry args={[0.024, 14, 14]} />
-            <meshStandardMaterial
-              color={MACHINE_BULB_COLOR}
-              emissive={MACHINE_BULB_COLOR}
-              emissiveIntensity={1.8}
-              toneMapped={false}
-            />
-          </mesh>
+          <BulbSocket position={bulb.socket} />
+          <BulbGlass position={bulb.bulb} />
         </group>
       ))}
 
@@ -303,8 +306,7 @@ export function StickMachine() {
             to={leg.top}
             radius={0.042}
             color={MACHINE_FRAME_COLOR}
-            metalness={0.7}
-            roughness={0.35}
+            Piece={FrameTube}
           />
           <Strut
             from={leg.braceFoot}
@@ -347,6 +349,6 @@ export function StickMachine() {
           onMiss={missStick}
         />
       ))}
-    </group>
+    </MachinePieces>
   )
 }
