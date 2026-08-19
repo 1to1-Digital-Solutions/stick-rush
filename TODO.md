@@ -69,13 +69,13 @@
 - [x] **El desajuste de npm entre el lockfile y el CI está cerrado**: la versión de Node <!-- org:02cab77f-91f0-424d-95ce-a51a2c2ca408 -->
       se fija en `.nvmrc` y el CI la lee de ahí, así que el lock se escribe y se lee
       siempre con el mismo npm y un `npm install` ya no lo reescribe.
-- [x] **Instanciar los tubos de la máquina.** De las ~110 llamadas de dibujo por fotograma <!-- org:0dd891e2-8a77-4040-8993-70fc57bbea94 -->
-      del menú, 85 son suyas: 69 tubos sueltos (`Strut` en
-      `src/components/game/StickMachine.tsx`) y 16 la guirnalda con sus casquillos. En el
-      visor eso se paga por ojo. El recinto de feria ya pasa las suyas por `FairPieces` y le
-      cuestan 5 en total; aplicar ahí lo mismo es el recorte grande que queda. Sin urgencia
-      mientras el visor vaya fluido: medido y justificado en `ESTADO.md`, «Validar el recinto
-      en el visor», y vigilado por `e2e/recinto.spec.ts`.
+- [x] **Instanciar los tubos de la máquina.** Se llevaba 85 de las ~110 llamadas de dibujo <!-- org:0dd891e2-8a77-4040-8993-70fc57bbea94 -->
+      por fotograma del menú: 69 tubos sueltos (`Strut` en
+      `src/components/game/StickMachine.tsx`) y 16 la guirnalda con sus casquillos, y en el
+      visor eso se paga por ojo. Ahora van por `MachinePieces.tsx` con la misma receta que el
+      recinto usa en `FairPieces` y cuestan 5, así que la escena mide 29 en el menú. Medido y
+      justificado en `ESTADO.md`, «Validar el recinto en el visor», y vigilado por
+      `e2e/recinto.spec.ts` (`MENU_DRAW_CALL_BUDGET`, 45).
 
 ---
 

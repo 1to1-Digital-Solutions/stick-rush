@@ -610,7 +610,7 @@ prueba de verdad sea corta y sepa dónde mirar.
   55 postes y 110 bombillas, exactamente lo que declara `FAIR_PIECES`. Ese era el riesgo real
   de esta parte —drei deja de pintar en silencio lo que pase del límite— y queda descartado.
 - **Lo caro era la máquina, y ya está instanciada.** Cuando se midió esto costaba 85 de las
-  110 llamadas de entonces: 69 tubos sueltos (`Strut`, el cilindro de 10 lados con el que
+  ~110 llamadas de entonces: 69 tubos sueltos (`Strut`, el cilindro de 10 lados con el que
   están hechos arcos, celosía, montantes, riostras y patas) y 16 las bombillas de su
   guirnalda; en el visor eso se paga **por ojo**, así que eran ~170 por fotograma. Ahora
   cuesta 5, con la misma receta del recinto (`MachinePieces.tsx`): tres familias de tubos
@@ -626,7 +626,7 @@ prueba de verdad sea corta y sepa dónde mirar.
   enteras a WebGL —el recorte silencioso de drei— y que el menú no pasa de 45 llamadas
   (`MENU_DRAW_CALL_BUDGET`), techo ceñido a las 29 que mide la escena: deja margen para algún
   palo de más y salta si alguien deja de instanciar el decorado o la máquina, que es lo que
-  devolvería la escena a las 110 de antes. Los fps de un escritorio no dicen nada del visor
+  devolvería la escena a las ~110 de antes. Los fps de un escritorio no dicen nada del visor
   —aquí van al tope de la pantalla—, pero las llamadas sí: son lo que se paga igual en los
   dos sitios. Ojo con una cosa: el muestreo arranca en cuanto el canvas tiene tamaño, y en un
   arranque en frío puede cerrar sus 30 fotogramas antes de que la máquina se monte —ahí mide 6
