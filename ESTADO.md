@@ -629,9 +629,11 @@ prueba de verdad sea corta y sepa dónde mirar.
   palo de más y salta si alguien deja de instanciar el decorado o la máquina, que es lo que
   devolvería la escena a las ~110 de antes. Los fps de un escritorio no dicen nada del visor
   —aquí van al tope de la pantalla—, pero las llamadas sí: son lo que se paga igual en los
-  dos sitios. Ojo con una cosa: el muestreo arranca en cuanto el canvas tiene tamaño, y en un
-  arranque en frío puede cerrar sus 30 fotogramas antes de que la máquina se monte —ahí mide 6
-  y el techo no comprueba nada—. Hay tarea abierta para esperar a la escena asentada.
+  dos sitios. La muestra ya no arranca en cuanto el canvas tiene tamaño: eso solo dice que R3F
+  pinta, y la máquina llega después con sus texturas, así que en un arranque en frío los 30
+  fotogramas se cerraban antes —medían 6, y sobre eso ningún techo comprueba nada—. Ahora se
+  espera a que la escena dibuje sus ocho familias instanciadas (tres del recinto, cinco de la
+  máquina) y solo entonces se cuenta.
 
 **Qué mirar con las gafas puestas, y qué constante toca en cada caso** (todas en
 `src/lib/sceneryLayout.ts`):

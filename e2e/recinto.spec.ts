@@ -28,6 +28,24 @@ import { openGame } from './helpers'
 const FAIR_INSTANCES = { boards: 120, poles: 55, bulbs: 110 }
 
 /**
+ * Familias instanciadas que dibuja la escena entera: las tres del recinto
+ * (`FairPieces`) y las cinco de la máquina (`MachinePieces`).
+ *
+ * Es la señal de que ya está todo montado. La máquina cuelga de un `Suspense`
+ * propio esperando las texturas de la madera, así que llega bastante después
+ * que el recinto: sus cinco familias son lo último en aparecer.
+ */
+const SCENE_INSTANCED_FAMILIES = 8
+
+/**
+ * Espera de las dos partes del muestreo. Más que los 15 s de `expect`: en CI la
+ * escena va por software y un fotograma puede costar cientos de milisegundos,
+ * así que tanto montarla como juntar la muestra llevan su tiempo aunque todo
+ * esté bien.
+ */
+const SAMPLE_TIMEOUT = 45_000
+
+/**
  * Techo de llamadas por fotograma **en el menú**, que es el estado con medidas
  * comparables: la escena arranca siempre con los mismos cinco palos colgando.
  *
@@ -106,18 +124,36 @@ async function countDrawCalls(page: Page) {
   })
 }
 
-/** Fotogramas seguidos contados desde ya: los de la carga no cuentan. */
+/**
+ * Fotogramas seguidos con la escena ya montada entera.
+ *
+ * Que el canvas tenga tamaño (`openGame`) solo dice que R3F ha empezado a
+ * pintar. La máquina tarda más —sus texturas—, y en un arranque en frío la
+ * muestra entera cabe en ese hueco: ahí el fotograma vale 6 llamadas, que no
+ * son el coste de nada, y cualquier medida sobre ellas miente. Así que primero
+ * se espera a que aparezcan todas las familias instanciadas y solo entonces se
+ * cuenta.
+ */
 async function sampleFrames(page: Page, count = 30): Promise<DrawFrame[]> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => window.__drawFrames?.at(-1)?.instanced.length ?? 0),
+      {
+        message: 'la escena no llegó a montarse entera',
+        timeout: SAMPLE_TIMEOUT,
+      },
+    )
+    .toBeGreaterThanOrEqual(SCENE_INSTANCED_FAMILIES)
+
+  // Lo contado durante el montaje ya no sirve: la muestra empieza aquí.
   await page.evaluate(() => {
     if (window.__drawFrames) window.__drawFrames.length = 0
   })
   await expect
     .poll(() => page.evaluate(() => window.__drawFrames?.length ?? 0), {
       message: 'la escena no llegó a pintar fotogramas',
-      // Más que los 15 s de `expect`: en CI la escena va por software y un
-      // fotograma puede costar cientos de milisegundos, así que juntar la
-      // muestra lleva su tiempo aunque todo esté bien.
-      timeout: 45_000,
+      timeout: SAMPLE_TIMEOUT,
     })
     .toBeGreaterThanOrEqual(count)
   return page.evaluate(() => window.__drawFrames?.slice() ?? [])
