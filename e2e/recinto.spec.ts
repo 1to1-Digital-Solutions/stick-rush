@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { expect, test, type Page } from '@playwright/test'
 import { openGame } from './helpers'
 
@@ -28,14 +31,40 @@ import { openGame } from './helpers'
 const FAIR_INSTANCES = { boards: 120, poles: 55, bulbs: 110 }
 
 /**
- * Familias instanciadas que dibuja la escena entera: las tres del recinto
- * (`FairPieces`) y las cinco de la máquina (`MachinePieces`).
+ * Familias instanciadas que dibuja la escena entera: las del recinto
+ * (`FairPieces`) más las de la máquina (`MachinePieces`).
  *
  * Es la señal de que ya está todo montado. La máquina cuelga de un `Suspense`
  * propio esperando las texturas de la madera, así que llega bastante después
- * que el recinto: sus cinco familias son lo último en aparecer.
+ * que el recinto: sus familias son lo último en aparecer.
+ *
+ * Se CUENTA del código en vez de escribirse a mano. Escrito, había que acordarse
+ * de recontarlo cada vez que una de las dos familias creciera o menguara, y el
+ * día que no te acuerdes el test no falla: espera de menos, la muestra sale con
+ * la escena a medio montar y el techo de llamadas pasa midiendo una escena que
+ * no es la que ve el jugador. Un guardián que se relaja solo es peor que no
+ * tenerlo, porque nadie vuelve a mirarlo.
  */
-const SCENE_INSTANCED_FAMILIES = 8
+function contarFamiliasInstanciadas(): number {
+  const fuentes = ['FairPieces.tsx', 'MachinePieces.tsx'].map((archivo) =>
+    readFileSync(join('src', 'components', 'game', archivo), 'utf8'),
+  )
+  const total = fuentes.reduce(
+    (suma, fuente) => suma + (fuente.match(/createInstances\(/g)?.length ?? 0),
+    0,
+  )
+  // Si esto sale a cero es que los ficheros se han movido o renombrado, y el test
+  // pasaría a no esperar a nada: mejor romperse aquí, con el motivo delante.
+  if (total === 0) {
+    throw new Error(
+      'No encuentro ninguna familia instanciada en src/components/game/: ' +
+        '¿se han movido FairPieces.tsx o MachinePieces.tsx?',
+    )
+  }
+  return total
+}
+
+const SCENE_INSTANCED_FAMILIES = contarFamiliasInstanciadas()
 
 /**
  * Espera de las dos partes del muestreo. Más que los 15 s de `expect`: en CI la

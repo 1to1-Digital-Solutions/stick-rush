@@ -321,8 +321,15 @@ emulador entrega sesión, dos `inputSources` y ~125 fps, pero los punteros de
 `@react-three/xr` no emiten eventos sobre los objetos de la escena. Se descartó por
 diagnóstico: no es la orientación del rayo (falla igual con agarre y con contacto
 directo), ni la posición (barrido 2D de todo el plano del jugador sin un solo hover),
-ni el frameloop, ni la detección de modo. Queda como línea abierta si alguien quiere
-retomarla.
+ni el frameloop, ni la detección de modo. **Reintentado al cerrar la v2 y sigue igual**, así
+que se deja de tratar como trabajo pendiente: es una limitación de la herramienta, no algo
+que falte por hacer.
+
+Lo que cubre ese riesgo por otra vía, para que no quede al aire: `src/lib/xrInteraction.ts`
+y sus tests comprueban la GEOMETRÍA —que los botones caigan dentro del campo de visión, que
+encaren al jugador, que el aro quede al alcance del brazo—, que es la mitad del fallo que un
+test de pulsación cazaría. La otra mitad, que el evento llegue de verdad, no se puede probar
+sin visor y la valida la sesión de hardware.
 
 > **Aviso (2026-08-05):** este párrafo se convirtió en una coartada. Durante semanas
 > tapó un fallo real —los mandos **no se registraban**, así que no había punteros que
@@ -570,11 +577,13 @@ mitad de la nada. Ahora hay geometría alrededor y la foto se queda de cielo y d
   `Fairground.tsx`, `FairStall.tsx` y `FerrisWheel.tsx` solo pintan. Los colores están con
   los de la máquina en `gameConfig.ts`, y son los mismos a propósito: el recinto tiene que
   parecer el sitio del que ha salido la máquina.
-- **Cinco llamadas de dibujo para 285 piezas**: todo el recinto va instanciado en tres
-  `<Instances>` de drei —tablas, postes y bombillas— más los dos aros de la noria. En el
-  visor lo que se paga son las llamadas, no los triángulos. Los límites de instancias son el
-  recuento exacto de piezas, sumado trozo a trozo, porque drei deja de pintar lo que sobra
-  **sin avisar** (`FairPieces.tsx`).
+- **Las 285 piezas se dibujan instanciadas**: tres `<Instances>` de drei —tablas, postes y
+  bombillas— más los dos aros de la noria. En el visor lo que se paga son las llamadas, no
+  los triángulos. Los límites de instancias son el recuento exacto de piezas, sumado trozo a
+  trozo, porque drei deja de pintar lo que sobra **sin avisar** (`FairPieces.tsx`).
+  Lo que cuesta exactamente no se repite aquí: vive en el desglose de `MENU_DRAW_CALLS`
+  (`e2e/recinto.spec.ts`), que es quien lo mide. La cifra estaba escrita en cuatro sitios y
+  ya había empezado a envejecer en unos antes que en otros.
 - **El decorado no se toca ni se apunta**: cada pieza lleva el raycast anulado. Si no,
   cada movimiento del ratón —y cada fotograma con los mandos apuntando— lanzaría un rayo
   contra las 285 piezas para nada.
@@ -593,6 +602,33 @@ mitad de la nada. Ahora hay geometría alrededor y la foto se queda de cielo y d
   recinto puesto y si la noria girando en la periferia molesta. Con
   `prefers-reduced-motion` se queda parada. El guion de la prueba y lo que ya se ha podido
   medir sin gafas están en "Validar el recinto en el visor".
+
+## Instanciar la máquina (rama `agent/instanciar-los-tubos-de-la-maquina`)
+
+Tiene sección propia porque es un cambio de código con fichero nuevo, no una nota al pie de
+la validación del recinto —que es donde se contaba antes, y trata de otra cosa.
+
+- **De 85 llamadas de dibujo a 5.** La máquina se llevaba 85 de las ~110 de la escena: 69
+  tubos sueltos (`Strut`, un cilindro de 10 lados con el que están hechos arcos, celosía,
+  montantes, riostras y patas) y 16 las bombillas de su guirnalda. En el visor eso se paga
+  **por ojo**: eran ~170 por fotograma para dibujar algo que cabe en cinco.
+- **Dónde vive**: `src/components/game/MachinePieces.tsx`, con la misma receta que
+  `FairPieces.tsx` — familias de instancias, límites declarados por recuento y `raycast`
+  anulado en lo que no se toca.
+- **Tres familias de tubos y no una.** Comparten geometría pero no material, y un
+  `<Instances>` tiene un solo material: el aro de los palos es mate porque es madera pintada,
+  los postes son metal pulido y la celosía queda en medio. Unificarlos era más barato **y
+  cambiaba cómo se ve la máquina**, que es lo único que esta optimización no podía tocar.
+  Tres en vez de 69 ya es el 96%.
+- **Las bombillas hornean sus medidas** en la geometría en lugar de escalar: son todas
+  iguales, y el casquillo es un cilindro **cónico** — un escalado lo estira, pero no lo hace
+  cónico.
+- **Los palos y sus ganchos siguen sueltos**, a propósito: se cogen con la mano, y una
+  instancia no se puede apuntar ni mover por su cuenta.
+- **Lo que lo vigila**: `MENU_DRAW_CALL_BUDGET` en `e2e/recinto.spec.ts`. El techo se bajó de
+  120 a 45 al entrar esto — con 120, la máquina podía volver a dibujar cada tubo suelto y el
+  test seguiría en verde. Un guardián con el listón donde estaba antes del arreglo no guarda
+  nada.
 
 ## Validar el recinto en el visor (rama `agent/validar-en-el-visor-el-recinto-d-94e952`)
 
