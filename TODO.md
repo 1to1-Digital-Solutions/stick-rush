@@ -123,7 +123,7 @@
 - [x] e2e/recinto.spec.ts <!-- org:c2f61403-afa0-46eb-85ed-a51fd6e158c4 -->
 - [ ] ESTADO.md no tiene sección propia para la instanciación de la máquina,… <!-- org:c23f8938-cbd7-4b29-9692-ca60aee109fc -->
 - [x] El desglose de las 29 llamadas (5 recinto + 5 máquina + 15 palos + 4… <!-- org:2f45e271-809c-4232-aa2b-fdd67fdf71e1 -->
-- [ ] El techo de llamadas de dibujo puede medir la escena a medio montar <!-- org:e604bb53-a588-42ea-9c4b-f29194eb4a0e -->
+- [x] El techo de llamadas de dibujo puede medir la escena a medio montar <!-- org:e604bb53-a588-42ea-9c4b-f29194eb4a0e -->
 - [ ] e2e/recinto.spec.ts, función sampleFrames() <!-- org:24f0472d-c35b-43f6-9b3f-ec019a8a63c5 -->
 - [x] ESTADO.md, sección «Validar el recinto en el visor» (~líneas 600-625) <!-- org:8731e61a-5bc0-43c7-b546-60c9e22fcce2 -->
 - [x] El muestreo de 30 fotogramas esperaba con los 15 s por defecto de expect <!-- org:192936ea-49e1-4de6-ba4b-1a7615bd5fdf -->
