@@ -144,10 +144,17 @@ async function countDrawCalls(page: Page) {
  * cuenta.
  */
 async function sampleFrames(page: Page, count = 30): Promise<DrawFrame[]> {
+  // Sin contador no hay fotogramas que contar, y las esperas de abajo tardarían
+  // 45 s en decirlo culpando a la escena de lo que falta aquí.
+  const counting = await page.evaluate(() => Boolean(window.__drawFrames))
+  expect(counting, 'falta countDrawCalls(page) antes de abrir la página').toBe(
+    true,
+  )
+
   await expect
     .poll(
       () =>
-        page.evaluate(() => window.__drawFrames?.at(-1)?.instanced.length ?? 0),
+        page.evaluate(() => window.__drawFrames!.at(-1)?.instanced.length ?? 0),
       {
         message: 'la escena no llegó a montarse entera',
         timeout: SAMPLE_TIMEOUT,
@@ -157,15 +164,15 @@ async function sampleFrames(page: Page, count = 30): Promise<DrawFrame[]> {
 
   // Lo contado durante el montaje ya no sirve: la muestra empieza aquí.
   await page.evaluate(() => {
-    if (window.__drawFrames) window.__drawFrames.length = 0
+    window.__drawFrames!.length = 0
   })
   await expect
-    .poll(() => page.evaluate(() => window.__drawFrames?.length ?? 0), {
+    .poll(() => page.evaluate(() => window.__drawFrames!.length), {
       message: 'la escena no llegó a pintar fotogramas',
       timeout: SAMPLE_TIMEOUT,
     })
     .toBeGreaterThanOrEqual(count)
-  return page.evaluate(() => window.__drawFrames?.slice() ?? [])
+  return page.evaluate(() => window.__drawFrames!.slice())
 }
 
 test.describe('Coste de dibujo del recinto', () => {
