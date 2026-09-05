@@ -2,9 +2,12 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    # Mensual: el trabajo entra por `develop` sin PRs, así que una PR semanal que
+    # nadie mira solo se acumula. Las de mayor versión (TypeScript, vitest, ESLint)
+    # se aplican a mano y de una en una; las menores, con `npm update`.
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
     groups:
       # Un solo PR para el bloque 3D: three, R3F, drei y xr van acoplados entre
       # sí y actualizarlos por separado rompe tipos.
