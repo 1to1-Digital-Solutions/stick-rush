@@ -1,8 +1,10 @@
 name: CI
 
+# El trabajo entra por `develop` y se publica a `main`: sin PRs de por medio, un CI que
+# solo escuchara `main` y `pull_request` no comprobaría nunca lo que se integra.
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
 
 # Cancela ejecuciones antiguas de la misma rama: solo interesa la última.
