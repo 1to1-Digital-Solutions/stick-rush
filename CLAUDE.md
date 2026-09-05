@@ -9,8 +9,10 @@ git) en cada cambio. Lee primero el contexto del repo, haz el cambio mínimo y e
 antes de crear y verifica (typecheck/lint/build/tests) antes de dar nada por terminado.
 
 **Estado y siguiente paso:** ver **`ESTADO.md`** — ese fichero es el handoff entre sesiones e
-indica qué toca hacer ahora. El **backlog** (todo lo que falta, hecho y pendiente) está en
-**`TODO.md`**: el estado y el porqué van en `ESTADO.md`, la lista de tareas en `TODO.md`.
+indica qué toca hacer ahora, corto a propósito. El **backlog** (todo lo que falta, hecho y
+pendiente) está en **`TODO.md`**. La historia tanda a tanda —qué se probó con las gafas y por
+qué se decidió cada cosa— vive en **`docs/historial.md`** y **solo se lee si la pregunta es
+«por qué está esto así»**: leerla entera al empezar cuesta más de lo que aporta.
 
 **Decisiones firmes:**
 - (Documenta aquí las decisiones de stack y producto que no se renegocian: lenguaje, framework,
