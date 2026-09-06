@@ -7,7 +7,13 @@ import { useGame } from '../../lib/gameStore'
 import { scoreRatio } from '../../lib/scoring'
 import { type StickStatus, stickStatuses } from '../../lib/stickLayout'
 import { type ShareStatus, useShareResult } from '../../lib/useShareResult'
-import { XR_HUD_POSITION, XR_QUIT_POSITION, XR_QUIT_YAW } from '../../lib/xrLayout'
+import {
+  XR_END_RUN_POSITION,
+  XR_END_RUN_YAW,
+  XR_HUD_POSITION,
+  XR_QUIT_POSITION,
+  XR_QUIT_YAW,
+} from '../../lib/xrLayout'
 import {
   PANEL_COLOR,
   XRCheckIcon,
@@ -18,8 +24,8 @@ import {
   XRPressable,
   XRRepeatIcon,
   XRShareIcon,
+  XRStarsRow,
 } from './XRUi'
-
 /**
  * Marcador dentro de la escena, para sesiones inmersivas.
  *
@@ -270,15 +276,19 @@ export function XRHud() {
     streak,
     bestPoints,
     isRecord,
-    difficulty,
-    stickCount,
+    activeDifficulty: difficulty,
+    activeStickCount: stickCount,
     gameMode,
+    endless,
+    levelResult,
+    waveScore,
+    waveResolved,
     lives,
     gameState,
     startGame,
     resetGame,
   } = useGame()
-
+  const sinFin = gameMode === 'practice' && endless
   // Fuera de sesión inmersiva manda el HUD en DOM, y en el menú manda XRMenu.
   // Durante el tutorial tampoco: un marcador vacío al lado de la demostración
   // es una ficha por palo compitiendo con los palos que la demostración está
@@ -288,7 +298,13 @@ export function XRHud() {
   }
 
   const width = Math.max(stickCount - 1, 0) * TOKEN_SPACING
-  const tokens = stickStatuses(score, resolved, stickCount).map(
+  // Sin fin, las fichas son las de la tanda que cuelga: las de la partida
+  // entera no cabrían, y la barra de abajo ya cuenta lo acumulado.
+  const tokens = stickStatuses(
+    sinFin ? waveScore : score,
+    sinFin ? waveResolved : resolved,
+    stickCount,
+  ).map(
     (state, index) => ({
       index,
       state,
@@ -296,13 +312,22 @@ export function XRHud() {
     }),
   )
   const finished = gameState === 'finished'
-  const ratio = scoreRatio(points, difficulty, stickCount)
-  const recordRatio = scoreRatio(bestPoints, difficulty, stickCount)
+  // Sin fin los puntos no tienen techo: la barra mide la racha viva contra la
+  // mejor racha, que es lo que se guarda de ese modo.
+  const ratio = sinFin
+    ? Math.min(1, streak / Math.max(bestPoints, streak, 1))
+    : scoreRatio(points, difficulty, stickCount)
+  const recordRatio = sinFin
+    ? bestPoints > 0
+      ? Math.min(1, bestPoints / Math.max(bestPoints, streak, 1))
+      : 0
+    : scoreRatio(bestPoints, difficulty, stickCount)
   // En desafío el marcador crece para dejarles sitio: las vidas se ven durante
-  // la partida y siguen ahí al acabar, que es con las que se acabó.
+  // la partida y siguen ahí al acabar, que es con las que se acabó. En Niveles
+  // ese sitio lo ocupan las estrellas al terminar.
   const totalLives = startingLives(gameMode)
   const showLives = lives != null && totalLives != null
-
+  const showStars = finished && levelResult != null
   return (
     <group position={XR_HUD_POSITION}>
       {/* Panel de fondo: en AR el mundo real está detrás, sin él las fichas
@@ -312,7 +337,7 @@ export function XRHud() {
         // con los pocos de una partida corta, la fila de tres botones se
         // saldría del panel y perdería el fondo que la despega del passthrough.
         width={Math.max(width + 0.2, finished ? BUTTONS_WIDTH + 0.06 : 0)}
-        height={(finished ? 0.42 : 0.27) + (showLives ? LIFE_ROW_HEIGHT : 0)}
+        height={(finished ? 0.42 : 0.27) + (showLives || showStars ? LIFE_ROW_HEIGHT : 0)}
         color={PANEL_COLOR}
         opacity={0.72}
       />
@@ -329,8 +354,10 @@ export function XRHud() {
           width={Math.max(width, 0.28)}
         />
         {showLives && <Lives lives={lives} total={totalLives} y={LIFE_ROW_Y} />}
+        {showStars && (
+          <XRStarsRow stars={levelResult.stars} position={[0, LIFE_ROW_Y, 0]} size={0.02} />
+        )}
       </group>
-
       {/*
         Al acabar, la partida ya no encadena sola: el jugador decide. Antes se
         reiniciaba tras una pausa y no había forma de volver a elegir palos ni
@@ -372,7 +399,7 @@ export function XRHud() {
  */
 export function XRQuitButton() {
   const mode = useXR((state) => state.mode)
-  const { gameState, resetGame } = useGame()
+  const { gameState, gameMode, endless, resetGame, endRun } = useGame()
 
   // También durante la cuenta atrás: si al jugador se le ocurre que se ha
   // equivocado de opciones, esos tres segundos son su última oportunidad.
@@ -381,6 +408,35 @@ export function XRQuitButton() {
   }
 
   return (
+    <>
+      {/* Sin fin no se acaba sola: terminar es su única salida con resumen. Va
+          en la punta contraria a la de volver al menú para no confundirlas. */}
+      {gameMode === 'practice' && endless && gameState === 'playing' && (
+        <XRPressable
+          position={XR_END_RUN_POSITION}
+          rotation={[0, XR_END_RUN_YAW, 0]}
+          onSelect={endRun}
+          hitSize={[0.16, 0.14, 0.08]}
+        >
+          <mesh>
+            <boxGeometry args={[0.12, 0.1, 0.012]} />
+            <meshStandardMaterial
+              color="#15803d"
+              emissive="#22c55e"
+              emissiveIntensity={0.3}
+              roughness={0.5}
+            />
+          </mesh>
+          <XRCheckIcon position={[0, 0, 0.012]} />
+        </XRPressable>
+      )}
+      <QuitButton onSelect={resetGame} />
+    </>
+  )
+}
+
+function QuitButton({ onSelect }: { onSelect: () => void }) {
+  return (
     // El giro cuelga del botón, no de la placa: girando solo la placa, su borde
     // izquierdo se adelantaba por delante del icono y se comía el dibujo desde
     // ese lado. Es lo que hacía ilegible al icono anterior, cuya punta de flecha
@@ -388,7 +444,7 @@ export function XRQuitButton() {
     <XRPressable
       position={XR_QUIT_POSITION}
       rotation={[0, XR_QUIT_YAW, 0]}
-      onSelect={resetGame}
+      onSelect={onSelect}
       hitSize={[0.16, 0.14, 0.08]}
     >
       <mesh>

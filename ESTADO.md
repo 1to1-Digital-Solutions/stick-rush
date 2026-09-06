@@ -8,19 +8,28 @@
 
 ---
 
-## 📍 DÓNDE ESTAMOS (2026-09-05)
+## 📍 DÓNDE ESTAMOS (2026-09-06)
 
-**El juego está publicado y montado en el salón de xrcade.** Los tags `v0.2.0`, `v0.3.0` y
-`v0.4.0` existen y están en `origin`; xrcade instala **`v0.4.0`**. Desde ese tag `develop` solo
-ha ganado tests de rendimiento, documentación, el CI en `develop` y una subida de dependencias
-menores (Next 16.3.3, React 19.2.8, fiber 9.7, drei 10.7.8, three 0.185.1, Playwright 1.63):
-nada que cambie la partida, así que no hay tag nuevo que publicar.
+**El juego está publicado y montado en el salón de xrcade.** Los tags `v0.2.0` a `v0.5.0`
+existen y están en `origin`; xrcade tiene que pasar a **`v0.5.0`**.
+
+**`v0.5.0` (2026-09-06): tres modos.** Además de práctica y desafío, **Niveles**: una
+escalera propia de 15 niveles (`levels.ts`: 5/9/13 palos por cada velocidad), sin vidas,
+puntuados con estrellas (60/80/100 % atrapados) y con el desbloqueo y las estrellas guardados
+entre visitas (`progress.ts`, `createStoredPreference` en `storage.ts`). Y la práctica gana
+**Sin fin**: como los palos se crean de golpe, funciona por **tandas** (`stickSeed` cambia con
+cada tanda y la máquina se recarga; `waveScore/waveResolved` cuentan la tanda, `score/resolved`
+la partida); la termina el jugador («Terminar», o el botón verde a la derecha en el visor) y lo
+que se guarda es la **mejor racha**. En el visor el interruptor de modo recorre los tres, la
+fila de palos se convierte en la escalera en Niveles, y hay un interruptor de tanda/sin fin en
+medio de la fila de ajustes. El desafío sigue igual: el modo heroico con vidas. **Nada de esto
+está probado con las gafas.**
 
 `develop` = `origin/develop`; `main` va **31 commits por detrás** y es lo que despliega Vercel.
 Publicar a `main` (`git merge --ff-only develop && git push origin main`) es una decisión tuya
 tras la sesión con el visor.
 
-Verificado hoy: lint y typecheck limpios, **504 unitarios** y **73 e2e** en verde,
+Verificado hoy: lint y typecheck limpios, **527 unitarios** y **77 e2e** en verde,
 `npm audit` sin vulnerabilidades. El detalle de cada tanda —qué se probó con las gafas, qué se
 decidió y por qué— vive en **`docs/historial.md`**, que solo se lee si la pregunta es «por qué
 está esto así».

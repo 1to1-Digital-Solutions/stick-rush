@@ -31,6 +31,8 @@ import {
   xrMenuSoundPosition,
   xrMenuTutorialPosition,
   xrModeTogglePosition,
+  xrEndlessTogglePosition,
+  XR_END_RUN_POSITION,
   xrSceneryPickerPosition,
   xrTutorialSkipPosition,
   xrUiRise,
@@ -108,7 +110,9 @@ describe('la interfaz cae dentro del campo de visión', () => {
     // panel para no pulsarse por error, así que ya no caen sobre el eje de la
     // mirada y hay que comprobarlos como los demás.
     ['el interruptor de modo', xrModeTogglePosition()],
+    ['el interruptor de sin fin', xrEndlessTogglePosition()],
     ['el selector de escenario', xrSceneryPickerPosition()],
+    ['el botón de terminar la partida sin fin', XR_END_RUN_POSITION],
     // La fila del ajuste del aro es la más alta del panel, así que es la que
     // primero se saldría por arriba de lo que se mira sin estirar el cuello.
     ['el botón de bajar el aro', xrHoopDownPosition()],

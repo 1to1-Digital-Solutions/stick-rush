@@ -73,3 +73,30 @@ export function InfinityIcon({ className = 'size-5' }: { className?: string }) {
     </svg>
   )
 }
+
+/**
+ * Estrella de nivel: llena la ganada, de contorno la que falta. Es lo que
+ * distingue las dos por forma y no solo por color.
+ */
+export function StarIcon({
+  earned = true,
+  className = 'size-5',
+}: {
+  earned?: boolean
+  className?: string
+}) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className={className}
+      fill={earned ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    >
+      <path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6L2.5 9.4l6.6-.8z" />
+    </svg>
+  )
+}
+

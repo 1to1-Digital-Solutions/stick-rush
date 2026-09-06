@@ -98,10 +98,12 @@ function raise([x, y, z]: Point, dy: number): Point {
  * lo que da sensación de rigidez son las diagonales.
  */
 export function StickMachine() {
+  // Lo que cuelga es lo del modo: los palos y la velocidad del nivel en
+  // Niveles, y una tanda nueva por semilla en la partida sin fin.
   const {
-    stickCount,
-    difficulty,
-    runId,
+    activeStickCount: stickCount,
+    activeDifficulty: difficulty,
+    stickSeed: runId,
     gameState,
     hoopHeight,
     catchStick,

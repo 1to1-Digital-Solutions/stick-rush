@@ -1,5 +1,5 @@
 import { type GameMode } from './gameMode'
-import { gameStorage } from './storage'
+import { createStoredPreference, gameStorage } from './storage'
 
 /**
  * La mejor puntuación, guardada entre visitas.
@@ -35,8 +35,12 @@ import { gameStorage } from './storage'
  */
 export const HIGH_SCORE_KEYS: Record<GameMode, string> = {
   practice: 'stick-rush:best-points',
+  levels: 'stick-rush:best-points:levels',
   challenge: 'stick-rush:best-points:challenge',
 }
+
+/** La partida sin fin no mide puntos —crecen sin tope— sino la mejor racha. */
+export const ENDLESS_STREAK_KEY = 'stick-rush:best-streak:endless'
 
 /**
  * Interpreta lo leído del almacenamiento.
@@ -131,4 +135,22 @@ export function saveBestPoints(mode: GameMode, points: number): void {
   if (!Number.isSafeInteger(points) || points <= getBestPoints(mode)) return
   writeBestPoints(gameStorage(), mode, points)
   for (const listener of listeners) listener()
+}
+
+const endlessStreak = createStoredPreference<number>({
+  key: ENDLESS_STREAK_KEY,
+  parse: parseBestPoints,
+  serialize: String,
+})
+
+export const {
+  get: getBestEndlessStreak,
+  getServer: getServerBestEndlessStreak,
+  subscribe: subscribeBestEndlessStreak,
+} = endlessStreak
+
+/** Guarda la racha de una partida sin fin si mejora la marca. */
+export function saveBestEndlessStreak(streak: number): void {
+  if (!Number.isSafeInteger(streak) || streak <= getBestEndlessStreak()) return
+  endlessStreak.save(streak)
 }

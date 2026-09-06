@@ -9,15 +9,18 @@ import {
   MIN_STICKS,
   STICK_COLOR,
 } from '../../lib/gameConfig'
-import { CHALLENGE_LIVES } from '../../lib/gameMode'
+import { CHALLENGE_LIVES, GAME_MODE_ORDER } from '../../lib/gameMode'
 import { useGame } from '../../lib/gameStore'
+import { LEVEL_COUNT } from '../../lib/levels'
 import { useExit } from '../../game/exit'
 import { HOOP_ADJUST_RANGE } from '../../lib/hoopHeight'
 import {
   XR_DIFFICULTY_SPACING,
+  XR_ENDLESS_TOGGLE_OFFSET,
   XR_HOOP_DOWN_OFFSET,
   XR_HOOP_GAUGE_OFFSET,
   XR_HOOP_UP_OFFSET,
+  XR_LEVEL_PICKER_SPACING,
   XR_MENU_EXIT_OFFSET,
   XR_MENU_POSITION,
   XR_MENU_SOUND_OFFSET,
@@ -40,8 +43,10 @@ import {
   XRPressable,
   XRSceneIcon,
   XRSoundIcon,
+  XRStarsRow,
+  XR_STAR_COLOR,
+  XR_STAR_SPENT_COLOR,
 } from './XRUi'
-
 /**
  * Menú de partida para sesiones inmersivas.
  *
@@ -105,11 +110,68 @@ function StickPicker() {
 }
 
 /**
+ * Selector de nivel, en la fila de los palos cuando se juega a Niveles: una
+ * casilla por nivel, encendida la elegida, con sus estrellas encima y apagadas
+ * las que quedan por abrir. Como el de palos, se elige tocando la que se
+ * quiere; las bloqueadas no responden.
+ */
+function LevelPicker() {
+  const { activeLevel, unlockedLevel, levelStars, setLevel } = useGame()
+  const width = (LEVEL_COUNT - 1) * XR_LEVEL_PICKER_SPACING
+
+  return (
+    <group position={[0, 0.16, 0]}>
+      {Array.from({ length: LEVEL_COUNT }, (_, index) => {
+        const level = index + 1
+        const locked = level > unlockedLevel
+        const selected = level === activeLevel
+        const stars = levelStars[index] ?? 0
+        return (
+          <XRPressable
+            key={level}
+            position={[index * XR_LEVEL_PICKER_SPACING - width / 2, 0, selected ? 0.02 : 0]}
+            onSelect={() => setLevel(level)}
+            disabled={locked}
+            hitSize={[XR_LEVEL_PICKER_SPACING, 0.16, 0.05]}
+          >
+            <mesh position={[0, -0.02, 0]}>
+              <boxGeometry args={[0.03, selected ? 0.07 : 0.05, 0.012]} />
+              <meshStandardMaterial
+                color={selected ? STICK_COLOR : locked ? '#1c2634' : '#3d4654'}
+                emissive={STICK_COLOR}
+                emissiveIntensity={selected ? 0.55 : 0}
+                roughness={0.6}
+                transparent
+                opacity={locked ? 0.35 : 1}
+              />
+            </mesh>
+            {/* Las estrellas ganadas, apiladas encima de la casilla: sin sitio
+                para tres en fila, se ponen en columna y se cuentan. */}
+            {!locked &&
+              Array.from({ length: 3 }, (_, star) => (
+                <mesh key={star} position={[0, 0.03 + star * 0.016, 0.004]}>
+                  <boxGeometry args={[0.014, 0.008, 0.006]} />
+                  <meshBasicMaterial
+                    color={star < stars ? XR_STAR_COLOR : XR_STAR_SPENT_COLOR}
+                    toneMapped={false}
+                  />
+                </mesh>
+              ))}
+          </XRPressable>
+        )
+      })}
+    </group>
+  )
+}
+
+/**
  * Selector de dificultad: cinco fichas con 1 a 5 barras crecientes, del verde
  * al rojo. La elegida se adelanta y se ilumina, así que no depende del color.
+ * En Niveles la dice el nivel: la ficha que toca se enseña encendida y las
+ * demás no responden.
  */
-function DifficultyPicker() {
-  const { difficulty, setDifficulty } = useGame()
+function DifficultyPicker({ locked = false }: { locked?: boolean }) {
+  const { activeDifficulty: difficulty, setDifficulty } = useGame()
   const width = (DIFFICULTY_ORDER.length - 1) * DIFFICULTY_SPACING
 
   return (
@@ -122,6 +184,7 @@ function DifficultyPicker() {
             key={level}
             position={[index * DIFFICULTY_SPACING - width / 2, 0, selected ? 0.022 : 0]}
             onSelect={() => setDifficulty(level)}
+            disabled={locked}
             hitSize={[DIFFICULTY_SPACING * 0.92, 0.15, 0.05]}
           >
             <mesh position={[0, 0, -0.008]}>
@@ -131,6 +194,8 @@ function DifficultyPicker() {
                 emissive={color}
                 emissiveIntensity={selected ? 0.5 : 0.06}
                 roughness={0.55}
+                transparent
+                opacity={locked && !selected ? 0.35 : 1}
               />
             </mesh>
             {/* Barras: tantas como nivel, cada una más alta que la anterior.
@@ -152,47 +217,80 @@ const MODE_HEART_SPACING = 0.045
 /** Semilado de esos corazones: más pequeños que un icono de botón, van tres. */
 const MODE_HEART_SIZE = 0.016
 /**
- * Práctica o desafío, dicho con lo único que los distingue: las vidas.
- *
- * Encendidos, los tres corazones son lo que se pone en juego; apagados, no hay
- * nada que perder y la partida es la de siempre. Es un interruptor y no dos
- * opciones como el escenario —igual que el silencio— porque uno de los dos
- * estados es exactamente la ausencia del otro: la práctica es el desafío sin
- * vidas. Y sin una letra, como todo el menú inmersivo: el estado se distingue
- * por relleno, brillo y tamaño, nunca solo por color.
+ * El modo, dicho con lo que cada uno pone en juego: nada en práctica —los
+ * corazones apagados—, estrellas en niveles, los tres corazones encendidos en
+ * desafío. Cada pulsación pasa al siguiente y del último vuelve al primero: un
+ * botón que recorre tres estados, sin una letra, como todo el menú inmersivo.
+ * El estado se distingue por dibujo, brillo y tamaño, nunca solo por color.
  */
 function ModeToggle() {
   const { gameMode, setGameMode } = useGame()
   const challenge = gameMode === 'challenge'
+  const levels = gameMode === 'levels'
   const width = (CHALLENGE_LIVES - 1) * MODE_HEART_SPACING
+  const next = GAME_MODE_ORDER[(GAME_MODE_ORDER.indexOf(gameMode) + 1) % GAME_MODE_ORDER.length]
 
   return (
     <XRPressable
       position={XR_MODE_TOGGLE_OFFSET}
-      onSelect={() => setGameMode(challenge ? 'practice' : 'challenge')}
+      onSelect={() => setGameMode(next)}
       hitSize={[0.2, 0.13, 0.06]}
     >
       <mesh position={[0, 0, -0.008]}>
         <boxGeometry args={[0.17, 0.1, 0.014]} />
         <meshStandardMaterial
-          color={challenge ? '#4c1d24' : '#1c2634'}
-          emissive={LIFE_COLOR}
-          emissiveIntensity={challenge ? 0.4 : 0.04}
+          color={challenge ? '#4c1d24' : levels ? '#3b2f0b' : '#1c2634'}
+          emissive={levels ? XR_STAR_COLOR : LIFE_COLOR}
+          emissiveIntensity={challenge || levels ? 0.4 : 0.04}
           roughness={0.5}
         />
       </mesh>
-      {Array.from({ length: CHALLENGE_LIVES }, (_, index) => (
-        <XRHeartIcon
-          key={index}
-          position={[index * MODE_HEART_SPACING - width / 2, 0, 0.008]}
-          size={challenge ? MODE_HEART_SIZE : MODE_HEART_SIZE * 0.75}
-          color={challenge ? LIFE_COLOR : '#55606f'}
-        />
-      ))}
+      {levels ? (
+        <XRStarsRow stars={3} position={[0, 0, 0.008]} spacing={MODE_HEART_SPACING} />
+      ) : (
+        Array.from({ length: CHALLENGE_LIVES }, (_, index) => (
+          <XRHeartIcon
+            key={index}
+            position={[index * MODE_HEART_SPACING - width / 2, 0, 0.008]}
+            size={challenge ? MODE_HEART_SIZE : MODE_HEART_SIZE * 0.75}
+            color={challenge ? LIFE_COLOR : '#55606f'}
+          />
+        ))
+      )}
     </XRPressable>
   )
 }
 
+/**
+ * Tanda o sin fin, solo en práctica. Encendido, la máquina se recarga cada vez
+ * que se vacía y la partida la termina el jugador. Se dibuja como lo que es: un
+ * anillo, el camino que no se acaba; apagado, un tramo suelto.
+ */
+function EndlessToggle() {
+  const { endless, setEndless } = useGame()
+
+  return (
+    <XRPressable
+      position={XR_ENDLESS_TOGGLE_OFFSET}
+      onSelect={() => setEndless(!endless)}
+      hitSize={[0.16, 0.13, 0.06]}
+    >
+      <mesh position={[0, 0, -0.008]}>
+        <boxGeometry args={[0.13, 0.1, 0.014]} />
+        <meshStandardMaterial
+          color={endless ? '#1d4ed8' : '#1c2634'}
+          emissive="#60a5fa"
+          emissiveIntensity={endless ? 0.45 : 0.05}
+          roughness={0.5}
+        />
+      </mesh>
+      <mesh position={[0, 0, 0.008]} rotation={[0, 0, 0]}>
+        <torusGeometry args={[0.022, 0.006, 8, 24, endless ? Math.PI * 2 : Math.PI]} />
+        <meshBasicMaterial color={endless ? '#ffffff' : '#64748b'} toneMapped={false} />
+      </mesh>
+    </XRPressable>
+  )
+}
 /**
  * Escenario o habitación real, sin salir de la sesión.
  *
@@ -410,9 +508,9 @@ function TutorialButton() {
 
 export function XRMenu() {
   const mode = useXR((state) => state.mode)
-  const { gameState, startGame } = useGame()
+  const { gameState, gameMode, startGame } = useGame()
   const exit = useExit()
-
+  const levels = gameMode === 'levels'
   // Fuera de sesión inmersiva manda la pantalla de inicio en DOM.
   if (mode == null || gameState !== 'menu') {
     return null
@@ -425,11 +523,13 @@ export function XRMenu() {
       <XRPanel width={1.06} height={0.82} color={PANEL_COLOR} />
       <HoopHeightPicker />
       <TutorialButton />
-      <StickPicker />
-      <DifficultyPicker />
+      {/* En Niveles los palos y la velocidad los dice el nivel: la fila de
+          palos se cambia por la escalera y las fichas se quedan de muestra. */}
+      {levels ? <LevelPicker /> : <StickPicker />}
+      <DifficultyPicker locked={levels} />
       <ModeToggle />
+      {gameMode === 'practice' && <EndlessToggle />}
       <SceneryPicker passthroughAvailable={mode === 'immersive-ar'} />
-
       {/* Empezar. La primera vez la partida se abre con el tutorial —con las
           gafas puestas no hay forma de saber que los palos se agarran, ni con
           qué botón—, pero eso lo decide el juego y no este botón: dentro de la

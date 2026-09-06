@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react'
@@ -21,11 +22,25 @@ import {
   runOutcome,
 } from './gameMode'
 import {
+  getBestEndlessStreak,
   getBestPoints,
+  getServerBestEndlessStreak,
   getServerBestPoints,
+  saveBestEndlessStreak,
   saveBestPoints,
+  subscribeBestEndlessStreak,
   subscribeBestPoints,
 } from './highScore'
+import { LEVEL_COUNT, clampLevel, levelPassed, levelSpec, levelStars, type Stars } from './levels'
+import {
+  getServerStarsList,
+  getServerUnlockedLevel,
+  getStarsList,
+  getUnlockedLevel,
+  saveLevelResult,
+  subscribeStarsList,
+  subscribeUnlockedLevel,
+} from './progress'
 import {
   HOOP_ADJUST_STEP,
   clampHoopAdjustment,
@@ -85,8 +100,37 @@ export interface GameStore {
   stickCount: number
   /** Dificultad seleccionada. */
   difficulty: Difficulty
-  /** Práctica o desafío (ver `gameMode.ts`). */
+  /** Práctica, niveles o desafío (ver `gameMode.ts`). */
   gameMode: GameMode
+  /**
+   * Práctica sin fin: cuando se resuelve la tanda de palos la máquina vuelve a
+   * cargar otra, hasta que el jugador termina. El récord es la mejor racha.
+   */
+  endless: boolean
+  /** Nivel elegido en Niveles, o `null` = el más alto desbloqueado. */
+  level: number | null
+  /** El nivel que se juega: el elegido, o el más alto desbloqueado. */
+  activeLevel: number
+  /** Hasta qué nivel se puede jugar, recordado entre visitas. */
+  unlockedLevel: number
+  /** Estrellas de cada nivel, del primero al último. */
+  levelStars: readonly Stars[]
+  /** Cómo acabó el nivel jugado, solo con la partida terminada en Niveles. */
+  levelResult: { stars: Stars; passed: boolean; unlocked: number | null } | null
+  /** Velocidad a la que se juega: la elegida, o la del nivel en Niveles. */
+  activeDifficulty: Difficulty
+  /** Palos que cuelgan de la máquina en esta tanda: los elegidos, o los del nivel. */
+  activeStickCount: number
+  /**
+   * Semilla del reparto de palos. Es `runId` salvo en la partida sin fin, donde
+   * cambia con cada tanda para que la máquina se recargue con palos nuevos.
+   */
+  stickSeed: number
+  /** Tanda en curso de la partida sin fin, empezando en 0; siempre 0 si no. */
+  wave: number
+  /** Palos atrapados y resueltos de la TANDA en curso; en sin fin, no de la partida. */
+  waveScore: number
+  waveResolved: number
   /**
    * Vidas que quedan en la partida, o `null` en un modo que no se juega con
    * ellas. En el menú son las de salida: es lo que se pone en juego al empezar.
@@ -172,6 +216,11 @@ export interface GameStore {
    * resumen en pantalla, no hace nada (ver el porqué en la implementación).
    */
   setGameMode: (mode: GameMode) => void
+  setEndless: (endless: boolean) => void
+  /** Elige nivel entre los desbloqueados; lo que no lo está se recorta. */
+  setLevel: (level: number) => void
+  /** Termina la partida sin fin a voluntad: es su única salida con resumen. */
+  endRun: () => void
   /**
    * Sube (pasos positivos) o baja (negativos) el aro. Cada paso son
    * `HOOP_ADJUST_STEP` metros y el recorrido está acotado, así que el aro no
@@ -229,6 +278,16 @@ export function useGameStoreValue(): GameStore {
   // tiene por qué estrenarse con vidas que aún no sabe cómo se pierden. El
   // desafío está a un toque, en el mismo sitio.
   const [gameMode, setGameModeState] = useState<GameMode>('practice')
+  const [endless, setEndless] = useState(false)
+  // `null` es «el más alto desbloqueado»: así el menú enseña el nivel que toca
+  // sin leer el almacenamiento en el primer render, que no está en el servidor.
+  const [level, setLevelState] = useState<number | null>(null)
+  // La partida sin fin la termina el jugador: es lo único que la cierra.
+  const [endedByPlayer, setEndedByPlayer] = useState(false)
+  // Tanda de la partida sin fin, y con qué marcador empezó: el marcador de la
+  // partida sigue subiendo mientras la máquina se recarga.
+  const [wave, setWave] = useState(0)
+  const [waveStart, setWaveStart] = useState({ score: 0, resolved: 0 })
   const [score, setScore] = useState(0)
   const [resolved, setResolved] = useState(0)
   const [points, setPoints] = useState(0)
@@ -248,6 +307,29 @@ export function useGameStoreValue(): GameStore {
   // guarda, `bestPoints` ya incluye lo recién hecho y no serviría para saber si
   // se ha superado nada.
   const [recordToBeat, setRecordToBeat] = useState(0)
+  // El progreso de Niveles y la racha sin fin tampoco son estado de React: viven
+  // en el navegador y se leen suscritos, como el récord.
+  const unlockedLevel = useSyncExternalStore(
+    subscribeUnlockedLevel,
+    getUnlockedLevel,
+    getServerUnlockedLevel,
+  )
+  const starsList = useSyncExternalStore(subscribeStarsList, getStarsList, getServerStarsList)
+  const levelStarsAll = useMemo(
+    () => starsList.split(',').map((s) => Number(s) as Stars),
+    [starsList],
+  )
+  const bestEndlessStreak = useSyncExternalStore(
+    subscribeBestEndlessStreak,
+    getBestEndlessStreak,
+    getServerBestEndlessStreak,
+  )
+  // Hasta dónde se podía jugar al empezar, y con qué nivel se empezó. El nivel
+  // se congela al empezar: al superarlo se desbloquea el siguiente en el acto, y
+  // si el activo siguiera al desbloqueado la partida terminada se convertiría en
+  // la siguiente a medias, con más palos que resolver y el resumen esfumado.
+  const [unlockedAtStart, setUnlockedAtStart] = useState(1)
+  const [levelAtStart, setLevelAtStart] = useState(1)
   // Lo único que se guarda es si hay partida en marcha. Las tres fases de una
   // partida —contando, jugando y terminada— se derivan de la cuenta atrás y de
   // los palos resueltos, así no hay fuentes de verdad que sincronizar ni
@@ -290,17 +372,33 @@ export function useGameStoreValue(): GameStore {
   // se juega: en escritorio la pantalla de inicio ya lo explica con texto.
   const [immersive, setImmersive] = useState(false)
 
+  const levels = gameMode === 'levels'
+  const endlessRun = gameMode === 'practice' && endless
+  const selectedLevel = clampLevel(Math.min(level ?? unlockedLevel, unlockedLevel))
+  const activeLevel = running ? levelAtStart : selectedLevel
+  const currentLevel = levelSpec(activeLevel)
+  const activeDifficulty = levels ? currentLevel.difficulty : difficulty
+  const activeStickCount = levels ? currentLevel.stickCount : stickCount
+  // Sin fin, cada tanda reparte palos nuevos: la semilla cambia con la tanda.
+  const stickSeed = endlessRun ? runId * 1000 + wave : runId
+  const waveScore = score - waveStart.score
+  const waveResolved = resolved - waveStart.resolved
+
   // Los palos que se han escapado. Se deriva en vez de contarse aparte: un
   // tercer contador que hay que mantener a la par de los otros dos es un
   // desajuste esperando a pasar.
   const misses = resolved - score
   // Cuándo se acaba una partida lo decide el modo (ver `gameMode.ts`): en
-  // práctica, el último palo; en desafío, también quedarse sin vidas.
+  // práctica, el último palo; en desafío, también quedarse sin vidas. Sin fin
+  // no se acaba sola: la cierra el jugador.
   const outcome = running
-    ? runOutcome({ mode: gameMode, resolved, misses, stickCount })
+    ? endlessRun
+      ? endedByPlayer
+        ? 'cleared'
+        : null
+      : runOutcome({ mode: gameMode, resolved, misses, stickCount: activeStickCount })
     : null
   const lives = remainingLives(gameMode, misses)
-
   const gameState: GameState = !running
     ? 'menu'
     : tutorialRunning
@@ -341,15 +439,43 @@ export function useGameStoreValue(): GameStore {
     return () => clearTimeout(timer)
   }, [tutorialRunning, finishTutorial])
 
-  // Al terminar, la puntuación sale hacia el almacenamiento; guardar solo hace
-  // algo si mejora lo que había, así que repetirlo no cambia nada. Se guarda al
-  // final y no palo a palo para que durante la partida el récord siga siendo la
-  // marca a batir.
+  // Sin fin: tanda resuelta, la máquina se recarga. Se apunta de qué tanda se
+  // pasó para que dos ejecuciones del efecto —Strict Mode las provoca— no
+  // salten dos.
+  const advancedWave = useRef(-1)
+  useEffect(() => {
+    if (!running || !endlessRun || gameState !== 'playing') return
+    if (waveResolved < activeStickCount) return
+    if (advancedWave.current === wave) return
+    advancedWave.current = wave
+    setWaveStart({ score, resolved })
+    setWave((value) => value + 1)
+  }, [running, endlessRun, gameState, waveResolved, activeStickCount, wave, score, resolved])
+
+  // Cómo acabó el nivel, solo con la partida terminada en Niveles.
+  const levelResult = useMemo(() => {
+    if (!levels || gameState !== 'finished') return null
+    const stars = levelStars(score, activeStickCount)
+    const passed = levelPassed(stars)
+    const abre = passed && activeLevel + 1 > unlockedAtStart && activeLevel < LEVEL_COUNT
+    return { stars, passed, unlocked: abre ? activeLevel + 1 : null }
+  }, [levels, gameState, score, activeStickCount, activeLevel, unlockedAtStart])
+
+  // Cada modo guarda lo suyo al terminar: puntos, racha o estrellas. Guardar
+  // solo hace algo si mejora lo que había, así que repetirlo no cambia nada. Se
+  // guarda al final y no palo a palo para que durante la partida el récord siga
+  // siendo la marca a batir.
   useEffect(() => {
     if (gameState !== 'finished') return
-    saveBestPoints(gameMode, points)
-  }, [gameState, gameMode, points])
+    if (levelResult) saveLevelResult(activeLevel, levelResult.stars)
+    else if (endlessRun) saveBestEndlessStreak(bestStreak)
+    else saveBestPoints(gameMode, points)
+  }, [gameState, gameMode, points, bestStreak, endlessRun, levelResult, activeLevel])
 
+  // La marca de este modo: puntos, o la racha en la partida sin fin. En Niveles
+  // no hay marca que batir: hay estrellas.
+  const bestForMode = endlessRun ? bestEndlessStreak : levels ? 0 : bestPoints
+  const scoreForRecord = endlessRun ? bestStreak : points
   // La partida ha batido el récord con el que empezó *y* lo guardado es
   // exactamente esta puntuación. Sin esa segunda condición, con el
   // almacenamiento bloqueado la marca a batir se quedaría a cero para siempre y
@@ -359,8 +485,10 @@ export function useGameStoreValue(): GameStore {
   // congeló al empezar pero no la que hay guardada. Derivado y no guardado:
   // dura lo que dure la pantalla de fin de partida.
   const isRecord =
-    gameState === 'finished' && points > recordToBeat && bestPoints === points
-
+    gameState === 'finished' &&
+    !levels &&
+    scoreForRecord > recordToBeat &&
+    bestForMode === scoreForRecord
   const hoopHeight = hoopHeightFor({
     eyeHeight: playerEyeHeight,
     adjustment: hoopAdjustment,
@@ -406,14 +534,27 @@ export function useGameStoreValue(): GameStore {
     [running],
   )
 
+  const setLevel = useCallback(
+    (next: number) => {
+      if (running) return
+      setLevelState(clampLevel(Math.min(next, getUnlockedLevel())))
+    },
+    [running],
+  )
+
+  const endRun = useCallback(() => setEndedByPlayer(true), [])
+
   const clearRun = useCallback(() => {
     setScore(0)
     setResolved(0)
     setPoints(0)
     setStreak(0)
     setBestStreak(0)
+    setWave(0)
+    setWaveStart({ score: 0, resolved: 0 })
+    setEndedByPlayer(false)
+    advancedWave.current = -1
   }, [])
-
   const startGame = useCallback(
     (options?: { tutorial?: boolean }) => {
       // Con las gafas puestas y sin haberlo visto nunca, la partida empieza
@@ -421,7 +562,11 @@ export function useGameStoreValue(): GameStore {
       // hay palos cayéndole encima.
       const tutorial = options?.tutorial ?? (immersive && !tutorialSeen)
       clearRun()
-      setRecordToBeat(getBestPoints(gameMode))
+      setRecordToBeat(
+        gameMode === 'practice' && endless ? getBestEndlessStreak() : getBestPoints(gameMode),
+      )
+      setUnlockedAtStart(getUnlockedLevel())
+      setLevelAtStart(selectedLevel)
       setRunId((id) => id + 1)
       setTutorialRunning(tutorial)
       // Con tutorial la cuenta espera: sus tres segundos son para colocarse, y
@@ -429,7 +574,7 @@ export function useGameStoreValue(): GameStore {
       setCountdown(tutorial ? 0 : COUNTDOWN_SECONDS)
       setRunning(true)
     },
-    [clearRun, gameMode, immersive, tutorialSeen],
+    [clearRun, gameMode, endless, selectedLevel, immersive, tutorialSeen],
   )
 
   const catchStick = useCallback(
@@ -443,12 +588,12 @@ export function useGameStoreValue(): GameStore {
         const next = previous + 1
         setBestStreak((best) => Math.max(best, next))
         setPoints((total) =>
-          total + stickPoints({ difficulty, streak: next, fallProgress }),
+          total + stickPoints({ difficulty: activeDifficulty, streak: next, fallProgress }),
         )
         return next
       })
     },
-    [difficulty],
+    [activeDifficulty],
   )
 
   const missStick = useCallback(() => {
@@ -470,6 +615,18 @@ export function useGameStoreValue(): GameStore {
       stickCount,
       difficulty,
       gameMode,
+      endless,
+      level,
+      activeLevel,
+      unlockedLevel,
+      levelStars: levelStarsAll,
+      levelResult,
+      activeDifficulty,
+      activeStickCount,
+      stickSeed,
+      wave,
+      waveScore,
+      waveResolved,
       lives,
       outcome,
       score,
@@ -477,7 +634,7 @@ export function useGameStoreValue(): GameStore {
       points,
       streak,
       bestStreak,
-      bestPoints,
+      bestPoints: bestForMode,
       isRecord,
       gameState,
       countdown,
@@ -494,6 +651,9 @@ export function useGameStoreValue(): GameStore {
       setStickCount,
       setDifficulty,
       setGameMode,
+      setEndless,
+      setLevel,
+      endRun,
       adjustHoop,
       setPlayerEyeHeight,
       setImmersive,
@@ -507,6 +667,18 @@ export function useGameStoreValue(): GameStore {
       stickCount,
       difficulty,
       gameMode,
+      endless,
+      level,
+      activeLevel,
+      unlockedLevel,
+      levelStarsAll,
+      levelResult,
+      activeDifficulty,
+      activeStickCount,
+      stickSeed,
+      wave,
+      waveScore,
+      waveResolved,
       lives,
       outcome,
       score,
@@ -514,7 +686,7 @@ export function useGameStoreValue(): GameStore {
       points,
       streak,
       bestStreak,
-      bestPoints,
+      bestForMode,
       isRecord,
       gameState,
       countdown,
@@ -530,6 +702,8 @@ export function useGameStoreValue(): GameStore {
       setMuted,
       setStickCount,
       setGameMode,
+      setLevel,
+      endRun,
       adjustHoop,
       startGame,
       finishTutorial,

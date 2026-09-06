@@ -3,9 +3,13 @@
  *
  * - **Práctica**: caen los palos elegidos y la partida acaba cuando se resuelve
  *   el último. Fallar no cuesta nada. Es el juego de siempre, para calentar.
+ * - **Niveles**: una escalera propia (`levels.ts`): quince niveles que suben
+ *   los palos y después la velocidad, cada uno una partida suelta sin vidas que
+ *   se puntúa con estrellas al acabar; una estrella desbloquea el siguiente y
+ *   lo desbloqueado se recuerda entre visitas (`progress.ts`).
  * - **Desafío**: se juega con **vidas**. Cada palo que toca el suelo cuesta una,
  *   y la partida acaba al quedarse sin ellas —aunque queden palos colgando— o al
- *   resolverlos todos, que es superar el reto.
+ *   resolverlos todos, que es superar el reto. Es el modo heroico.
  *
  * **Vidas y no rondas que suben de dificultad.** La dificultad ya la elige el
  * jugador y es la palanca con la que escala la puntuación (ver `scoring.ts`); si
@@ -23,20 +27,22 @@
  * interfaz solo lo pinta, igual que con la puntuación.
  */
 
-export type GameMode = 'practice' | 'challenge'
+export type GameMode = 'practice' | 'levels' | 'challenge'
 
 /** Orden de los modos en los selectores, del más suave al más exigente. */
-export const GAME_MODE_ORDER: GameMode[] = ['practice', 'challenge']
+export const GAME_MODE_ORDER: GameMode[] = ['practice', 'levels', 'challenge']
 
 /** Etiqueta visible para el usuario (idioma del producto: español). */
 export const GAME_MODE_LABELS: Record<GameMode, string> = {
   practice: 'Práctica',
+  levels: 'Niveles',
   challenge: 'Desafío',
 }
 
 /** Qué promete cada modo, en una línea, para el menú de escritorio. */
 export const GAME_MODE_HINTS: Record<GameMode, string> = {
   practice: 'Caen todos los palos y fallar no cuesta nada.',
+  levels: 'Un nivel cada vez: el que superas queda desbloqueado.',
   challenge: 'Tres vidas: cada palo que se escapa cuesta una.',
 }
 

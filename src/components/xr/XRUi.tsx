@@ -18,6 +18,7 @@ import {
   XR_MUTED_ICON,
   XR_SHARE_ICON,
   XR_SOUND_ICON,
+  XR_STAR_ICON,
   XR_TRIANGLE_CENTER,
   XR_TRIANGLE_ROTATION,
   sceneMountains,
@@ -381,6 +382,46 @@ export function XRShareIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_SHARE_ICON} {...props} />
 }
 
+/** Estrella de nivel. */
+export function XRStarIcon(props: IconProps) {
+  return <XRShapeIcon icon={XR_STAR_ICON} {...props} />
+}
+
+/** Color de la estrella ganada y de la que falta. */
+export const XR_STAR_COLOR = '#fbbf24'
+export const XR_STAR_SPENT_COLOR = '#3f4a5a'
+
+/**
+ * Tres estrellas en fila, llenas las ganadas. Las que faltan se apagan y
+ * encogen: el estado se distingue por tamaño y no solo por color.
+ */
+export function XRStarsRow({
+  stars,
+  position = [0, 0, 0],
+  size = 0.016,
+  spacing = 0.045,
+}: {
+  stars: number
+  position?: [number, number, number]
+  size?: number
+  spacing?: number
+}) {
+  return (
+    <group position={position}>
+      {Array.from({ length: 3 }, (_, index) => {
+        const earned = index < stars
+        return (
+          <XRStarIcon
+            key={index}
+            position={[(index - 1) * spacing, 0, 0]}
+            size={earned ? size : size * 0.7}
+            color={earned ? XR_STAR_COLOR : XR_STAR_SPENT_COLOR}
+          />
+        )
+      })}
+    </group>
+  )
+}
 /** Marca de verificación: el resultado salió del visor. */
 export function XRCheckIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_CHECK_ICON} {...props} />

@@ -1040,3 +1040,76 @@ describe('vuelta al menú y revancha', () => {
     expect(result.current.gameState).toBe('menu')
   })
 })
+
+describe('práctica sin fin', () => {
+  it('al resolver la tanda la máquina se recarga en vez de acabar, y termina el jugador', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setEndless(true))
+    act(() => result.current.setStickCount(5))
+    startPlaying(result)
+    const primerReparto = result.current.stickSeed
+
+    for (let i = 0; i < 5; i++) act(() => result.current.catchStick(0.5))
+
+    expect(result.current.gameState).toBe('playing')
+    expect(result.current.score).toBe(5)
+    // Tanda nueva: palos nuevos, contador de tanda a cero, el de la partida sigue.
+    expect(result.current.stickSeed).not.toBe(primerReparto)
+    expect(result.current.waveResolved).toBe(0)
+    expect(result.current.waveScore).toBe(0)
+
+    act(() => result.current.catchStick(0.5))
+    act(() => result.current.endRun())
+
+    expect(result.current.gameState).toBe('finished')
+    expect(result.current.outcome).toBe('cleared')
+    // La marca de este modo es la racha, no los puntos.
+    expect(result.current.bestPoints).toBe(6)
+    expect(result.current.isRecord).toBe(true)
+    expect(localStorage.getItem(HIGH_SCORE_KEYS.practice)).toBeNull()
+  })
+})
+
+describe('modo niveles', () => {
+  it('juega el nivel más alto desbloqueado con sus palos y velocidad, sin vidas', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setGameMode('levels'))
+    act(() => result.current.setDifficulty('impossible'))
+
+    expect(result.current.activeLevel).toBe(1)
+    expect(result.current.activeStickCount).toBe(5)
+    expect(result.current.activeDifficulty).toBe('easy')
+    expect(result.current.lives).toBeNull()
+  })
+
+  it('superar el nivel da estrellas y desbloquea el siguiente, sin mover el jugado', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setGameMode('levels'))
+    startPlaying(result)
+
+    for (let i = 0; i < 5; i++) act(() => (i < 4 ? result.current.catchStick(0.5) : result.current.missStick()))
+
+    expect(result.current.gameState).toBe('finished')
+    expect(result.current.levelResult).toEqual({ stars: 2, passed: true, unlocked: 2 })
+    expect(result.current.unlockedLevel).toBe(2)
+    expect(result.current.activeLevel).toBe(1)
+
+    act(() => result.current.resetGame())
+    expect(result.current.activeLevel).toBe(2)
+    expect(result.current.activeStickCount).toBe(9)
+  })
+
+  it('no superar no abre nada, y no se elige más allá de lo desbloqueado', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setGameMode('levels'))
+    act(() => result.current.setLevel(9))
+    expect(result.current.activeLevel).toBe(1)
+    startPlaying(result)
+
+    for (let i = 0; i < 5; i++) act(() => result.current.missStick())
+
+    expect(result.current.levelResult).toEqual({ stars: 0, passed: false, unlocked: null })
+    expect(result.current.unlockedLevel).toBe(1)
+    expect(result.current.isRecord).toBe(false)
+  })
+})

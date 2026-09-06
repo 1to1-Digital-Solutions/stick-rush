@@ -90,8 +90,13 @@ describe('cuándo se acaba la partida', () => {
 })
 
 describe('presentación de los modos', () => {
-  it('se ofrecen los dos, de la práctica al desafío', () => {
-    expect(GAME_MODE_ORDER).toEqual(['practice', 'challenge'])
+  it('se ofrecen los tres, de la práctica al desafío', () => {
+    expect(GAME_MODE_ORDER).toEqual(['practice', 'levels', 'challenge'])
+  })
+
+  it('los niveles se juegan sin vidas, como la práctica', () => {
+    expect(startingLives('levels')).toBeNull()
+    expect(runOutcome({ mode: 'levels', resolved: 5, misses: 5, stickCount: 5 })).toBe('cleared')
   })
 
   it('cada modo tiene etiqueta en el idioma del producto', () => {

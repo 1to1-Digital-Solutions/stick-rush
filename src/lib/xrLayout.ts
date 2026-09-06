@@ -91,10 +91,28 @@ export const XR_MENU_SOUND_OFFSET: Vec3 = [0.42, -0.29, 0]
  * el visor se apunta a pulso y un vecino a pocos centímetros se pulsa por error.
  */
 const SETTINGS_ROW_Y = -0.17
-/** Interruptor de modo: los corazones que se ponen (o no) en juego. */
+/**
+ * Interruptor de modo: recorre práctica, niveles y desafío, y enseña lo que
+ * cada uno pone en juego (nada, estrellas, corazones).
+ */
 export const XR_MODE_TOGGLE_OFFSET: Vec3 = [-0.26, SETTINGS_ROW_Y, 0]
+/**
+ * Tanda o sin fin, en medio de la fila de ajustes y solo en práctica. Cabe
+ * entre los otros dos porque sus cajas de pulsación no llegan a tocarse.
+ */
+export const XR_ENDLESS_TOGGLE_OFFSET: Vec3 = [0, SETTINGS_ROW_Y, 0]
 /** Selector de escenario o passthrough. */
 export const XR_SCENERY_PICKER_OFFSET: Vec3 = [0.245, SETTINGS_ROW_Y, 0]
+/**
+ * Botón de terminar la partida sin fin, a un lado como el de volver al menú
+ * pero en la punta contraria: son las dos salidas de la partida y una a cada
+ * lado no se confunden. Girado hacia el jugador por lo mismo que aquel.
+ */
+export const XR_END_RUN_POSITION: Vec3 = [0.42, 1.15, -0.75]
+export const XR_END_RUN_YAW = Math.atan2(
+  -XR_END_RUN_POSITION[0],
+  -XR_END_RUN_POSITION[2],
+)
 /**
  * Fila del ajuste de altura del aro, arriba del todo del panel. Va sola y por
  * encima del resto porque es lo único que se toca **mirando la máquina**: el
@@ -136,6 +154,11 @@ export const XR_TUTORIAL_PROGRESS_OFFSET: Vec3 = [0, -0.26, 0]
 
 /** Separación entre los palos del selector de cantidad. */
 export const XR_STICK_PICKER_SPACING = 0.055
+/**
+ * Separación entre las casillas del selector de nivel, que ocupa la fila de
+ * los palos en el modo Niveles: quince casillas en el ancho de trece palos.
+ */
+export const XR_LEVEL_PICKER_SPACING = 0.047
 /** Separación entre las fichas de dificultad. */
 export const XR_DIFFICULTY_SPACING = 0.17
 
@@ -167,12 +190,27 @@ export function xrMenuSoundPosition(): Vec3 {
   return offset(XR_MENU_POSITION, dx, dy)
 }
 
-/** Interruptor de modo (práctica o desafío), dentro del panel del menú. */
+/** Interruptor de modo (práctica, niveles o desafío), dentro del panel del menú. */
 export function xrModeTogglePosition(): Vec3 {
   const [dx, dy] = XR_MODE_TOGGLE_OFFSET
   return offset(XR_MENU_POSITION, dx, dy)
 }
 
+/** Interruptor de tanda o sin fin, dentro del panel del menú. */
+export function xrEndlessTogglePosition(): Vec3 {
+  const [dx, dy] = XR_ENDLESS_TOGGLE_OFFSET
+  return offset(XR_MENU_POSITION, dx, dy)
+}
+
+/** Casilla del nivel `level` (1-based) del selector de nivel. */
+export function xrLevelOptionPosition(level: number, levelCount: number): Vec3 {
+  const width = (levelCount - 1) * XR_LEVEL_PICKER_SPACING
+  return offset(
+    XR_MENU_POSITION,
+    (level - 1) * XR_LEVEL_PICKER_SPACING - width / 2,
+    STICK_PICKER_Y,
+  )
+}
 /** Selector de escenario o passthrough, dentro del panel del menú. */
 export function xrSceneryPickerPosition(): Vec3 {
   const [dx, dy] = XR_SCENERY_PICKER_OFFSET

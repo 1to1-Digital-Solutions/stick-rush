@@ -186,6 +186,27 @@ export const XR_MUTED_ICON: IconShape = [
 ]
 
 /**
+ * Estrella de nivel: una pieza de cinco puntas. Llena la ganada; la que falta
+ * se pinta apagada y más pequeña, para que no dependa solo del color.
+ */
+export const XR_STAR_ICON: IconShape = [
+  {
+    outline: [
+      [0, 1],
+      [0.265, 0.364],
+      [0.951, 0.309],
+      [0.428, -0.139],
+      [0.588, -0.809],
+      [0, -0.45],
+      [-0.588, -0.809],
+      [-0.428, -0.139],
+      [-0.951, 0.309],
+      [-0.265, 0.364],
+    ],
+  },
+]
+
+/**
  * Avión de papel: compartir el resultado.
  *
  * De una sola pieza, como el resto: el símbolo habitual de compartir son tres

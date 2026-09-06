@@ -32,29 +32,44 @@ export async function openGame(page: Page, path = '/') {
  * Botón de un modo en el menú. Su nombre accesible arrastra la línea de ayuda
  * ("Desafío Tres vidas: …"), así que se busca por cómo empieza.
  */
-export function modeButton(page: Page, mode: 'Práctica' | 'Desafío') {
+export type ModeName = 'Práctica' | 'Niveles' | 'Desafío'
+
+export function modeButton(page: Page, mode: ModeName) {
   return page.getByRole('button', { name: new RegExp(`^${mode}`) })
 }
 
-/** Configura la partida en el menú y la arranca. */
+/**
+ * Configura la partida en el menú y la arranca.
+ *
+ * En Niveles no se eligen palos ni dificultad —los dice el nivel—, así que ahí
+ * `sticks` es lo que se espera ver en el marcador y no lo que se pulsa. Sin
+ * fin, el marcador no dice «de N»: los palos no se acaban.
+ */
 export async function startGame(
   page: Page,
   {
     sticks,
     difficulty,
     mode,
-  }: { sticks: number; difficulty: string; mode?: 'Práctica' | 'Desafío' },
+    endless = false,
+  }: { sticks: number; difficulty?: string; mode?: ModeName; endless?: boolean },
 ) {
   if (mode) await modeButton(page, mode).click()
-  await page.getByRole('button', { name: String(sticks), exact: true }).click()
-  await page.getByRole('button', { name: difficulty, exact: true }).click()
+  if (mode !== 'Niveles') {
+    await page.getByRole('button', { name: String(sticks), exact: true }).click()
+    if (difficulty) {
+      await page.getByRole('button', { name: difficulty, exact: true }).click()
+    }
+    if (endless) await page.getByRole('button', { name: /^Sin fin/ }).click()
+  }
   await page.getByRole('button', { name: 'Jugar' }).click()
 
   await expect(page.getByRole('status')).toHaveAttribute(
     'aria-label',
-    new RegExp(`Atrapados 0 de ${sticks}$`),
+    endless
+      ? /Atrapados 0, sin fin, tanda 1$/
+      : new RegExp(`Atrapados 0 de ${sticks}$`),
   )
-
   // La partida no empieza al pulsar, sino cuando se agota la cuenta atrás.
   // Devolver antes dejaría a los tests intentando atrapar palos que todavía
   // cuelgan quietos y no se dejan coger.
@@ -64,7 +79,7 @@ export async function startGame(
 /** Palos atrapados según el marcador. */
 export async function readScore(page: Page): Promise<number> {
   const label = await page.getByRole('status').getAttribute('aria-label')
-  const match = label?.match(/Atrapados (\d+) de (\d+)/)
+  const match = label?.match(/Atrapados (\d+)(?: de (\d+)|, sin fin)/)
   if (!match) throw new Error(`Marcador ilegible: ${label}`)
   return Number(match[1])
 }

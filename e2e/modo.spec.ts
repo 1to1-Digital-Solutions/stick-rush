@@ -23,10 +23,9 @@ test.describe('Modo de juego', () => {
     await openGame(page)
   })
 
-  test('el menú ofrece los dos modos, con Práctica puesta', async ({ page }) => {
+  test('el menú ofrece los tres modos, con Práctica puesta', async ({ page }) => {
     const section = page.getByRole('region', { name: 'Modo' })
-    await expect(section.getByRole('button')).toHaveCount(2)
-
+    await expect(section.getByRole('button')).toHaveCount(3)
     await expect(modeButton(page, 'Práctica')).toHaveAttribute(
       'aria-pressed',
       'true',
