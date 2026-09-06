@@ -90,6 +90,10 @@ export const FAIR_COUNTER_COLOR = '#cbb894'
 export const FAIR_SIGN_COLORS = ['#1d3557', '#7a1f2b', '#1f5f4a']
 /** Premios apilados dentro de la caseta, a la vista sobre el mostrador. */
 export const FAIR_PRIZE_COLORS = ['#e8b93f', '#c1121f', '#4c8fbd']
+/** Tonos de la ropa del público: oscuros, para que sean siluetas contra las luces. */
+export const CROWD_SHADES = ['#2b2430', '#3b2e28', '#233040', '#3a2c3c', '#2f3a2e']
+/** El blanco al que tiran las bombillas cuando la racha monta la fiesta. */
+export const PARTY_BULB_COLOR = '#fff6e6'
 
 /** Límites de palos seleccionables. */
 export const MIN_STICKS = 5

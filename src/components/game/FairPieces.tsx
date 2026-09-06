@@ -1,8 +1,13 @@
 'use client'
 
-import { type ComponentProps, type ReactNode } from 'react'
+import { useRef, type ComponentProps, type ReactNode, type RefObject } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { createInstances } from '@react-three/drei'
-import { MACHINE_BULB_COLOR } from '../../lib/gameConfig'
+import { Color, type MeshStandardMaterial } from 'three'
+import { bulbGlow, bulbPulse } from '../../lib/fairMood'
+import { MACHINE_BULB_COLOR, PARTY_BULB_COLOR } from '../../lib/gameConfig'
+import type { FairMoodState } from './FairMood'
+import { useReducedMotion } from './useReducedMotion'
 
 /**
  * Las tres piezas con las que está construido el recinto de feria: tablas
@@ -66,6 +71,41 @@ export function Bulb(props: PieceProps) {
   return <BulbInstance raycast={ignoreRaycast} {...props} />
 }
 
+/** Los dos colores entre los que se mueve la bombilla; se reservan una vez. */
+const BULB_COLOR = new Color(MACHINE_BULB_COLOR)
+const PARTY_COLOR = new Color(PARTY_BULB_COLOR)
+/** Lo que tarda el brillo en llegar a su nuevo valor: fracción por segundo. */
+const GLOW_EASE = 3
+
+/**
+ * Las bombillas responden a la racha (`lib/fairMood.ts`): suben de brillo con
+ * ella y, con fiesta, palpitan hacia el blanco. Se toca el material de la
+ * familia entera —todas las bombillas de la feria son un solo material—, así
+ * que cuesta lo mismo con cien que con mil. Con el movimiento reducido el
+ * palpitar se apaga; el brillo sigue subiendo, que eso no se mueve.
+ */
+function BulbMood({
+  moodRef,
+  materialRef,
+}: {
+  moodRef: RefObject<FairMoodState>
+  materialRef: RefObject<MeshStandardMaterial | null>
+}) {
+  const reducedMotion = useReducedMotion()
+
+  useFrame(({ clock }, delta) => {
+    const material = materialRef.current
+    if (material == null) return
+    const { streak } = moodRef.current
+    const target = bulbGlow(streak)
+    material.emissiveIntensity += (target - material.emissiveIntensity) * Math.min(1, delta * GLOW_EASE)
+    const pulse = reducedMotion ? 0 : bulbPulse(streak, clock.elapsedTime)
+    material.emissive.lerpColors(BULB_COLOR, PARTY_COLOR, pulse)
+  })
+
+  return null
+}
+
 /**
  * Proveedor de las tres familias de piezas. Van anidadas porque cada
  * `createInstances` reparte su contexto a los descendientes; el orden entre
@@ -80,11 +120,16 @@ export function Bulb(props: PieceProps) {
  */
 export function FairPieces({
   limits,
+  moodRef,
   children,
 }: {
   limits: PieceCounts
+  /** La racha, para que las bombillas respondan a ella (ver `FairMood`). */
+  moodRef: RefObject<FairMoodState>
   children: ReactNode
 }) {
+  const bulbMaterial = useRef<MeshStandardMaterial>(null)
+
   return (
     <BoardInstances limit={limits.boards} frustumCulled={false}>
       <boxGeometry />
@@ -97,11 +142,13 @@ export function FairPieces({
         <BulbInstances limit={limits.bulbs} frustumCulled={false}>
           <sphereGeometry args={[1, 8, 6]} />
           <meshStandardMaterial
+            ref={bulbMaterial}
             color={MACHINE_BULB_COLOR}
             emissive={MACHINE_BULB_COLOR}
-            emissiveIntensity={1.6}
+            emissiveIntensity={bulbGlow(0)}
             toneMapped={false}
           />
+          <BulbMood moodRef={moodRef} materialRef={bulbMaterial} />
           {children}
         </BulbInstances>
       </PoleInstances>

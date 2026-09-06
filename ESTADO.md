@@ -11,7 +11,21 @@
 ## 📍 DÓNDE ESTAMOS (2026-09-06)
 
 **El juego está publicado y montado en el salón de xrcade.** Los tags `v0.2.0` a `v0.5.0`
-existen y están en `origin`; xrcade tiene que pasar a **`v0.5.0`**.
+existen y están en `origin`; xrcade tiene que pasar a **`v0.6.0`**.
+
+**`v0.6.0` (2026-09-06): la feria responde al jugador.** Había noria y casetas pero nadie
+dentro: ahora hay **público** —42 siluetas (cuerpo y cabeza fundidos en una geometría, una
+familia instanciada con `createInstances` = **una llamada de dibujo**), en un anillo entre las
+guirnaldas y las casetas, mirando a la máquina (`lib/crowdLayout.ts`, `components/game/Crowd.tsx`)—
+que se mece más alto y más deprisa con la racha. Y las **bombillas** de casetas y guirnaldas
+suben de brillo con la racha (1,6 → 3,2, saturando) y a partir de **5 palos seguidos palpitan**
+hacia el blanco, más rápido cuanto mayor la racha (`lib/fairMood.ts`, `BulbMood` en
+`FairPieces.tsx`): se toca el material de la familia entera, así que cuesta lo mismo con cien
+bombillas que con mil. La racha llega al recinto por un **ref** (`FairMood.tsx`) y no por props:
+el decorado no se vuelve a renderizar por nada que pase en la partida. Con
+`prefers-reduced-motion` el público se queda quieto y las bombillas no palpitan (el brillo sí
+sube, que eso no se mueve). La escena pasa de 29 a **30 llamadas en el menú**; el desglose vive
+en `e2e/recinto.spec.ts`. **Nada de esto está probado con las gafas.**
 
 **`v0.5.0` (2026-09-06): tres modos.** Además de práctica y desafío, **Niveles**: una
 escalera propia de 15 niveles (`levels.ts`: 5/9/13 palos por cada velocidad), sin vidas,
@@ -29,7 +43,7 @@ está probado con las gafas.**
 Publicar a `main` (`git merge --ff-only develop && git push origin main`) es una decisión tuya
 tras la sesión con el visor.
 
-Verificado hoy: lint y typecheck limpios, **527 unitarios** y **77 e2e** en verde,
+Verificado hoy: lint y typecheck limpios, **538 unitarios** y **77 e2e** en verde,
 `npm audit` sin vulnerabilidades. El detalle de cada tanda —qué se probó con las gafas, qué se
 decidió y por qué— vive en **`docs/historial.md`**, que solo se lee si la pregunta es «por qué
 está esto así».

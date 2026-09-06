@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { MACHINE_TRUSS_COLOR } from '../../lib/gameConfig'
 import {
   GARLAND_BULBS_PER_SPAN,
@@ -14,6 +14,8 @@ import {
   type RingSlot,
   type Vec3,
 } from '../../lib/sceneryLayout'
+import { Crowd } from './Crowd'
+import { FairMood, type FairMoodState } from './FairMood'
 import { Bulb, FairPieces, Pole, type PieceCounts } from './FairPieces'
 import { FairStall, STALL_PIECES } from './FairStall'
 import { FerrisWheel, WHEEL_PIECES } from './FerrisWheel'
@@ -21,7 +23,10 @@ import { useReducedMotion } from './useReducedMotion'
 
 /**
  * El recinto de feria en el que está montada la máquina: casetas alrededor,
- * guirnaldas de bombillas cerrando el círculo por arriba y una noria al fondo.
+ * guirnaldas de bombillas cerrando el círculo por arriba, público entre las
+ * casetas y una noria al fondo. Las bombillas y el público responden a la racha
+ * (`lib/fairMood.ts`), que les llega por un ref y no por props: el recinto no
+ * se vuelve a renderizar por nada que pase en la partida.
  *
  * Solo se pinta con el escenario puesto. En passthrough el decorado es la
  * habitación del jugador, y esto la taparía (ver `SceneBackdrop`).
@@ -122,13 +127,16 @@ export function Fairground() {
   // parada, como el vaivén de los palos.
   const reducedMotion = useReducedMotion()
   const stalls = useMemo(() => ringSlots(STALL_COUNT, STALL_RING_RADIUS), [])
+  const mood = useRef<FairMoodState>({ streak: 0 })
 
   return (
-    <FairPieces limits={FAIR_PIECES}>
+    <FairPieces limits={FAIR_PIECES} moodRef={mood}>
+      <FairMood moodRef={mood} />
       {stalls.map((slot, index) => (
         <FairStall key={`stall-${index}`} slot={slot} index={index} />
       ))}
       <Garlands />
+      <Crowd moodRef={mood} />
       <FerrisWheel spinning={!reducedMotion} />
     </FairPieces>
   )
