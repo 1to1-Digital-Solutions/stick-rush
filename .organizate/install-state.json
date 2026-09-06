@@ -33,6 +33,10 @@
     {
       "path": "ESTADO.md",
       "source": "catalog/templates/ESTADO.md.tmpl"
+    },
+    {
+      "path": ".claude/rules/xr.md",
+      "source": "rules/xr.md"
     }
   ]
 }
