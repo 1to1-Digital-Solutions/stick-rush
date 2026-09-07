@@ -147,11 +147,11 @@ export function GameWorld({ hasDomUi = false }: GameWorldProps) {
           Va fuera del grupo del mundo a propósito: acompaña al jugador, no al
           decorado. */}
       <XRGazeAnchor always={!hasDomUi}>
-        <XRHud />
-        <XRMenu />
+        <XRHud hasDomUi={hasDomUi} />
+        <XRMenu hasDomUi={hasDomUi} />
         <XRTutorial />
-        <XRCountdown />
-        <XRQuitButton />
+        <XRCountdown hasDomUi={hasDomUi} />
+        <XRQuitButton hasDomUi={hasDomUi} />
       </XRGazeAnchor>
 
       {/* EL MUNDO, corrido para dejar al jugador donde le toca.

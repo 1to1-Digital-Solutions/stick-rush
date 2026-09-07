@@ -77,11 +77,11 @@ function CountdownRing({
   )
 }
 
-export function XRCountdown() {
+export function XRCountdown({ hasDomUi = false }: { hasDomUi?: boolean }) {
   const mode = useXR((state) => state.mode)
   const { gameState, countdown } = useGame()
 
-  if (mode == null || gameState !== 'countdown') {
+  if ((hasDomUi && mode == null) || gameState !== 'countdown') {
     return null
   }
 

@@ -267,7 +267,7 @@ function Token({ state, x }: { state: StickStatus; x: number }) {
   )
 }
 
-export function XRHud() {
+export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
   const mode = useXR((state) => state.mode)
   const {
     score,
@@ -293,7 +293,7 @@ export function XRHud() {
   // Durante el tutorial tampoco: un marcador vacío al lado de la demostración
   // es una ficha por palo compitiendo con los palos que la demostración está
   // contando. Aparece con la cuenta atrás, que es cuando empieza a medir algo.
-  if (mode == null || gameState === 'menu' || gameState === 'tutorial') {
+  if ((hasDomUi && mode == null) || gameState === 'menu' || gameState === 'tutorial') {
     return null
   }
 
@@ -397,13 +397,13 @@ export function XRHud() {
  * cruzarse con los palos. Sin él, entrar en una partida en el visor era un
  * callejón sin salida: no había forma de cambiar de opciones.
  */
-export function XRQuitButton() {
+export function XRQuitButton({ hasDomUi = false }: { hasDomUi?: boolean }) {
   const mode = useXR((state) => state.mode)
   const { gameState, gameMode, endless, resetGame, endRun } = useGame()
 
   // También durante la cuenta atrás: si al jugador se le ocurre que se ha
   // equivocado de opciones, esos tres segundos son su última oportunidad.
-  if (mode == null || (gameState !== 'playing' && gameState !== 'countdown')) {
+  if ((hasDomUi && mode == null) || (gameState !== 'playing' && gameState !== 'countdown')) {
     return null
   }
 

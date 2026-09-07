@@ -506,13 +506,13 @@ function TutorialButton() {
   )
 }
 
-export function XRMenu() {
+export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
   const mode = useXR((state) => state.mode)
   const { gameState, gameMode, startGame } = useGame()
   const exit = useExit()
   const levels = gameMode === 'levels'
   // Fuera de sesión inmersiva manda la pantalla de inicio en DOM.
-  if (mode == null || gameState !== 'menu') {
+  if ((hasDomUi && mode == null) || gameState !== 'menu') {
     return null
   }
 

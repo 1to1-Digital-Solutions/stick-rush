@@ -58,7 +58,8 @@ export function XRGazeAnchor({
   useFrame((state, delta) => {
     const group = ref.current
     // Fuera de sesión inmersiva no hay nada que colocar si manda el DOM; si no
-    // lo hay (`always`), esta interfaz es la única y se coloca igual.
+    // lo hay (`always`), esta interfaz es la única y se coloca igual, delante de
+    // donde mire la cámara que ponga el anfitrión.
     if (group == null || (mode == null && !always)) return
 
     const { camera } = state
