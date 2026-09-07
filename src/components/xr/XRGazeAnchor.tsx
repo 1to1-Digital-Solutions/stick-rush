@@ -31,7 +31,19 @@ import { xrUiRise } from '../../lib/xrLayout'
  * Toda la decisión de *cuándo* girar está en `stepAnchor`, que se prueba sin
  * navegador; aquí solo se lee la cámara y se aplica el resultado.
  */
-export function XRGazeAnchor({ children }: { children: ReactNode }) {
+export function XRGazeAnchor({
+  children,
+  always = false,
+}: {
+  children: ReactNode
+  /**
+   * Colocar la interfaz también fuera de sesión inmersiva. Es lo que hace falta
+   * cuando el anfitrión no pone interfaz en DOM —el salón de xrcade, sin visor—:
+   * ahí esto es la única interfaz que hay, y dejarla sin colocar la deja donde
+   * caiga, normalmente a la espalda de quien mira.
+   */
+  always?: boolean
+}) {
   const ref = useRef<Group>(null)
   const anchor = useRef<AnchorState | null>(null)
   const mode = useXR((state) => state.mode)
@@ -45,8 +57,9 @@ export function XRGazeAnchor({ children }: { children: ReactNode }) {
 
   useFrame((state, delta) => {
     const group = ref.current
-    // Fuera de sesión inmersiva no hay nada que colocar: manda el DOM.
-    if (group == null || mode == null) return
+    // Fuera de sesión inmersiva no hay nada que colocar si manda el DOM; si no
+    // lo hay (`always`), esta interfaz es la única y se coloca igual.
+    if (group == null || (mode == null && !always)) return
 
     const { camera } = state
     camera.getWorldPosition(gazePosition)

@@ -118,7 +118,18 @@ function GameSound() {
   return null
 }
 
-export function GameWorld() {
+export interface GameWorldProps {
+  /**
+   * Quien monta la escena pone además interfaz en DOM alrededor. Montado en el
+   * salón de xrcade no hay nada de eso —el hub no pone DOM—, así que la
+   * interfaz de dentro de la escena es la única que hay y tiene que colocarse y
+   * verse aunque no haya visor. Sin esto, el juego se veía en el hub y no había
+   * forma de empezar la partida.
+   */
+  hasDomUi?: boolean
+}
+
+export function GameWorld({ hasDomUi = false }: GameWorldProps) {
   return (
     <>
       {/* Arranca/cierra partidas según el estado de la sesión inmersiva. */}
@@ -130,12 +141,12 @@ export function GameWorld() {
       <GameSound />
 
       {/* La interfaz inmersiva NO cuelga del origen del jugador, sino de
-          `<XRGazeAnchor>`, que la planta delante de su cara: el -Z del origen lo
+          `<XRGazeAnchor always={!hasDomUi}>`, que la planta delante de su cara: el -Z del origen lo
           fija la calibración de la sala, así que entrar mirando a otro lado
           dejaba el menú a la espalda, invisible e imposible de apuntar.
           Va fuera del grupo del mundo a propósito: acompaña al jugador, no al
           decorado. */}
-      <XRGazeAnchor>
+      <XRGazeAnchor always={!hasDomUi}>
         <XRHud />
         <XRMenu />
         <XRTutorial />

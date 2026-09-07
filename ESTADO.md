@@ -177,6 +177,12 @@ Pendiente para ese momento (no antes):
 
 ## Hecho hasta ahora
 
+- **La interfaz de dentro de la escena ya se ve cuando lo monta el salón.** Se escondía siempre
+  que no había sesión de WebXR, porque en la web propia manda el DOM y sus botones cazarían los
+  clics del ratón por delante del juego. Pero el salón de xrcade **no pone DOM**: montado ahí y
+  sin visor, el juego se veía entero y no había forma de empezar la partida. Ahora lo decide
+  `hasDomUi` —lo pasa quien monta la escena, no lo adivina el juego—, como en los juegos nuevos.
+
 - Base de la suite de Organízate instalada (`.claude/rules/`, `.claude/agents/`, `CLAUDE.md`).
 - Proyecto Next.js inicializado e instalado (R3F, drei, xr, three).
 - Primera versión jugable del juego:

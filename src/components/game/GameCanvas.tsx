@@ -60,7 +60,7 @@ export function GameCanvas() {
             resuelve el propio mundo corriéndose (ver `<GameWorld>`), igual que
             hace en el salón: así el juego se monta idéntico en los dos sitios. */}
         <XROrigin position={[0, 0, 0]} />
-        <GameWorld />
+        <GameWorld hasDomUi />
         <DesktopControls />
       </XR>
     </Canvas>
