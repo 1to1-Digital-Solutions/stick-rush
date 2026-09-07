@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MACHINE_HEIGHT, MAX_STICKS, MIN_STICKS } from './gameConfig'
-import { COUNTDOWN_SECONDS, useGameStoreValue } from './gameStore'
+import { COUNTDOWN_SECONDS, useGame, useGameStoreValue } from './gameStore'
 import { HIGH_SCORE_KEYS } from './highScore'
 import { HOOP_ADJUST_RANGE, HOOP_ADJUST_STEP } from './hoopHeight'
 import { MUTED_KEY } from './mutePreference'
@@ -1111,5 +1111,38 @@ describe('modo niveles', () => {
     expect(result.current.levelResult).toEqual({ stars: 0, passed: false, unlocked: null })
     expect(result.current.unlockedLevel).toBe(1)
     expect(result.current.isRecord).toBe(false)
+  })
+})
+
+describe('terminar el tutorial cuando ya no está', () => {
+  it('no hace nada', () => {
+    // El botón de saltar y el reloj del tutorial llaman a lo mismo: sin esto,
+    // el que llegue segundo arrancaría otra cuenta atrás a media partida.
+    const { result } = renderHook(() => useGameStoreValue())
+
+    act(() => result.current.finishTutorial())
+
+    expect(result.current.gameState).toBe('menu')
+    expect(result.current.countdown).toBe(0)
+  })
+})
+
+describe('usar el store sin haberlo montado', () => {
+  it('avisa con un error claro en vez de romper en otro sitio', () => {
+    expect(() => renderHook(() => useGame())).toThrow(/GameProvider/)
+  })
+})
+
+describe('elegir nivel a media partida', () => {
+  it('no se puede: el nivel que se juega es el de cuando empezó', () => {
+    // Cambiarlo por debajo cambiaría los palos y la velocidad a mitad de tanda.
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setGameMode('levels'))
+    act(() => result.current.startGame())
+    const jugando = result.current.activeLevel
+
+    act(() => result.current.setLevel(1))
+
+    expect(result.current.activeLevel).toBe(jugando)
   })
 })

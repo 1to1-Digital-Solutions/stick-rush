@@ -89,7 +89,6 @@ const FINISHED: TutorialFrame = {
 export function tutorialFrameAt(elapsed: number): TutorialFrame {
   if (!Number.isFinite(elapsed)) return FINISHED
   const time = Math.max(0, elapsed)
-  if (time >= TUTORIAL_SECONDS) return FINISHED
 
   let start = 0
   for (const step of TUTORIAL_STEPS) {
@@ -105,6 +104,9 @@ export function tutorialFrameAt(elapsed: number): TutorialFrame {
     start = end
   }
 
+  // Pasado el último paso no queda nada que enseñar: el tutorial se ha visto.
+  // Es la única salida del final, así que sumar un paso a la lista no puede
+  // dejarlo colgado en el anterior.
   return FINISHED
 }
 

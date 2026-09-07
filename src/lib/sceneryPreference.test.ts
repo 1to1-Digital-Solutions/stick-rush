@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
-  SCENERY_KEY,
+  getScenery,
   getServerScenery,
   parseScenery,
   readScenery,
+  saveScenery,
+  SCENERY_KEY,
   writeScenery,
 } from './sceneryPreference'
 
@@ -81,5 +83,21 @@ describe('el escenario se recuerda entre visitas', () => {
     // No hay navegador que consultar; si dijera otra cosa, el HTML del servidor y el del
     // cliente diferirían.
     expect(getServerScenery()).toBe('scene')
+  })
+})
+
+describe('cuando el navegador no deja guardar el escenario', () => {
+  it('la elección vale al menos para esta visita', () => {
+    // Sin la copia en memoria, el botón no haría nada: lo guardado no cambia,
+    // así que la lectura devolvería siempre lo mismo.
+    vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
+      throw new DOMException('bloqueado', 'SecurityError')
+    })
+
+    saveScenery('passthrough')
+    expect(getScenery()).toBe('passthrough')
+
+    saveScenery('scene')
+    expect(getScenery()).toBe('scene')
   })
 })

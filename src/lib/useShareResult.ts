@@ -22,6 +22,9 @@ export type ShareStatus = 'idle' | ShareOutcome
 
 /** Enlace que se comparte: el juego donde esté servido, sin parámetros. */
 function gameUrl(): string {
+  // Compartir solo se ofrece con la partida terminada, que es cosa del
+  // navegador; el resguardo es para el prerenderizado.
+  /* v8 ignore next */
   if (typeof window === 'undefined') return ''
   return `${window.location.origin}${window.location.pathname}`
 }
@@ -63,6 +66,8 @@ export function useShareResult(): {
     })
     const outcome = await shareOrCopy(
       text,
+      // Lo mismo: en el servidor no hay a quién compartir.
+      /* v8 ignore next */
       typeof navigator === 'undefined' ? null : navigator,
     )
     setAttempt({ runId, outcome })

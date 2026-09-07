@@ -446,6 +446,9 @@ export function useGameStoreValue(): GameStore {
   useEffect(() => {
     if (!running || !endlessRun || gameState !== 'playing') return
     if (waveResolved < activeStickCount) return
+    // Dos ejecuciones del efecto por la misma tanda —Strict Mode las provoca en
+    // desarrollo— sumarían dos veces lo hecho.
+    /* v8 ignore next */
     if (advancedWave.current === wave) return
     advancedWave.current = wave
     setWaveStart({ score, resolved })

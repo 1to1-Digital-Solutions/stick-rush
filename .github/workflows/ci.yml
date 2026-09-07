@@ -32,6 +32,9 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      # Con el mínimo de cobertura del dominio (`vitest.config.mts`): los tests en
+      # verde no dicen nada si la mitad del código no se ejecuta en ninguno.
+      - run: npm run coverage
 
   e2e:
     name: Extremo a extremo

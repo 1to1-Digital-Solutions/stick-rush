@@ -38,3 +38,22 @@ describe('el progreso de Niveles', () => {
     expect(levelsPassed(getStarsList())).toBe(1)
   })
 })
+
+describe('una lista de estrellas manipulada', () => {
+  it('se lee como cero, no como el número que ponga', () => {
+    // Se edita a mano desde las herramientas del navegador en dos clics.
+    expect(starsFromList('9,x,-1', 1)).toBe(0)
+    expect(starsFromList('9,x,-1', 2)).toBe(0)
+  })
+})
+
+describe('repetir un nivel con menos estrellas', () => {
+  it('no borra las que ya tenía', () => {
+    // Las estrellas son la marca de lo mejor que se ha hecho: si bajaran al
+    // volver a jugar, repetir castigaría en vez de premiar.
+    saveLevelResult(1, 3)
+    saveLevelResult(1, 1)
+
+    expect(starsFromList(getStarsList(), 1)).toBe(3)
+  })
+})

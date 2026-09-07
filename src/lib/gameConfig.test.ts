@@ -4,15 +4,16 @@ import {
   DIFFICULTY_LABELS,
   DIFFICULTY_ORDER,
   DIFFICULTY_SPEEDS,
+  fallDurationSeconds,
   GROUND_Y,
   MACHINE_HEIGHT,
   MACHINE_RADIUS,
+  machinePoint,
   MAX_STICKS,
   MIN_STICKS,
   STICK_FALL_DISTANCE,
   STICK_MISS_Y,
-  fallDurationSeconds,
-  machinePoint,
+  stickFallProgress,
 } from './gameConfig'
 
 /** Distancia del punto al eje vertical que pasa por el jugador. */
@@ -111,5 +112,40 @@ describe('límites de palos', () => {
   it('respeta el rango 5–13 del enunciado', () => {
     expect(MIN_STICKS).toBe(5)
     expect(MAX_STICKS).toBe(13)
+  })
+})
+
+describe('cuánto lleva caído el palo', () => {
+  it('recién soltado no ha caído nada, y abajo del todo ha caído entero', () => {
+    // Es lo que decide el premio por reflejos: cogerlo arriba vale más.
+    expect(stickFallProgress(MACHINE_HEIGHT)).toBe(0)
+    expect(stickFallProgress(STICK_MISS_Y)).toBe(1)
+  })
+
+  it('a media caída va por la mitad', () => {
+    const medio = (MACHINE_HEIGHT + STICK_MISS_Y) / 2
+    expect(stickFallProgress(medio)).toBeCloseTo(0.5, 6)
+  })
+
+  it('se mide contra la altura del aro de cada jugador, no contra la nominal', () => {
+    // Con la máquina puesta a la altura de quien juega el recorrido cambia:
+    // medirlo siempre contra la nominal regalaría reflejos a quien la tenga
+    // baja y se los quitaría a quien la tenga alta.
+    const bajo = MACHINE_HEIGHT - 0.4
+    expect(stickFallProgress(bajo, bajo)).toBe(0)
+    expect(stickFallProgress(bajo)).toBeGreaterThan(0)
+  })
+
+  it('lo que se sale del recorrido se recorta', () => {
+    expect(stickFallProgress(MACHINE_HEIGHT + 5)).toBe(0)
+    expect(stickFallProgress(STICK_MISS_Y - 5)).toBe(1)
+  })
+
+  it('una altura imposible se lee como recién soltado', () => {
+    // Llega de la escena cada fotograma: en uno perdido puede venir como NaN, y
+    // con eso el premio por reflejos saldría de la nada.
+    expect(stickFallProgress(Number.NaN)).toBe(0)
+    expect(stickFallProgress(1, Number.NaN)).toBe(0)
+    expect(stickFallProgress(1, STICK_MISS_Y)).toBe(0)
   })
 })

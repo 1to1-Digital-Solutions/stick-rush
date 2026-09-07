@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  getBestEndlessStreak,
   getBestPoints,
   getServerBestPoints,
   HIGH_SCORE_KEYS,
   parseBestPoints,
   readBestPoints,
+  saveBestEndlessStreak,
   saveBestPoints,
   subscribeBestPoints,
   writeBestPoints,
@@ -188,5 +190,15 @@ describe('el récord que ve el juego', () => {
       new StorageEvent('storage', { key: HIGH_SCORE_KEYS.practice }),
     )
     expect(listener).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('la racha de la partida sin fin', () => {
+  it('solo se guarda si mejora, y no acepta una racha imposible', () => {
+    saveBestEndlessStreak(5)
+    saveBestEndlessStreak(3)
+    for (const streak of [0, -1, 2.5, Number.NaN]) saveBestEndlessStreak(streak)
+
+    expect(getBestEndlessStreak()).toBe(5)
   })
 })

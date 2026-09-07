@@ -296,3 +296,16 @@ describe('motor de sonido', () => {
     expect(context.resume).toHaveBeenCalled()
   })
 })
+
+describe('soltar el motor de sonido', () => {
+  it('suelta el maestro del que cuelga todo', () => {
+    // Cada juego montado en el salón trae el suyo: si no se soltara al quitar
+    // la escena, los nodos se irían acumulando en el contexto del anfitrión.
+    const { context, engine } = fakeContext()
+    const master = context.gains[0]
+
+    engine.dispose()
+
+    expect(master.disconnected).toBe(1)
+  })
+})

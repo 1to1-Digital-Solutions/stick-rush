@@ -17,6 +17,7 @@ import {
 } from './hoopHeight'
 import { XR_ANCHOR_DEADZONE } from './xrAnchor'
 import { canCatchStick, canCatchWithPointer } from './xrInteraction'
+import { DIFFICULTY_ORDER, MAX_STICKS } from './gameConfig'
 import {
   XR_COUNTDOWN_POSITION,
   XR_HUD_POSITION,
@@ -34,6 +35,11 @@ import {
   xrEndlessTogglePosition,
   XR_END_RUN_POSITION,
   xrSceneryPickerPosition,
+  xrDifficultyOptionPosition,
+  xrLevelOptionPosition,
+  xrPlayButtonPosition,
+  xrQuitButtonPosition,
+  xrStickOptionPosition,
   xrTutorialSkipPosition,
   xrUiRise,
 } from './xrLayout'
@@ -294,5 +300,57 @@ describe('un palo se coge hasta que toca el suelo', () => {
     // de que empezara la partida.
     expect(canCatchStick('hanging', true)).toBe(false)
     expect(canCatchStick('falling', true)).toBe(false)
+  })
+})
+
+describe('los botones del panel del visor', () => {
+  it('volver al menú está donde se pinta, sin moverse', () => {
+    // El botón se pinta en un sitio y la caja que recoge la pulsación sale de
+    // aquí: si discreparan, el botón no respondería y solo se vería con gafas.
+    expect(xrQuitButtonPosition()).toEqual(XR_QUIT_POSITION)
+  })
+
+  it('empezar va en el panel del menú, por debajo de su centro', () => {
+    const jugar = xrPlayButtonPosition()
+
+    expect(jugar[0]).toBe(XR_MENU_POSITION[0])
+    expect(jugar[1]).toBeLessThan(XR_MENU_POSITION[1])
+    expect(jugar[2]).toBe(XR_MENU_POSITION[2])
+  })
+
+  it('los niveles se reparten en fila y centrados en el panel', () => {
+    const total = 5
+    const casillas = Array.from({ length: total }, (_, i) => xrLevelOptionPosition(i + 1, total))
+    const xs = casillas.map(([x]) => x)
+
+    expect(xs[0]).toBeLessThan(xs[total - 1])
+    expect((xs[0] + xs[total - 1]) / 2).toBeCloseTo(XR_MENU_POSITION[0], 9)
+    for (const [, y, z] of casillas) {
+      expect(y).toBe(casillas[0][1])
+      expect(z).toBe(XR_MENU_POSITION[2])
+    }
+  })
+
+  it('un solo nivel se pone en el centro, sin salirse', () => {
+    expect(xrLevelOptionPosition(1, 1)[0]).toBeCloseTo(XR_MENU_POSITION[0], 9)
+  })
+
+  it('los palos del selector van en fila y no se pisan', () => {
+    const palos = Array.from({ length: MAX_STICKS }, (_, i) => xrStickOptionPosition(i))
+    const xs = palos.map(([x]) => x)
+
+    expect(new Set(xs).size).toBe(MAX_STICKS)
+    expect((xs[0] + xs[MAX_STICKS - 1]) / 2).toBeCloseTo(XR_MENU_POSITION[0], 9)
+  })
+})
+
+describe('las fichas de dificultad', () => {
+  it('van en fila, centradas y en el orden del menú', () => {
+    const fichas = DIFFICULTY_ORDER.map(xrDifficultyOptionPosition)
+    const xs = fichas.map(([x]) => x)
+
+    expect([...xs].sort((a, b) => a - b)).toEqual(xs)
+    expect((xs[0] + xs[xs.length - 1]) / 2).toBeCloseTo(XR_MENU_POSITION[0], 9)
+    for (const [, y] of fichas) expect(y).toBe(fichas[0][1])
   })
 })

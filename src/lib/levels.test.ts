@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { DIFFICULTY_ORDER } from './gameConfig'
 import {
+  clampLevel,
   LEVEL_COUNT,
   LEVEL_STICK_STEPS,
-  clampLevel,
   levelPassed,
   levelSpec,
   levelStars,
@@ -57,5 +57,13 @@ describe('el desbloqueo', () => {
   it('repetir uno de abajo o no superar deja las cosas como estaban', () => {
     expect(nextUnlocked(5, 2, 3)).toBe(5)
     expect(nextUnlocked(3, 3, 0)).toBe(3)
+  })
+})
+
+describe('las estrellas de una tanda imposible', () => {
+  it('sin palos que coger no hay estrellas que dar', () => {
+    // La tanda sin fin no tiene número de palos: dividir por él daría infinito.
+    expect(levelStars(3, 0)).toBe(0)
+    expect(levelStars(3, Number.POSITIVE_INFINITY)).toBe(0)
   })
 })

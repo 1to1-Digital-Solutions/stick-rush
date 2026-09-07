@@ -20,5 +20,20 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
     restoreMocks: true,
+    coverage: {
+      provider: 'v8',
+      // Lo que se mide es **el dominio**: `src/lib` es donde vive lo que decide
+      // algo y es lo único que se puede probar sin un navegador con WebGL. Los
+      // componentes de la escena se prueban de extremo a extremo, en un
+      // navegador de verdad, y contarlos aquí solo bajaría el número sin decir
+      // nada de si están probados.
+      include: ['src/lib/**/*.{ts,tsx}'],
+      exclude: ['**/*.test.{ts,tsx}'],
+      reporter: ['text-summary', 'html'],
+      // El dominio está cubierto entero, así que el suelo es el techo: lo que
+      // se añada sin probar rompe el build. Las ramas que no puede alcanzar
+      // ningún test llevan `v8 ignore` con el motivo escrito al lado.
+      thresholds: { lines: 100, statements: 100, functions: 100, branches: 100 },
+    },
   },
 })

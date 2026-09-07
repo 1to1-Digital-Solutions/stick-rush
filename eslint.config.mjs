@@ -6,7 +6,9 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   // Override default ignores of eslint-config-next.
-  globalIgnores([
+  // `coverage/**` es el informe de cobertura que genera Vitest: no es código
+  // del proyecto y no se commitea (está en `.gitignore`).
+  globalIgnores(['coverage/**', 
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
