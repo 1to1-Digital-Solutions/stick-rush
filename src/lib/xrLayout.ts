@@ -131,6 +131,16 @@ export const XR_HOOP_GAUGE_OFFSET: Vec3 = [0, HOOP_ROW_Y, 0]
  * se acuerda de cómo se cogen los palos, no un paso del camino normal.
  */
 export const XR_MENU_TUTORIAL_OFFSET: Vec3 = [-0.4, HOOP_ROW_Y, 0]
+/**
+ * Interruptor de la música de fondo, en la esquina de enfrente del tutorial.
+ *
+ * Arriba y no al lado del de silenciar, que es donde lo pediría el parecido
+ * entre los dos: la fila de abajo la ocupan salir, empezar y silenciar, y lo
+ * que quedaba libre entre ellos son quince centímetros —en el visor se apunta a
+ * pulso y ahí se pulsa el vecino—. Aquí arriba las dos esquinas son las dos
+ * cosas que se tocan una vez y se olvidan.
+ */
+export const XR_MENU_MUSIC_OFFSET: Vec3 = [0.4, HOOP_ROW_Y, 0]
 
 /**
  * Cuenta atrás: al frente y a la altura de los ojos, que es donde el jugador

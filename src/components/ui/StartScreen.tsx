@@ -81,6 +81,58 @@ function SoundToggle() {
 }
 
 /**
+ * Nota musical, tachada cuando la música está apagada. El mismo tachón que el
+ * altavoz callado, para que los dos botones se lean igual sin leer nada.
+ */
+function NoteIcon({ playing }: { playing: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="size-5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    >
+      <path d="M9 18V6l10-2v12" />
+      <circle cx="6.5" cy="18" r="2.5" fill="currentColor" stroke="none" />
+      <circle cx="16.5" cy="16" r="2.5" fill="currentColor" stroke="none" />
+      {playing ? null : <path d="M4 20 20 4" />}
+    </svg>
+  )
+}
+
+/**
+ * Quitar la música de fondo.
+ *
+ * Va aparte del silencio a propósito: son dos decisiones distintas —hay quien
+ * quiere oír los palos y no la feria, y quien pone el juego de fondo y prefiere
+ * lo contrario—, y con el juego callado no suena ninguna de las dos. Al lado
+ * del de silenciar y con la misma forma de botón, que es lo que dice que son de
+ * la misma familia.
+ */
+function MusicToggle() {
+  const { music, setMusic } = useGame()
+
+  return (
+    <button
+      type="button"
+      aria-pressed={!music}
+      onClick={() => setMusic(!music)}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] ${
+        music
+          ? 'border-white/10 bg-[var(--color-muted)] text-white/70 hover:border-white/30 hover:text-white'
+          : 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
+      }`}
+    >
+      <NoteIcon playing={music} />
+      Sin música
+    </button>
+  )
+}
+
+/**
  * Récord del jugador en el modo elegido. Solo aparece cuando hay uno: un "0"
  * permanente no da nada que batir y ocupa el sitio del reclamo del menú.
  *
@@ -406,6 +458,7 @@ export function StartScreen() {
             Jugar
           </button>
           <SoundToggle />
+          <MusicToggle />
         </div>
 
         {/* Entrada a realidad mixta (solo si el dispositivo lo soporta) */}

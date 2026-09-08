@@ -186,6 +186,71 @@ export const XR_MUTED_ICON: IconShape = [
 ]
 
 /**
+ * Nota musical: la música de fondo suena.
+ *
+ * Cabeza, plica y corchete en una sola pieza, con el trazo tan grueso como el
+ * del altavoz: a un metro lo que se lee es la silueta, y una nota de líneas
+ * finas se deshace antes de llegar.
+ */
+export const XR_MUSIC_ICON: IconShape = [
+  {
+    outline: [
+      [-0.62, -0.5],
+      [-0.62, -0.86],
+      [-0.28, -0.86],
+      [-0.28, -0.14],
+      [-0.06, -0.14],
+      [-0.06, 0.62],
+      [0.5, 0.44],
+      [0.5, 0.86],
+      [-0.28, 1],
+      [-0.28, -0.5],
+    ],
+  },
+]
+
+/**
+ * La misma nota con un aspa al lado: la música está apagada.
+ *
+ * El aspa ocupa el sitio del corchete en vez de cruzar la nota, por lo mismo
+ * que en el altavoz callado: tachar la silueta con una barra del mismo relleno
+ * se ve como una mancha, no como un tachón.
+ */
+export const XR_MUSIC_OFF_ICON: IconShape = [
+  {
+    outline: [
+      [-0.62, -0.5],
+      [-0.62, -0.86],
+      [-0.28, -0.86],
+      [-0.28, -0.14],
+      [-0.06, -0.14],
+      [-0.06, 0.62],
+      [0.5, 0.44],
+      [0.5, 0.86],
+      [-0.28, 1],
+      [-0.28, -0.5],
+    ],
+  },
+  {
+    // Aspa de una pieza: una cruz girada 45°, con sus cuatro brazos en diagonal.
+    outline: [
+      [0.53, -0.23],
+      [0.73, -0.03],
+      [0.96, -0.25],
+      [0.76, -0.46],
+      [0.96, -0.67],
+      [0.73, -0.89],
+      [0.53, -0.69],
+      [0.33, -0.89],
+      [0.1, -0.67],
+      [0.3, -0.46],
+      [0.1, -0.25],
+      [0.33, -0.03],
+    ],
+  },
+]
+
+/**
  * Estrella de nivel: una pieza de cinco puntas. Llena la ganada; la que falta
  * se pinta apagada y más pequeña, para que no dependa solo del color.
  */

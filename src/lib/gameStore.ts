@@ -55,6 +55,12 @@ import {
   subscribeMuted,
 } from './mutePreference'
 import {
+  getMusic,
+  getServerMusic,
+  saveMusic,
+  subscribeMusic,
+} from './musicPreference'
+import {
   getScenery,
   getServerScenery,
   saveScenery,
@@ -186,6 +192,11 @@ export interface GameStore {
    */
   muted: boolean
   /**
+   * Música de fondo encendida. Va aparte del silencio (ver `musicPreference.ts`):
+   * son dos decisiones distintas y el silencio manda sobre esta.
+   */
+  music: boolean
+  /**
    * Altura del aro, en metros, ya acomodada a quien juega: sale de la altura
    * del visor más la corrección manual (ver `hoopHeight.ts`).
    */
@@ -209,6 +220,7 @@ export interface GameStore {
 
   setScenery: (scenery: SceneryMode) => void
   setMuted: (muted: boolean) => void
+  setMusic: (music: boolean) => void
   setStickCount: (count: number) => void
   setDifficulty: (difficulty: Difficulty) => void
   /**
@@ -351,6 +363,9 @@ export function useGameStoreValue(): GameStore {
   // anterior lo dejara quitado, y el botón que lo cambia está en los dos menús,
   // el de escritorio y el inmersivo.
   const muted = useSyncExternalStore(subscribeMuted, getMuted, getServerMuted)
+  // Y la música va aparte del silencio: son dos decisiones distintas (ver
+  // `musicPreference.ts`), y las dos se recuerdan entre visitas.
+  const music = useSyncExternalStore(subscribeMusic, getMusic, getServerMusic)
   const [countdown, setCountdown] = useState(0)
   const [runId, setRunId] = useState(0)
   // La corrección de la altura del aro sale de lo guardado en visitas
@@ -506,6 +521,8 @@ export function useGameStoreValue(): GameStore {
   // versiones de lo mismo que pueden discrepar.
   const setMuted = useCallback((value: boolean) => saveMuted(value), [])
 
+  const setMusic = useCallback((value: boolean) => saveMusic(value), [])
+
   // Se guarda al tocarlo y no al salir: en el visor no hay "salir", uno se
   // quita las gafas. Y solo cuando el valor cambia de verdad, para no escribir
   // en cada pulsación una vez alcanzado el tope.
@@ -644,6 +661,7 @@ export function useGameStoreValue(): GameStore {
       runId,
       scenery,
       muted,
+      music,
       hoopHeight,
       hoopAdjustment,
       playerEyeHeight,
@@ -651,6 +669,7 @@ export function useGameStoreValue(): GameStore {
       immersive,
       setScenery,
       setMuted,
+      setMusic,
       setStickCount,
       setDifficulty,
       setGameMode,
@@ -696,6 +715,7 @@ export function useGameStoreValue(): GameStore {
       runId,
       scenery,
       muted,
+      music,
       hoopHeight,
       hoopAdjustment,
       playerEyeHeight,
@@ -703,6 +723,7 @@ export function useGameStoreValue(): GameStore {
       immersive,
       setScenery,
       setMuted,
+      setMusic,
       setStickCount,
       setGameMode,
       setLevel,

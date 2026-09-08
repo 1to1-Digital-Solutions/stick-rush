@@ -24,6 +24,7 @@ import { Fairground } from './Fairground'
 import { SceneryFade } from './SceneryFade'
 import { StickMachine } from './StickMachine'
 import { Ground } from './Ground'
+import { useGameMusic } from './useGameMusic'
 import { useGameSound } from './useGameSound'
 
 /**
@@ -115,6 +116,8 @@ function SceneryFadeBridge() {
  */
 function GameSound() {
   useGameSound()
+  // Y la música de fondo, por lo mismo y en el mismo sitio.
+  useGameMusic()
   return null
 }
 

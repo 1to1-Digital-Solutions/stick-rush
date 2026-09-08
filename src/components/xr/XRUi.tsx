@@ -15,6 +15,8 @@ import {
   XR_EXIT_ICON,
   XR_HEART_ICON,
   XR_HOME_ICON,
+  XR_MUSIC_ICON,
+  XR_MUSIC_OFF_ICON,
   XR_MUTED_ICON,
   XR_SHARE_ICON,
   XR_SOUND_ICON,
@@ -435,6 +437,16 @@ export function XRCrossIcon(props: IconProps) {
 /** Altavoz con un aspa: el juego está en silencio. */
 export function XRMutedIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_MUTED_ICON} {...props} />
+}
+
+/** Nota musical: la música de fondo suena. */
+export function XRMusicIcon(props: IconProps) {
+  return <XRShapeIcon icon={XR_MUSIC_ICON} {...props} />
+}
+
+/** Nota musical con un aspa: la música está apagada. */
+export function XRMusicOffIcon(props: IconProps) {
+  return <XRShapeIcon icon={XR_MUSIC_OFF_ICON} {...props} />
 }
 
 /**
