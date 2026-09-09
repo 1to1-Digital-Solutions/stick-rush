@@ -62,7 +62,7 @@
 - [ ] **Godot (`godot/`) está congelado a propósito** hasta cerrar el web. Cuando se <!-- org:0a48a114-5f41-4f12-9edd-e2030f4eb0fc -->
       cierre, portar de una vez: aro horizontal, escala en metros, velocidades en m/s,
       estética de feria y palos amarillos. Detalle en `ESTADO.md` y `godot/README.md`.
-- [ ] **Pulsar botones con el mando no se puede testear**: los punteros del emulador IWER <!-- org:f167032c-386c-4d0e-8c9d-1d05190c88d8 -->
+- [x] **Pulsar botones con el mando no se puede testear**: los punteros del emulador IWER <!-- org:f167032c-386c-4d0e-8c9d-1d05190c88d8 -->
       no emiten eventos sobre la escena. El test queda escrito como `fixme` en
       `e2e/xr.spec.ts`. Línea abierta si alguien quiere retomarla — pero ojo, esa
       limitación ya tapó un fallo real una vez (ver `ESTADO.md`).
@@ -118,16 +118,25 @@
 
 ## Desde Organízate
 
-- [ ] La espera a que la escena esté montada se apoya en un número mágico de… <!-- org:4bc9e739-8c76-4017-be92-24a846719c7a -->
-- [ ] ESTADO.md, sección «Recinto de feria» (~línea 573) <!-- org:66b1c639-bb13-4020-82ba-8bc8049a8868 -->
+- [x] El CI solo escucha main: añadir develop, como los juegos hermanos <!-- org:cf3d8072-71ab-45fa-9017-88d04f3de989 -->
+- [x] Montado en el salón se queda sin interfaz <!-- org:d0d32840-e52f-4062-80bd-42f32e93e9bb -->
+- [x] Recortar ESTADO.md: 1.184 líneas y un «dónde estamos» del 6 de agosto <!-- org:4d7f4e1c-7b9c-468e-9714-078977e00e02 -->
+- [x] Medir la cobertura de los tests y ponerle un suelo <!-- org:886fc86d-c1b9-4bce-b2f8-e0e0cb468f23 -->
+- [x] Cerrar las dos ramas de Dependabot abiertas en origin <!-- org:7d4a9d0f-cefe-4dd8-b87f-62c45170a92d -->
+- [x] Práctica sin fin: palos que no se acaban hasta que sales, con récord de racha <!-- org:08e77212-5fb0-497c-86df-b3569609cde5 -->
+- [x] Modo Niveles: la escalera del desafío como niveles con estrellas y progreso guardado <!-- org:ffcc7886-84bb-4137-987a-655880fe2082 -->
+- [x] Público en la feria y luces que reaccionan a la racha <!-- org:dd37c236-ffd4-4da8-abb4-f6bc63849032 -->
+- [x] Música de fondo, con interruptor propio <!-- org:e6202eab-d281-4425-9d77-eb7ba98333c3 -->
+- [x] La espera a que la escena esté montada se apoya en un número mágico de… <!-- org:4bc9e739-8c76-4017-be92-24a846719c7a -->
+- [x] ESTADO.md, sección «Recinto de feria» (~línea 573) <!-- org:66b1c639-bb13-4020-82ba-8bc8049a8868 -->
 - [x] e2e/recinto.spec.ts <!-- org:c2f61403-afa0-46eb-85ed-a51fd6e158c4 -->
-- [ ] ESTADO.md no tiene sección propia para la instanciación de la máquina,… <!-- org:c23f8938-cbd7-4b29-9692-ca60aee109fc -->
+- [x] ESTADO.md no tiene sección propia para la instanciación de la máquina,… <!-- org:c23f8938-cbd7-4b29-9692-ca60aee109fc -->
 - [x] El desglose de las 29 llamadas (5 recinto + 5 máquina + 15 palos + 4… <!-- org:2f45e271-809c-4232-aa2b-fdd67fdf71e1 -->
 - [x] El techo de llamadas de dibujo puede medir la escena a medio montar <!-- org:e604bb53-a588-42ea-9c4b-f29194eb4a0e -->
-- [ ] e2e/recinto.spec.ts, función sampleFrames() <!-- org:24f0472d-c35b-43f6-9b3f-ec019a8a63c5 -->
+- [x] e2e/recinto.spec.ts, función sampleFrames() <!-- org:24f0472d-c35b-43f6-9b3f-ec019a8a63c5 -->
 - [x] ESTADO.md, sección «Validar el recinto en el visor» (~líneas 600-625) <!-- org:8731e61a-5bc0-43c7-b546-60c9e22fcce2 -->
 - [x] El muestreo de 30 fotogramas esperaba con los 15 s por defecto de expect <!-- org:192936ea-49e1-4de6-ba4b-1a7615bd5fdf -->
-- [ ] El README enumera lo que cubren los e2e y no mencionaba la medida del… <!-- org:0494a4d7-33dd-4679-8dff-ea325a1a6bc7 -->
+- [x] El README enumera lo que cubren los e2e y no mencionaba la medida del… <!-- org:0494a4d7-33dd-4679-8dff-ea325a1a6bc7 -->
 - [x] window.__drawFrames se declaraba obligatorio existiendo solo con el… <!-- org:e5137c06-d4dd-4e68-b9b4-28f8ca594eb9 -->
 - [x] Añadir al CI un guardián que detecte si `npm install` ensucia el lockfile <!-- org:54fdb843-b4a2-4e95-a58b-d086538d7e8d -->
 - [x] Publicar Stick Rush como escena, sin Canvas ni sesión propios <!-- org:4b8c805f-ca36-4d47-9e5c-3c787b006c50 -->
@@ -149,7 +158,7 @@
 - [x] Tutorial de 5-10 segundos al empezar, saltable <!-- org:2f097199-d14f-4368-91da-88cbe94d1f4c -->
 - [x] Compartir el resultado al acabar la partida <!-- org:a1088f93-c76d-44f8-9825-16a031da1909 -->
 - [ ] Sesión de validación en el visor (todo lo que falta probar con las gafas) <!-- org:082cad02-f139-4f9a-9c7a-42acd52954e8 -->
-- [ ] Dar al jugador una forma de salir del juego y volver a xrcade <!-- org:3b6e9c04-8627-4482-bf04-96ed2e42f57f -->
+- [x] Dar al jugador una forma de salir del juego y volver a xrcade <!-- org:3b6e9c04-8627-4482-bf04-96ed2e42f57f -->
 - [x] Etiquetar v0.2.0 para que xrcade pueda instalar el juego <!-- org:134c51c9-e53b-4f54-9b5d-e876e7d8a0ef -->
 - [x] Separar el juego de su web para que xrcade pueda montarlo <!-- org:91b55465-77d0-4a22-be34-e94fbd8be631 -->
 - [x] Etiquetar v0.2.0 en main y publicar el tag (bloqueada: main aún no tiene la montabilidad) <!-- org:aeea4140-de31-4ca1-aeb3-5e22d6904d80 -->
