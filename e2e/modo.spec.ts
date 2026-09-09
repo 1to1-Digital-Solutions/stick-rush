@@ -107,7 +107,7 @@ test.describe('Modo de juego', () => {
     await expect(dialog).toContainText('You are out of lives')
     await expect(dialog).toContainText('Lives')
     await expect(dialog).toContainText('0 / 3')
-    await expect(dialog).toContainText('posibles')
+    await expect(dialog).toContainText('possible')
     await expect(dialog).toContainText('Impossible')
   })
 
@@ -159,7 +159,7 @@ test.describe('Modo de juego', () => {
     await openGame(page)
 
     await expect(page.getByText(/^Best score/)).toContainText('Practice')
-    await expect(page.getByText(/^Best score/)).toContainText('99.999')
+    await expect(page.getByText(/^Best score/)).toContainText('99,999')
 
     await modeButton(page, 'Challenge').click()
 

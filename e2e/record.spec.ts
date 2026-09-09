@@ -69,7 +69,7 @@ test.describe('Best score', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).not.toContainText('New record!')
     await expect(dialog).toContainText('Your record')
-    await expect(dialog).toContainText('99.999')
+    await expect(dialog).toContainText('99,999')
 
     // Y una partida peor no rebaja lo guardado.
     await page.getByRole('button', { name: 'Back to the menu' }).click()

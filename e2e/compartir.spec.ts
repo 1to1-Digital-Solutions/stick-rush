@@ -107,7 +107,7 @@ test.describe('Compartir el resultado', () => {
     // Lo que hace presentable al texto: de qué iba la partida, qué se sacó y
     // dónde se juega. Sin el enlace, quien lo lea no puede intentarlo.
     expect(text).toContain('Stick Rush — Practice on Easy')
-    expect(text).toMatch(/\d+ puntos · \d+ de 5 palos/)
+    expect(text).toMatch(/\d+ points · \d+ of 5 sticks/)
     expect(text).toContain(new URL(page.url()).origin)
     // Y no se habla de vidas donde no las hay.
     expect(text).not.toMatch(/vida/i)
@@ -134,7 +134,7 @@ test.describe('Compartir el resultado', () => {
 
     const [shared] = await sharedPayloads(page)
     expect(shared.text).toContain('Stick Rush — Challenge on Impossible')
-    expect(shared.text).toContain('0 de 3 vidas')
+    expect(shared.text).toContain('0 of 3 lives')
   })
 
   test('sin hoja de compartir, el texto queda copiado y se avisa', async ({
@@ -196,7 +196,7 @@ test.describe('Compartir el resultado', () => {
 
     // Callarse aquí sería exactamente el botón que no hace nada.
     await expect(
-      page.getByText(/no deja compartir ni copiar/),
+      page.getByText(/will not share or copy/),
     ).toBeVisible()
   })
 

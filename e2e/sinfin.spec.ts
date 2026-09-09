@@ -51,7 +51,7 @@ test.describe('Práctica sin fin', () => {
     await expect(dialog).toContainText('Game over!')
     await expect(dialog).toContainText('endless')
     // Sin techo no hay «de N posibles» que enseñar.
-    await expect(dialog).not.toContainText('posibles')
+    await expect(dialog).not.toContainText('possible')
   })
 
   test('lo que se guarda es la racha, y el menú la enseña como tal', async ({ page }) => {
@@ -64,7 +64,7 @@ test.describe('Práctica sin fin', () => {
     )
     await openGame(page)
 
-    await expect(page.getByText(/^Best score/)).toContainText('99.999')
+    await expect(page.getByText(/^Best score/)).toContainText('99,999')
 
     await page.getByRole('button', { name: /^Endless/ }).click()
 

@@ -42,7 +42,7 @@ test.describe('Modo Niveles', () => {
     // El primer nivel es el más lento y con cinco palos, que cuelgan atrapables
     // desde el primer segundo: da tiempo a vaciar el aro.
     await startGame(page, { sticks: 5, mode: 'Levels' })
-    await expect(page.getByRole('status')).toHaveAttribute('aria-label', /Nivel 1\./)
+    await expect(page.getByRole('status')).toHaveAttribute('aria-label', /Level 1\./)
 
     const dialog = page.getByRole('dialog')
     for (let attempt = 0; attempt < 5 && !(await dialog.isVisible()); attempt++) {
