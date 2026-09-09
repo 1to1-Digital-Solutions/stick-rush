@@ -6,6 +6,8 @@ import { useGame } from '../../lib/gameStore'
 import { maxScore } from '../../lib/scoring'
 import { type ShareStatus, useShareResult } from '../../lib/useShareResult'
 import { HeartIcon, ShareIcon, StarIcon } from '../ui/icons'
+import { useLang } from '../../lib/ajustesCliente'
+import { traductor } from '../../lib/textos'
 /**
  * Vidas que quedan, una por corazón: llenos los que conservas, de contorno los
  * gastados. Solo en desafío; en práctica no hay nada que perder y una fila de
@@ -54,6 +56,7 @@ const SHARE_MESSAGES: Record<ShareStatus, string> = {
  * pantalla no llega a verla antes del cambio.
  */
 function ShareResultButton() {
+  const t = traductor(useLang())
   const { status, share } = useShareResult()
   const message = SHARE_MESSAGES[status]
 
@@ -65,8 +68,8 @@ function ShareResultButton() {
         className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/15 px-6 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/80 transition-colors hover:border-[var(--color-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
       >
         <ShareIcon />
-        Share
-      </button>
+         {t('Share')}
+</button>
       <p
         aria-live="polite"
         aria-atomic="true"
@@ -79,6 +82,7 @@ function ShareResultButton() {
 }
 
 export function HUD() {
+  const t = traductor(useLang())
   const {
     score,
     points,
@@ -146,8 +150,8 @@ export function HUD() {
           className="rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 backdrop-blur"
         >
           <p className="text-xs uppercase tracking-[0.2em] text-white/50">
-            Points
-          </p>
+             {t('Points')}
+</p>
           <p className="text-2xl font-bold tabular-nums text-[var(--color-primary)]">
             {points.toLocaleString('en-GB')}
           </p>
@@ -182,8 +186,8 @@ export function HUD() {
             onClick={endRun}
             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white/80 backdrop-blur transition-colors hover:border-[var(--color-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
-            End run
-          </button>
+             {t('End run')}
+</button>
         </div>
       )}
       {/*
@@ -197,15 +201,15 @@ export function HUD() {
         <div className="fixed inset-x-0 bottom-6 z-20 flex justify-center px-6">
           <div className="animate-fade-slide-up flex items-center gap-4 rounded-xl border border-white/10 bg-[var(--color-muted)]/90 px-5 py-3 backdrop-blur motion-reduce:animate-none">
             <p className="text-sm text-white/70">
-              How it plays, in a few seconds.
-            </p>
+               {t('How it plays, in a few seconds.')}
+</p>
             <button
               type="button"
               onClick={finishTutorial}
               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
             >
-              Skip tutorial
-            </button>
+               {t('Skip tutorial')}
+</button>
           </div>
         </div>
       )}
@@ -295,15 +299,17 @@ export function HUD() {
             <p className="text-lg text-white/80">
               {sinFin ? (
                 <>
-                  You caught{' '}
-                  <span className="font-bold text-[var(--color-accent)]">{score}</span> sticks,
-                  endless.
+                  {t('You caught')}{' '}
+                  <span className="font-bold text-[var(--color-accent)]">{score}</span>{' '}
+                  {t('sticks, endless.')}
                 </>
               ) : (
                 <>
-                  You caught{' '}
-                  <span className="font-bold text-[var(--color-accent)]">{score}</span> of{' '}
-                  <span className="font-bold">{stickCount}</span> sticks.
+                  {t('You caught')}{' '}
+                  <span className="font-bold text-[var(--color-accent)]">{score}</span>{' '}
+                  {t('of')}{' '}
+                  <span className="font-bold">{stickCount}</span>{' '}
+                  {t('sticks.')}
                 </>
               )}
             </p>
@@ -313,8 +319,8 @@ export function HUD() {
               {lives != null && totalLives != null && (
                 <div className="flex flex-col items-center gap-1">
                   <dt className="text-xs uppercase tracking-wide text-white/40">
-                    Lives
-                  </dt>
+                     {t('Lives')}
+</dt>
                   <dd className="flex items-center gap-2 font-bold tabular-nums text-white/80">
                     <Lives lives={lives} total={totalLives} />
                     {lives} / {totalLives}
@@ -323,16 +329,16 @@ export function HUD() {
               )}
               <div className="flex flex-col items-center gap-1">
                 <dt className="text-xs uppercase tracking-wide text-white/40">
-                  Best streak
-                </dt>
+                   {t('Best streak')}
+</dt>
                 <dd className="font-bold tabular-nums text-white/80">
                   ×{bestStreak}
                 </dd>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <dt className="text-xs uppercase tracking-wide text-white/40">
-                  Difficulty
-                </dt>
+                   {t('Difficulty')}
+</dt>
                 <dd className="font-bold text-white/80">
                   {DIFFICULTY_LABELS[difficulty]}
                 </dd>
@@ -344,8 +350,8 @@ export function HUD() {
                 onClick={resetGame}
                 className="cta-gradient w-full rounded-xl px-6 py-3 text-base font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
               >
-                Back to the menu
-              </button>
+                 {t('Back to the menu')}
+</button>
               <ShareResultButton />
             </div>
           </div>

@@ -19,6 +19,8 @@ import { useGame } from '../../lib/gameStore'
 import { LEVEL_COUNT, levelSpec } from '../../lib/levels'
 import { HeartIcon, InfinityIcon, StarIcon } from './icons'
 import { XRWrapper } from '../xr/XRWrapper'
+import { useLang } from '../../lib/ajustesCliente'
+import { traductor } from '../../lib/textos'
 
 const STICK_OPTIONS = Array.from(
   { length: MAX_STICKS - MIN_STICKS + 1 },
@@ -34,6 +36,7 @@ const STICK_OPTIONS = Array.from(
  * que el récord se ha perdido.
  */
 function BestScore() {
+  const t = traductor(useLang())
   const { bestPoints, gameMode, endless } = useGame()
   if (bestPoints <= 0 || gameMode === 'levels') return null
   // Sin fin no mide puntos —crecen sin tope— sino la racha más larga.
@@ -41,7 +44,7 @@ function BestScore() {
 
   return (
     <p className="mt-2 inline-flex items-center gap-2 self-center rounded-full border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 px-4 py-1.5 text-sm text-white/70">
-      {sinFin ? 'Best endless streak' : `Best score in ${GAME_MODE_LABELS[gameMode]}`}{' '}
+      {sinFin ? t('Best endless streak') : `${t('Best score in')} ${t(GAME_MODE_LABELS[gameMode])}`}{' '}
       <span className="font-bold tabular-nums text-[var(--color-accent)]">
         {sinFin ? `×${bestPoints}` : bestPoints.toLocaleString('en-GB')}
       </span>
@@ -66,6 +69,7 @@ function Stars({ stars, className = 'size-4' }: { stars: number; className?: str
  * los palos y la velocidad los dice el nivel y no el jugador.
  */
 function LevelPicker() {
+  const t = traductor(useLang())
   const { activeLevel, unlockedLevel, levelStars, setLevel } = useGame()
   const spec = levelSpec(activeLevel)
 
@@ -75,8 +79,8 @@ function LevelPicker() {
         id="level-label"
         className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
       >
-        Level
-      </h2>
+         {t('Level')}
+</h2>
       <div className="grid grid-cols-5 gap-2">
         {Array.from({ length: LEVEL_COUNT }, (_, index) => {
           const level = index + 1
@@ -111,7 +115,8 @@ function LevelPicker() {
         })}
       </div>
       <p className="text-sm text-white/60">
-        Level {spec.level}: {spec.stickCount} sticks on {DIFFICULTY_LABELS[spec.difficulty]}.
+        {t('Level')} {spec.level}: {spec.stickCount} {t('sticks on')}{' '}
+        {t(DIFFICULTY_LABELS[spec.difficulty])}.
       </p>
     </section>
   )
@@ -123,6 +128,7 @@ function LevelPicker() {
  * racha más larga.
  */
 function EndlessToggle() {
+  const t = traductor(useLang())
   const { endless, setEndless } = useGame()
   const options = [
     { value: false, label: 'Set', hint: 'The sticks you picked, and that is it.' },
@@ -135,8 +141,8 @@ function EndlessToggle() {
         id="endless-label"
         className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
       >
-        Length
-      </h2>
+         {t('Length')}
+</h2>
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map(({ value, label, hint }) => {
           const selected = value === endless
@@ -189,6 +195,7 @@ function ModeStake({ mode }: { mode: GameMode }) {
 }
 
 export function StartScreen() {
+  const t = traductor(useLang())
   const {
     stickCount,
     difficulty,
@@ -215,8 +222,8 @@ export function StartScreen() {
             STICK RUSH
           </h1>
           <p className="text-sm text-white/60 sm:text-base">
-            Catch the sticks before they hit the ground.
-          </p>
+             {t('Catch the sticks before they hit the ground.')}
+</p>
           <BestScore />
         </header>
 
@@ -228,8 +235,8 @@ export function StartScreen() {
             id="mode-label"
             className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
           >
-            Mode
-          </h2>
+             {t('Mode')}
+</h2>
           <div className="grid gap-2 sm:grid-cols-3">
             {GAME_MODE_ORDER.map((mode) => {
               const selected = mode === gameMode
@@ -251,10 +258,10 @@ export function StartScreen() {
                       selected ? 'text-white' : 'text-white/80'
                     }`}
                   >
-                    {GAME_MODE_LABELS[mode]}
+                    {t(GAME_MODE_LABELS[mode])}
                   </span>
                   <span className="text-xs leading-snug text-white/50">
-                    {GAME_MODE_HINTS[mode]}
+                    {t(GAME_MODE_HINTS[mode])}
                   </span>
                 </button>
               )
@@ -272,8 +279,8 @@ export function StartScreen() {
             id="sticks-label"
             className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
           >
-            Number of sticks
-          </h2>
+             {t('Number of sticks')}
+</h2>
           <div className="flex flex-wrap justify-center gap-2">
             {STICK_OPTIONS.map((count) => {
               const selected = count === stickCount
@@ -307,8 +314,8 @@ export function StartScreen() {
             id="difficulty-label"
             className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
           >
-            Difficulty
-          </h2>
+             {t('Difficulty')}
+</h2>
           <div className="flex flex-wrap justify-center gap-2">
             {DIFFICULTY_ORDER.map((level) => {
               const selected = level === difficulty
@@ -330,7 +337,7 @@ export function StartScreen() {
                       : 'bg-[var(--color-muted)] text-white/80 hover:text-white'
                   }`}
                 >
-                  {DIFFICULTY_LABELS[level]}
+                  {t(DIFFICULTY_LABELS[level])}
                 </button>
               )
             })}
@@ -348,8 +355,8 @@ export function StartScreen() {
             onClick={() => startGame()}
             className="cta-gradient w-full rounded-xl px-8 py-4 text-lg font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
-            Play
-          </button>
+             {t('Play')}
+</button>
         </div>
 
         {/* Entrada a realidad mixta (solo si el dispositivo lo soporta) */}

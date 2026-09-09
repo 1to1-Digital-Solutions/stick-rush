@@ -4,6 +4,8 @@ import { Suspense, lazy, useSyncExternalStore } from 'react'
 import { useGame } from '../../lib/gameStore'
 import { StartScreen } from '../ui/StartScreen'
 import { HUD } from './HUD'
+import { useLang } from '../../lib/ajustesCliente'
+import { traductor } from '../../lib/textos'
 
 // El Canvas de R3F depende de WebGL/window, así que se carga aparte y solo en
 // cliente. Con `lazy` de React y no con `next/dynamic`: el juego se monta
@@ -24,11 +26,12 @@ const NEVER_CHANGES = () => () => {}
 const useOnClient = () => useSyncExternalStore(NEVER_CHANGES, () => true, () => false)
 
 function SceneLoading() {
+  const t = traductor(useLang())
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-background)]">
       <p className="animate-pulse text-sm uppercase tracking-[0.3em] text-white/40">
-        Loading scene…
-      </p>
+         {t('Loading scene…')}
+</p>
     </div>
   )
 }

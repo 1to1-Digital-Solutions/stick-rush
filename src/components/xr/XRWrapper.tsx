@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { getXrStore } from './xrStore'
+import { useLang } from '../../lib/ajustesCliente'
+import { traductor } from '../../lib/textos'
 
 type XRSupport = {
   vr: boolean
@@ -33,6 +35,7 @@ async function detectXRSupport(): Promise<XRSupport> {
  * visor sin AR se entra en VR y allí la opción aparece deshabilitada.
  */
 export function XRWrapper() {
+  const t = traductor(useLang())
   const [support, setSupport] = useState<XRSupport>({ vr: false, ar: false })
   const [ready, setReady] = useState(false)
 
@@ -62,8 +65,8 @@ export function XRWrapper() {
         }
         className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 bg-[var(--color-muted)] px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
       >
-        Enter the headset
-      </button>
+         {t('Enter the headset')}
+</button>
       <p className="text-xs text-white/40">
         {support.ar
           ? 'Inside you choose between the scene and your room'

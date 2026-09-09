@@ -33,18 +33,18 @@ export type GameMode = 'practice' | 'levels' | 'challenge'
 export const GAME_MODE_ORDER: GameMode[] = ['practice', 'levels', 'challenge']
 
 /** Etiqueta visible para el usuario (idioma del producto: español). */
-export const GAME_MODE_LABELS: Record<GameMode, string> = {
+export const GAME_MODE_LABELS = {
   practice: 'Practice',
   levels: 'Levels',
   challenge: 'Challenge',
-}
+} as const satisfies Record<GameMode, string>
 
 /** Qué promete cada modo, en una línea, para el menú de escritorio. */
-export const GAME_MODE_HINTS: Record<GameMode, string> = {
+export const GAME_MODE_HINTS = {
   practice: 'Every stick drops and missing costs nothing.',
   levels: 'One level at a time: the one you clear stays unlocked.',
   challenge: 'Three lives: every stick that gets away costs one.',
-}
+} as const satisfies Record<GameMode, string>
 
 /** Vidas con las que arranca un desafío. */
 export const CHALLENGE_LIVES = 3

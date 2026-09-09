@@ -1,4 +1,6 @@
 'use client'
+import { useLang } from '../lib/ajustesCliente'
+import { traductor } from '../lib/textos'
 
 /**
  * Boundary de error global. Sustituye a la página interna que Next.js
@@ -12,8 +14,11 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const lang = useLang()
+  const t = traductor(lang)
+
   return (
-    <html lang="en">
+    <html lang={lang}>
       <body
         style={{
           margin: 0,
@@ -30,11 +35,11 @@ export default function GlobalError({
       >
         <div style={{ maxWidth: 360 }}>
           <h1 style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>
-            Something went wrong
-          </h1>
+             {t('Something went wrong')}
+</h1>
           <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '1.5rem' }}>
-            Something unexpected happened. Try again.
-          </p>
+             {t('Something unexpected happened. Try again.')}
+</p>
           {error.digest && (
             <p
               style={{
@@ -60,8 +65,8 @@ export default function GlobalError({
                 'linear-gradient(180deg, #fbbf24 0%, #d97706 55%, #b45309 100%)',
             }}
           >
-            Try again
-          </button>
+             {t('Try again')}
+</button>
         </div>
       </body>
     </html>
