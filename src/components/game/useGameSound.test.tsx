@@ -13,9 +13,15 @@ import { setVolume } from '../../lib/ajustesCliente'
 // El motor de verdad se prueba en `sound.test.ts` contra un contexto de
 // mentira; aquí lo que se comprueba es el cableado: qué sonido pide el juego
 // en cada momento.
-const { play } = vi.hoisted(() => ({ play: vi.fn() }))
+const { play, setEngineVolume } = vi.hoisted(() => ({
+  play: vi.fn(),
+  setEngineVolume: vi.fn(),
+}))
 vi.mock('@/lib/sound', () => ({
-  createSoundEngine: () => ({ play, dispose: vi.fn() }),
+  createSoundEngine: (_context: unknown, volume?: number) => {
+    setEngineVolume(volume)
+    return { play, dispose: vi.fn(), setVolume: setEngineVolume }
+  },
 }))
 
 /** Los contextos creados durante el test, para vigilar que no se quedan vivos. */
@@ -45,6 +51,7 @@ beforeEach(() => {
   setVolume('ambience', DEFAULT_VOLUMES.ambience)
   contexts.length = 0
   play.mockClear()
+  setEngineVolume.mockClear()
 })
 
 afterEach(() => {
@@ -330,5 +337,46 @@ describe('sonido de la partida', () => {
     startPlaying(store)
 
     expect(playedSounds()).not.toContainEqual({ name: 'catch', streak: 1 })
+  })
+})
+
+describe('el volumen de los efectos', () => {
+  it('nace en el que dicen los ajustes del arcade', () => {
+    setVolume('sfx', 40)
+    const game = renderGame()
+    interact()
+    startPlaying(game)
+
+    expect(setEngineVolume).toHaveBeenCalledWith(0.4)
+  })
+
+  it('cambiarlo no rehace el audio: se le dice al motor que ya hay', () => {
+    // Recrear el motor cerraba el contexto y abría otro a cada paso del
+    // deslizador, y eso es un corte de sonido por cada empujón.
+    const game = renderGame()
+    interact()
+    startPlaying(game)
+    const abiertos = contexts.length
+    setEngineVolume.mockClear()
+
+    act(() => setVolume('sfx', 20))
+
+    expect(setEngineVolume).toHaveBeenCalledWith(0.2)
+    expect(contexts).toHaveLength(abiertos)
+  })
+
+  it('el motor que llega después nace con lo elegido mientras no había', () => {
+    // En silencio no hay motor. Si al volver el sonido naciera con el volumen
+    // de antes, lo elegido durante el silencio se perdería.
+    const game = renderGame()
+    interact()
+    startPlaying(game)
+    act(() => setVolume('sfx', 0))
+    setEngineVolume.mockClear()
+
+    act(() => setVolume('sfx', 60))
+
+    // Volver del silencio crea otro motor, y nace ya con el volumen de ahora.
+    expect(setEngineVolume).toHaveBeenCalledWith(0.6)
   })
 })

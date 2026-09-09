@@ -17,6 +17,9 @@ import { createSoundEngine, type SoundEngine } from '../../lib/sound'
 export function useGameSound() {
   const { gameState, countdown, score, resolved, streak, muted, sfxVolume } = useGame()
   const engineRef = useRef<SoundEngine | null>(null)
+  // El volumen de efectos del arcade, guardado aparte para poder aplicarlo al
+  // motor sin que cambiarlo lo vuelva a crear.
+  const sfxVolumeRef = useRef(sfxVolume)
   // El navegador no deja sonar hasta que el jugador ha tocado la página. Es
   // estado y no un ref porque de él depende crear el audio, y el gesto puede
   // ser el propio botón de silenciar: apuntarlo en un render deja que el
@@ -47,6 +50,16 @@ export function useGameSound() {
     return () => window.removeEventListener('click', remember)
   }, [interacted])
 
+  // Mover el volumen en los ajustes del arcade no rehace el audio: toca el nodo
+  // maestro y ya. Recrearlo cerraba el contexto y abría otro a cada paso del
+  // deslizador, que es un corte de sonido por cada empujón. Y el ref guarda el
+  // valor para el motor que todavía no existe: en silencio no hay ninguno, y
+  // al volver el sonido tiene que nacer al volumen que se eligió mientras.
+  useEffect(() => {
+    sfxVolumeRef.current = sfxVolume
+    engineRef.current?.setVolume(sfxVolume)
+  }, [sfxVolume])
+
   useEffect(() => {
     // En silencio no se toca la Web Audio API: ni contexto, ni nodos, ni
     // permiso de reproducción que pedir. Y al silenciar a media partida, la
@@ -58,7 +71,7 @@ export function useGameSound() {
     if (AudioContextClass == null) return
 
     const context = new AudioContextClass()
-    engineRef.current = createSoundEngine(context, sfxVolume)
+    engineRef.current = createSoundEngine(context, sfxVolumeRef.current)
     // Que el navegador se niegue a reanudarlo es un desenlace previsto —su
     // política de reproducción automática— y significa jugar sin sonido.
     void context.resume().catch(() => {})
@@ -68,7 +81,7 @@ export function useGameSound() {
       engineRef.current = null
       if (context.state !== 'closed') void context.close()
     }
-  }, [interacted, muted, sfxVolume])
+  }, [interacted, muted])
 
   const missed = resolved - score
 

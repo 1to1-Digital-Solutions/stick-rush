@@ -4,6 +4,7 @@ import {
   catchFrequency,
   countdownFrequency,
   createSoundEngine,
+  MASTER_GAIN,
   soundVoices,
   type Sound,
 } from './sound'
@@ -307,5 +308,37 @@ describe('soltar el motor de sonido', () => {
     engine.dispose()
 
     expect(master.disconnected).toBe(1)
+  })
+})
+
+describe('el volumen de los efectos del arcade', () => {
+  it('nace en el que se eligió, sin tener que tocar nada después', () => {
+    const context = new FakeAudioContext()
+    createSoundEngine(context as unknown as AudioContext, 0.5)
+
+    // El maestro es el primero que se crea: es el que cuelga del destino.
+    expect(context.gains[0].gain.value).toBeCloseTo(MASTER_GAIN * 0.5, 6)
+  })
+
+  it('se cambia sin rehacer el audio', () => {
+    // Mover el deslizador en el arcade no puede cerrar el contexto y abrir
+    // otro: sería un corte de sonido por cada empujón.
+    const { context, engine } = fakeContext()
+
+    engine.setVolume(0.25)
+
+    expect(context.gains[0].gain.value).toBeCloseTo(MASTER_GAIN * 0.25, 6)
+  })
+
+  it('no se sale de lo que el navegador admite', () => {
+    // Lo que llega son ajustes de fuera: un número imposible subiría la
+    // ganancia por encima de uno y eso satura, no suena más alto.
+    const { context, engine } = fakeContext()
+
+    engine.setVolume(4)
+    expect(context.gains[0].gain.value).toBeCloseTo(MASTER_GAIN, 6)
+
+    engine.setVolume(-1)
+    expect(context.gains[0].gain.value).toBe(0)
   })
 })
