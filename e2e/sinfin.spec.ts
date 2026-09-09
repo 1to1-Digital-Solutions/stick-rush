@@ -51,7 +51,7 @@ test.describe('Práctica sin fin', () => {
     await expect(dialog).toContainText('Game over!')
     await expect(dialog).toContainText('endless')
     // Sin techo no hay «de N posibles» que enseñar.
-    await expect(dialog).not.toContainText('possible')
+    await expect(dialog).not.toContainText(/of [\d,]+ possible/)
   })
 
   test('lo que se guarda es la racha, y el menú la enseña como tal', async ({ page }) => {

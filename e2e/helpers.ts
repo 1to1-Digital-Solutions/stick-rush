@@ -98,7 +98,7 @@ export async function readLives(page: Page): Promise<number | null> {
 /** Puntos acumulados según el marcador. */
 export async function readPoints(page: Page): Promise<number> {
   const label = await page.getByRole('status').getAttribute('aria-label')
-  const match = label?.match(/^([\d.]+) puntos/)
+  const match = label?.match(/^([\d,]+) points/)
   if (!match) throw new Error(`Marcador ilegible: ${label}`)
   return Number(match[1].replace(/\./g, ''))
 }

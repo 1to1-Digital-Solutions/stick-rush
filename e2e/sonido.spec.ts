@@ -80,11 +80,15 @@ test.describe('Sonido', () => {
       .toBeGreaterThan(afterCountdown.oscillators)
   })
 
-  test('silenciado desde el menú, el juego no abre el audio', async ({
+  test('silenciado desde los ajustes del arcade, el juego no abre el audio', async ({
     page,
   }) => {
     // Silenciar no es bajar el volumen: sin contexto no hay nodos ni permiso
-    // de reproducción que pedir.
+    // de reproducción que pedir. El silencio ya no se elige aquí sino en
+    // xrcade, y viaja en el almacenamiento del navegador.
+    await page.addInitScript(() => {
+      window.localStorage.setItem('xrcade:volume:sfx', '0')
+    })
     await installAudioSpy(page)
     await openGame(page)
 
