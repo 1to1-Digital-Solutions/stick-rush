@@ -38,11 +38,11 @@ function Lives({ lives, total }: { lives: number; total: number }) {
  */
 const SHARE_MESSAGES: Record<ShareStatus, string> = {
   idle: '',
-  shared: '¡Compartido!',
-  copied: 'Resultado copiado al portapapeles.',
+  shared: 'Shared!',
+  copied: 'Result copied to the clipboard.',
   cancelled: '',
   unavailable:
-    'Este navegador no deja compartir ni copiar: apunta la puntuación a mano.',
+    'This browser will not share or copy: write the score down yourself.',
 }
 
 /**
@@ -65,7 +65,7 @@ function ShareResultButton() {
         className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/15 px-6 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/80 transition-colors hover:border-[var(--color-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
       >
         <ShareIcon />
-        Compartir
+        Share
       </button>
       <p
         aria-live="polite"
@@ -113,26 +113,26 @@ export function HUD() {
   // desafío es el dato que decide si sigues jugando.
   const livesLabel =
     lives != null && totalLives != null
-      ? `Vidas ${lives} de ${totalLives}. `
+      ? `Lives ${lives} of ${totalLives}. `
       : ''
   // El desafío se gana o se pierde, y el jugador tiene que saber cuál de las
   // dos le ha pasado antes de mirar ninguna cifra. La práctica no se pierde:
   // ahí el título se queda como estaba.
   const title = levels
     ? levelResult?.passed
-      ? `¡Nivel ${activeLevel} superado!`
-      : `Nivel ${activeLevel} sin superar`
+      ? `Level ${activeLevel} cleared!`
+      : `Level ${activeLevel} not cleared`
     : gameMode !== 'challenge'
-      ? '¡Partida terminada!'
+      ? 'Game over!'
       : outcome === 'cleared'
-        ? '¡Reto superado!'
-        : 'Te has quedado sin vidas'
+        ? 'Challenge cleared!'
+        : 'You are out of lives'
   // Sin fin, lo atrapado se cuenta de la partida entera y no «de N»: los palos
   // no se acaban. Y el nivel se anuncia antes que nada en Niveles.
   const caughtLabel = sinFin
-    ? `Atrapados ${score}, sin fin, tanda ${wave + 1}`
-    : `Atrapados ${score} de ${stickCount}`
-  const levelLabel = levels ? `Nivel ${activeLevel}. ` : ''
+    ? `Caught ${score}, endless, set ${wave + 1}`
+    : `Caught ${score} of ${stickCount}`
+  const levelLabel = levels ? `Level ${activeLevel}. ` : ''
   return (
     <>
       {/* Marcador permanente durante la partida */}
@@ -142,17 +142,17 @@ export function HUD() {
         <div
           role="status"
           aria-live="polite"
-          aria-label={`${points} puntos. ${levelLabel}${livesLabel}${caughtLabel}`}
+          aria-label={`${points} points. ${levelLabel}${livesLabel}${caughtLabel}`}
           className="rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 backdrop-blur"
         >
           <p className="text-xs uppercase tracking-[0.2em] text-white/50">
-            Puntos
+            Points
           </p>
           <p className="text-2xl font-bold tabular-nums text-[var(--color-primary)]">
-            {points.toLocaleString('es-ES')}
+            {points.toLocaleString('en-GB')}
           </p>
           <p className="text-xs font-medium text-white/50">
-            {sinFin ? `${score} palos · tanda ${waveScore} / ${stickCount}` : `${score} / ${stickCount} palos`}
+            {sinFin ? `${score} sticks · set ${waveScore} / ${stickCount}` : `${score} / ${stickCount} sticks`}
           </p>
           {lives != null && totalLives != null && (
             <span className="mt-1.5 flex justify-end">
@@ -165,12 +165,12 @@ export function HUD() {
             palos seguidos. Con el "x1" permanente sería ruido. */}
         {streak >= 2 && (
           <span className="animate-fade-slide-up rounded-md border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/15 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--color-accent)] backdrop-blur">
-            Racha ×{streak}
+            Streak ×{streak}
           </span>
         )}
 
         <span className="rounded-md border border-white/10 bg-[var(--color-muted)]/80 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white/60 backdrop-blur">
-          {levels ? `Nivel ${activeLevel} · ` : ''}{DIFFICULTY_LABELS[difficulty]}
+          {levels ? `Level ${activeLevel} · ` : ''}{DIFFICULTY_LABELS[difficulty]}
         </span>
       </div>
 
@@ -182,7 +182,7 @@ export function HUD() {
             onClick={endRun}
             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white/80 backdrop-blur transition-colors hover:border-[var(--color-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
-            Terminar
+            End run
           </button>
         </div>
       )}
@@ -197,14 +197,14 @@ export function HUD() {
         <div className="fixed inset-x-0 bottom-6 z-20 flex justify-center px-6">
           <div className="animate-fade-slide-up flex items-center gap-4 rounded-xl border border-white/10 bg-[var(--color-muted)]/90 px-5 py-3 backdrop-blur motion-reduce:animate-none">
             <p className="text-sm text-white/70">
-              Cómo se juega, en unos segundos.
+              How it plays, in a few seconds.
             </p>
             <button
               type="button"
               onClick={finishTutorial}
               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
             >
-              Saltar tutorial
+              Skip tutorial
             </button>
           </div>
         </div>
@@ -220,7 +220,7 @@ export function HUD() {
             // marcador, que convive con ella en pantalla.
             role="timer"
             aria-live="assertive"
-            aria-label={`Empieza en ${countdown}`}
+            aria-label={`Starting in ${countdown}`}
             // La clave fuerza el remontaje en cada número, y con él la
             // animación: sin ella el texto cambiaría sin dar el golpe.
             key={countdown}
@@ -249,7 +249,7 @@ export function HUD() {
             {levelResult && (
               <div
                 role="img"
-                aria-label={levelResult.stars === 1 ? '1 estrella' : `${levelResult.stars} estrellas`}
+                aria-label={levelResult.stars === 1 ? '1 star' : `${levelResult.stars} stars`}
                 className="flex items-center gap-1 text-[var(--color-accent)]"
               >
                 {Array.from({ length: 3 }, (_, index) => (
@@ -259,11 +259,11 @@ export function HUD() {
             )}
             <div className="flex flex-col items-center gap-1">
               <p className="text-5xl font-bold tabular-nums text-[var(--color-accent)]">
-                {points.toLocaleString('es-ES')}
+                {points.toLocaleString('en-GB')}
               </p>
               {!sinFin && (
                 <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-                  de {maxPossible.toLocaleString('es-ES')} posibles
+                  of {maxPossible.toLocaleString('en-GB')} possible
                 </p>
               )}
               {/* El récord: batido, se anuncia; si no, se enseña la marca que
@@ -273,19 +273,19 @@ export function HUD() {
               {levelResult ? (
                 levelResult.unlocked != null && (
                   <p className="animate-fade-slide-up mt-2 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)]/15 px-3 py-1 text-sm font-bold uppercase tracking-wide text-[var(--color-accent)] motion-reduce:animate-none">
-                    Nivel {levelResult.unlocked} desbloqueado
+                    Level {levelResult.unlocked} unlocked
                   </p>
                 )
               ) : isRecord ? (
                 <p className="animate-fade-slide-up mt-2 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)]/15 px-3 py-1 text-sm font-bold uppercase tracking-wide text-[var(--color-accent)] motion-reduce:animate-none">
-                  {sinFin ? '¡Mejor racha!' : '¡Nuevo récord!'}
+                  {sinFin ? 'Best streak!' : 'New record!'}
                 </p>
               ) : (
                 bestPoints > 0 && (
                   <p className="mt-2 text-sm text-white/50">
-                    {sinFin ? 'Tu mejor racha:' : 'Tu récord:'}{' '}
+                    {sinFin ? 'Your best streak:' : 'Your record:'}{' '}
                     <span className="font-bold tabular-nums text-white/80">
-                      {sinFin ? `×${bestPoints}` : bestPoints.toLocaleString('es-ES')}
+                      {sinFin ? `×${bestPoints}` : bestPoints.toLocaleString('en-GB')}
                     </span>
                   </p>
                 )
@@ -295,15 +295,15 @@ export function HUD() {
             <p className="text-lg text-white/80">
               {sinFin ? (
                 <>
-                  Has atrapado{' '}
-                  <span className="font-bold text-[var(--color-accent)]">{score}</span> palos
-                  sin fin.
+                  You caught{' '}
+                  <span className="font-bold text-[var(--color-accent)]">{score}</span> sticks,
+                  endless.
                 </>
               ) : (
                 <>
-                  Has atrapado{' '}
-                  <span className="font-bold text-[var(--color-accent)]">{score}</span> de{' '}
-                  <span className="font-bold">{stickCount}</span> palos.
+                  You caught{' '}
+                  <span className="font-bold text-[var(--color-accent)]">{score}</span> of{' '}
+                  <span className="font-bold">{stickCount}</span> sticks.
                 </>
               )}
             </p>
@@ -313,7 +313,7 @@ export function HUD() {
               {lives != null && totalLives != null && (
                 <div className="flex flex-col items-center gap-1">
                   <dt className="text-xs uppercase tracking-wide text-white/40">
-                    Vidas
+                    Lives
                   </dt>
                   <dd className="flex items-center gap-2 font-bold tabular-nums text-white/80">
                     <Lives lives={lives} total={totalLives} />
@@ -323,7 +323,7 @@ export function HUD() {
               )}
               <div className="flex flex-col items-center gap-1">
                 <dt className="text-xs uppercase tracking-wide text-white/40">
-                  Mejor racha
+                  Best streak
                 </dt>
                 <dd className="font-bold tabular-nums text-white/80">
                   ×{bestStreak}
@@ -331,7 +331,7 @@ export function HUD() {
               </div>
               <div className="flex flex-col items-center gap-1">
                 <dt className="text-xs uppercase tracking-wide text-white/40">
-                  Dificultad
+                  Difficulty
                 </dt>
                 <dd className="font-bold text-white/80">
                   {DIFFICULTY_LABELS[difficulty]}
@@ -344,7 +344,7 @@ export function HUD() {
                 onClick={resetGame}
                 className="cta-gradient w-full rounded-xl px-6 py-3 text-base font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
               >
-                Volver al menú
+                Back to the menu
               </button>
               <ShareResultButton />
             </div>

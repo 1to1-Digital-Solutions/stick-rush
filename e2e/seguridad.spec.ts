@@ -48,7 +48,7 @@ test.describe('Cabeceras de seguridad', () => {
     })
 
     await openGame(page)
-    await startGame(page, { sticks: 5, difficulty: 'Imposible' })
+    await startGame(page, { sticks: 5, difficulty: 'Impossible' })
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 60_000 })
 
     expect(violations).toEqual([])

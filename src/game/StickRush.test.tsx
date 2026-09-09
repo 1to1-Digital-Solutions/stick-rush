@@ -37,7 +37,7 @@ describe('montar el juego desde fuera', () => {
     // `getByRole` lanza si no está: el juego que no arranca fuera de su web se
     // queda sin menú, o revienta al renderizar.
     expect(screen.getByRole('heading', { name: 'STICK RUSH' }).tagName).toBe('H1')
-    expect(screen.getByRole('button', { name: 'Jugar' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Play' })).toBeDefined()
   })
 
   it('deja los ficheros estáticos en la raíz mientras nadie diga otra cosa', () => {

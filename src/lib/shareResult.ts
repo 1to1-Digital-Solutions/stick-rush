@@ -44,7 +44,7 @@ export interface ShareResultInput {
 /** Igual que el resto del juego: miles con punto y sin decimales. */
 function formatPoints(points: number): string {
   if (!Number.isFinite(points)) return '0'
-  return Math.max(0, Math.round(points)).toLocaleString('es-ES')
+  return Math.max(0, Math.round(points)).toLocaleString('en-GB')
 }
 
 /**
@@ -72,23 +72,23 @@ export function buildShareText({
 }: ShareResultInput): string {
   const totalLives = startingLives(gameMode)
   const stats = [
-    `${formatPoints(points)} puntos`,
-    `${score} de ${stickCount} palos`,
+    `${formatPoints(points)} points`,
+    `${score} of ${stickCount} sticks`,
     // `lives` puede faltar aunque el modo las tenga (una partida que no llegó a
     // empezar): sin el dato se calla, que es mejor que inventarse un número.
     ...(totalLives != null && lives != null
-      ? [`${lives} de ${totalLives} vidas`]
+      ? [`${lives} of ${totalLives} lives`]
       : []),
   ]
 
   const record = isRecord
-    ? '¡Nuevo récord!'
+    ? 'New record!'
     : bestPoints > 0
-      ? `Mi récord: ${formatPoints(bestPoints)}`
+      ? `My record: ${formatPoints(bestPoints)}`
       : null
 
   return [
-    `${SHARE_TITLE} — ${GAME_MODE_LABELS[gameMode]} en ${DIFFICULTY_LABELS[difficulty]}`,
+    `${SHARE_TITLE} — ${GAME_MODE_LABELS[gameMode]} on ${DIFFICULTY_LABELS[difficulty]}`,
     stats.join(' · '),
     ...(record ? [record] : []),
     url,

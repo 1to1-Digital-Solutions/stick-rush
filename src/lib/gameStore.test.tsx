@@ -4,8 +4,9 @@ import { MACHINE_HEIGHT, MAX_STICKS, MIN_STICKS } from './gameConfig'
 import { COUNTDOWN_SECONDS, useGame, useGameStoreValue } from './gameStore'
 import { HIGH_SCORE_KEYS } from './highScore'
 import { HOOP_ADJUST_RANGE, HOOP_ADJUST_STEP } from './hoopHeight'
-import { MUTED_KEY } from './mutePreference'
 import { TUTORIAL_SECONDS, TUTORIAL_SEEN_KEY } from './tutorial'
+import { DEFAULT_VOLUMES, VOLUME_KEYS } from './ajustes'
+import { setVolume } from './ajustesCliente'
 
 // La cuenta atrás usa `setTimeout`, así que todo el fichero corre con relojes
 // falsos: si no, cada partida costaría tres segundos reales de test.
@@ -14,6 +15,12 @@ beforeEach(() => {
   // El récord se guarda en `localStorage`, que jsdom comparte entre tests: sin
   // vaciarlo, una partida de un test daría por batido el récord de otro.
   localStorage.clear()
+  // Los volúmenes salen de los ajustes del arcade, que cachean lo leído para
+  // que `useSyncExternalStore` no repinte sin parar: vaciar `localStorage` a
+  // secas dejaría el caché con el valor de la prueba anterior. Se restablecen
+  // por la API, que es la que lo invalida.
+  setVolume('sfx', DEFAULT_VOLUMES.sfx)
+  setVolume('ambience', DEFAULT_VOLUMES.ambience)
 })
 
 afterEach(() => {
@@ -599,6 +606,10 @@ describe('escenario o passthrough', () => {
 })
 
 describe('silencio', () => {
+  // Ya no es una preferencia del juego: sale del volumen de efectos que se
+  // elige en xrcade y vale para los doce (ver `ajustes.ts`). Lo que se
+  // comprueba aquí es que el store lo traduce bien y que se entera de los
+  // cambios, vengan del menú del arcade o de otra pestaña.
   it('se entra con sonido', () => {
     const { result } = renderHook(() => useGameStoreValue())
     expect(result.current.muted).toBe(false)
@@ -607,10 +618,10 @@ describe('silencio', () => {
   it('se puede silenciar y volver a activar', () => {
     const { result } = renderHook(() => useGameStoreValue())
 
-    act(() => result.current.setMuted(true))
+    act(() => setVolume('sfx', 0))
     expect(result.current.muted).toBe(true)
 
-    act(() => result.current.setMuted(false))
+    act(() => setVolume('sfx', DEFAULT_VOLUMES.sfx))
     expect(result.current.muted).toBe(false)
   })
 
@@ -619,7 +630,7 @@ describe('silencio', () => {
     // devolver el sonido al empezar o al volver al menú obligaría a apagarlo
     // cada vez, que es justo lo que molesta con el visor puesto.
     const { result } = renderHook(() => useGameStoreValue())
-    act(() => result.current.setMuted(true))
+    act(() => setVolume('sfx', 0))
 
     playRound(result, 5, 3)
     expect(result.current.muted).toBe(true)
@@ -630,9 +641,9 @@ describe('silencio', () => {
 
   it('la elección sobrevive a la visita', () => {
     // Es para lo que se guarda: en el visor, apagar el sonido cada vez que uno
-    // se pone las gafas es el gesto más incómodo del juego.
+    // se pone las gafas es el gesto más incómodo que hay.
     const first = renderHook(() => useGameStoreValue())
-    act(() => first.result.current.setMuted(true))
+    act(() => setVolume('sfx', 0))
     first.unmount()
 
     const { result } = renderHook(() => useGameStoreValue())
@@ -643,8 +654,8 @@ describe('silencio', () => {
     // El otro lado del mismo trato: quien lo enciende no se encuentra el juego
     // mudo otra vez en la visita siguiente.
     const first = renderHook(() => useGameStoreValue())
-    act(() => first.result.current.setMuted(true))
-    act(() => first.result.current.setMuted(false))
+    act(() => setVolume('sfx', 0))
+    act(() => setVolume('sfx', DEFAULT_VOLUMES.sfx))
     first.unmount()
 
     const { result } = renderHook(() => useGameStoreValue())
@@ -657,8 +668,8 @@ describe('silencio', () => {
     const { result } = renderHook(() => useGameStoreValue())
 
     act(() => {
-      localStorage.setItem(MUTED_KEY, '1')
-      window.dispatchEvent(new StorageEvent('storage', { key: MUTED_KEY }))
+      localStorage.setItem(VOLUME_KEYS.sfx, '0')
+      window.dispatchEvent(new StorageEvent('storage', { key: VOLUME_KEYS.sfx }))
     })
 
     expect(result.current.muted).toBe(true)

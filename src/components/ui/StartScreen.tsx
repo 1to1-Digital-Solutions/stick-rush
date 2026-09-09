@@ -26,113 +26,6 @@ const STICK_OPTIONS = Array.from(
 )
 
 /**
- * Altavoz, con ondas o tachado. Es lo que distingue el estado del botón por
- * forma y no solo por color.
- */
-function SpeakerIcon({ muted }: { muted: boolean }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className="size-5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    >
-      <path d="M4 9h3.5L12 5v14l-4.5-4H4z" fill="currentColor" stroke="none" />
-      {muted ? (
-        <path d="m16 9.5 5 5m0-5-5 5" />
-      ) : (
-        <>
-          <path d="M16 9.2a4 4 0 0 1 0 5.6" />
-          <path d="M18.7 6.5a7.6 7.6 0 0 1 0 11" />
-        </>
-      )}
-    </svg>
-  )
-}
-
-/**
- * Silenciar el juego.
- *
- * Etiqueta fija y `aria-pressed`, como los demás botones del menú: lo que
- * cambia es el estado, no lo que hace el botón. Silenciado, `useGameSound` ni
- * siquiera crea el contexto de audio.
- */
-function SoundToggle() {
-  const { muted, setMuted } = useGame()
-
-  return (
-    <button
-      type="button"
-      aria-pressed={muted}
-      onClick={() => setMuted(!muted)}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] ${
-        muted
-          ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
-          : 'border-white/10 bg-[var(--color-muted)] text-white/70 hover:border-white/30 hover:text-white'
-      }`}
-    >
-      <SpeakerIcon muted={muted} />
-      Silenciar
-    </button>
-  )
-}
-
-/**
- * Nota musical, tachada cuando la música está apagada. El mismo tachón que el
- * altavoz callado, para que los dos botones se lean igual sin leer nada.
- */
-function NoteIcon({ playing }: { playing: boolean }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className="size-5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    >
-      <path d="M9 18V6l10-2v12" />
-      <circle cx="6.5" cy="18" r="2.5" fill="currentColor" stroke="none" />
-      <circle cx="16.5" cy="16" r="2.5" fill="currentColor" stroke="none" />
-      {playing ? null : <path d="M4 20 20 4" />}
-    </svg>
-  )
-}
-
-/**
- * Quitar la música de fondo.
- *
- * Va aparte del silencio a propósito: son dos decisiones distintas —hay quien
- * quiere oír los palos y no la feria, y quien pone el juego de fondo y prefiere
- * lo contrario—, y con el juego callado no suena ninguna de las dos. Al lado
- * del de silenciar y con la misma forma de botón, que es lo que dice que son de
- * la misma familia.
- */
-function MusicToggle() {
-  const { music, setMusic } = useGame()
-
-  return (
-    <button
-      type="button"
-      aria-pressed={!music}
-      onClick={() => setMusic(!music)}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] ${
-        music
-          ? 'border-white/10 bg-[var(--color-muted)] text-white/70 hover:border-white/30 hover:text-white'
-          : 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white'
-      }`}
-    >
-      <NoteIcon playing={music} />
-      Sin música
-    </button>
-  )
-}
-
-/**
  * Récord del jugador en el modo elegido. Solo aparece cuando hay uno: un "0"
  * permanente no da nada que batir y ocupa el sitio del reclamo del menú.
  *
@@ -148,9 +41,9 @@ function BestScore() {
 
   return (
     <p className="mt-2 inline-flex items-center gap-2 self-center rounded-full border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 px-4 py-1.5 text-sm text-white/70">
-      {sinFin ? 'Mejor racha sin fin' : `Mejor puntuación en ${GAME_MODE_LABELS[gameMode]}`}{' '}
+      {sinFin ? 'Best endless streak' : `Best score in ${GAME_MODE_LABELS[gameMode]}`}{' '}
       <span className="font-bold tabular-nums text-[var(--color-accent)]">
-        {sinFin ? `×${bestPoints}` : bestPoints.toLocaleString('es-ES')}
+        {sinFin ? `×${bestPoints}` : bestPoints.toLocaleString('en-GB')}
       </span>
     </p>
   )
@@ -182,7 +75,7 @@ function LevelPicker() {
         id="level-label"
         className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
       >
-        Nivel
+        Level
       </h2>
       <div className="grid grid-cols-5 gap-2">
         {Array.from({ length: LEVEL_COUNT }, (_, index) => {
@@ -190,14 +83,14 @@ function LevelPicker() {
           const locked = level > unlockedLevel
           const stars = levelStars[index] ?? 0
           const selected = level === activeLevel
-          const estrellas = stars === 1 ? '1 estrella' : `${stars} estrellas`
+          const estrellas = stars === 1 ? '1 star' : `${stars} stars`
           return (
             <button
               key={level}
               type="button"
               disabled={locked}
               aria-pressed={selected}
-              aria-label={locked ? `Nivel ${level}, bloqueado` : `Nivel ${level}, ${estrellas}`}
+              aria-label={locked ? `Level ${level}, locked` : `Level ${level}, ${estrellas}`}
               onClick={() => setLevel(level)}
               className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg border px-1 py-2 text-base font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-40 ${
                 selected
@@ -218,7 +111,7 @@ function LevelPicker() {
         })}
       </div>
       <p className="text-sm text-white/60">
-        Nivel {spec.level}: {spec.stickCount} palos en {DIFFICULTY_LABELS[spec.difficulty]}.
+        Level {spec.level}: {spec.stickCount} sticks on {DIFFICULTY_LABELS[spec.difficulty]}.
       </p>
     </section>
   )
@@ -232,8 +125,8 @@ function LevelPicker() {
 function EndlessToggle() {
   const { endless, setEndless } = useGame()
   const options = [
-    { value: false, label: 'Tanda', hint: 'Los palos elegidos y se acaba.' },
-    { value: true, label: 'Sin fin', hint: 'Se recarga hasta que tú digas.' },
+    { value: false, label: 'Set', hint: 'The sticks you picked, and that is it.' },
+    { value: true, label: 'Endless', hint: 'It reloads until you say stop.' },
   ]
 
   return (
@@ -242,7 +135,7 @@ function EndlessToggle() {
         id="endless-label"
         className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
       >
-        Duración
+        Length
       </h2>
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map(({ value, label, hint }) => {
@@ -322,7 +215,7 @@ export function StartScreen() {
             STICK RUSH
           </h1>
           <p className="text-sm text-white/60 sm:text-base">
-            Atrapa los palos antes de que toquen el suelo.
+            Catch the sticks before they hit the ground.
           </p>
           <BestScore />
         </header>
@@ -335,7 +228,7 @@ export function StartScreen() {
             id="mode-label"
             className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
           >
-            Modo
+            Mode
           </h2>
           <div className="grid gap-2 sm:grid-cols-3">
             {GAME_MODE_ORDER.map((mode) => {
@@ -379,7 +272,7 @@ export function StartScreen() {
             id="sticks-label"
             className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
           >
-            Número de palos
+            Number of sticks
           </h2>
           <div className="flex flex-wrap justify-center gap-2">
             {STICK_OPTIONS.map((count) => {
@@ -414,7 +307,7 @@ export function StartScreen() {
             id="difficulty-label"
             className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
           >
-            Dificultad
+            Difficulty
           </h2>
           <div className="flex flex-wrap justify-center gap-2">
             {DIFFICULTY_ORDER.map((level) => {
@@ -455,10 +348,8 @@ export function StartScreen() {
             onClick={() => startGame()}
             className="cta-gradient w-full rounded-xl px-8 py-4 text-lg font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
-            Jugar
+            Play
           </button>
-          <SoundToggle />
-          <MusicToggle />
         </div>
 
         {/* Entrada a realidad mixta (solo si el dispositivo lo soporta) */}

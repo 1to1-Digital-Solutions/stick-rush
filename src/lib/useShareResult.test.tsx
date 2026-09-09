@@ -77,9 +77,9 @@ describe('compartir la partida recién jugada', () => {
     expect(shared).toHaveLength(1)
     const text = shared[0].text ?? ''
     expect(text).toContain(
-      `${result.current.game.points.toLocaleString('es-ES')} puntos`,
+      `${result.current.game.points.toLocaleString('en-GB')} points`,
     )
-    expect(text).toContain('3 de 5 palos')
+    expect(text).toContain('3 of 5 sticks')
     expect(text).toContain(window.location.origin)
     expect(result.current.share.status).toBe('shared')
   })

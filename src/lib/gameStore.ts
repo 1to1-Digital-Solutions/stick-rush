@@ -41,6 +41,8 @@ import {
   subscribeStarsList,
   subscribeUnlockedLevel,
 } from './progress'
+import { volumeFactor } from './ajustes'
+import { useVolumes } from './ajustesCliente'
 import {
   HOOP_ADJUST_STEP,
   clampHoopAdjustment,
@@ -48,18 +50,6 @@ import {
   hoopHeightFor,
   saveHoopAdjustment,
 } from './hoopHeight'
-import {
-  getMuted,
-  getServerMuted,
-  saveMuted,
-  subscribeMuted,
-} from './mutePreference'
-import {
-  getMusic,
-  getServerMusic,
-  saveMusic,
-  subscribeMusic,
-} from './musicPreference'
 import {
   getScenery,
   getServerScenery,
@@ -186,16 +176,18 @@ export interface GameStore {
   /** Escenario o passthrough en sesión inmersiva. */
   scenery: SceneryMode
   /**
-   * Juego en silencio. Se guarda entre visitas (ver `mutePreference.ts`): con
-   * el visor puesto, volver a apagar el sonido cada vez que uno se pone las
-   * gafas es el gesto más incómodo del juego.
+   * Juego en silencio, porque los efectos están a cero en los ajustes del
+   * arcade. Ya no es una preferencia del juego: se elige una vez en xrcade y
+   * vale para los doce (ver `ajustes.ts`). Aquí se deja derivado porque media
+   * escena pregunta «¿estoy mudo?» y no «¿a cuánto están los efectos?».
    */
   muted: boolean
-  /**
-   * Música de fondo encendida. Va aparte del silencio (ver `musicPreference.ts`):
-   * son dos decisiones distintas y el silencio manda sobre esta.
-   */
+  /** Volumen de los efectos, de 0 a 1, tal y como lo quiere la Web Audio API. */
+  sfxVolume: number
+  /** Música de fondo encendida: el ambiente de los ajustes, por encima de cero. */
   music: boolean
+  /** Volumen del ambiente, de 0 a 1. */
+  ambienceVolume: number
   /**
    * Altura del aro, en metros, ya acomodada a quien juega: sale de la altura
    * del visor más la corrección manual (ver `hoopHeight.ts`).
@@ -219,8 +211,6 @@ export interface GameStore {
   immersive: boolean
 
   setScenery: (scenery: SceneryMode) => void
-  setMuted: (muted: boolean) => void
-  setMusic: (music: boolean) => void
   setStickCount: (count: number) => void
   setDifficulty: (difficulty: Difficulty) => void
   /**
@@ -358,14 +348,14 @@ export function useGameStoreValue(): GameStore {
     getServerScenery,
   )
   const setScenery = useCallback((value: SceneryMode) => saveScenery(value), [])
-  // El silencio no es estado de React: vive en el navegador y el juego se
-  // suscribe a él, como el récord. Se entra con sonido salvo que la visita
-  // anterior lo dejara quitado, y el botón que lo cambia está en los dos menús,
-  // el de escritorio y el inmersivo.
-  const muted = useSyncExternalStore(subscribeMuted, getMuted, getServerMuted)
-  // Y la música va aparte del silencio: son dos decisiones distintas (ver
-  // `musicPreference.ts`), y las dos se recuerdan entre visitas.
-  const music = useSyncExternalStore(subscribeMusic, getMusic, getServerMusic)
+  // El sonido no es estado de este juego: sale de los ajustes del arcade, que
+  // se eligen una vez en xrcade y valen para los doce. Aquí solo se traduce a
+  // lo que la escena pregunta: si está mudo y a qué volumen (ver `ajustes.ts`).
+  const volumes = useVolumes()
+  const muted = volumes.sfx === 0
+  const sfxVolume = volumeFactor(volumes.sfx)
+  const music = volumes.ambience > 0
+  const ambienceVolume = volumeFactor(volumes.ambience)
   const [countdown, setCountdown] = useState(0)
   const [runId, setRunId] = useState(0)
   // La corrección de la altura del aro sale de lo guardado en visitas
@@ -516,13 +506,6 @@ export function useGameStoreValue(): GameStore {
     setStickCountState(clampStickCount(count))
   }, [])
 
-  // Escribir es todo lo que hace falta: el almacén avisa a quien lo mire y de
-  // ahí vuelve `muted`. Guardar además una copia en React sería tener dos
-  // versiones de lo mismo que pueden discrepar.
-  const setMuted = useCallback((value: boolean) => saveMuted(value), [])
-
-  const setMusic = useCallback((value: boolean) => saveMusic(value), [])
-
   // Se guarda al tocarlo y no al salir: en el visor no hay "salir", uno se
   // quita las gafas. Y solo cuando el valor cambia de verdad, para no escribir
   // en cada pulsación una vez alcanzado el tope.
@@ -661,15 +644,15 @@ export function useGameStoreValue(): GameStore {
       runId,
       scenery,
       muted,
+      sfxVolume,
       music,
+      ambienceVolume,
       hoopHeight,
       hoopAdjustment,
       playerEyeHeight,
       tutorialSeen,
       immersive,
       setScenery,
-      setMuted,
-      setMusic,
       setStickCount,
       setDifficulty,
       setGameMode,
@@ -715,15 +698,15 @@ export function useGameStoreValue(): GameStore {
       runId,
       scenery,
       muted,
+      sfxVolume,
       music,
+      ambienceVolume,
       hoopHeight,
       hoopAdjustment,
       playerEyeHeight,
       tutorialSeen,
       immersive,
       setScenery,
-      setMuted,
-      setMusic,
       setStickCount,
       setGameMode,
       setLevel,

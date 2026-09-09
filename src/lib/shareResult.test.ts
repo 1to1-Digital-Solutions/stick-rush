@@ -45,13 +45,13 @@ const CHALLENGE: ShareResultInput = {
 describe('lo que cuenta el texto', () => {
   it('dice el juego, el modo y la dificultad en la primera línea', () => {
     const [first] = buildShareText(PRACTICE).split('\n')
-    expect(first).toBe(`${SHARE_TITLE} — Práctica en Fácil`)
+    expect(first).toBe(`${SHARE_TITLE} — Practice on Easy`)
   })
 
   it('dice la puntuación y los palos atrapados', () => {
     // Con el mismo formato de miles que el marcador: la cifra que se comparte
     // tiene que ser la que el jugador acaba de ver en pantalla.
-    expect(buildShareText(PRACTICE)).toContain('12.400 puntos · 4 de 5 palos')
+    expect(buildShareText(PRACTICE)).toContain('12,400 points · 4 of 5 sticks')
   })
 
   it('acaba con el enlace al juego', () => {
@@ -65,7 +65,7 @@ describe('lo que cuenta el texto', () => {
     for (const difficulty of DIFFICULTY_ORDER) {
       const [first] = buildShareText({ ...PRACTICE, difficulty }).split('\n')
       expect(first).toBe(
-        `${SHARE_TITLE} — Práctica en ${DIFFICULTY_LABELS[difficulty]}`,
+        `${SHARE_TITLE} — Practice on ${DIFFICULTY_LABELS[difficulty]}`,
       )
     }
   })
@@ -88,13 +88,13 @@ describe('lo que cuenta el texto', () => {
 describe('las vidas, solo donde significan algo', () => {
   it('el desafío cuenta con cuántas vidas se acabó', () => {
     expect(buildShareText(CHALLENGE)).toContain(
-      `1 de ${CHALLENGE_LIVES} vidas`,
+      `1 of ${CHALLENGE_LIVES} lives`,
     )
   })
 
   it('un desafío perdido dice que se acabó sin vidas', () => {
     expect(buildShareText({ ...CHALLENGE, lives: 0 })).toContain(
-      `0 de ${CHALLENGE_LIVES} vidas`,
+      `0 of ${CHALLENGE_LIVES} lives`,
     )
   })
 
@@ -112,7 +112,7 @@ describe('la marca', () => {
   it('sin récord previo no menciona ninguno', () => {
     // La primera partida del navegador: no hay marca que enseñar, y un
     // "récord: 0" contaría como logro no haber jugado nunca.
-    expect(buildShareText(PRACTICE)).not.toMatch(/récord/i)
+    expect(buildShareText(PRACTICE)).not.toMatch(/record/i)
   })
 
   it('anuncia el récord recién batido', () => {
@@ -121,14 +121,14 @@ describe('la marca', () => {
       bestPoints: PRACTICE.points,
       isRecord: true,
     })
-    expect(text).toContain('¡Nuevo récord!')
-    expect(text).not.toContain('Mi récord')
+    expect(text).toContain('New record!')
+    expect(text).not.toContain('My record')
   })
 
   it('con récord sin batir enseña la marca que había', () => {
     const text = buildShareText({ ...PRACTICE, bestPoints: 99999 })
-    expect(text).toContain('Mi récord: 99.999')
-    expect(text).not.toContain('¡Nuevo récord!')
+    expect(text).toContain('My record: 99,999')
+    expect(text).not.toContain('New record!')
   })
 })
 
@@ -137,9 +137,9 @@ describe('cifras imposibles', () => {
     // El récord sale del almacenamiento, que cualquiera puede editar: un NaN
     // en el texto que se comparte sería el fallo a la vista de todos.
     expect(buildShareText({ ...PRACTICE, points: Number.NaN })).toContain(
-      '0 puntos',
+      '0 points',
     )
-    expect(buildShareText({ ...PRACTICE, points: -50 })).toContain('0 puntos')
+    expect(buildShareText({ ...PRACTICE, points: -50 })).toContain('0 points')
   })
 })
 

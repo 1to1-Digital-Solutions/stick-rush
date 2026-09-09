@@ -57,7 +57,7 @@ test.describe('Sesión inmersiva', () => {
 
   test('con WebXR disponible aparece la entrada al visor', async ({ page }) => {
     await expect(
-      page.getByRole('button', { name: 'Entrar en el visor' }),
+      page.getByRole('button', { name: 'Enter the headset' }),
     ).toBeVisible()
   })
 

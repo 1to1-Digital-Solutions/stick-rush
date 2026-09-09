@@ -34,16 +34,16 @@ export const GAME_MODE_ORDER: GameMode[] = ['practice', 'levels', 'challenge']
 
 /** Etiqueta visible para el usuario (idioma del producto: español). */
 export const GAME_MODE_LABELS: Record<GameMode, string> = {
-  practice: 'Práctica',
-  levels: 'Niveles',
-  challenge: 'Desafío',
+  practice: 'Practice',
+  levels: 'Levels',
+  challenge: 'Challenge',
 }
 
 /** Qué promete cada modo, en una línea, para el menú de escritorio. */
 export const GAME_MODE_HINTS: Record<GameMode, string> = {
-  practice: 'Caen todos los palos y fallar no cuesta nada.',
-  levels: 'Un nivel cada vez: el que superas queda desbloqueado.',
-  challenge: 'Tres vidas: cada palo que se escapa cuesta una.',
+  practice: 'Every stick drops and missing costs nothing.',
+  levels: 'One level at a time: the one you clear stays unlocked.',
+  challenge: 'Three lives: every stick that gets away costs one.',
 }
 
 /** Vidas con las que arranca un desafío. */

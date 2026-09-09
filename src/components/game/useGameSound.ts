@@ -11,11 +11,11 @@ import { createSoundEngine, type SoundEngine } from '../../lib/sound'
  * suena igual con el ratón que con los mandos del visor —que es donde más falta
  * hace, porque allí no hay marcador que mirar sin apartar la vista de los palos.
  *
- * Se monta una sola vez, en `GameScene`. Con el juego silenciado (`muted` del
- * store) no llega a tocar la Web Audio API.
+ * Se monta una sola vez, en `GameScene`. Con los efectos a cero en los ajustes
+ * del arcade (`muted` del store) no llega a tocar la Web Audio API.
  */
 export function useGameSound() {
-  const { gameState, countdown, score, resolved, streak, muted } = useGame()
+  const { gameState, countdown, score, resolved, streak, muted, sfxVolume } = useGame()
   const engineRef = useRef<SoundEngine | null>(null)
   // El navegador no deja sonar hasta que el jugador ha tocado la página. Es
   // estado y no un ref porque de él depende crear el audio, y el gesto puede
@@ -58,7 +58,7 @@ export function useGameSound() {
     if (AudioContextClass == null) return
 
     const context = new AudioContextClass()
-    engineRef.current = createSoundEngine(context)
+    engineRef.current = createSoundEngine(context, sfxVolume)
     // Que el navegador se niegue a reanudarlo es un desenlace previsto —su
     // política de reproducción automática— y significa jugar sin sonido.
     void context.resume().catch(() => {})
@@ -68,7 +68,7 @@ export function useGameSound() {
       engineRef.current = null
       if (context.state !== 'closed') void context.close()
     }
-  }, [interacted, muted])
+  }, [interacted, muted, sfxVolume])
 
   const missed = resolved - score
 

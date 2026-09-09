@@ -151,6 +151,11 @@ export interface SoundEngine {
   play(sound: Sound): void
   /** Suelta el nodo maestro. El contexto lo cierra quien lo creó. */
   dispose(): void
+  /**
+   * Cuánto de todo esto se oye, de 0 a 1: el volumen de efectos de los ajustes
+   * del arcade. Multiplica al maestro del juego y no lo sustituye.
+   */
+  setVolume(volume: number): void
 }
 
 /** Ataque de la envolvente, en segundos. */
@@ -163,9 +168,16 @@ const ATTACK_SECONDS = 0.012
  */
 const SILENCE = 0.0001
 
-export function createSoundEngine(context: AudioContext): SoundEngine {
+/**
+ * @param volume de 0 a 1, el volumen de efectos de los ajustes del arcade. Va
+ *   multiplicando al maestro del juego y no sustituyéndolo: `MASTER_GAIN` dice
+ *   cuánto pega este juego en relación con los demás, y esto cuánto de eso
+ *   quiere oír quien juega.
+ */
+export function createSoundEngine(context: AudioContext, volume = 1): SoundEngine {
   const master = context.createGain()
-  master.gain.value = MASTER_GAIN
+  let volumen = Math.min(1, Math.max(0, volume))
+  master.gain.value = MASTER_GAIN * volumen
   master.connect(context.destination)
 
   return {
@@ -212,6 +224,12 @@ export function createSoundEngine(context: AudioContext): SoundEngine {
           envelope.disconnect()
         }
       }
+    },
+
+    /** Ver `setVolume` en la interfaz. */
+    setVolume(value: number) {
+      volumen = Math.min(1, Math.max(0, value))
+      master.gain.value = MASTER_GAIN * volumen
     },
 
     dispose() {

@@ -20,11 +20,11 @@ export const DIFFICULTY_SPEEDS: Record<Difficulty, number> = {
 
 /** Etiqueta visible para el usuario (idioma del producto: español). */
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
-  easy: 'Fácil',
-  medium: 'Medio',
-  hard: 'Difícil',
-  expert: 'Experto',
-  impossible: 'Imposible',
+  easy: 'Easy',
+  medium: 'Medium',
+  hard: 'Hard',
+  expert: 'Expert',
+  impossible: 'Impossible',
 }
 
 /** Orden de dificultades de menor a mayor para construir selectores. */

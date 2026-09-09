@@ -19,17 +19,17 @@ test.describe('Práctica sin fin', () => {
   test('la duración solo se elige en práctica, y por defecto es una tanda', async ({
     page,
   }) => {
-    const section = page.getByRole('region', { name: 'Duración' })
-    await expect(section.getByRole('button', { name: /^Tanda/ })).toHaveAttribute(
+    const section = page.getByRole('region', { name: 'Length' })
+    await expect(section.getByRole('button', { name: /^Set/ })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    await expect(section.getByRole('button', { name: /^Sin fin/ })).toHaveAttribute(
+    await expect(section.getByRole('button', { name: /^Endless/ })).toHaveAttribute(
       'aria-pressed',
       'false',
     )
 
-    await page.getByRole('button', { name: /^Desafío/ }).click()
+    await page.getByRole('button', { name: /^Challenge/ }).click()
     await expect(section).toBeHidden()
   })
 
@@ -38,18 +38,18 @@ test.describe('Práctica sin fin', () => {
   }) => {
     // Con la caída más rápida los cinco palos se estrellan en segundos: ahí una
     // tanda normal habría terminado, y esta sigue con palos nuevos.
-    await startGame(page, { sticks: 5, difficulty: 'Imposible', mode: 'Práctica', endless: true })
+    await startGame(page, { sticks: 5, difficulty: 'Impossible', mode: 'Practice', endless: true })
 
     const status = page.getByRole('status')
-    await expect(status).toHaveAttribute('aria-label', /tanda 2$/, { timeout: 30_000 })
+    await expect(status).toHaveAttribute('aria-label', /set 2$/, { timeout: 30_000 })
     await expect(page.getByRole('dialog')).toBeHidden()
 
-    await page.getByRole('button', { name: 'Terminar' }).click()
+    await page.getByRole('button', { name: 'End run' }).click()
     await waitForGameOver(page)
 
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('¡Partida terminada!')
-    await expect(dialog).toContainText('sin fin')
+    await expect(dialog).toContainText('Game over!')
+    await expect(dialog).toContainText('endless')
     // Sin techo no hay «de N posibles» que enseñar.
     await expect(dialog).not.toContainText('posibles')
   })
@@ -64,12 +64,12 @@ test.describe('Práctica sin fin', () => {
     )
     await openGame(page)
 
-    await expect(page.getByText(/^Mejor puntuación/)).toContainText('99.999')
+    await expect(page.getByText(/^Best score/)).toContainText('99.999')
 
-    await page.getByRole('button', { name: /^Sin fin/ }).click()
+    await page.getByRole('button', { name: /^Endless/ }).click()
 
     // La marca de sin fin es la suya: la de la práctica por tandas no se le presta.
-    await expect(page.getByText(/^Mejor racha sin fin/)).toContainText('×7')
-    await expect(page.getByText(/^Mejor puntuación/)).toHaveCount(0)
+    await expect(page.getByText(/^Best endless streak/)).toContainText('×7')
+    await expect(page.getByText(/^Best score/)).toHaveCount(0)
   })
 })

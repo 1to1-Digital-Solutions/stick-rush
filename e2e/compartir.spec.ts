@@ -89,14 +89,14 @@ async function waitForShareAttempts(page: Page, count: number) {
 }
 
 function shareButton(page: Page) {
-  return page.getByRole('button', { name: 'Compartir' })
+  return page.getByRole('button', { name: 'Share' })
 }
 
 test.describe('Compartir el resultado', () => {
   test('la partida se comparte con la hoja del sistema', async ({ page }) => {
     await installShareSheet(page)
     await openGame(page)
-    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 5, difficulty: 'Easy' })
     await waitForGameOver(page)
 
     await shareButton(page).click()
@@ -106,13 +106,13 @@ test.describe('Compartir el resultado', () => {
     const text = shared.text ?? ''
     // Lo que hace presentable al texto: de qué iba la partida, qué se sacó y
     // dónde se juega. Sin el enlace, quien lo lea no puede intentarlo.
-    expect(text).toContain('Stick Rush — Práctica en Fácil')
+    expect(text).toContain('Stick Rush — Practice on Easy')
     expect(text).toMatch(/\d+ puntos · \d+ de 5 palos/)
     expect(text).toContain(new URL(page.url()).origin)
     // Y no se habla de vidas donde no las hay.
     expect(text).not.toMatch(/vida/i)
 
-    await expect(page.getByText('¡Compartido!')).toBeVisible()
+    await expect(page.getByText('Shared!')).toBeVisible()
   })
 
   test('el desafío comparte las vidas con las que se acabó', async ({
@@ -124,8 +124,8 @@ test.describe('Compartir el resultado', () => {
     // que es el final que hay que poder contar.
     await startGame(page, {
       sticks: 5,
-      difficulty: 'Imposible',
-      mode: 'Desafío',
+      difficulty: 'Impossible',
+      mode: 'Challenge',
     })
     await waitForGameOver(page)
 
@@ -133,7 +133,7 @@ test.describe('Compartir el resultado', () => {
     await waitForShareAttempts(page, 1)
 
     const [shared] = await sharedPayloads(page)
-    expect(shared.text).toContain('Stick Rush — Desafío en Imposible')
+    expect(shared.text).toContain('Stick Rush — Challenge on Impossible')
     expect(shared.text).toContain('0 de 3 vidas')
   })
 
@@ -144,16 +144,16 @@ test.describe('Compartir el resultado', () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await removeShareSheet(page)
     await openGame(page)
-    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 5, difficulty: 'Easy' })
     await waitForGameOver(page)
 
     await shareButton(page).click()
 
     await expect(
-      page.getByText('Resultado copiado al portapapeles.'),
+      page.getByText('Result copied to the clipboard.'),
     ).toBeVisible()
     const copied = await page.evaluate(() => navigator.clipboard.readText())
-    expect(copied).toContain('Stick Rush — Práctica en Fácil')
+    expect(copied).toContain('Stick Rush — Practice on Easy')
     expect(copied).toContain(new URL(page.url()).origin)
   })
 
@@ -164,7 +164,7 @@ test.describe('Compartir el resultado', () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await installShareSheet(page, { cancel: true })
     await openGame(page)
-    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 5, difficulty: 'Easy' })
     await waitForGameOver(page)
     // Algo en el portapapeles de antes: si el juego copiara a escondidas, se
     // notaría porque esto habría desaparecido.
@@ -176,7 +176,7 @@ test.describe('Compartir el resultado', () => {
 
     const dialog = page.getByRole('dialog')
     await expect(dialog).not.toContainText('copiado')
-    await expect(dialog).not.toContainText('¡Compartido!')
+    await expect(dialog).not.toContainText('Shared!')
     await expect(dialog).not.toContainText('no deja compartir')
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
       'nada que ver',
@@ -189,7 +189,7 @@ test.describe('Compartir el resultado', () => {
     await removeShareSheet(page)
     await breakClipboard(page)
     await openGame(page)
-    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 5, difficulty: 'Easy' })
     await waitForGameOver(page)
 
     await shareButton(page).click()
@@ -207,19 +207,19 @@ test.describe('Compartir el resultado', () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await removeShareSheet(page)
     await openGame(page)
-    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 5, difficulty: 'Easy' })
     await waitForGameOver(page)
     await shareButton(page).click()
     await expect(
-      page.getByText('Resultado copiado al portapapeles.'),
+      page.getByText('Result copied to the clipboard.'),
     ).toBeVisible()
 
-    await page.getByRole('button', { name: 'Volver al menú' }).click()
-    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await page.getByRole('button', { name: 'Back to the menu' }).click()
+    await startGame(page, { sticks: 5, difficulty: 'Easy' })
     await waitForGameOver(page)
 
     await expect(
-      page.getByText('Resultado copiado al portapapeles.'),
+      page.getByText('Result copied to the clipboard.'),
     ).toBeHidden()
   })
 })

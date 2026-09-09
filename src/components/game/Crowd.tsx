@@ -35,7 +35,7 @@ function silhouette(): BufferGeometry {
   const merged = mergeGeometries([body, head], false)
   body.dispose()
   head.dispose()
-  if (merged == null) throw new Error('No se pudo fundir la silueta del público')
+  if (merged == null) throw new Error('The crowd silhouette could not be merged')
   return merged
 }
 

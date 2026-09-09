@@ -62,7 +62,7 @@ test.describe('Sonido', () => {
     await openGame(page)
 
     // `startGame` pulsa "Jugar" y espera a que se agote la cuenta atrás.
-    await startGame(page, { sticks: 13, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 13, difficulty: 'Easy' })
 
     const afterCountdown = await readSpy(page)
     expect(afterCountdown.contexts).toBe(1)
@@ -88,8 +88,7 @@ test.describe('Sonido', () => {
     await installAudioSpy(page)
     await openGame(page)
 
-    await page.getByRole('button', { name: 'Silenciar' }).click()
-    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 5, difficulty: 'Easy' })
     await catchStick(page)
 
     expect(await readSpy(page)).toEqual({ contexts: 0, oscillators: 0 })
@@ -108,27 +107,23 @@ test.describe('Sonido', () => {
     page.on('pageerror', (error) => errors.push(error.message))
 
     await installAudioSpy(page)
+    await page.addInitScript(() => {
+      window.localStorage.setItem('xrcade:volume:sfx', '0')
+    })
     await openGame(page)
-    await page.getByRole('button', { name: 'Silenciar' }).click()
 
-    await openGame(page)
-
-    await expect(page.getByRole('button', { name: 'Silenciar' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
-    // Y calla de verdad, no solo en el botón.
-    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    // Calla de verdad, no solo en el ajuste.
+    await startGame(page, { sticks: 5, difficulty: 'Easy' })
     await catchStick(page)
     expect(await readSpy(page)).toEqual({ contexts: 0, oscillators: 0 })
 
     expect(errors).toEqual([])
   })
 
-  test('sin poder guardar nada, silenciar funciona igual', async ({ page }) => {
+  test('sin poder leer el almacenamiento se juega con sonido, no en silencio', async ({ page }) => {
     // Modo privado y visores con el almacenamiento vetado: `localStorage`
-    // existe pero lanza al tocarlo. Ahí se pierde el recuerdo entre visitas,
-    // no el botón: silenciar es una función del juego, no un adorno.
+    // existe pero lanza al tocarlo. Ahí no hay de dónde sacar los ajustes del
+    // arcade, y lo que no puede pasar es que el juego se quede mudo por eso.
     await page.addInitScript(() => {
       Object.defineProperty(window, 'localStorage', {
         configurable: true,
@@ -140,31 +135,35 @@ test.describe('Sonido', () => {
     await installAudioSpy(page)
     await openGame(page)
 
-    const toggle = page.getByRole('button', { name: 'Silenciar' })
-    await toggle.click()
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
-
-    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 5, difficulty: 'Easy' })
     await catchStick(page)
 
-    expect(await readSpy(page)).toEqual({ contexts: 0, oscillators: 0 })
+    const spy = await readSpy(page)
+    expect(spy.contexts).toBe(1)
+    expect(spy.oscillators).toBeGreaterThan(0)
   })
 
   test('quitar el silencio devuelve el sonido sin recargar', async ({ page }) => {
-    // El fallo caro de un interruptor de sonido: que volver a activarlo deje el
-    // juego mudo el resto de la sesión porque el contexto nace ya suspendido.
+    // El fallo caro de devolver el sonido: que el juego quede mudo el resto de
+    // la sesión porque el contexto nace ya suspendido.
     // El unitario corre contra un contexto de mentira, así que esta —contra la
     // política de reproducción de un navegador de verdad— es la comprobación
     // que cuenta.
     await installAudioSpy(page)
     await openGame(page)
 
-    const toggle = page.getByRole('button', { name: 'Silenciar' })
-    await toggle.click()
-    await toggle.click()
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    // Se entra callado y se devuelve el sonido sin recargar, que es lo que
+    // pasa al tocar el volumen en el menú del arcade con el juego montado.
+    await page.evaluate(() => {
+      window.localStorage.setItem('xrcade:volume:sfx', '0')
+      window.dispatchEvent(new Event('xrcade:ajustes'))
+    })
+    await page.evaluate(() => {
+      window.localStorage.removeItem('xrcade:volume:sfx')
+      window.dispatchEvent(new Event('xrcade:ajustes'))
+    })
 
-    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 5, difficulty: 'Easy' })
 
     // Uno solo: el clic que silencia no llega a abrirlo, y el que devuelve el
     // sonido es el gesto que el navegador exige.

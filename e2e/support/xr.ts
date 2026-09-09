@@ -45,7 +45,7 @@ export async function installXREmulator(page: Page) {
  * después lo que el test acababa de hacer.
  */
 export async function enterVR(page: Page) {
-  await page.getByRole('button', { name: 'Entrar en el visor' }).click()
+  await page.getByRole('button', { name: 'Enter the headset' }).click()
   await expect
     .poll(() => page.evaluate(() => window.__xrTest.hasSession()), {
       message: 'no arrancó la sesión inmersiva',
@@ -114,7 +114,7 @@ export async function pressAndRelease(
 export async function pressPlayInsideSession(page: Page, attempts = 8) {
   const score = page.getByRole('status')
   for (let attempt = 0; attempt < attempts; attempt++) {
-    await page.getByRole('button', { name: 'Jugar' }).focus()
+    await page.getByRole('button', { name: 'Play' }).focus()
     await page.keyboard.press('Enter')
 
     // No basta con que aparezca el marcador: si la partida arranca en el hueco
@@ -137,7 +137,7 @@ export async function pressPlayInsideSession(page: Page, attempts = 8) {
  * (el 3D hay que apuntarlo con el mando, que el emulador no sabe hacer).
  */
 export function tutorialSkipButton(page: Page) {
-  return page.getByRole('button', { name: 'Saltar tutorial' })
+  return page.getByRole('button', { name: 'Skip tutorial' })
 }
 
 /** Salta el tutorial si el juego lo ha antepuesto (solo la primera vez). */

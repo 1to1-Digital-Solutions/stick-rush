@@ -16,14 +16,17 @@ import { MUSIC_VOLUME, musicUrl } from '../../lib/music'
  * juega toque algo. Así que se prueba al montar —por si se viene de otra
  * pantalla y ya hubo un gesto— y, si no cuela, se espera al primero que llegue.
  *
- * El silencio manda: callar el juego para la música también, y la música solo
- * se apaga a sí misma.
+ * **Cuánto suena lo dicen los ajustes del arcade.** El volumen de ambiente se
+ * elige una vez en xrcade y vale para el salón y para los doce juegos; a cero
+ * ni se descarga el fichero. El volumen de aquí es el de este tema en concreto:
+ * los ajustes dicen cuánto de eso se quiere oír, no lo suben por encima de lo
+ * que es un fondo.
  */
 export function useGameMusic(): void {
-  const { muted, music } = useGame()
+  const { music, ambienceVolume } = useGame()
   const player = useRef<HTMLAudioElement | null>(null)
 
-  const wanted = music && !muted
+  const wanted = music
 
   useEffect(() => {
     // El elemento se crea al pedir música por primera vez, no al montar: quien
@@ -36,7 +39,7 @@ export function useGameMusic(): void {
     const audio = player.current ?? new Audio(musicUrl())
     player.current = audio
     audio.loop = true
-    audio.volume = MUSIC_VOLUME
+    audio.volume = MUSIC_VOLUME * ambienceVolume
 
     /** Intenta sonar. El navegador puede decir que no, y no es un error. */
     const start = () => {
@@ -53,7 +56,7 @@ export function useGameMusic(): void {
     return () => {
       for (const event of events) window.removeEventListener(event, start)
     }
-  }, [wanted])
+  }, [wanted, ambienceVolume])
 
   // Quitar el mundo se lleva la música: dentro del salón se monta y se desmonta
   // a cada visita, y si no, seguiría sonando sobre el juego siguiente.

@@ -13,7 +13,7 @@ test.describe('Captura para el README', () => {
   test('partida en curso con los palos cayendo', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 810 })
     await openGame(page)
-    await startGame(page, { sticks: 11, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 11, difficulty: 'Easy' })
 
     // Un par de palos atrapados para que se vea el marcador en marcha, y una
     // espera para pillar varios ya sueltos a media caída.

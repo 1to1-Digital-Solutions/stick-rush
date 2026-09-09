@@ -23,8 +23,6 @@ import {
   XR_LEVEL_PICKER_SPACING,
   XR_MENU_EXIT_OFFSET,
   XR_MENU_POSITION,
-  XR_MENU_MUSIC_OFFSET,
-  XR_MENU_SOUND_OFFSET,
   XR_MENU_TUTORIAL_OFFSET,
   XR_MODE_TOGGLE_OFFSET,
   XR_SCENERY_PICKER_OFFSET,
@@ -37,15 +35,11 @@ import {
   XRDifficultyBars,
   XRExitIcon,
   XRHeartIcon,
-  XRMusicIcon,
-  XRMusicOffIcon,
-  XRMutedIcon,
   XRPanel,
   XRPassthroughIcon,
   XRPlayIcon,
   XRPressable,
   XRSceneIcon,
-  XRSoundIcon,
   XRStarsRow,
   XR_STAR_COLOR,
   XR_STAR_SPENT_COLOR,
@@ -443,71 +437,6 @@ function HoopHeightPicker() {
 }
 
 /**
- * Silenciar sin quitarse el visor.
- *
- * El botón enseña cómo suena el juego ahora mismo —altavoz con ondas o
- * tachado— y, apagado, la placa deja de emitir: estado por dibujo y por brillo,
- * nunca solo por color. Es un interruptor y no dos opciones como el escenario
- * porque solo hay dos estados y uno es la ausencia del otro.
- */
-function SoundToggle() {
-  const { muted, setMuted } = useGame()
-  const Icon = muted ? XRMutedIcon : XRSoundIcon
-
-  return (
-    <XRPressable
-      position={XR_MENU_SOUND_OFFSET}
-      onSelect={() => setMuted(!muted)}
-      hitSize={[0.16, 0.13, 0.06]}
-    >
-      <mesh position={[0, 0, -0.008]}>
-        <boxGeometry args={[0.13, 0.1, 0.014]} />
-        <meshStandardMaterial
-          color={muted ? '#1c2634' : '#334155'}
-          emissive="#94a3b8"
-          emissiveIntensity={muted ? 0.04 : 0.32}
-          roughness={0.5}
-        />
-      </mesh>
-      <Icon position={[0, 0, 0.008]} color={muted ? '#94a3b8' : '#ffffff'} />
-    </XRPressable>
-  )
-}
-
-/**
- * Quitar la música de fondo.
- *
- * Va aparte del silencio a propósito: son dos decisiones distintas —hay quien
- * quiere oír los palos y no la feria, y quien pone el juego de fondo y prefiere
- * lo contrario—, y con el juego callado no suena ninguna de las dos. El botón
- * enseña una nota o una nota tachada y, apagado, la placa deja de emitir:
- * estado por dibujo y por brillo, nunca solo por color.
- */
-function MusicToggle() {
-  const { music, setMusic } = useGame()
-  const Icon = music ? XRMusicIcon : XRMusicOffIcon
-
-  return (
-    <XRPressable
-      position={XR_MENU_MUSIC_OFFSET}
-      onSelect={() => setMusic(!music)}
-      hitSize={[0.16, 0.13, 0.06]}
-    >
-      <mesh position={[0, 0, -0.008]}>
-        <boxGeometry args={[0.13, 0.1, 0.014]} />
-        <meshStandardMaterial
-          color={music ? '#334155' : '#1c2634'}
-          emissive="#94a3b8"
-          emissiveIntensity={music ? 0.32 : 0.04}
-          roughness={0.5}
-        />
-      </mesh>
-      <Icon position={[0, 0, 0.008]} color={music ? '#ffffff' : '#94a3b8'} />
-    </XRPressable>
-  )
-}
-
-/**
  * Volver a ver la demostración de cómo se juega.
  *
  * El tutorial se interpone una sola vez, así que quien lo saltó —o quien vuelve
@@ -559,7 +488,6 @@ export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
       <XRPanel width={1.06} height={0.82} color={PANEL_COLOR} />
       <HoopHeightPicker />
       <TutorialButton />
-      <MusicToggle />
       {/* En Niveles los palos y la velocidad los dice el nivel: la fila de
           palos se cambia por la escalera y las fichas se quedan de muestra. */}
       {levels ? <LevelPicker /> : <StickPicker />}
@@ -610,7 +538,6 @@ export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
         <XRExitIcon position={[0, 0, 0.008]} />
       </XRPressable>
 
-      <SoundToggle />
     </group>
   )
 }

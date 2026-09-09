@@ -30,9 +30,9 @@ export async function openGame(page: Page, path = '/') {
 
 /**
  * Botón de un modo en el menú. Su nombre accesible arrastra la línea de ayuda
- * ("Desafío Tres vidas: …"), así que se busca por cómo empieza.
+ * ("Challenge Three lives: …"), así que se busca por cómo empieza.
  */
-export type ModeName = 'Práctica' | 'Niveles' | 'Desafío'
+export type ModeName = 'Practice' | 'Levels' | 'Challenge'
 
 export function modeButton(page: Page, mode: ModeName) {
   return page.getByRole('button', { name: new RegExp(`^${mode}`) })
@@ -55,20 +55,20 @@ export async function startGame(
   }: { sticks: number; difficulty?: string; mode?: ModeName; endless?: boolean },
 ) {
   if (mode) await modeButton(page, mode).click()
-  if (mode !== 'Niveles') {
+  if (mode !== 'Levels') {
     await page.getByRole('button', { name: String(sticks), exact: true }).click()
     if (difficulty) {
       await page.getByRole('button', { name: difficulty, exact: true }).click()
     }
-    if (endless) await page.getByRole('button', { name: /^Sin fin/ }).click()
+    if (endless) await page.getByRole('button', { name: /^Endless/ }).click()
   }
-  await page.getByRole('button', { name: 'Jugar' }).click()
+  await page.getByRole('button', { name: 'Play' }).click()
 
   await expect(page.getByRole('status')).toHaveAttribute(
     'aria-label',
     endless
-      ? /Atrapados 0, sin fin, tanda 1$/
-      : new RegExp(`Atrapados 0 de ${sticks}$`),
+      ? /Caught 0, endless, set 1$/
+      : new RegExp(`Caught 0 of ${sticks}$`),
   )
   // La partida no empieza al pulsar, sino cuando se agota la cuenta atrás.
   // Devolver antes dejaría a los tests intentando atrapar palos que todavía
@@ -79,7 +79,7 @@ export async function startGame(
 /** Palos atrapados según el marcador. */
 export async function readScore(page: Page): Promise<number> {
   const label = await page.getByRole('status').getAttribute('aria-label')
-  const match = label?.match(/Atrapados (\d+)(?: de (\d+)|, sin fin)/)
+  const match = label?.match(/Caught (\d+)(?: of (\d+)|, endless)/)
   if (!match) throw new Error(`Marcador ilegible: ${label}`)
   return Number(match[1])
 }
@@ -91,7 +91,7 @@ export async function readScore(page: Page): Promise<number> {
  */
 export async function readLives(page: Page): Promise<number | null> {
   const label = await page.getByRole('status').getAttribute('aria-label')
-  const match = label?.match(/Vidas (\d+) de (\d+)/)
+  const match = label?.match(/Lives (\d+) of (\d+)/)
   return match ? Number(match[1]) : null
 }
 

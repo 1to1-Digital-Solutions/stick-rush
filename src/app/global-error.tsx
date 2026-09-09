@@ -13,7 +13,7 @@ export default function GlobalError({
   reset: () => void
 }) {
   return (
-    <html lang="es">
+    <html lang="en">
       <body
         style={{
           margin: 0,
@@ -30,10 +30,10 @@ export default function GlobalError({
       >
         <div style={{ maxWidth: 360 }}>
           <h1 style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>
-            Algo ha fallado
+            Something went wrong
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '1.5rem' }}>
-            Ha ocurrido un error inesperado. Inténtalo de nuevo.
+            Something unexpected happened. Try again.
           </p>
           {error.digest && (
             <p
@@ -43,7 +43,7 @@ export default function GlobalError({
                 marginBottom: '1.5rem',
               }}
             >
-              Código: {error.digest}
+              Code: {error.digest}
             </p>
           )}
           <button
@@ -60,7 +60,7 @@ export default function GlobalError({
                 'linear-gradient(180deg, #fbbf24 0%, #d97706 55%, #b45309 100%)',
             }}
           >
-            Reintentar
+            Try again
           </button>
         </div>
       </body>

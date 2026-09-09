@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Righteous, Poppins } from 'next/font/google'
 import './globals.css'
+import { idiomaDeLaPeticion } from '../lib/idioma-servidor'
 
 const righteous = Righteous({
   variable: '--font-heading',
@@ -17,7 +18,7 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: 'Stick Rush',
   description:
-    'Atrapa los palos que caen de la máquina antes de que toquen el suelo. Juega en navegador o en realidad mixta (VR/AR).',
+    'Catch the sticks falling from the machine before they hit the ground. Play in the browser or in mixed reality (VR/AR).',
 }
 
 export const viewport: Viewport = {
@@ -28,13 +29,18 @@ export const viewport: Viewport = {
   // quien necesita ampliar para leer el menú.
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // El idioma sale de la cookie que pone el menú del arcade: el `lang` del
+  // documento es lo que usan los lectores de pantalla para elegir voz, así
+  // que tiene que decir en qué idioma está lo que hay dentro.
+  const lang = await idiomaDeLaPeticion()
+
   return (
-    <html lang="es" className={`${righteous.variable} ${poppins.variable}`}>
+    <html lang={lang} className={`${righteous.variable} ${poppins.variable}`}>
       <body>{children}</body>
     </html>
   )

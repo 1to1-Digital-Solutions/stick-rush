@@ -77,13 +77,13 @@ test.describe('Menú de inicio', () => {
   test('presenta el juego sobre la escena 3D ya montada', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
     await expect(
-      page.getByText('Atrapa los palos antes de que toquen el suelo.'),
+      page.getByText('Catch the sticks before they hit the ground.'),
     ).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Jugar' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Play' })).toBeVisible()
   })
 
   test('ofrece de 5 a 13 palos, con 5 preseleccionado', async ({ page }) => {
-    const section = page.getByRole('region', { name: 'Número de palos' })
+    const section = page.getByRole('region', { name: 'Number of sticks' })
     const options = section.getByRole('button')
     await expect(options).toHaveCount(9)
     await expect(options.first()).toHaveText('5')
@@ -107,41 +107,30 @@ test.describe('Menú de inicio', () => {
   test('ofrece las cinco dificultades, con Fácil preseleccionada', async ({
     page,
   }) => {
-    const section = page.getByRole('region', { name: 'Dificultad' })
+    const section = page.getByRole('region', { name: 'Difficulty' })
     await expect(section.getByRole('button')).toHaveCount(5)
     await expect(section.getByRole('button')).toHaveText([
-      'Fácil',
-      'Medio',
-      'Difícil',
-      'Experto',
-      'Imposible',
+      'Easy',
+      'Medium',
+      'Hard',
+      'Expert',
+      'Impossible',
     ])
-    await expect(section.getByRole('button', { name: 'Fácil' })).toHaveAttribute(
+    await expect(section.getByRole('button', { name: 'Easy' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
   })
 
   test('solo hay una dificultad activa a la vez', async ({ page }) => {
-    await page.getByRole('button', { name: 'Difícil', exact: true }).click()
+    await page.getByRole('button', { name: 'Hard', exact: true }).click()
 
     await expect(
-      page.getByRole('button', { name: 'Difícil', exact: true }),
+      page.getByRole('button', { name: 'Hard', exact: true }),
     ).toHaveAttribute('aria-pressed', 'true')
     await expect(
-      page.getByRole('button', { name: 'Fácil', exact: true }),
+      page.getByRole('button', { name: 'Easy', exact: true }),
     ).toHaveAttribute('aria-pressed', 'false')
-  })
-
-  test('deja silenciar el juego, con el estado a la vista', async ({ page }) => {
-    const toggle = page.getByRole('button', { name: 'Silenciar' })
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
-
-    await toggle.click()
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
-
-    await toggle.click()
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
   })
 
   test('los palos colgados se mecen, así que la máquina no parece congelada', async ({
@@ -168,7 +157,7 @@ test.describe('Menú de inicio', () => {
   test('esconde la entrada al visor en un navegador sin WebXR', async ({
     page,
   }) => {
-    await expect(page.getByRole('button', { name: /Entrar en/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Enter/ })).toHaveCount(0)
   })
 
   test('no pide nada a dominios externos', async ({ page }) => {
@@ -182,7 +171,7 @@ test.describe('Menú de inicio', () => {
 
     await page.reload()
     await openGame(page)
-    await page.getByRole('button', { name: 'Jugar' }).click()
+    await page.getByRole('button', { name: 'Play' }).click()
     await expect(page.getByRole('status')).toBeVisible()
 
     expect(external).toEqual([])
@@ -190,7 +179,7 @@ test.describe('Menú de inicio', () => {
 
   test('la ruta /game abre la misma escena', async ({ page }) => {
     await openGame(page, '/game')
-    await expect(page.getByRole('button', { name: 'Jugar' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Play' })).toBeVisible()
   })
 
   test('se puede recorrer y jugar solo con el teclado', async ({ page }) => {
@@ -198,7 +187,7 @@ test.describe('Menú de inicio', () => {
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: '6', exact: true })).toBeFocused()
 
-    await page.getByRole('button', { name: 'Jugar' }).focus()
+    await page.getByRole('button', { name: 'Play' }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('status')).toBeVisible()
   })

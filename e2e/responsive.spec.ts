@@ -44,7 +44,7 @@ test.describe('En móvil', () => {
   })
 
   test('se puede jugar tocando la pantalla', async ({ page }) => {
-    await startGame(page, { sticks: 5, difficulty: 'Imposible' })
+    await startGame(page, { sticks: 5, difficulty: 'Impossible' })
     await expect(page.locator('canvas')).toBeVisible()
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 60_000 })
   })

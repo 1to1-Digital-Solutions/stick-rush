@@ -24,35 +24,35 @@ test.describe('Modo de juego', () => {
   })
 
   test('el menú ofrece los tres modos, con Práctica puesta', async ({ page }) => {
-    const section = page.getByRole('region', { name: 'Modo' })
+    const section = page.getByRole('region', { name: 'Mode' })
     await expect(section.getByRole('button')).toHaveCount(3)
-    await expect(modeButton(page, 'Práctica')).toHaveAttribute(
+    await expect(modeButton(page, 'Practice')).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    await expect(modeButton(page, 'Desafío')).toHaveAttribute(
+    await expect(modeButton(page, 'Challenge')).toHaveAttribute(
       'aria-pressed',
       'false',
     )
     // Lo que pone en juego cada uno se lee sin entrar a la partida.
-    await expect(section).toContainText('Tres vidas')
+    await expect(section).toContainText('Three lives')
   })
 
   test('elegir desafío deja la selección a la vista', async ({ page }) => {
-    await modeButton(page, 'Desafío').click()
+    await modeButton(page, 'Challenge').click()
 
-    await expect(modeButton(page, 'Desafío')).toHaveAttribute(
+    await expect(modeButton(page, 'Challenge')).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    await expect(modeButton(page, 'Práctica')).toHaveAttribute(
+    await expect(modeButton(page, 'Practice')).toHaveAttribute(
       'aria-pressed',
       'false',
     )
   })
 
   test('en práctica el marcador no habla de vidas', async ({ page }) => {
-    await startGame(page, { sticks: 5, difficulty: 'Fácil', mode: 'Práctica' })
+    await startGame(page, { sticks: 5, difficulty: 'Easy', mode: 'Practice' })
 
     expect(await readLives(page)).toBeNull()
   })
@@ -60,7 +60,7 @@ test.describe('Modo de juego', () => {
   test('en desafío el marcador enseña las vidas y bajan al escaparse un palo', async ({
     page,
   }) => {
-    await startGame(page, { sticks: 5, difficulty: 'Imposible', mode: 'Desafío' })
+    await startGame(page, { sticks: 5, difficulty: 'Impossible', mode: 'Challenge' })
 
     expect(await readLives(page)).toBe(3)
     // Sin tocar nada, el primer palo se estrella y se lleva una vida.
@@ -74,23 +74,23 @@ test.describe('Modo de juego', () => {
     // caigan los trece palos y en desafío se cierra con el tercer fallo. Se
     // comparan los tiempos entre sí, y no contra un número de segundos, porque
     // una máquina cargada estira las dos por igual.
-    const options = { sticks: 13, difficulty: 'Imposible' } as const
+    const options = { sticks: 13, difficulty: 'Impossible' } as const
 
-    await startGame(page, { ...options, mode: 'Desafío' })
+    await startGame(page, { ...options, mode: 'Challenge' })
     const challengeStart = Date.now()
     await waitForGameOver(page)
     const challengeMs = Date.now() - challengeStart
 
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('Te has quedado sin vidas')
-    await page.getByRole('button', { name: 'Volver al menú' }).click()
+    await expect(dialog).toContainText('You are out of lives')
+    await page.getByRole('button', { name: 'Back to the menu' }).click()
 
-    await startGame(page, { ...options, mode: 'Práctica' })
+    await startGame(page, { ...options, mode: 'Practice' })
     const practiceStart = Date.now()
     await waitForGameOver(page)
     const practiceMs = Date.now() - practiceStart
 
-    await expect(dialog).toContainText('¡Partida terminada!')
+    await expect(dialog).toContainText('Game over!')
     // Tres palos de trece: el desafío no llega ni a la mitad de lo que dura
     // vaciar el aro entero. Si algún día dejara de cortarse, aquí se ve.
     expect(challengeMs).toBeLessThan(practiceMs * 0.6)
@@ -100,15 +100,15 @@ test.describe('Modo de juego', () => {
     page,
   }) => {
     // Son los dos datos que resumen un desafío, y los que luego se comparten.
-    await startGame(page, { sticks: 5, difficulty: 'Imposible', mode: 'Desafío' })
+    await startGame(page, { sticks: 5, difficulty: 'Impossible', mode: 'Challenge' })
     await waitForGameOver(page)
 
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('Te has quedado sin vidas')
-    await expect(dialog).toContainText('Vidas')
+    await expect(dialog).toContainText('You are out of lives')
+    await expect(dialog).toContainText('Lives')
     await expect(dialog).toContainText('0 / 3')
     await expect(dialog).toContainText('posibles')
-    await expect(dialog).toContainText('Imposible')
+    await expect(dialog).toContainText('Impossible')
   })
 
   test('vaciar el aro con vidas de sobra es superar el reto', async ({
@@ -117,7 +117,7 @@ test.describe('Modo de juego', () => {
     // La otra mitad del modo: un desafío no solo se pierde. Con la caída más
     // lenta y cinco palos —que cuelgan atrapables desde el primer segundo— da
     // tiempo a vaciar el aro, y ahí el final es otro y las vidas sobreviven.
-    await startGame(page, { sticks: 5, difficulty: 'Fácil', mode: 'Desafío' })
+    await startGame(page, { sticks: 5, difficulty: 'Easy', mode: 'Challenge' })
 
     const dialog = page.getByRole('dialog')
     // Se atrapa hasta que la partida se cierra sola: si algún palo se escapa
@@ -128,19 +128,19 @@ test.describe('Modo de juego', () => {
     }
 
     await expect(dialog).toBeVisible()
-    await expect(dialog).toContainText('¡Reto superado!')
+    await expect(dialog).toContainText('Challenge cleared!')
     // Sobrevivir con vidas es el resultado, no cuántas exactamente: un palo
     // perdido por el camino no cambia el desenlace.
     await expect(dialog).toContainText(/[1-3] \/ 3/)
   })
 
   test('el modo elegido sigue puesto al volver al menú', async ({ page }) => {
-    await startGame(page, { sticks: 5, difficulty: 'Imposible', mode: 'Desafío' })
+    await startGame(page, { sticks: 5, difficulty: 'Impossible', mode: 'Challenge' })
     await waitForGameOver(page)
 
-    await page.getByRole('button', { name: 'Volver al menú' }).click()
+    await page.getByRole('button', { name: 'Back to the menu' }).click()
 
-    await expect(modeButton(page, 'Desafío')).toHaveAttribute(
+    await expect(modeButton(page, 'Challenge')).toHaveAttribute(
       'aria-pressed',
       'true',
     )
@@ -158,12 +158,12 @@ test.describe('Modo de juego', () => {
     )
     await openGame(page)
 
-    await expect(page.getByText(/^Mejor puntuación/)).toContainText('Práctica')
-    await expect(page.getByText(/^Mejor puntuación/)).toContainText('99.999')
+    await expect(page.getByText(/^Best score/)).toContainText('Practice')
+    await expect(page.getByText(/^Best score/)).toContainText('99.999')
 
-    await modeButton(page, 'Desafío').click()
+    await modeButton(page, 'Challenge').click()
 
     // El desafío empieza sin marca propia, y la de práctica no se le presta.
-    await expect(page.getByText(/^Mejor puntuación/)).toHaveCount(0)
+    await expect(page.getByText(/^Best score/)).toHaveCount(0)
   })
 })

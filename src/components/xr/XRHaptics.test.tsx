@@ -8,6 +8,8 @@ import {
 } from '../../lib/gameStore'
 import { MISS_PULSE } from '../../lib/haptics'
 import { XRHaptics } from './XRHaptics'
+import { DEFAULT_VOLUMES } from '../../lib/ajustes'
+import { setVolume } from '../../lib/ajustesCliente'
 
 // La sesión de WebXR no existe fuera del visor, así que se sustituye por los
 // mandos que se quieran tener en la mano. Lo que se comprueba aquí es el
@@ -29,6 +31,12 @@ beforeEach(() => {
   // El silencio se recuerda entre visitas y jsdom comparte `localStorage`: sin
   // vaciarlo, el test que silencia dejaría mudo al siguiente.
   localStorage.clear()
+  // Los volúmenes salen de los ajustes del arcade, que cachean lo leído para
+  // que `useSyncExternalStore` no repinte sin parar: vaciar `localStorage` a
+  // secas dejaría el caché con el valor de la prueba anterior. Se restablecen
+  // por la API, que es la que lo invalida.
+  setVolume('sfx', DEFAULT_VOLUMES.sfx)
+  setVolume('ambience', DEFAULT_VOLUMES.ambience)
   motors = [vi.fn(() => Promise.resolve(true)), vi.fn(() => Promise.resolve(true))]
   session.current = {
     inputSources: motors.map((pulse) => ({
@@ -129,7 +137,7 @@ describe('vibración del palo perdido', () => {
     // silenciar apagara también los mandos, quien juega en silencio se quedaría
     // sin ninguna señal del palo que se le escapa mientras mira otro.
     const store = renderGame()
-    act(() => store.current.setMuted(true))
+    act(() => setVolume('sfx', 0))
     startPlaying(store)
 
     act(() => store.current.missStick())

@@ -7,6 +7,8 @@ import {
   useGameStoreValue,
 } from '../../lib/gameStore'
 import { useGameSound } from './useGameSound'
+import { DEFAULT_VOLUMES } from '../../lib/ajustes'
+import { setVolume } from '../../lib/ajustesCliente'
 
 // El motor de verdad se prueba en `sound.test.ts` contra un contexto de
 // mentira; aquí lo que se comprueba es el cableado: qué sonido pide el juego
@@ -35,6 +37,12 @@ beforeEach(() => {
   // El silencio se recuerda entre visitas, y jsdom comparte `localStorage`
   // entre tests: sin vaciarlo, el que silencia dejaría mudo al siguiente.
   localStorage.clear()
+  // Los volúmenes salen de los ajustes del arcade, que cachean lo leído para
+  // que `useSyncExternalStore` no repinte sin parar: vaciar `localStorage` a
+  // secas dejaría el caché con el valor de la prueba anterior. Se restablecen
+  // por la API, que es la que lo invalida.
+  setVolume('sfx', DEFAULT_VOLUMES.sfx)
+  setVolume('ambience', DEFAULT_VOLUMES.ambience)
   contexts.length = 0
   play.mockClear()
 })
@@ -69,8 +77,8 @@ function renderGame() {
     return (
       <GameContext.Provider value={value}>
         <Sound />
-        <button type="button" onClick={() => value.setMuted(!value.muted)}>
-          Silenciar
+        <button type="button" onClick={() => setVolume('sfx', value.muted ? DEFAULT_VOLUMES.sfx : 0)}>
+          Mute
         </button>
       </GameContext.Provider>
     )
@@ -86,7 +94,7 @@ function renderGame() {
      * a la vez que la orden de callar.
      */
     clickMute: () => {
-      const button = view.getByRole('button', { name: 'Silenciar' })
+      const button = view.getByRole('button', { name: 'Mute' })
       fireEvent.pointerDown(button)
       fireEvent.pointerUp(button)
       fireEvent.click(button)
@@ -230,7 +238,7 @@ describe('sonido de la partida', () => {
     // juego seguiría pidiendo permiso de reproducción y programando nodos para
     // nada.
     const store = renderGame()
-    act(() => store.current.setMuted(true))
+    act(() => setVolume('sfx', 0))
     interact()
     startPlaying(store)
     act(() => store.current.catchStick(0.5))
@@ -257,7 +265,7 @@ describe('sonido de la partida', () => {
     interact()
     startPlaying(store)
 
-    act(() => store.current.setMuted(true))
+    act(() => setVolume('sfx', 0))
     play.mockClear()
     act(() => store.current.catchStick(0.5))
 
@@ -271,8 +279,8 @@ describe('sonido de la partida', () => {
     const store = renderGame()
     interact()
     startPlaying(store)
-    act(() => store.current.setMuted(true))
-    act(() => store.current.setMuted(false))
+    act(() => setVolume('sfx', 0))
+    act(() => setVolume('sfx', DEFAULT_VOLUMES.sfx))
     play.mockClear()
 
     act(() => store.current.catchStick(0.5))
@@ -284,12 +292,12 @@ describe('sonido de la partida', () => {
     // Cada vuelta abre uno nuevo, y el navegador solo permite unos pocos por
     // pestaña: si el anterior no se cerrara, unas cuantas idas y venidas
     // dejarían el juego mudo hasta recargar la página.
-    const store = renderGame()
+    renderGame()
     interact()
 
     for (let round = 0; round < 3; round++) {
-      act(() => store.current.setMuted(true))
-      act(() => store.current.setMuted(false))
+      act(() => setVolume('sfx', 0))
+      act(() => setVolume('sfx', DEFAULT_VOLUMES.sfx))
     }
 
     expect(contexts).toHaveLength(4)

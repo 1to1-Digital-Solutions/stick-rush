@@ -7,6 +7,8 @@ import {
 } from '../../lib/gameStore'
 import { MUSIC_VOLUME } from '../../lib/music'
 import { useGameMusic } from './useGameMusic'
+import { DEFAULT_VOLUMES, volumeFactor } from '../../lib/ajustes'
+import { setVolume } from '../../lib/ajustesCliente'
 
 /**
  * Lo que se comprueba aquí son las reglas que el hook añade sobre el fichero de
@@ -75,27 +77,30 @@ describe('useGameMusic', () => {
 
     expect(creados).toHaveLength(1)
     expect(creados[0].loop).toBe(true)
-    expect(creados[0].volume).toBe(MUSIC_VOLUME)
+    expect(creados[0].volume).toBeCloseTo(MUSIC_VOLUME * volumeFactor(DEFAULT_VOLUMES.ambience))
     expect(creados[0].play).toHaveBeenCalled()
   })
 
   it('apagarla la para, y volver a encenderla no crea otro reproductor', () => {
-    const game = renderGame()
+    renderGame()
 
-    act(() => game.current.setMusic(false))
+    act(() => setVolume('ambience', 0))
     expect(creados[0].pause).toHaveBeenCalled()
 
-    act(() => game.current.setMusic(true))
+    act(() => setVolume('ambience', DEFAULT_VOLUMES.ambience))
     expect(creados).toHaveLength(1)
     expect(creados[0].play).toHaveBeenCalledTimes(2)
   })
 
-  it('el silencio del juego la calla aunque esté encendida', () => {
-    const game = renderGame()
+  it('quitar los efectos no la calla: son dos canales aparte', () => {
+    // Antes el silencio mandaba sobre todo. Ahora los ajustes del arcade
+    // separan «sonidos interactivos» de «sonidos ambientales» a propósito: hay
+    // quien quiere oír la feria y no los palos, y quien prefiere lo contrario.
+    renderGame()
 
-    act(() => game.current.setMuted(true))
+    act(() => setVolume('sfx', 0))
 
-    expect(creados[0].pause).toHaveBeenCalled()
+    expect(creados[0].pause).not.toHaveBeenCalled()
   })
 
   it('quitar el mundo se lleva la música', () => {

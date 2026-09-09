@@ -20,23 +20,23 @@ test.describe('Partida', () => {
   test('al jugar, el menú deja paso al marcador sobre la escena', async ({
     page,
   }) => {
-    await startGame(page, { sticks: 5, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 5, difficulty: 'Easy' })
 
     await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeHidden()
     await expect(page.locator('canvas')).toBeVisible()
     await expect(page.getByRole('status')).toHaveAttribute(
       'aria-label',
-      /Atrapados 0 de 5$/,
+      /Caught 0 of 5$/,
     )
-    await expect(page.getByText('Fácil', { exact: true })).toBeVisible()
+    await expect(page.getByText('Easy', { exact: true })).toBeVisible()
   })
 
   test('la cuenta atrás precede a la partida y no deja atrapar nada', async ({
     page,
   }) => {
     await page.getByRole('button', { name: '13', exact: true }).click()
-    await page.getByRole('button', { name: 'Fácil', exact: true }).click()
-    await page.getByRole('button', { name: 'Jugar' }).click()
+    await page.getByRole('button', { name: 'Easy', exact: true }).click()
+    await page.getByRole('button', { name: 'Play' }).click()
 
     // Mientras cuenta, los palos cuelgan quietos: sin esta guarda se podía
     // vaciar el aro entero a clics antes de que empezara a caer nada.
@@ -57,13 +57,13 @@ test.describe('Partida', () => {
     // deja el ratón sobre un palo mientras cuenta atrás tiene que ver el cursor
     // encenderse solo: nadie mueve el ratón durante la cuenta, y sin eso el
     // navegador no vuelve a avisar de que hay un palo debajo.
-    await startGame(page, { sticks: 13, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 13, difficulty: 'Easy' })
     const hanging = await findHangingStick(page)
 
     await openGame(page)
     await page.getByRole('button', { name: '13', exact: true }).click()
-    await page.getByRole('button', { name: 'Fácil', exact: true }).click()
-    await page.getByRole('button', { name: 'Jugar' }).click()
+    await page.getByRole('button', { name: 'Easy', exact: true }).click()
+    await page.getByRole('button', { name: 'Play' }).click()
 
     await expect(page.getByRole('timer')).toBeVisible()
     // Por pasos, como llega un ratón de verdad: con un solo salto la escena no
@@ -83,7 +83,7 @@ test.describe('Partida', () => {
     // verdad sobre un palo que aún cuelga demuestra que el juego la cumple: si
     // algún día la ventana se cierra a los palos que caen, este test es el que
     // tiene que ponerse rojo, porque el resto se apoya en el palo que pilla.
-    await startGame(page, { sticks: 13, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 13, difficulty: 'Easy' })
 
     await catchHangingStick(page)
 
@@ -92,18 +92,18 @@ test.describe('Partida', () => {
 
   test('atrapar un palo suma en el marcador', async ({ page }) => {
     // Muchos palos y caída lenta: siempre hay alguno colgando o cayendo.
-    await startGame(page, { sticks: 13, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 13, difficulty: 'Easy' })
 
     await catchStick(page)
 
     await expect(page.getByRole('status')).toHaveAttribute(
       'aria-label',
-      /Atrapados 1 de 13$/,
+      /Caught 1 of 13$/,
     )
   })
 
   test('atrapar un palo suma puntos', async ({ page }) => {
-    await startGame(page, { sticks: 13, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 13, difficulty: 'Easy' })
     expect(await readPoints(page)).toBe(0)
 
     await catchStick(page)
@@ -112,9 +112,9 @@ test.describe('Partida', () => {
   })
 
   test('la racha aparece al encadenar y no antes', async ({ page }) => {
-    await startGame(page, { sticks: 13, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 13, difficulty: 'Easy' })
 
-    const streak = page.getByText(/^Racha ×/)
+    const streak = page.getByText(/^Streak ×/)
     await catchStick(page)
     await expect(streak).toHaveCount(0)
 
@@ -123,7 +123,7 @@ test.describe('Partida', () => {
   })
 
   test('un palo solo se puede atrapar una vez', async ({ page }) => {
-    await startGame(page, { sticks: 13, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 13, difficulty: 'Easy' })
 
     const target = await catchStick(page)
     expect(await readScore(page)).toBe(1)
@@ -137,7 +137,7 @@ test.describe('Partida', () => {
   })
 
   test('atrapar varios palos los cuenta uno a uno', async ({ page }) => {
-    await startGame(page, { sticks: 13, difficulty: 'Fácil' })
+    await startGame(page, { sticks: 13, difficulty: 'Easy' })
 
     for (let expected = 1; expected <= 3; expected++) {
       await catchStick(page)
@@ -146,30 +146,30 @@ test.describe('Partida', () => {
   })
 
   test('la partida termina sola cuando caen todos los palos', async ({ page }) => {
-    await startGame(page, { sticks: 5, difficulty: 'Imposible' })
+    await startGame(page, { sticks: 5, difficulty: 'Impossible' })
 
     await waitForGameOver(page)
 
     const dialog = page.getByRole('dialog')
-    await expect(dialog).toContainText('¡Partida terminada!')
-    await expect(dialog).toContainText('Has atrapado')
-    await expect(dialog).toContainText('Imposible')
+    await expect(dialog).toContainText('Game over!')
+    await expect(dialog).toContainText('You caught')
+    await expect(dialog).toContainText('Impossible')
     // El resumen sitúa la puntuación: un número suelto no dice si es buena.
-    await expect(dialog).toContainText('posibles')
-    await expect(dialog).toContainText('Mejor racha')
+    await expect(dialog).toContainText('possible')
+    await expect(dialog).toContainText('Best streak')
   })
 
   test('desde el fin de partida se vuelve al menú con la selección intacta', async ({
     page,
   }) => {
-    await startGame(page, { sticks: 5, difficulty: 'Imposible' })
+    await startGame(page, { sticks: 5, difficulty: 'Impossible' })
     await waitForGameOver(page)
 
-    await page.getByRole('button', { name: 'Volver al menú' }).click()
+    await page.getByRole('button', { name: 'Back to the menu' }).click()
 
     await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
     await expect(
-      page.getByRole('button', { name: 'Imposible', exact: true }),
+      page.getByRole('button', { name: 'Impossible', exact: true }),
     ).toHaveAttribute('aria-pressed', 'true')
     await expect(
       page.getByRole('button', { name: '5', exact: true }),
@@ -177,15 +177,15 @@ test.describe('Partida', () => {
   })
 
   test('se puede jugar otra partida con el marcador a cero', async ({ page }) => {
-    await startGame(page, { sticks: 5, difficulty: 'Imposible' })
+    await startGame(page, { sticks: 5, difficulty: 'Impossible' })
     await waitForGameOver(page)
-    await page.getByRole('button', { name: 'Volver al menú' }).click()
+    await page.getByRole('button', { name: 'Back to the menu' }).click()
 
-    await page.getByRole('button', { name: 'Jugar' }).click()
+    await page.getByRole('button', { name: 'Play' }).click()
 
     await expect(page.getByRole('status')).toHaveAttribute(
       'aria-label',
-      /Atrapados 0 de 5$/,
+      /Caught 0 of 5$/,
     )
     await expect(page.getByRole('dialog')).toBeHidden()
   })
@@ -197,7 +197,7 @@ test.describe('Partida', () => {
     })
     page.on('pageerror', (error) => errors.push(error.message))
 
-    await startGame(page, { sticks: 5, difficulty: 'Imposible' })
+    await startGame(page, { sticks: 5, difficulty: 'Impossible' })
     await waitForGameOver(page)
 
     expect(errors).toEqual([])

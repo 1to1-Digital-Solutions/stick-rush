@@ -62,12 +62,12 @@ export function XRWrapper() {
         }
         className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 bg-[var(--color-muted)] px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
       >
-        Entrar en el visor
+        Enter the headset
       </button>
       <p className="text-xs text-white/40">
         {support.ar
-          ? 'Dentro eliges entre escenario y tu habitación'
-          : 'Tu visor solo admite realidad virtual'}
+          ? 'Inside you choose between the scene and your room'
+          : 'Your headset only supports virtual reality'}
       </p>
     </div>
   )
