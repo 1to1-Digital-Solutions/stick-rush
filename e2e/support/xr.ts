@@ -15,6 +15,9 @@ interface XRTestApi {
   place: (hand: Hand, target: Point) => void
   aim: (hand: Hand, target: Point) => void
   press: (hand: Hand, button: 'squeeze' | 'trigger', value?: number) => void
+  useHands: () => void
+  placeBareHand: (hand: Hand, target: Point) => void
+  pinch: (hand: Hand, pressed: boolean) => void
   endSession: () => Promise<void>
 }
 
@@ -71,6 +74,37 @@ export async function placeHand(page: Page, hand: Hand, target: Point) {
     [hand, target] as const,
   )
   // Un par de frames para que el runtime propague la pose a la escena.
+  await page.waitForTimeout(120)
+}
+
+/**
+ * Deja los mandos y pasa a manos desnudas.
+ *
+ * Es el otro modo de entrada del visor: quien no tiene mandos a mano —o no
+ * puede sostenerlos— juega así. A partir de aquí `moveBareHand` y `pinchHand`
+ * son lo único que mueve al jugador; `placeHand` y `pressAndRelease` mandan
+ * sobre unos mandos que ya están desconectados.
+ */
+export async function useBareHands(page: Page) {
+  await page.evaluate(() => window.__xrTest.useHands())
+  await page.waitForTimeout(200)
+}
+
+/** Lleva una mano desnuda a un punto del mundo. */
+export async function moveBareHand(page: Page, hand: Hand, target: Point) {
+  await page.evaluate(
+    ([h, t]) => window.__xrTest.placeBareHand(h as Hand, t as Point),
+    [hand, target] as const,
+  )
+  await page.waitForTimeout(120)
+}
+
+/** Cierra o abre la mano desnuda sobre lo que tenga delante. */
+export async function pinchHand(page: Page, hand: Hand, pressed: boolean) {
+  await page.evaluate(
+    ([h, p]) => window.__xrTest.pinch(h as Hand, p as boolean),
+    [hand, pressed] as const,
+  )
   await page.waitForTimeout(120)
 }
 

@@ -61,6 +61,44 @@ const api = {
     controllerOf(hand).setButtonValueImmediate(button, value)
   },
 
+  /**
+   * Cambia a manos desnudas: apaga los mandos y enciende las manos.
+   *
+   * Es el otro modo de entrada del visor, y el que deja fuera a quien no tiene
+   * mandos a mano o no puede sostenerlos. IWER las trae con sus articulaciones,
+   * así que lo que se prueba con esto es exactamente lo que hace el juego con
+   * una mano de verdad.
+   */
+  useHands() {
+    for (const mando of [device.controllers.left, device.controllers.right]) {
+      if (mando) mando.connected = false
+    }
+    device.primaryInputMode = 'hand'
+    const { left, right } = device.hands
+    if (left) {
+      left.connected = true
+      left.position.set(-0.25, 1.1, -0.4)
+    }
+    if (right) {
+      right.connected = true
+      right.position.set(0.25, 1.1, -0.4)
+    }
+  },
+
+  /** Lleva una mano desnuda a ese punto del espacio del visor. */
+  placeBareHand(hand: Hand, target: Point) {
+    device.hands[hand]?.position.set(target.x, target.y, target.z)
+  },
+
+  /** Junta o separa el pulgar y el índice: es el «agarrar» de una mano desnuda. */
+  pinch(hand: Hand, pressed: boolean) {
+    const mano = device.hands[hand]
+    if (mano == null) return
+    mano.poseId = pressed ? 'pinch' : 'default'
+    mano.updateHandPose()
+    mano.updatePinchValue(pressed ? 1 : 0)
+  },
+
   /** Estado interno del emulador, para diagnosticar tests que no enganchan. */
   debug() {
     const session = device.activeSession as unknown as

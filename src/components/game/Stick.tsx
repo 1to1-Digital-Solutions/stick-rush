@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Color } from 'three'
+import { Color, Vector3 } from 'three'
 import type { Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, Texture } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 import {
@@ -15,12 +15,20 @@ import {
   stickFallProgress,
 } from '../../lib/gameConfig'
 import { CATCH_PULSE, pulseHaptics } from '../../lib/haptics'
+import { publishStick, stickProbeRequested } from '../../lib/sceneProbe'
 import { SWING_RELEASE_DECAY, hangingSwing } from '../../lib/stickSwing'
 import {
   type StickState,
   canCatchStick,
   canCatchWithPointer,
 } from '../../lib/xrInteraction'
+
+/**
+ * Dónde cae el palo en el mundo, para publicarlo. Se reutiliza entre palos y
+ * fotogramas: uno nuevo por palo y frame serían noventa vectores por segundo
+ * tirados a la basura.
+ */
+const puntoDelPalo = new Vector3()
 
 /**
  * Tipo de puntero que ha disparado el evento, si lo trae. Los eventos de ratón
@@ -33,6 +41,11 @@ function pointerTypeOf(event: unknown): string | undefined {
 }
 
 export interface StickProps {
+  /**
+   * Clave del palo dentro de la partida, para publicar dónde está a quien lo
+   * haya pedido desde fuera del Canvas (ver `@/lib/sceneProbe`).
+   */
+  probeId: string
   /** Punto de anclaje en el aro del que cuelga el palo. */
   anchor: [number, number, number]
   color: string
@@ -71,6 +84,7 @@ export interface StickProps {
 }
 
 export function Stick({
+  probeId,
   anchor,
   color,
   normalMap,
@@ -143,6 +157,10 @@ export function Stick({
   // quedaría en 'pointer'.
   useEffect(() => releaseCursor, [])
 
+  // Y deja de anunciarse al irse: una clave que se queda puesta le dice a quien
+  // mire desde fuera que sigue habiendo un palo ahí, quieto para siempre.
+  useEffect(() => () => publishStick(probeId, null), [probeId])
+
   // El palo perdido se queda en el suelo aunque el aro cambie de altura.
   //
   // El aro se acomoda a quien juega (ver `@/lib/hoopHeight`) y puede subir o
@@ -204,6 +222,22 @@ export function Stick({
     const delta = Math.min(rawDelta, 0.05)
     if (!paused) {
       elapsed.current += delta
+    }
+
+    // Dónde está el palo, para quien mire desde fuera del Canvas. Se publica el
+    // cuerpo y no el grupo: el grupo está en el aro y el cilindro cuelga un
+    // palmo por debajo, que es adonde hay que llevar la mano.
+    if (stickProbeRequested()) {
+      const cuerpo = meshRef.current
+      if (cuerpo != null) {
+        cuerpo.getWorldPosition(puntoDelPalo)
+        publishStick(probeId, {
+          x: puntoDelPalo.x,
+          y: puntoDelPalo.y,
+          z: puntoDelPalo.z,
+          catchable,
+        })
+      }
     }
 
     // Vaivén: el palo colgado se mece; en cuanto se suelta se endereza, porque

@@ -16,7 +16,11 @@ import {
   REFERENCE_EYE_HEIGHT,
 } from './hoopHeight'
 import { XR_ANCHOR_DEADZONE } from './xrAnchor'
-import { canCatchStick, canCatchWithPointer } from './xrInteraction'
+import {
+  canCatchStick,
+  canCatchWithPointer,
+  playingBareHanded,
+} from './xrInteraction'
 import { DIFFICULTY_ORDER, MAX_STICKS } from './gameConfig'
 import {
   XR_COUNTDOWN_POSITION,
@@ -352,5 +356,31 @@ describe('las fichas de dificultad', () => {
     expect([...xs].sort((a, b) => a - b)).toEqual(xs)
     expect((xs[0] + xs[xs.length - 1]) / 2).toBeCloseTo(XR_MENU_POSITION[0], 9)
     for (const [, y] of fichas) expect(y).toBe(fichas[0][1])
+  })
+})
+
+describe('quién está jugando: mandos o manos desnudas', () => {
+  it('solo manos conectadas: se juega con las manos', () => {
+    expect(playingBareHanded(['hand', 'hand'])).toBe(true)
+  })
+
+  it('con un mando conectado manda el mando, aunque haya manos', () => {
+    // El visor anuncia los mandos aunque estén en la mesa, pero también al
+    // revés: quien los tiene en la mano suele tener las dos cosas publicadas.
+    // Lo que se enseña tiene que ser lo que se está sosteniendo.
+    expect(playingBareHanded(['controller', 'hand'])).toBe(false)
+    expect(playingBareHanded(['controller', 'controller'])).toBe(false)
+  })
+
+  it('sin nada conectado todavía se da por hecho el mando', () => {
+    // Es lo que trae la mayoría, y es el estado del primer fotograma de la
+    // sesión: empezar dibujando una mano para cambiarla enseguida sería un
+    // parpadeo delante de la cara.
+    expect(playingBareHanded([])).toBe(false)
+  })
+
+  it('lo que no es ni mando ni mano no cuenta como manos', () => {
+    // La mirada y el toque en pantalla son otros modos de entrada de WebXR.
+    expect(playingBareHanded(['gaze', 'screenInput'])).toBe(false)
   })
 })

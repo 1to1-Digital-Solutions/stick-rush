@@ -36,11 +36,14 @@ import {
  * pero los punteros de @react-three/xr no llegan a emitir eventos sobre los
  * objetos de la escena (comprobado con un barrido de posiciones, con agarre,
  * contacto y rayo, y con los botones escuchando `pointerdown`). Así que el
- * agarre de los palos y los botones del menú 3D **solo se pueden validar en
- * hardware**. Ojo: esto ya no debe usarse como coartada. Durante mucho tiempo
- * tapó un fallo real —los mandos no llegaban a registrarse porque su perfil se
- * descargaba de un CDN que la CSP bloquea—, que sí se podía haber detectado
- * mirando la consola dentro de la sesión. De ahí el test que la vigila.
+ * agarre de los palos **con un mando** y los botones del menú 3D solo se pueden
+ * validar en hardware. Ojo: esto ya no debe usarse como coartada. Durante mucho
+ * tiempo tapó un fallo real —los mandos no llegaban a registrarse porque su
+ * perfil se descargaba de un CDN que la CSP bloquea—, que sí se podía haber
+ * detectado mirando la consola dentro de la sesión. De ahí el test que la
+ * vigila. Y con **las manos desnudas** sí engancha: `manos.spec.ts` atrapa un
+ * palo de verdad, así que la limitación es del modo `controller` del emulador y
+ * no de que el juego no reciba eventos.
  *
  * Lo que sí está cubierto sin navegador, en `src/lib`: qué puntero puede
  * atrapar un palo (`xrInteraction.test.ts`), y que la interfaz quede siempre

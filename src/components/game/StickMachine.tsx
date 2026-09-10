@@ -341,6 +341,7 @@ export function StickMachine() {
       {sticks.map((stick) => (
         <Stick
           key={stick.key}
+          probeId={stick.key}
           anchor={stick.anchor}
           color={STICK_COLOR}
           normalMap={normalMap}

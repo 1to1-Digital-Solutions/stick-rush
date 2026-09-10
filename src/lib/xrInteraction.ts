@@ -52,3 +52,21 @@ export function canCatchStick(state: StickState, paused: boolean) {
   if (paused) return false
   return state === 'hanging' || state === 'falling'
 }
+
+/**
+ * ¿Se está jugando con las manos desnudas?
+ *
+ * Cambia lo que hay que **enseñar**, no lo que hay que hacer: los palos se
+ * cogen igual —el puntero de agarre va con la mano lo mismo que con el mando—,
+ * pero el tutorial dibujaba un mando con su gatillo lateral marcado, y quien
+ * entra con las manos veía un objeto que no tiene y un botón que no puede
+ * apretar.
+ *
+ * Se pide que **haya manos y no haya mandos**, y no solo que haya manos: el
+ * visor puede tener las dos cosas conectadas —los mandos en la mesa siguen
+ * anunciándose— y ahí lo que el jugador tiene en la mano manda. Sin nada
+ * conectado todavía se dibuja el mando, que es lo que trae la mayoría.
+ */
+export function playingBareHanded(inputTypes: readonly string[]): boolean {
+  return inputTypes.includes('hand') && !inputTypes.includes('controller')
+}

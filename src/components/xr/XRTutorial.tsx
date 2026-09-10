@@ -21,6 +21,8 @@ import {
 } from '../../lib/xrLayout'
 import { useReducedMotion } from '../game/useReducedMotion'
 import { ControllerModel } from './XRControllerModel'
+import { HandModel } from './XRHandModel'
+import { useBareHands } from './useBareHands'
 import {
   PANEL_COLOR,
   XRDifficultyBars,
@@ -93,6 +95,7 @@ function GrabDemo({
   elapsed: RefObject<number>
   reducedMotion: boolean
 }) {
+  const bareHanded = useBareHands()
   const stickRef = useRef<Group>(null)
   const stickMaterialRef = useRef<MeshStandardMaterial>(null)
   const flashRef = useRef<Mesh>(null)
@@ -152,16 +155,30 @@ function GrabDemo({
 
   return (
     <group position={[0, -0.02, 0]}>
-      {/* El mando, en tres cuartos para que el gatillo lateral quede de cara.
-          Es el mismo dibujo que el jugador tiene en la mano. */}
-      <group position={[0, -0.11, 0.02]} rotation={[0.25, -0.5, 0]} scale={1.6}>
-        <ControllerModel
-          side={1}
-          highlight
-          pulsing={!reducedMotion}
-          isPressed={() => grabbed.current}
-        />
-      </group>
+      {/* Lo que el jugador tiene de verdad en la mano: su mando, o su propia
+          mano si entró sin ellos. Enseñar un mando a quien juega con las manos
+          es enseñar un botón que no puede apretar. El mando va en tres cuartos
+          para que el gatillo lateral quede de cara; la mano, de frente y más
+          pequeña, porque lo que hay que ver de ella es cómo se cierra. */}
+      {bareHanded ? (
+        <group position={[0, -0.115, 0.02]} rotation={[0.2, -0.2, 0]} scale={1.1}>
+          <HandModel
+            side={1}
+            highlight
+            pulsing={!reducedMotion}
+            isClosed={() => grabbed.current}
+          />
+        </group>
+      ) : (
+        <group position={[0, -0.11, 0.02]} rotation={[0.25, -0.5, 0]} scale={1.6}>
+          <ControllerModel
+            side={1}
+            highlight
+            pulsing={!reducedMotion}
+            isPressed={() => grabbed.current}
+          />
+        </group>
+      )}
 
       {/* El palo que cae hacia la mano. */}
       <group ref={stickRef} position={[0, DEMO_STICK_TOP, 0.04]}>

@@ -35,6 +35,8 @@ import {
   XR_STICK_PICKER_SPACING,
 } from '../../lib/xrLayout'
 import { ControllerModel } from './XRControllerModel'
+import { HandModel } from './XRHandModel'
+import { useBareHands } from './useBareHands'
 import {
   PANEL_COLOR,
   XRArrowIcon,
@@ -446,12 +448,15 @@ function HoopHeightPicker() {
  * Volver a ver la demostración de cómo se juega.
  *
  * El tutorial se interpone una sola vez, así que quien lo saltó —o quien vuelve
- * meses después— necesita una forma de recuperarlo. Lleva el mando en miniatura
- * con su gatillo marcado: es literalmente lo que va a enseñar, y a un metro se
- * reconoce mejor un objeto que un símbolo inventado.
+ * meses después— necesita una forma de recuperarlo. Lleva en miniatura lo que
+ * va a enseñar —el mando con su gatillo marcado, o la mano si se entró sin
+ * mandos—, porque a un metro se reconoce mejor un objeto que un símbolo
+ * inventado, y porque prometer un mando a quien juega con las manos es prometer
+ * otra demostración.
  */
 function TutorialButton() {
   const { startGame } = useGame()
+  const bareHanded = useBareHands()
 
   return (
     <XRPressable
@@ -470,9 +475,15 @@ function TutorialButton() {
       </mesh>
       {/* Quieto y sin latido: en el menú el latido competiría con el botón de
           empezar, que es a donde va casi todo el mundo. */}
-      <group position={[0, 0.012, 0.02]} rotation={[0.25, -0.5, 0]} scale={0.5}>
-        <ControllerModel side={1} highlight pulsing={false} />
-      </group>
+      {bareHanded ? (
+        <group position={[0, 0.006, 0.02]} rotation={[0.2, -0.2, 0]} scale={0.42}>
+          <HandModel side={1} highlight pulsing={false} />
+        </group>
+      ) : (
+        <group position={[0, 0.012, 0.02]} rotation={[0.25, -0.5, 0]} scale={0.5}>
+          <ControllerModel side={1} highlight pulsing={false} />
+        </group>
+      )}
     </XRPressable>
   )
 }
