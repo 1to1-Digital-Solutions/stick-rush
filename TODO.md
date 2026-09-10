@@ -174,3 +174,15 @@
   Es el único repo al día con las versiones del hub (`next`, `react`, `@react-three/drei`,
   `eslint-config-next`, `@playwright/test`), pero su `package.json` sigue declarando las anteriores
   como peer, así que quien lo monte puede acabar con dos copias.
+
+## Del visor — segunda ronda
+
+- [ ] [urgente] El botón de agarrar ha dejado de funcionar: ya no se cogen los palos
+  **Es una regresión**: este juego iba bien y ahora no se puede jugar. Ver
+  `components/xr/XRController.tsx` y el agarre en `lib/`. Comparar con la versión anterior para
+  encontrar qué lo rompió.
+- [ ] [alta] El botón de salir está abajo a la derecha; se quiere arriba a la izquierda
+  No estorba tanto como en otros, pero el sitio bueno es arriba y a la izquierda, fuera del
+  recorrido de los palos.
+- [ ] [media] Al tutorial le falta texto que acompañe al dibujo
+  Es el único de los trece que se entiende, pero con una frase por tramo se entendería del todo.

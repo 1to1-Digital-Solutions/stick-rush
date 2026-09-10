@@ -409,6 +409,16 @@ function TutorialPanel() {
   )
 }
 
+/** Lo que hay que hacer en cada tramo, dicho con palabras. */
+const FRASES: Record<TutorialStepKey, string> = {
+  grab: 'Close your hand around the stick: reach it, do not point at it',
+  sticks: 'They fall one at a time, all around you',
+  level: 'Every level they fall faster',
+}
+
+/** Alto de la banda de texto, encima del dibujo. */
+const TEXT_HEIGHT = 0.2
+
 export function XRTutorial() {
   const mode = useXR((state) => state.mode)
   const { gameState } = useGame()
