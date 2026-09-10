@@ -167,7 +167,7 @@
 
 ## Revisión de mejoras
 
-- [ ] Terminar la partida no suena
+- [x] Terminar la partida no suena
   Tiene `countdown` y `go`, que son justo lo que les falta a los demás, pero el cierre —estrellas,
   nivel desbloqueado, récord— lo pinta el HUD en silencio.
 - [ ] Los `peerDependencies` prometen versiones más viejas de las que usa
