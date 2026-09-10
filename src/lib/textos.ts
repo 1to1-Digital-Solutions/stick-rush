@@ -24,6 +24,10 @@
 import type { Lang } from './ajustes'
 
 const ES = {
+  // Lo que dice la pestaña y lo que se lee al compartir el enlace
+  'Catch the sticks falling from the machine before they hit the ground. Play in the browser or in mixed reality (VR/AR).':
+    'Atrapa los palos que caen de la máquina antes de que toquen el suelo. Juega en el navegador o en realidad mixta (VR/AR).',
+
   // Menú
   'Catch the sticks before they hit the ground.': 'Atrapa los palos antes de que toquen el suelo.',
   Mode: 'Modo',

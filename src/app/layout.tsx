@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Righteous, Poppins } from 'next/font/google'
 import './globals.css'
 import { idiomaDeLaPeticion } from '../lib/idioma-servidor'
+import { traductor } from '../lib/textos'
 
 const righteous = Righteous({
   variable: '--font-heading',
@@ -15,11 +16,21 @@ const poppins = Poppins({
   weight: ['400', '500', '600', '700'],
 })
 
-export const metadata: Metadata = {
-  title: 'Stick Rush',
-  description:
-    'Catch the sticks falling from the machine before they hit the ground. Play in the browser or in mixed reality (VR/AR).',
+/**
+ * Lo que dice la pestaña y lo que se lee al compartir el enlace, en el idioma del arcade.
+ *
+ * Es una función y no una constante porque el idioma llega en la cookie de la petición
+ * (ver `lib/ajustes.ts`), y eso solo se puede leer aquí dentro.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const t = traductor(await idiomaDeLaPeticion())
+
+  return {
+    title: 'Stick Rush',
+    description: t('Catch the sticks falling from the machine before they hit the ground. Play in the browser or in mixed reality (VR/AR).'),
+  }
 }
+
 
 export const viewport: Viewport = {
   themeColor: '#0F172A',
