@@ -1,6 +1,6 @@
 'use client'
 
-import { type RefObject, useRef, useState } from 'react'
+import { type RefObject, useCallback, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useXR } from '@react-three/xr'
 import type { Group, Mesh, MeshBasicMaterial, MeshStandardMaterial } from 'three'
@@ -10,6 +10,9 @@ import {
   STICK_COLOR,
 } from '../../lib/gameConfig'
 import { useGame } from '../../lib/gameStore'
+import { useLang } from '../../lib/ajustesCliente'
+import { traductor, type TextKey } from '../../lib/textos'
+import { CanvasPanel, drawParagraph } from './canvasPanel'
 import { type TutorialStepKey, tutorialFrameAt } from '../../lib/tutorial'
 import {
   XR_TUTORIAL_POSITION,
@@ -47,6 +50,16 @@ import {
  */
 
 /** Medidas del panel, en metros. Más bajo que el del menú: cabe menos cosa. */
+/** Lo que hay que hacer en cada tramo, dicho con palabras. */
+const FRASES: Record<TutorialStepKey, TextKey> = {
+  grab: 'Close your hand around the stick: reach it, do not point at it',
+  sticks: 'They fall one at a time, all around you',
+  level: 'Every level they fall faster',
+}
+
+/** Alto de la banda de texto, encima del dibujo. */
+const TEXT_HEIGHT = 0.2
+
 const PANEL_WIDTH = 1.06
 const PANEL_HEIGHT = 0.62
 
@@ -338,6 +351,7 @@ function TutorialStage({
  */
 function TutorialPanel() {
   const { stickCount, finishTutorial } = useGame()
+  const t = traductor(useLang())
   const reducedMotion = useReducedMotion()
   const elapsed = useRef(0)
   const [step, setStep] = useState<TutorialStepKey | null>(
@@ -361,9 +375,35 @@ function TutorialPanel() {
     }
   })
 
+  // La frase del tramo, en un lienzo aparte: el resto del tutorial es geometría y ahí no
+  // cabe una letra. Sin ella el dibujo enseña un gesto y nadie sabe de qué gesto habla.
+  const escribir = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      if (step == null) return
+      drawParagraph(ctx, t(FRASES[step]), 0, 0, {
+        size: 0.045,
+        color: '#e2e8f0',
+        weight: '600',
+        maxWidth: PANEL_WIDTH - 0.08,
+      })
+    },
+    [step, t],
+  )
+
   return (
     <group position={XR_TUTORIAL_POSITION}>
       <XRPanel width={PANEL_WIDTH} height={PANEL_HEIGHT} color={PANEL_COLOR} />
+
+      {/* Lo que hay que hacer, escrito, encima del dibujo: el dibujo enseña el gesto y la
+          frase lo nombra. */}
+      <group position={[0, PANEL_HEIGHT / 2 + TEXT_HEIGHT / 2 + 0.01, 0]}>
+        <CanvasPanel
+          width={PANEL_WIDTH}
+          height={TEXT_HEIGHT}
+          draw={escribir}
+          fallbackColor={PANEL_COLOR}
+        />
+      </group>
 
       {step != null && (
         <TutorialStage
@@ -408,16 +448,6 @@ function TutorialPanel() {
     </group>
   )
 }
-
-/** Lo que hay que hacer en cada tramo, dicho con palabras. */
-const FRASES: Record<TutorialStepKey, string> = {
-  grab: 'Close your hand around the stick: reach it, do not point at it',
-  sticks: 'They fall one at a time, all around you',
-  level: 'Every level they fall faster',
-}
-
-/** Alto de la banda de texto, encima del dibujo. */
-const TEXT_HEIGHT = 0.2
 
 export function XRTutorial() {
   const mode = useXR((state) => state.mode)

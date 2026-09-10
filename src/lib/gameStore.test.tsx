@@ -1157,3 +1157,53 @@ describe('elegir nivel a media partida', () => {
     expect(result.current.activeLevel).toBe(jugando)
   })
 })
+
+/**
+ * Dejar la partida pregunta antes.
+ *
+ * **Se pulsa sin querer y se pierde lo hecho.** Con el visor puesto no se ve lo que hay a
+ * los lados y la mano va a por los palos. Lo que hace que preguntar no salga caro es que la
+ * partida se para: no cae ningún palo mientras la pregunta está en pantalla.
+ */
+describe('dejar la partida', () => {
+  it('pregunta en vez de salir', () => {
+    const hook = renderHook(() => useGameStoreValue())
+    act(() => hook.result.current.startGame())
+
+    act(() => hook.result.current.askToQuit())
+
+    expect(hook.result.current.prompt).toBe('quit')
+    expect(hook.result.current.gameState).not.toBe('menu')
+  })
+
+  it('seguir jugando la devuelve donde estaba', () => {
+    const hook = renderHook(() => useGameStoreValue())
+    act(() => hook.result.current.startGame())
+    act(() => hook.result.current.askToQuit())
+
+    act(() => hook.result.current.keepPlaying())
+
+    expect(hook.result.current.prompt).toBeNull()
+  })
+
+  it('y confirmar sí sale', () => {
+    const hook = renderHook(() => useGameStoreValue())
+    act(() => hook.result.current.startGame())
+    act(() => hook.result.current.askToQuit())
+
+    act(() => hook.result.current.resetGame())
+
+    expect(hook.result.current.prompt).toBeNull()
+    expect(hook.result.current.gameState).toBe('menu')
+  })
+
+  it('empezar otra se lleva la pregunta por delante', () => {
+    const hook = renderHook(() => useGameStoreValue())
+    act(() => hook.result.current.startGame())
+    act(() => hook.result.current.askToQuit())
+
+    act(() => hook.result.current.startGame())
+
+    expect(hook.result.current.prompt).toBeNull()
+  })
+})

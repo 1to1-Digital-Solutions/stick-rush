@@ -67,7 +67,15 @@ const ES = {
   Lives: 'Vidas',
   'Best streak': 'Mejor racha',
   'End run': 'Terminar',
-  'Back to the menu': 'Volver al menú',
+'Close your hand around the stick: reach it, do not point at it':
+    'Cierra la mano sobre el palo: llega hasta él, no lo apuntes',
+  'They fall one at a time, all around you': 'Caen de uno en uno, por todos lados',
+  'Every level they fall faster': 'Cada nivel caen más rápido',
+  'Leave the game?': '¿Dejar la partida?',
+  'You lose what you have got so far.': 'Pierdes lo que llevas.',
+  'Keep playing': 'Seguir jugando',
+  Leave: 'Salir',
+    'Back to the menu': 'Volver al menú',
   Share: 'Compartir',
 
   // Resumen

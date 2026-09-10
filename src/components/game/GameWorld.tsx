@@ -15,7 +15,7 @@ import { useGame, type SceneryMode } from '../../lib/gameStore'
 import { XRCountdown } from '../xr/XRCountdown'
 import { XRGazeAnchor } from '../xr/XRGazeAnchor'
 import { XRHaptics } from '../xr/XRHaptics'
-import { XRHud, XRQuitButton } from '../xr/XRHud'
+import { XRHud, XRQuitButton, XRQuitConfirm } from '../xr/XRHud'
 import { XRMenu } from '../xr/XRMenu'
 import { XRPlayerHeight } from '../xr/XRPlayerHeight'
 import { XRSessionController } from '../xr/XRSessionController'
@@ -155,6 +155,7 @@ export function GameWorld({ hasDomUi = false }: GameWorldProps) {
         <XRTutorial />
         <XRCountdown hasDomUi={hasDomUi} />
         <XRQuitButton hasDomUi={hasDomUi} />
+        <XRQuitConfirm />
       </XRGazeAnchor>
 
       {/* EL MUNDO, corrido para dejar al jugador donde le toca.

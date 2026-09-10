@@ -61,8 +61,34 @@ export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
  * el de salir del visor es `XR_MENU_EXIT_OFFSET`, y por eso llevan iconos
  * distintos—. Apartado a un lado para no cruzarse con los palos, pero dentro
  * del campo de visión: a 51° quedaba fuera de vista y no se encontraba.
+ *
+ * **Arriba y a la izquierda**, por encima de la línea de los ojos: a la altura del pecho
+ * caía justo por donde va la mano a coger un palo, y ahí se pulsa sin querer. Lo que se
+ * juega pasa por delante y por abajo, así que arriba no estorba a nada. El apartado a un
+ * lado se queda como estaba: más allá, mirarlo hace que la interfaz entera se recoloque
+ * (`XR_ANCHOR_DEADZONE`) y el botón se escapa justo al ir a apuntarlo.
  */
-export const XR_QUIT_POSITION: Vec3 = [-0.42, 1.15, -0.75]
+export const XR_QUIT_POSITION: Vec3 = [-0.42, 1.62, -0.75]
+
+/**
+ * El aviso de dejar la partida: **donde el menú, a la altura de la vista**.
+ *
+ * Se pregunta con la partida parada, así que ocupa el sitio donde ya se está mirando y no
+ * un rincón: lo que se decide aquí es perder lo que se lleve hecho.
+ */
+export const XR_CONFIRM_POSITION: Vec3 = [
+  XR_MENU_POSITION[0],
+  XR_MENU_POSITION[1],
+  XR_MENU_POSITION[2] + 0.06,
+]
+export const XR_CONFIRM_SIZE: [number, number] = [0.78, 0.38]
+
+/** Sus dos botones, en coordenadas del propio aviso. */
+export const CONFIRM_BOXES = {
+  /** Seguir jugando va a la derecha y más grande: es la respuesta que no pierde nada. */
+  stay: { position: [0.17, -0.1, 0.02] as Vec3, size: [0.32, 0.11, 0.04] as Vec3 },
+  leave: { position: [-0.19, -0.1, 0.02] as Vec3, size: [0.28, 0.11, 0.04] as Vec3 },
+}
 /**
  * Giro de ese botón para que su placa encare al jugador.
  *

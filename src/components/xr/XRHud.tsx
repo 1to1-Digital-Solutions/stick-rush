@@ -3,7 +3,12 @@
 import { useXR } from '@react-three/xr'
 import { LIFE_COLOR } from '../../lib/gameConfig'
 import { startingLives } from '../../lib/gameMode'
+import { useCallback } from 'react'
+
 import { useGame } from '../../lib/gameStore'
+import { useLang } from '../../lib/ajustesCliente'
+import { traductor } from '../../lib/textos'
+import { CanvasPanel, drawParagraph, drawText } from './canvasPanel'
 import { scoreRatio } from '../../lib/scoring'
 import { type StickStatus, stickStatuses } from '../../lib/stickLayout'
 import { type ShareStatus, useShareResult } from '../../lib/useShareResult'
@@ -11,6 +16,9 @@ import {
   XR_END_RUN_POSITION,
   XR_END_RUN_YAW,
   XR_HUD_POSITION,
+  CONFIRM_BOXES,
+  XR_CONFIRM_POSITION,
+  XR_CONFIRM_SIZE,
   XR_QUIT_POSITION,
   XR_QUIT_YAW,
 } from '../../lib/xrLayout'
@@ -399,7 +407,7 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
  */
 export function XRQuitButton({ hasDomUi = false }: { hasDomUi?: boolean }) {
   const mode = useXR((state) => state.mode)
-  const { gameState, gameMode, endless, resetGame, endRun } = useGame()
+  const { gameState, gameMode, endless, askToQuit, endRun } = useGame()
 
   // También durante la cuenta atrás: si al jugador se le ocurre que se ha
   // equivocado de opciones, esos tres segundos son su última oportunidad.
@@ -430,7 +438,8 @@ export function XRQuitButton({ hasDomUi = false }: { hasDomUi?: boolean }) {
           <XRCheckIcon position={[0, 0, 0.012]} />
         </XRPressable>
       )}
-      <QuitButton onSelect={resetGame} />
+      {/* Pregunta antes de dejarla: el botón se pulsa sin querer y salir pierde lo hecho. */}
+      <QuitButton onSelect={askToQuit} />
     </>
   )
 }
@@ -458,5 +467,92 @@ function QuitButton({ onSelect }: { onSelect: () => void }) {
       </mesh>
       <XRHomeIcon position={[0, 0, 0.012]} />
     </XRPressable>
+  )
+}
+
+/**
+ * El aviso antes de dejar la partida.
+ *
+ * **No se sale de golpe.** El botón se pulsa sin querer —con el visor puesto no se ve lo
+ * que hay a los lados y la mano va a por los palos— y salir pierde lo que se lleve hecho.
+ * Así que se para la partida y se pregunta; mientras se pregunta no cae ningún palo, porque
+ * si no, decidir costaría puntos.
+ */
+export function XRQuitConfirm() {
+  const { prompt, resetGame, keepPlaying } = useGame()
+  const t = traductor(useLang())
+
+  const escribir = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      drawParagraph(ctx, t('Leave the game?'), 0, 0.1, {
+        size: 0.05,
+        color: '#e2e8f0',
+        weight: '700',
+        maxWidth: XR_CONFIRM_SIZE[0] - 0.08,
+      })
+      drawParagraph(ctx, t('You lose what you have got so far.'), 0, 0.02, {
+        size: 0.034,
+        color: '#94a3b8',
+        maxWidth: XR_CONFIRM_SIZE[0] - 0.08,
+      })
+      drawText(ctx, t('Leave'), CONFIRM_BOXES.leave.position[0], CONFIRM_BOXES.leave.position[1], {
+        size: 0.034,
+        color: '#e2e8f0',
+        maxWidth: CONFIRM_BOXES.leave.size[0] - 0.03,
+      })
+      drawText(
+        ctx,
+        t('Keep playing'),
+        CONFIRM_BOXES.stay.position[0],
+        CONFIRM_BOXES.stay.position[1],
+        {
+          size: 0.034,
+          color: '#3b1d00',
+          weight: '700',
+          maxWidth: CONFIRM_BOXES.stay.size[0] - 0.03,
+        },
+      )
+    },
+    [t],
+  )
+
+  if (prompt !== 'quit') return null
+
+  return (
+    <group position={XR_CONFIRM_POSITION}>
+      <XRPanel width={XR_CONFIRM_SIZE[0]} height={XR_CONFIRM_SIZE[1]} color={PANEL_COLOR} />
+
+      <XRPressable
+        position={CONFIRM_BOXES.leave.position}
+        onSelect={resetGame}
+        hitSize={CONFIRM_BOXES.leave.size}
+      >
+        <mesh>
+          <planeGeometry args={[CONFIRM_BOXES.leave.size[0], CONFIRM_BOXES.leave.size[1]]} />
+          <meshBasicMaterial color="#1c2634" toneMapped={false} />
+        </mesh>
+      </XRPressable>
+
+      <XRPressable
+        position={CONFIRM_BOXES.stay.position}
+        onSelect={keepPlaying}
+        hitSize={CONFIRM_BOXES.stay.size}
+      >
+        <mesh>
+          <planeGeometry args={[CONFIRM_BOXES.stay.size[0], CONFIRM_BOXES.stay.size[1]]} />
+          <meshBasicMaterial color={LIFE_COLOR} toneMapped={false} />
+        </mesh>
+      </XRPressable>
+
+      {/* El texto va encima de las placas: el lienzo es transparente salvo donde escribe. */}
+      <group position={[0, 0, 0.03]}>
+        <CanvasPanel
+          width={XR_CONFIRM_SIZE[0]}
+          height={XR_CONFIRM_SIZE[1]}
+          draw={escribir}
+          fallbackColor={PANEL_COLOR}
+        />
+      </group>
+    </group>
   )
 }

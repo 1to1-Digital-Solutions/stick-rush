@@ -245,6 +245,20 @@ export interface GameStore {
    * overlay con el teclado. `tutorial` fuerza la decisión en los dos sentidos:
    * lo usa el botón de volver a verlo desde el menú.
    */
+  /**
+   * Lo que se está preguntando ahora mismo, o `null` si no se pregunta nada.
+   *
+   * Dejar la partida a medias **pierde lo que se lleve hecho**, y el botón se pulsa sin
+   * querer: con el visor puesto no se ve lo que hay a los lados y el brazo pasa por donde
+   * pasa. Así que no se sale de golpe: se para y se pregunta. Mientras se pregunta no cae
+   * ningún palo, porque si no, decidir costaría puntos.
+   */
+  prompt: 'quit' | null
+  /** Para la partida y pregunta si de verdad se quiere dejar. */
+  askToQuit: () => void
+  /** No: se sigue jugando desde donde estaba. */
+  keepPlaying: () => void
+
   startGame: (options?: { tutorial?: boolean }) => void
   /**
    * Cierra el tutorial y pasa a la cuenta atrás. Lo llaman el botón de saltar y
@@ -357,6 +371,7 @@ export function useGameStoreValue(): GameStore {
   const music = volumes.ambience > 0
   const ambienceVolume = volumeFactor(volumes.ambience)
   const [countdown, setCountdown] = useState(0)
+  const [prompt, setPrompt] = useState<'quit' | null>(null)
   const [runId, setRunId] = useState(0)
   // La corrección de la altura del aro sale de lo guardado en visitas
   // anteriores. En el servidor no hay almacenamiento y vale 0, pero eso no
@@ -418,10 +433,10 @@ export function useGameStoreValue(): GameStore {
   // colocarse —en el visor uno acaba de pulsar un botón y tiene las manos donde
   // no toca— y avisa de que la partida va a empezar de verdad.
   useEffect(() => {
-    if (!running || countdown <= 0) return
+    if (!running || countdown <= 0 || prompt !== null) return
     const timer = setTimeout(() => setCountdown((value) => value - 1), 1000)
     return () => clearTimeout(timer)
-  }, [running, countdown])
+  }, [running, countdown, prompt])
 
   // Saltar y agotar el tiempo son la misma salida: en los dos casos el jugador
   // ya ha decidido y el tutorial no vuelve a interponerse. Se anota como visto
@@ -560,6 +575,7 @@ export function useGameStoreValue(): GameStore {
   }, [])
   const startGame = useCallback(
     (options?: { tutorial?: boolean }) => {
+      setPrompt(null)
       // Con las gafas puestas y sin haberlo visto nunca, la partida empieza
       // enseñando: es el único momento en que el jugador está mirando y aún no
       // hay palos cayéndole encima.
@@ -604,7 +620,11 @@ export function useGameStoreValue(): GameStore {
     setStreak(0)
   }, [])
 
+  const askToQuit = useCallback(() => setPrompt('quit'), [])
+  const keepPlaying = useCallback(() => setPrompt(null), [])
+
   const resetGame = useCallback(() => {
+    setPrompt(null)
     clearRun()
     setCountdown(0)
     // Dejar la demostración a medias no cuenta como haberla visto: quien vuelve
@@ -615,6 +635,9 @@ export function useGameStoreValue(): GameStore {
 
   return useMemo(
     () => ({
+      prompt,
+      askToQuit,
+      keepPlaying,
       stickCount,
       difficulty,
       gameMode,
@@ -669,6 +692,9 @@ export function useGameStoreValue(): GameStore {
       resetGame,
     }),
     [
+      prompt,
+      askToQuit,
+      keepPlaying,
       stickCount,
       difficulty,
       gameMode,

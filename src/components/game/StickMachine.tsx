@@ -105,6 +105,7 @@ export function StickMachine() {
     activeDifficulty: difficulty,
     stickSeed: runId,
     gameState,
+    prompt,
     hoopHeight,
     catchStick,
     missStick,
@@ -115,7 +116,9 @@ export function StickMachine() {
   // Fuera de la partida los palos se quedan colgando, a la vista, mientras el
   // jugador elige opciones. Meciéndose: es lo único que se mueve hasta que cae
   // el primero, y sin ello la máquina parece congelada.
-  const paused = gameState !== 'playing'
+  // También con la pregunta de salir en pantalla: un palo que siguiera cayendo se perdería
+  // mientras se decide, y eso es un punto que cuesta pensárselo.
+  const paused = gameState !== 'playing' || prompt !== null
   const reducedMotion = useReducedMotion()
 
   const [normalMap, roughnessMap] = useTexture([
