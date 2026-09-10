@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useXR } from '@react-three/xr'
 import { Vector3 } from 'three'
+import { usePlayHeight } from '../../lib/ajustesCliente'
 import { useGame } from '../../lib/gameStore'
 import { hasFloorReference, headsetEyeHeight } from '../../lib/hoopHeight'
 import { followRatio } from '../../lib/xrAnchor'
@@ -34,6 +35,11 @@ export function XRPlayerHeight() {
     hasFloorReference(state.session?.enabledFeatures),
   )
   const { gameState, setPlayerEyeHeight } = useGame()
+  // Con el mundo entero bajando hasta el jugador (ver `XRWorldHeight`), el aro
+  // ya viene con él: seguir además su estatura lo bajaría dos veces y acabaría
+  // por debajo de las manos. Ahí el aro se queda en su cota de diseño y es el
+  // decorado el que se acerca — la corrección manual del menú sigue valiendo.
+  const aLaAlturaDeLosOjos = usePlayHeight() === 'eyes'
 
   const smoothed = useRef<number | null>(null)
   const reported = useRef<number | null>(null)
@@ -49,6 +55,15 @@ export function XRPlayerHeight() {
 
   useFrame((state, delta) => {
     if (mode == null || gameState !== 'menu') return
+
+    // El mundo ya se acerca solo: el aro se queda donde se dibujó.
+    if (aLaAlturaDeLosOjos) {
+      if (reported.current !== null) {
+        reported.current = null
+        setPlayerEyeHeight(null)
+      }
+      return
+    }
 
     state.camera.getWorldPosition(headPosition)
     const measured = headsetEyeHeight(headPosition.y, floorLevel)

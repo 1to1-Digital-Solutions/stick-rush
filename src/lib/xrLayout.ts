@@ -329,3 +329,111 @@ export function xrDifficultyOptionPosition(difficulty: Difficulty): Vec3 {
     DIFFICULTY_Y,
   )
 }
+
+/**
+ * Cuánto se corre el mundo, en metros, para dejarlo al alcance de quien juega.
+ *
+ * **El problema.** Las cotas de la escena se eligieron con una persona de pie
+ * delante. Sentado —en una silla, en un sofá, en una silla de ruedas— el mundo
+ * entero queda un palmo por encima de donde llega el brazo, y no falla nada:
+ * simplemente no se puede jugar. A quien es más bajo que esa persona le pasa lo
+ * mismo en pequeño, y tampoco tiene forma de nivelarlo.
+ *
+ * **Es la misma corrección que ya se le hace a la interfaz**, aplicada al
+ * decorado: sale negativa para quien tiene los ojos por debajo de la referencia,
+ * así que el mundo baja hasta él. Y se corre el decorado, no al jugador: el
+ * origen es de quien monta la escena —en el salón hay un arco de cabinas
+ * plantado ahí— y dos orígenes en la misma sesión se pisan.
+ *
+ * **No cambia ninguna puntuación.** Se corre la escena entera, con el objetivo
+ * dentro, mientras la mano se queda donde está la mano: la altura del objetivo
+ * respecto al brazo es la misma que tenía la persona de pie para la que se
+ * dibujó. Y quien juega de pie no nota nada, porque ahí la corrección es cero.
+ *
+ * Lo pide quien juega desde los ajustes del arcade y no se adivina: bajar el
+ * mundo sin que nadie lo haya dicho movería el suelo bajo los pies de quien
+ * está de pie.
+ *
+ * @param eyeHeight  la cota de los ojos que haya medido el visor, o `null`
+ * @param atEyeLevel si se ha pedido el mundo a la altura de los ojos
+ */
+export function worldRise(
+  eyeHeight: number | null | undefined,
+  atEyeLevel: boolean,
+): number {
+  if (!atEyeLevel) return 0
+  return xrUiRise(eyeHeight)
+}
+
+/**
+ * Cuánto tiene que cambiar la altura, y durante cuánto, para volver a medirla.
+ *
+ * Lo que cuelga de esta medida se coloca al entrar y **se queda quieto**. Uno
+ * que persiguiera la cabeza subiría al ponerse de puntillas y bajaría al
+ * agacharse, justo cuando se está apuntando. Pero sentarse a media partida sí
+ * tiene que notarse, y eso es un cambio grande y sostenido, no un movimiento de
+ * juego.
+ */
+export const RETAKE_DELTA = 0.15
+export const RETAKE_SECONDS = 1
+
+/** Lo que se recuerda de la altura entre fotogramas. */
+export interface HeightTracker {
+  /** La cota que se está usando ahora mismo, o `null` mientras no haya ninguna buena. */
+  held: number | null
+  /** La medida filtrada, que es lo que se compara con la que se usa. */
+  smoothed: number | null
+  /** Cuánto lleva la medida lejos de la que se usa, en segundos. */
+  drift: number
+}
+
+/** Un seguimiento recién empezado: sin nada medido todavía. */
+export function startTracking(): HeightTracker {
+  return { held: null, smoothed: null, drift: 0 }
+}
+
+/**
+ * Avanza el seguimiento con la medida de este fotograma.
+ *
+ * @param measured  la cota de la cabeza, o `null` si no hay dato bueno
+ * @param ratio     cuánto se acerca el filtro a la medida en este fotograma, de 0 a 1
+ * @param delta     segundos de este fotograma
+ */
+export function trackHeight(
+  state: HeightTracker,
+  measured: number | null,
+  ratio: number,
+  delta: number,
+): HeightTracker {
+  if (!isPlausibleEyeHeight(measured)) return state
+
+  const smoothed =
+    state.smoothed == null ? measured : state.smoothed + (measured - state.smoothed) * ratio
+  // La primera medida buena se usa tal cual: entrar en la sesión y ver el mundo
+  // a la altura de los ojos es lo que tiene que pasar, no una escena subiendo
+  // despacio desde donde sea.
+  if (state.held == null) return { held: smoothed, smoothed, drift: 0 }
+
+  const lejos = Math.abs(smoothed - state.held) > RETAKE_DELTA
+  const drift = lejos ? state.drift + Math.max(0, delta) : 0
+  if (drift > RETAKE_SECONDS) return { held: smoothed, smoothed, drift: 0 }
+  return { held: state.held, smoothed, drift }
+}
+
+/**
+ * Cuánto sube la interfaz **por encima de lo que ya se haya movido el mundo**.
+ *
+ * La interfaz cuelga del mundo, y el mundo puede haber bajado ya hasta los ojos
+ * de quien juega (ver `worldRise`). Sumar entonces la corrección de la interfaz
+ * la bajaría dos veces: el menú acabaría a la altura de las rodillas justo para
+ * quien menos puede agacharse a buscarlo.
+ *
+ * Dicho de otra forma: cuando el mundo entero viene a ti, la interfaz ya está
+ * donde tiene que estar y no le hace falta corrección propia.
+ */
+export function xrUiRiseOverWorld(
+  eyeHeight: number | null | undefined,
+  atEyeLevel: boolean,
+): number {
+  return xrUiRise(eyeHeight) - worldRise(eyeHeight, atEyeLevel)
+}

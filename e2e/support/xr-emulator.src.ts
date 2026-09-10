@@ -62,6 +62,17 @@ const api = {
   },
 
   /**
+   * Pone la cabeza a esa altura, en metros sobre el suelo.
+   *
+   * Es lo que separa a quien juega de pie de quien juega sentado, y lo único que el juego
+   * mira para decidir si le baja el mundo. IWER entrega la pose de la cabeza dentro de un
+   * espacio con suelo, así que esta cota es una estatura de verdad.
+   */
+  seat(eyeHeight: number) {
+    device.position.y = eyeHeight
+  },
+
+  /**
    * Cambia a manos desnudas: apaga los mandos y enciende las manos.
    *
    * Es el otro modo de entrada del visor, y el que deja fuera a quien no tiene

@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
+  RETAKE_DELTA,
+  RETAKE_SECONDS,
   XR_HOOP_DOWN_OFFSET,
   XR_HOOP_UP_OFFSET,
   XR_MENU_EXIT_OFFSET,
   XR_MENU_MUSIC_OFFSET,
   XR_MENU_SOUND_OFFSET,
   XR_MENU_TUTORIAL_OFFSET,
+  startTracking,
+  trackHeight,
+  worldRise,
+  xrUiRise,
+  xrUiRiseOverWorld,
 } from './xrLayout'
 
 /**
@@ -50,5 +57,95 @@ describe('las esquinas del panel del menú', () => {
     // Ahí solo quedaban quince centímetros entre empezar y silenciar, que es
     // menos de lo que mide un botón de esquina.
     expect(XR_MENU_MUSIC_OFFSET[1]).not.toBe(XR_MENU_SOUND_OFFSET[1])
+  })
+})
+
+describe('el mundo a la altura de quien juega', () => {
+  it('de pie no se mueve nada, mida lo que mida', () => {
+    // Es lo que ve quien no ha pedido nada, que son casi todos: la escena
+    // exactamente donde ha estado siempre.
+    expect(worldRise(1.2, false)).toBe(0)
+    expect(worldRise(1.6, false)).toBe(0)
+    expect(worldRise(2.0, false)).toBe(0)
+  })
+
+  it('sentado, el mundo baja hasta los ojos', () => {
+    // Un jugador sentado mide sobre metro veinte de ojos: el mundo tiene que
+    // bajar los cuarenta centímetros que le faltan para alcanzarlo.
+    expect(worldRise(1.2, true)).toBeCloseTo(-0.4, 10)
+  })
+
+  it('a quien es más alto le sube, por lo mismo', () => {
+    expect(worldRise(1.8, true)).toBeCloseTo(0.2, 10)
+  })
+
+  it('sin medida buena no se inventa nada', () => {
+    // Sin suelo en el espacio de referencia, o con el visor sobre la mesa, la
+    // cota no es una estatura: se juega con la escena donde estaba.
+    for (const cota of [null, undefined, Number.NaN, 0, 5]) {
+      expect(worldRise(cota, true)).toBe(0)
+    }
+  })
+})
+
+describe('cuándo se vuelve a medir', () => {
+  const paso = (
+    state: ReturnType<typeof startTracking>,
+    cota: number | null,
+    segundos = 1 / 72,
+  ) => trackHeight(state, cota, 1, segundos)
+
+  it('la primera medida buena se usa tal cual', () => {
+    // Entrar y ver el mundo a la altura de los ojos, no una escena subiendo
+    // despacio desde donde sea.
+    expect(paso(startTracking(), 1.75).held).toBeCloseTo(1.75, 6)
+  })
+
+  it('sin medida buena no se toca nada', () => {
+    const inicial = startTracking()
+
+    expect(paso(inicial, null)).toBe(inicial)
+    expect(paso(inicial, 0.3)).toBe(inicial)
+  })
+
+  it('moverse mientras se juega no mueve el mundo', () => {
+    // Ponerse de puntillas o agacharse a por algo: la escena se queda quieta,
+    // que si no el objetivo se escapa justo al ir a apuntarlo.
+    let state = paso(startTracking(), 1.7)
+    for (let t = 0; t < 2; t += 1 / 72) state = paso(state, 1.7 + RETAKE_DELTA * 0.8)
+
+    expect(state.held).toBeCloseTo(1.7, 6)
+  })
+
+  it('un cambio grande y corto tampoco', () => {
+    let state = paso(startTracking(), 1.7)
+    for (let t = 0; t < RETAKE_SECONDS / 2; t += 1 / 72) state = paso(state, 1.2)
+
+    expect(state.held).toBeCloseTo(1.7, 6)
+  })
+
+  it('pero sentarse a media partida sí', () => {
+    let state = paso(startTracking(), 1.7)
+    for (let t = 0; t < RETAKE_SECONDS * 2; t += 1 / 72) state = paso(state, 1.2)
+
+    expect(state.held).toBeCloseTo(1.2, 6)
+  })
+})
+
+describe('la interfaz cuando el mundo ya se ha movido', () => {
+  it('con el mundo quieto, la interfaz se coloca ella sola', () => {
+    expect(xrUiRiseOverWorld(1.4, false)).toBeCloseTo(xrUiRise(1.4), 10)
+  })
+
+  it('con el mundo bajado, no se corrige otra vez', () => {
+    // Sumar las dos correcciones dejaba el menú a la altura de las rodillas,
+    // justo para quien menos puede agacharse a buscarlo.
+    expect(xrUiRiseOverWorld(1.2, true)).toBe(0)
+    expect(xrUiRiseOverWorld(1.9, true)).toBe(0)
+  })
+
+  it('sin medida buena no se mueve nada, se pida lo que se pida', () => {
+    expect(xrUiRiseOverWorld(null, true)).toBe(0)
+    expect(xrUiRiseOverWorld(null, false)).toBe(0)
   })
 })

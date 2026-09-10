@@ -15,6 +15,7 @@ interface XRTestApi {
   place: (hand: Hand, target: Point) => void
   aim: (hand: Hand, target: Point) => void
   press: (hand: Hand, button: 'squeeze' | 'trigger', value?: number) => void
+  seat: (eyeHeight: number) => void
   useHands: () => void
   placeBareHand: (hand: Hand, target: Point) => void
   pinch: (hand: Hand, pressed: boolean) => void
@@ -75,6 +76,18 @@ export async function placeHand(page: Page, hand: Hand, target: Point) {
   )
   // Un par de frames para que el runtime propague la pose a la escena.
   await page.waitForTimeout(120)
+}
+
+/**
+ * Sienta al jugador: pone su cabeza a esa altura sobre el suelo.
+ *
+ * Es lo único que distingue a quien juega de pie de quien juega sentado. Con el
+ * mundo «a la altura de mis ojos», el juego mide esta cota y baja la escena
+ * hasta ella (ver `XRWorldHeight`).
+ */
+export async function seatPlayer(page: Page, eyeHeight: number) {
+  await page.evaluate((h) => window.__xrTest.seat(h as number), eyeHeight)
+  await page.waitForTimeout(200)
 }
 
 /**

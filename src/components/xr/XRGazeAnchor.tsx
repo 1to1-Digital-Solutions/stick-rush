@@ -10,7 +10,8 @@ import {
   stepAnchor,
   type AnchorState,
 } from '../../lib/xrAnchor'
-import { xrUiRise } from '../../lib/xrLayout'
+import { usePlayHeight } from '../../lib/ajustesCliente'
+import { xrUiRiseOverWorld } from '../../lib/xrLayout'
 
 /**
  * Mantiene la interfaz inmersiva donde el jugador la ve: delante de su cara y a
@@ -55,6 +56,9 @@ export function XRGazeAnchor({
     anchor.current = null
   }, [mode])
 
+  // Si el mundo entero ya ha bajado hasta quien juega, la interfaz vino con
+  // él y no le hace falta corrección propia (ver `xrUiRiseOverWorld`).
+  const aLaAlturaDeLosOjos = usePlayHeight() === 'eyes'
   useFrame((state, delta) => {
     const group = ref.current
     // Fuera de sesión inmersiva no hay nada que colocar si manda el DOM; si no
@@ -93,7 +97,11 @@ export function XRGazeAnchor({
     // A la altura de los ojos de quien juega, no a la del suelo: las cotas de
     // `xrLayout` son las de la persona de referencia y suben o bajan con él, así
     // que sentado no se encuentra el panel a la altura de la frente.
-    group.position.set(gazePosition.x, xrUiRise(playerEyeHeight), gazePosition.z)
+    group.position.set(
+      gazePosition.x,
+      xrUiRiseOverWorld(playerEyeHeight, aLaAlturaDeLosOjos),
+      gazePosition.z,
+    )
     group.rotation.set(0, next.yaw, 0)
   })
 

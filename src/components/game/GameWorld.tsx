@@ -26,6 +26,7 @@ import { StickMachine } from './StickMachine'
 import { Ground } from './Ground'
 import { useGameMusic } from './useGameMusic'
 import { useGameSound } from './useGameSound'
+import { XRWorldHeight } from '../xr/XRWorldHeight'
 
 /**
  * El juego entero como OBJETOS DE THREE, sin Canvas y sin sesión propia.
@@ -133,8 +134,11 @@ export interface GameWorldProps {
 }
 
 export function GameWorld({ hasDomUi = false }: GameWorldProps) {
+  // TODO EL MUNDO cuelga de `XRWorldHeight`, que lo baja hasta quien juega si
+  // lo ha pedido en los ajustes del arcade. Envuelve la escena entera, luces
+  // incluidas: mover solo el objetivo lo dejaría flotando sobre su decorado.
   return (
-    <>
+    <XRWorldHeight>
       {/* Arranca/cierra partidas según el estado de la sesión inmersiva. */}
       <XRSessionController />
       {/* Pone el aro al alcance de quien lleva el visor. */}
@@ -189,6 +193,6 @@ export function GameWorld({ hasDomUi = false }: GameWorldProps) {
             la plaza y la habitación del jugador no se vea. */}
         <SceneryFadeBridge />
       </group>
-    </>
+    </XRWorldHeight>
   )
 }
