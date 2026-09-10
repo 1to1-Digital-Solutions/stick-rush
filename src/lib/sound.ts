@@ -40,11 +40,18 @@ export interface ToneSpec {
 }
 
 /**
- * Volumen general. Bajo a propósito: en el visor el sonido va pegado a la
- * cabeza y el juego encadena aciertos, así que lo que en un altavoz es
- * discreto ahí resulta invasivo.
+ * Volumen general, de 0 a 1.
+ *
+ * **El mismo número en los trece juegos**, y ese es el punto: el volumen de efectos se elige
+ * una vez en el arcade y saltar de cabina no puede cambiar lo que se oye. Estaba en 0,28 en
+ * ocho, 0,40 en tres y 0,45 en dos —con este mismo comentario en todos—, así que la misma
+ * posición del deslizador sonaba tres o cuatro decibelios distinta según el juego.
+ *
+ * Por debajo de la mitad a propósito: se juega con un visor puesto y el sonido va a un palmo
+ * de las orejas. Si un juego suena flojo o fuerte comparado con los demás, lo que hay que
+ * mover es **su receta**, no este número: moverlo aquí vuelve a descuadrar los trece.
  */
-export const MASTER_GAIN = 0.28
+export const MASTER_GAIN = 0.35
 
 /** Frecuencia `semitones` semitonos por encima de `base`. */
 function transpose(base: number, semitones: number): number {
