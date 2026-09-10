@@ -17,6 +17,10 @@ const EVERY_SOUND: Sound[] = [
   { name: 'countdown', secondsLeft: 3 },
   { name: 'countdown', secondsLeft: 1 },
   { name: 'go' },
+  { name: 'over', outcome: 'win' },
+  { name: 'over', outcome: 'loss' },
+  { name: 'over', outcome: 'close' },
+  { name: 'record' },
 ]
 
 describe('recetas de los sonidos', () => {
@@ -103,11 +107,24 @@ describe('recetas de los sonidos', () => {
 
   it('ningún sonido satura el volumen general', () => {
     // Las voces se suman en el nodo maestro: pasar de 1 recorta la onda y
-    // suena a distorsión, no a más volumen.
+    // suena a distorsión, no a más volumen. Lo que se suma es lo que suena **a
+    // la vez**: un arpegio de tres notas encadenadas no satura nada, y sumarlo
+    // entero prohibiría cualquier sonido que no sea un golpe.
     for (const sound of EVERY_SOUND) {
-      const total = soundVoices(sound).reduce((sum, voice) => sum + voice.gain, 0)
-      expect(total).toBeGreaterThan(0)
-      expect(total).toBeLessThanOrEqual(1)
+      const voices = soundVoices(sound)
+      expect(voices.length).toBeGreaterThan(0)
+
+      const instantes = voices.flatMap((voice) => [voice.delay, voice.delay + voice.duration / 2])
+      const simultaneo = Math.max(
+        ...instantes.map((t) =>
+          voices
+            .filter((voice) => t >= voice.delay && t < voice.delay + voice.duration)
+            .reduce((sum, voice) => sum + voice.gain, 0),
+        ),
+      )
+
+      expect(simultaneo).toBeGreaterThan(0)
+      expect(simultaneo).toBeLessThanOrEqual(1)
     }
   })
 
@@ -340,5 +357,54 @@ describe('el volumen de los efectos del arcade', () => {
 
     engine.setVolume(-1)
     expect(context.gains[0].gain.value).toBe(0)
+  })
+})
+
+describe('el cierre de la partida', () => {
+  /** La nota más aguda de un sonido, que es por donde se reconoce a dónde va. */
+  const agudo = (sound: Sound) =>
+    Math.max(...soundVoices(sound).map((voice) => Math.max(voice.from, voice.to)))
+  const grave = (sound: Sound) =>
+    Math.min(...soundVoices(sound).map((voice) => Math.min(voice.from, voice.to)))
+  const dura = (sound: Sound) =>
+    Math.max(...soundVoices(sound).map((voice) => voice.delay + voice.duration))
+
+  it('ganar sube y perder baja, que es lo que el oído entiende solo', () => {
+    const ganar = soundVoices({ name: 'over', outcome: 'win' })
+    const perder = soundVoices({ name: 'over', outcome: 'loss' })
+
+    // La última voz de ganar es la más aguda de las tres; la de perder, la más grave.
+    expect(ganar[ganar.length - 1].to).toBeGreaterThan(ganar[0].from)
+    expect(perder[perder.length - 1].to).toBeLessThan(perder[0].from)
+  })
+
+  it('terminar sin más no dice ni bien ni mal', () => {
+    // En práctica no hay nada que ganar ni que perder: el cierre solo avisa de que se
+    // acabó, así que se queda entre los otros dos.
+    const cerrar = agudo({ name: 'over', outcome: 'close' })
+
+    expect(cerrar).toBeLessThan(agudo({ name: 'over', outcome: 'win' }))
+    expect(grave({ name: 'over', outcome: 'close' })).toBeGreaterThan(
+      grave({ name: 'over', outcome: 'loss' }),
+    )
+  })
+
+  it('los tres duran más que atrapar o perder un palo', () => {
+    // Un final que dure lo que un acierto se confunde con un acierto, y con el visor
+    // puesto el marcador está donde uno no siempre está mirando.
+    const palo = Math.max(dura({ name: 'catch', streak: 1 }), dura({ name: 'miss' }))
+
+    for (const outcome of ['win', 'loss', 'close'] as const) {
+      expect(dura({ name: 'over', outcome })).toBeGreaterThan(palo)
+    }
+  })
+
+  it('el récord suena por encima de todo lo demás y después del cierre', () => {
+    // Va aparte del cierre porque batir la marca puede pasar ganando o terminando sin
+    // más, y hay que oír las dos cosas.
+    const record = soundVoices({ name: 'record' })
+
+    expect(grave({ name: 'record' })).toBeGreaterThan(agudo({ name: 'over', outcome: 'win' }))
+    expect(record[0].delay).toBeGreaterThan(0.3)
   })
 })

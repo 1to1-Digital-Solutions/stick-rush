@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { catchStick, openGame, startGame } from './helpers'
+import { catchStick, openGame, startGame, waitForGameOver } from './helpers'
 
 /**
  * El sonido se sintetiza con la Web Audio API, así que no hay ficheros ni
@@ -78,6 +78,24 @@ test.describe('Sonido', () => {
     await expect
       .poll(async () => (await readSpy(page)).oscillators)
       .toBeGreaterThan(afterCountdown.oscillators)
+  })
+
+  test('terminar la partida suena, que antes era silencio', async ({ page }) => {
+    // Se acababa el último palo y no sonaba nada: la pantalla de fin llegaba sin avisar, y
+    // con el visor puesto el marcador está donde uno no siempre está mirando.
+    await installAudioSpy(page)
+    await openGame(page)
+    // La partida más corta que se puede elegir, para llegar al final sin esperar de más.
+    await startGame(page, { sticks: 5, difficulty: 'Easy' })
+
+    const jugando = await readSpy(page)
+    await waitForGameOver(page)
+
+    await expect
+      .poll(async () => (await readSpy(page)).oscillators, {
+        message: 'terminar la partida no puso a sonar nada',
+      })
+      .toBeGreaterThan(jugando.oscillators)
   })
 
   test('silenciado desde los ajustes del arcade, el juego no abre el audio', async ({

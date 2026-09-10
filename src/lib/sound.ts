@@ -23,6 +23,17 @@ export type Sound =
   | { name: 'countdown'; secondsLeft: number }
   /** Se acabó la cuenta: empieza a caer el primer palo. */
   | { name: 'go' }
+  /**
+   * Se acabó la partida. `outcome` dice cómo, porque no todas acaban igual: un
+   * nivel se aprueba o no, un desafío se pierde quedándose sin vidas, y en
+   * práctica simplemente se termina.
+   */
+  | { name: 'over'; outcome: RoundOutcome }
+  /** Y encima del cierre, si la partida ha batido la marca. */
+  | { name: 'record' }
+
+/** Cómo ha acabado la partida. */
+export type RoundOutcome = 'win' | 'loss' | 'close'
 
 /** Una voz del sonido: un oscilador con su envolvente. */
 export interface ToneSpec {
@@ -150,8 +161,68 @@ export function soundVoices(sound: Sound): ToneSpec[] {
         { type: 'triangle', from: 880, to: 1320, duration: 0.26, gain: 0.6, delay: 0 },
         { type: 'sine', from: 440, to: 660, duration: 0.3, gain: 0.35, delay: 0 },
       ]
+    case 'over':
+      return closingVoices(sound.outcome)
+    case 'record':
+      return RECORD_VOICES
   }
 }
+
+/**
+ * El cierre de la partida.
+ *
+ * **Terminar era silencio.** Se acababa el último palo y no sonaba nada: la pantalla de fin
+ * aparecía sin avisar, y con el visor puesto es peor todavía, porque el marcador está donde
+ * uno no siempre está mirando. Un final tiene que oírse como un final.
+ *
+ * Los tres se distinguen por **hacia dónde van**, que es lo que el oído entiende sin haberlo
+ * aprendido: ganar sube, perder baja, y terminar sin más se queda donde está. Y son largos y
+ * de tres notas para que no se confundan con un acierto o un fallo, que duran un suspiro.
+ */
+function closingVoices(outcome: RoundOutcome): ToneSpec[] {
+  const raiz = 440
+  if (outcome === 'win') {
+    // Acorde mayor subiendo: la tercera, la quinta y la octava.
+    return [
+      // Las notas se solapan por las colas, así que cada una va por debajo de lo que iría
+      // sola: lo que satura el maestro es lo que suena **a la vez**, no el sonido entero.
+      { type: 'triangle', from: raiz, to: raiz, duration: 0.22, gain: 0.35, delay: 0 },
+      { type: 'triangle', from: transpose(raiz, 4), to: transpose(raiz, 4), duration: 0.22, gain: 0.35, delay: 0.12 },
+      { type: 'triangle', from: transpose(raiz, 7), to: transpose(raiz, 12), duration: 0.42, gain: 0.4, delay: 0.24 },
+      { type: 'sine', from: transpose(raiz, 12), to: transpose(raiz, 12), duration: 0.5, gain: 0.18, delay: 0.24 },
+    ]
+  }
+  if (outcome === 'loss') {
+    // Bajando y grave, con el sierra del fallo: es el mismo mundo sonoro que
+    // perder un palo, pero el doble de largo y una tercera más abajo.
+    return [
+      { type: 'sawtooth', from: transpose(raiz, -5), to: transpose(raiz, -5), duration: 0.26, gain: 0.34, delay: 0 },
+      { type: 'sawtooth', from: transpose(raiz, -9), to: transpose(raiz, -12), duration: 0.55, gain: 0.36, delay: 0.16 },
+      { type: 'sine', from: transpose(raiz, -21), to: transpose(raiz, -24), duration: 0.6, gain: 0.26, delay: 0.16 },
+    ]
+  }
+  // Terminar sin más: dos notas que se resuelven, sin subir ni caerse. Dice
+  // «se acabó» sin decir «bien» ni «mal», que en práctica no lo hay.
+  return [
+    { type: 'triangle', from: transpose(raiz, 7), to: transpose(raiz, 7), duration: 0.2, gain: 0.4, delay: 0 },
+    { type: 'triangle', from: raiz, to: raiz, duration: 0.4, gain: 0.42, delay: 0.14 },
+  ]
+}
+
+/**
+ * El récord, encima del cierre.
+ *
+ * Va **aparte** y no como un cuarto cierre: batir la marca puede pasar ganando o terminando
+ * sin más, y lo que hay que oír son las dos cosas. Suena por encima, más agudo que nada del
+ * juego y con un retardo que lo deja caer cuando el cierre ya se está apagando.
+ */
+const RECORD_VOICES: ToneSpec[] = [
+  // Sin pasar de los 2 kHz, como todo lo demás: en el visor el sonido va a un palmo de las
+  // orejas y ahí arriba deja de ser brillo y empieza a taladrar.
+  { type: 'sine', from: 1320, to: 1320, duration: 0.12, gain: 0.3, delay: 0.42 },
+  { type: 'sine', from: 1568, to: 1568, duration: 0.12, gain: 0.3, delay: 0.52 },
+  { type: 'sine', from: 1760, to: 1976, duration: 0.34, gain: 0.32, delay: 0.62 },
+]
 
 /** Reproduce los sonidos del juego. Lo único que habla con Web Audio. */
 export interface SoundEngine {

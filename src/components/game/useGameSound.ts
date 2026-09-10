@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { type GameState, useGame } from '../../lib/gameStore'
-import { createSoundEngine, type SoundEngine } from '../../lib/sound'
+import { createSoundEngine, type RoundOutcome, type SoundEngine } from '../../lib/sound'
 
 /**
  * Pone sonido a la partida: al atrapar, al perder y en la cuenta atrás.
@@ -15,7 +15,18 @@ import { createSoundEngine, type SoundEngine } from '../../lib/sound'
  * del arcade (`muted` del store) no llega a tocar la Web Audio API.
  */
 export function useGameSound() {
-  const { gameState, countdown, score, resolved, streak, muted, sfxVolume } = useGame()
+  const {
+    gameState,
+    countdown,
+    score,
+    resolved,
+    streak,
+    muted,
+    sfxVolume,
+    isRecord,
+    levelResult,
+    lives,
+  } = useGame()
   const engineRef = useRef<SoundEngine | null>(null)
   // El volumen de efectos del arcade, guardado aparte para poder aplicarlo al
   // motor sin que cambiarlo lo vuelva a crear.
@@ -106,5 +117,30 @@ export function useGameSound() {
     if (gameState === 'playing' && before.gameState === 'countdown') {
       engine.play({ name: 'go' })
     }
-  }, [score, missed, countdown, gameState, streak])
+
+    // El final. Se acababa el último palo y no sonaba nada: la pantalla de fin
+    // llegaba sin avisar, y con el visor puesto el marcador está donde uno no
+    // siempre está mirando.
+    if (gameState === 'finished' && before.gameState !== 'finished') {
+      engine.play({ name: 'over', outcome: roundOutcome(levelResult, lives) })
+      // El récord va por encima del cierre y no en su lugar: batir la marca
+      // puede pasar ganando o terminando sin más, y hay que oír las dos cosas.
+      if (isRecord) engine.play({ name: 'record' })
+    }
+  }, [score, missed, countdown, gameState, streak, isRecord, levelResult, lives])
+}
+
+/**
+ * Cómo ha acabado esta partida, para elegir el cierre.
+ *
+ * En Niveles se aprueba o no; en el desafío se pierde quedándose sin vidas; en práctica no
+ * hay nada que ganar ni que perder y el cierre solo dice «se acabó».
+ */
+function roundOutcome(
+  levelResult: { passed: boolean } | null,
+  lives: number | null,
+): RoundOutcome {
+  if (levelResult != null) return levelResult.passed ? 'win' : 'loss'
+  if (lives != null) return lives > 0 ? 'win' : 'loss'
+  return 'close'
 }
