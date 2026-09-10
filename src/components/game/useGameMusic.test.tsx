@@ -6,6 +6,7 @@ import {
   useGameStoreValue,
 } from '../../lib/gameStore'
 import { MUSIC_VOLUME } from '../../lib/music'
+import { MUSIC_FADE_MS } from '../../lib/musicFade'
 import { useGameMusic } from './useGameMusic'
 import { DEFAULT_VOLUMES, volumeFactor } from '../../lib/ajustes'
 import { setVolume } from '../../lib/ajustesCliente'
@@ -71,9 +72,26 @@ function renderGame() {
   })
 }
 
+
+/**
+ * Espera a que termine el fundido.
+ *
+ * La música ya no entra ni se va de golpe (`lib/musicFade.ts`), así que el volumen final y
+ * el `pause()` llegan al acabar la rampa y no en la misma línea. Se espera de verdad y no
+ * con relojes falsos porque la rampa va por fotogramas: falsear el reloj sin falsear
+ * `requestAnimationFrame` la dejaría parada, y falsear los dos es más maquinaria que los
+ * setecientos milisegundos que cuesta esperarla.
+ */
+async function trasElFundido() {
+  await act(async () => {
+    await new Promise((listo) => setTimeout(listo, MUSIC_FADE_MS + 120))
+  })
+}
+
 describe('useGameMusic', () => {
-  it('se entra con música, sonando en bucle y por debajo de la partida', () => {
+  it('se entra con música, sonando en bucle y por debajo de la partida', async () => {
     renderGame()
+    await trasElFundido()
 
     expect(creados).toHaveLength(1)
     expect(creados[0].loop).toBe(true)
@@ -81,10 +99,11 @@ describe('useGameMusic', () => {
     expect(creados[0].play).toHaveBeenCalled()
   })
 
-  it('apagarla la para, y volver a encenderla no crea otro reproductor', () => {
+  it('apagarla la para, y volver a encenderla no crea otro reproductor', async () => {
     renderGame()
 
     act(() => setVolume('ambience', 0))
+    await trasElFundido()
     expect(creados[0].pause).toHaveBeenCalled()
 
     act(() => setVolume('ambience', DEFAULT_VOLUMES.ambience))
@@ -103,12 +122,13 @@ describe('useGameMusic', () => {
     expect(creados[0].pause).not.toHaveBeenCalled()
   })
 
-  it('quitar el mundo se lleva la música', () => {
+  it('quitar el mundo se lleva la música', async () => {
     // Es lo que pasa al salir de una cabina del salón: si no, seguiría sonando
-    // sobre el juego siguiente.
+    // sobre el juego siguiente. Bajándola, no cortándola: el salón devuelve la suya detrás.
     const game = renderGame()
 
     game.unmount()
+    await trasElFundido()
 
     expect(creados[0].pause).toHaveBeenCalled()
   })
