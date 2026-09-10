@@ -1,5 +1,6 @@
 'use client'
 
+import { useCallback } from 'react'
 import { useXR } from '@react-three/xr'
 import {
   DIFFICULTY_COLORS,
@@ -11,10 +12,15 @@ import {
 } from '../../lib/gameConfig'
 import { CHALLENGE_LIVES, GAME_MODE_ORDER } from '../../lib/gameMode'
 import { useGame } from '../../lib/gameStore'
+import { useLang } from '../../lib/ajustesCliente'
+import { traductor } from '../../lib/textos'
+import { CanvasPanel, drawText } from './canvasPanel'
 import { LEVEL_COUNT } from '../../lib/levels'
 import { useExit } from '../../game/exit'
 import { HOOP_ADJUST_RANGE } from '../../lib/hoopHeight'
 import {
+  MENU_LABELS,
+  ROW_LABEL_RISE,
   XR_DIFFICULTY_SPACING,
   XR_ENDLESS_TOGGLE_OFFSET,
   XR_HOOP_DOWN_OFFSET,
@@ -471,6 +477,44 @@ function TutorialButton() {
   )
 }
 
+/** Lo que ocupa la placa del menú, en metros. */
+const MENU_PANEL: [number, number] = [1.06, 0.92]
+
+/**
+ * De qué es cada fila del menú.
+ *
+ * Va en un lienzo aparte porque el resto del panel es geometría y ahí no cabe una letra, y
+ * encima de los botones y no dentro: dentro habría que elegir entre el nombre y el icono,
+ * y el icono es lo que se pulsa.
+ */
+function RowLabels() {
+  const t = traductor(useLang())
+
+  const escribir = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      for (const { text, x, y } of MENU_LABELS) {
+        drawText(ctx, t(text), x, y + ROW_LABEL_RISE, {
+          size: 0.032,
+          color: '#94a3b8',
+          maxWidth: 0.3,
+        })
+      }
+    },
+    [t],
+  )
+
+  return (
+    <group position={[0, 0, 0.004]}>
+      <CanvasPanel
+        width={MENU_PANEL[0]}
+        height={MENU_PANEL[1]}
+        draw={escribir}
+        fallbackColor={PANEL_COLOR}
+      />
+    </group>
+  )
+}
+
 export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
   const mode = useXR((state) => state.mode)
   const { gameState, gameMode, startGame } = useGame()
@@ -485,7 +529,8 @@ export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
     <group position={XR_MENU_POSITION}>
       {/* Más alto que antes: la fila del aro va arriba del todo y necesita
           panel detrás para no quedar flotando fuera de él. */}
-      <XRPanel width={1.06} height={0.82} color={PANEL_COLOR} />
+      <XRPanel width={MENU_PANEL[0]} height={MENU_PANEL[1]} color={PANEL_COLOR} />
+      <RowLabels />
       <HoopHeightPicker />
       <TutorialButton />
       {/* En Niveles los palos y la velocidad los dice el nivel: la fila de

@@ -102,21 +102,21 @@ export const XR_QUIT_YAW = Math.atan2(
   -XR_QUIT_POSITION[2],
 )
 /** Botón de salir del visor, en la esquina del panel del menú. */
-export const XR_MENU_EXIT_OFFSET: Vec3 = [-0.42, -0.29, 0]
+export const XR_MENU_EXIT_OFFSET: Vec3 = [-0.42, -0.37, 0]
 /**
  * Botón de silenciar, en la esquina opuesta a la de salir del visor. Los dos
  * ajustes de la fila de abajo quedan así uno en cada punta, con el de empezar
  * en medio: en el visor se apunta a pulso y un vecino a pocos centímetros se
  * pulsa por error.
  */
-export const XR_MENU_SOUND_OFFSET: Vec3 = [0.42, -0.29, 0]
+export const XR_MENU_SOUND_OFFSET: Vec3 = [0.42, -0.37, 0]
 /**
  * Fila de ajustes bajo las dificultades: a la izquierda con qué se juega
  * (práctica o desafío) y a la derecha qué se ve alrededor. Van a las dos puntas
  * y no juntos en el centro por lo mismo que los botones de la fila de abajo: en
  * el visor se apunta a pulso y un vecino a pocos centímetros se pulsa por error.
  */
-const SETTINGS_ROW_Y = -0.17
+const SETTINGS_ROW_Y = -0.19
 /**
  * Interruptor de modo: recorre práctica, niveles y desafío, y enseña lo que
  * cada uno pone en juego (nada, estrellas, corazones).
@@ -144,7 +144,7 @@ export const XR_END_RUN_YAW = Math.atan2(
  * encima del resto porque es lo único que se toca **mirando la máquina**: el
  * aro queda justo encima del panel, así que al pulsar se ve subir o bajar.
  */
-const HOOP_ROW_Y = 0.3
+const HOOP_ROW_Y = 0.34
 /** Botón de bajar el aro, a la izquierda de su indicador. */
 export const XR_HOOP_DOWN_OFFSET: Vec3 = [-0.13, HOOP_ROW_Y, 0]
 /** Botón de subir el aro, a la derecha de su indicador. */
@@ -199,11 +199,35 @@ export const XR_LEVEL_PICKER_SPACING = 0.047
 export const XR_DIFFICULTY_SPACING = 0.17
 
 /** Altura del selector de palos dentro del panel. */
-const STICK_PICKER_Y = 0.16
+const STICK_PICKER_Y = 0.19
 /** Altura del selector de dificultad dentro del panel. */
-const DIFFICULTY_Y = -0.04
+const DIFFICULTY_Y = -0.02
 /** Altura del botón de empezar dentro del panel. */
-const PLAY_Y = -0.21
+const PLAY_Y = -0.26
+
+/**
+ * Cuánto sube el nombre de una fila por encima de sus botones, en metros.
+ *
+ * Las filas son palos, fichas de color e iconos, y un icono dice **qué pasa** pero no **de
+ * qué es la fila**: cinco fichas en línea no se leen como «velocidad» hasta que alguien lo
+ * dice. El panel creció para hacerles sitio, que quitárselo a los botones es quitárselo a
+ * lo que cuesta apuntar.
+ */
+export const ROW_LABEL_RISE = 0.095
+
+/**
+ * Cómo se llama cada fila y sobre qué se centra, en coordenadas del panel.
+ *
+ * La de ajustes lleva tres cosas distintas, así que lleva tres nombres, cada uno sobre lo
+ * suyo. En inglés, que es la clave con la que se traducen.
+ */
+export const MENU_LABELS = [
+  { text: 'Hoop', x: 0, y: HOOP_ROW_Y },
+  { text: 'Sticks', x: 0, y: STICK_PICKER_Y },
+  { text: 'Speed', x: 0, y: DIFFICULTY_Y },
+  { text: 'Mode', x: -0.26, y: SETTINGS_ROW_Y },
+  { text: 'Around', x: 0.245, y: SETTINGS_ROW_Y },
+] as const
 
 function offset([x, y, z]: Vec3, dx: number, dy: number): Vec3 {
   return [x + dx, y + dy, z]
