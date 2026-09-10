@@ -164,3 +164,13 @@
 - [x] Etiquetar v0.2.0 en main y publicar el tag (bloqueada: main aún no tiene la montabilidad) <!-- org:aeea4140-de31-4ca1-aeb3-5e22d6904d80 -->
 - [x] Regenerar package-lock.json, que quedó desfasado al separar el juego de su web <!-- org:8213b3f0-b0e6-478c-beeb-763df11f3b36 -->
 - [x] Decidir cómo accede xrcade al repo privado para instalar el juego (acceso al CI, repo público o registry) <!-- org:93ff12f4-a19e-4e7c-b614-38b201f9e434 -->
+
+## Revisión de mejoras
+
+- [ ] Terminar la partida no suena
+  Tiene `countdown` y `go`, que son justo lo que les falta a los demás, pero el cierre —estrellas,
+  nivel desbloqueado, récord— lo pinta el HUD en silencio.
+- [ ] Los `peerDependencies` prometen versiones más viejas de las que usa
+  Es el único repo al día con las versiones del hub (`next`, `react`, `@react-three/drei`,
+  `eslint-config-next`, `@playwright/test`), pero su `package.json` sigue declarando las anteriores
+  como peer, así que quien lo monte puede acabar con dos copias.
