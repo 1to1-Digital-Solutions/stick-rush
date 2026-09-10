@@ -1,138 +1,164 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createStoredPreference, gameStorage } from './storage'
 
+const KEY = 'stick-rushest-flag'
+
 /**
- * Lo que se prueba aquí no es «guardar y leer», que es lo fácil: es que el juego
- * **siga jugándose** cuando el navegador no deja guardar nada. En modo privado, o
- * con el almacenamiento vetado por política, tocar `localStorage` lanza; si eso
- * subiera, el juego se caería al arrancar por una preferencia prescindible.
+ * Una preferencia de mentira con la misma forma que las de verdad: se guarda
+ * como texto y se lee como otra cosa, para que se vea si el parseador y el
+ * serializador se usan.
  */
-
-/** El almacenamiento de un navegador en modo privado: lanza en vez de fallar. */
-function blockedStorage(): Storage {
-  return {
-    getItem: () => {
-      throw new DOMException('bloqueado', 'SecurityError')
-    },
-    setItem: () => {
-      throw new DOMException('cuota agotada', 'QuotaExceededError')
-    },
-  } as unknown as Storage
-}
-
-/** Una preferencia de mentira: guarda un número y lee 0 si no hay nada válido. */
-function contador(key = 'stick-rush:test:contador') {
-  return createStoredPreference<number>({
+function flagPreference(key: string = KEY) {
+  return createStoredPreference<boolean>({
     key,
-    parse: (raw) => {
-      const value = Number(raw)
-      return Number.isFinite(value) && value > 0 ? value : 0
-    },
-    serialize: (value) => String(value),
+    parse: (raw) => raw === 'sí',
+    serialize: (value) => (value ? 'sí' : 'no'),
   })
 }
 
-afterEach(() => {
-  // En este orden: mientras el getter de `localStorage` esté falseado, limpiarlo
-  // lanzaría y tumbaría el test siguiente por el fallo del anterior.
-  vi.restoreAllMocks()
-  vi.unstubAllGlobals()
-  localStorage.clear()
+/** Deja el almacenamiento lanzando a cada acceso, como en una ventana privada. */
+function blockStorage(): void {
+  const boom = () => {
+    throw new Error('almacenamiento bloqueado')
+  }
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(boom)
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(boom)
+}
+
+beforeEach(() => {
+  window.localStorage.clear()
 })
 
-describe('el almacenamiento del navegador', () => {
-  it('en el navegador es el de siempre', () => {
+describe('gameStorage', () => {
+  const original = Object.getOwnPropertyDescriptor(window, 'localStorage')
+
+  afterEach(() => {
+    if (original) Object.defineProperty(window, 'localStorage', original)
+  })
+
+  it('da el almacenamiento del navegador', () => {
     expect(gameStorage()).toBe(window.localStorage)
   })
 
-  it('en el servidor no hay ninguno', () => {
-    // Es lo que mantiene igual el HTML que se prerenderiza y el que se hidrata:
-    // si aquí se leyera algo, React avisaría de que no cuadran.
-    vi.stubGlobal('window', undefined)
-    expect(gameStorage()).toBeNull()
-  })
-
-  it('si el navegador prohíbe tocarlo, es como no tenerlo', () => {
-    vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
-      throw new DOMException('bloqueado', 'SecurityError')
+  it('da null cuando ni siquiera se puede mirar', () => {
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new Error('almacenamiento vetado por política')
+      },
     })
+
     expect(gameStorage()).toBeNull()
   })
 })
 
-describe('una preferencia guardada entre visitas', () => {
-  it('lo guardado se vuelve a leer en la siguiente visita', () => {
-    const pref = contador()
-    pref.save(7)
+describe('createStoredPreference', () => {
+  it('recuerda lo elegido, traducido a lo que se guarda', () => {
+    const flag = flagPreference()
+    flag.save(true)
 
-    expect(pref.get()).toBe(7)
-    // Otra pestaña, u otra visita, lee lo mismo.
-    expect(contador().get()).toBe(7)
+    expect(window.localStorage.getItem(KEY)).toBe('sí')
+    expect(flag.get()).toBe(true)
   })
 
-  it('sin nada guardado, el valor por defecto', () => {
-    expect(contador().get()).toBe(0)
+  it('se entra con lo que el parseador hace sin nada guardado', () => {
+    const flag = flagPreference()
+
+    expect(flag.get()).toBe(false)
+    expect(flag.getServer()).toBe(false)
   })
 
-  it('en el servidor siempre el valor por defecto, aunque haya algo guardado', () => {
-    const pref = contador()
-    pref.save(7)
-    expect(pref.getServer()).toBe(0)
-  })
-
-  it('avisa a quien la mira cuando cambia, y deja de hacerlo al soltarla', () => {
-    const pref = contador()
+  it('avisa a quien mira después de escribir', () => {
+    const flag = flagPreference()
     const listener = vi.fn()
-    const unsubscribe = pref.subscribe(listener)
+    const unsubscribe = flag.subscribe(listener)
 
-    pref.save(3)
-    expect(listener).toHaveBeenCalledTimes(1)
+    flag.save(true)
+    unsubscribe()
+
+    expect(listener).toHaveBeenCalled()
+  })
+
+  it('avisa también cuando lo cambia otra pestaña', () => {
+    const flag = flagPreference()
+    const listener = vi.fn()
+    const unsubscribe = flag.subscribe(listener)
+
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY }))
+    unsubscribe()
+
+    expect(listener).toHaveBeenCalled()
+  })
+
+  it('deja de avisar a quien se da de baja', () => {
+    const flag = flagPreference()
+    const listener = vi.fn()
+
+    flag.subscribe(listener)()
+    flag.save(true)
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY }))
+
+    expect(listener).not.toHaveBeenCalled()
+  })
+
+  it('guarda cada variante en su clave', () => {
+    const flag = createStoredPreference<boolean, [string]>({
+      key: (variant) => `${KEY}:${variant}`,
+      parse: (raw) => raw === 'sí',
+      serialize: (value) => (value ? 'sí' : 'no'),
+    })
+
+    flag.save(true, 'uno')
+
+    expect(flag.get('uno')).toBe(true)
+    expect(flag.get('dos')).toBe(false)
+  })
+
+  it('con el almacenamiento bloqueado se entra con el valor de entrada', () => {
+    const flag = flagPreference()
+    blockStorage()
+
+    expect(flag.get()).toBe(false)
+  })
+
+  it('con el almacenamiento bloqueado, cambiar una preferencia vale al menos para esta visita', () => {
+    // Antes la escritura fallaba en silencio y la relectura devolvía lo de
+    // antes: pulsar «izquierda» o el silencio no hacía absolutamente nada, y
+    // con el visor puesto el menú es la única forma de cambiarlo.
+    const flag = flagPreference()
+    const listener = vi.fn()
+    blockStorage()
+    const unsubscribe = flag.subscribe(listener)
+
+    expect(() => flag.save(true)).not.toThrow()
+    expect(flag.get()).toBe(true)
+    expect(listener).toHaveBeenCalled()
 
     unsubscribe()
-    pref.save(4)
-    expect(listener).toHaveBeenCalledTimes(1)
   })
 
-  it('también escucha a las otras pestañas', () => {
-    // `useSyncExternalStore` solo vuelve a leer cuando se le avisa: sin esto, un
-    // cambio hecho en otra pestaña no aparecería hasta recargar.
-    const pref = contador()
-    const listener = vi.fn()
-    const unsubscribe = pref.subscribe(listener)
+  it('en cuanto el almacenamiento vuelve a aceptar, manda él otra vez', () => {
+    const flag = flagPreference()
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('cuota agotada')
+    })
+    flag.save(true)
+    expect(flag.get()).toBe(true)
 
-    window.dispatchEvent(new StorageEvent('storage'))
-    expect(listener).toHaveBeenCalledTimes(1)
-
-    unsubscribe()
-    window.dispatchEvent(new StorageEvent('storage'))
-    expect(listener).toHaveBeenCalledTimes(1)
+    setItem.mockRestore()
+    flag.save(false)
+    expect(flag.get()).toBe(false)
+    // Y lo que dice el almacenamiento es lo que vale: otra pestaña lo cambia.
+    window.localStorage.setItem(KEY, 'sí')
+    expect(flag.get()).toBe(true)
   })
+})
 
-  describe('cuando el navegador no deja guardar', () => {
-    it('leer da el valor por defecto en vez de lanzar', () => {
-      vi.spyOn(window, 'localStorage', 'get').mockReturnValue(blockedStorage())
-      expect(contador().get()).toBe(0)
-    })
-
-    it('guardar no hace nada y no avisa de un cambio que no ocurrió', () => {
-      vi.spyOn(window, 'localStorage', 'get').mockReturnValue(blockedStorage())
-      const pref = contador()
-      const listener = vi.fn()
-      pref.subscribe(listener)
-
-      pref.save(9)
-
-      expect(pref.get()).toBe(0)
-      expect(listener).not.toHaveBeenCalled()
-    })
-
-    it('sin almacenamiento ninguno, ni lectura ni escritura rompen', () => {
-      vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
-        throw new DOMException('bloqueado', 'SecurityError')
-      })
-      const pref = contador()
-      expect(() => pref.save(9)).not.toThrow()
-      expect(pref.get()).toBe(0)
-    })
+describe('sin navegador que preguntar', () => {
+  it('no hay almacenamiento, y eso es lo que mantiene igual el HTML', () => {
+    // Si en el servidor se leyera algo, React avisaría de que el HTML que
+    // prerenderiza y el que hidrata no cuadran.
+    vi.stubGlobal('window', undefined)
+    expect(gameStorage()).toBeNull()
   })
 })
