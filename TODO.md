@@ -170,10 +170,17 @@
 - [x] Terminar la partida no suena
   Tiene `countdown` y `go`, que son justo lo que les falta a los demás, pero el cierre —estrellas,
   nivel desbloqueado, récord— lo pinta el HUD en silencio.
-- [ ] Los `peerDependencies` prometen versiones más viejas de las que usa
-  Es el único repo al día con las versiones del hub (`next`, `react`, `@react-three/drei`,
-  `eslint-config-next`, `@playwright/test`), pero su `package.json` sigue declarando las anteriores
-  como peer, así que quien lo monte puede acabar con dos copias.
+- [x] Los `peerDependencies` prometen versiones más viejas de las que usa
+  Ya no: los peers dicen lo mismo contra lo que se prueba (`drei ^10.7.8`, `fiber ^9.7.0`,
+  `three ^0.185.1`), igual que en los otros doce.
+  Lo de «dos copias» no llegaba a pasar: los rangos con caret se deduplican, así que el hub y
+  los trece compartían una sola copia de cada uno. El daño era de lectura — el manifiesto
+  decía que el juego iba por detrás del salón.
+  **Lo que sigue distinto es `next`**: este repo va por `^16.3.3` y el hub y los otros doce
+  lo clavan en `16.3.0`. No viaja —es devDependency, y npm no instala las de una dependencia—,
+  así que no rompe nada, pero conviene igualarlo. Se deja **para justo después del despliegue**
+  y no para antes: subir Next en catorce repos con trece suites en verde, la víspera de
+  publicar, se arregla solo si sale bien.
 
 ## Del visor — segunda ronda
 
