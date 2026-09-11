@@ -20,6 +20,7 @@ import { XRMenu } from '../xr/XRMenu'
 import { XRPlayerHeight } from '../xr/XRPlayerHeight'
 import { XRSessionController } from '../xr/XRSessionController'
 import { XRTutorial } from '../xr/XRTutorial'
+import { Backdrop } from './Backdrop'
 import { Fairground } from './Fairground'
 import { SceneryFade } from './SceneryFade'
 import { StickMachine } from './StickMachine'
@@ -73,8 +74,13 @@ function SceneBackdrop({ scenery }: { scenery: SceneryMode }) {
     <>
       {!isAR && (
         <>
-          {/* Solo se ve mientras carga el HDRI; luego lo sustituye el fondo. */}
-          <color attach="background" args={[BACKDROP_COLOR]} />
+          {/* Solo se ve mientras carga el HDRI; luego lo sustituye el fondo.
+              Con `<color attach="background">` no se veía nunca: ese atajo adjunta
+              el color a **su padre**, y aquí el padre es un grupo, donde
+              `background` no significa nada —no falla, no avisa, simplemente no
+              hace nada—. Así que mientras el HDRI bajaba, lo que había arriba era
+              el negro del compositor. */}
+          <Backdrop color={BACKDROP_COLOR} />
           <Ground />
           <Fairground />
         </>
