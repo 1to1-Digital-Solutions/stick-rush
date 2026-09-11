@@ -117,7 +117,7 @@ export function tutorialFrameAt(elapsed: number): TutorialFrame {
 export const TUTORIAL_SEEN_KEY = 'stick-rush:tutorial-seen'
 
 /** Lo que se escribe cuando ya se ha visto. */
-const SEEN_VALUE = '1'
+export const TUTORIAL_SEEN_VALUE = '1'
 
 /**
  * Interpreta lo leído del almacenamiento.
@@ -129,7 +129,7 @@ const SEEN_VALUE = '1'
  * cómo se juega.
  */
 export function parseTutorialSeen(raw: string | null): boolean {
-  return raw === SEEN_VALUE
+  return raw === TUTORIAL_SEEN_VALUE
 }
 
 /** ¿Ya se vio el tutorial en este navegador? */
@@ -148,7 +148,7 @@ export function readTutorialSeen(storage: Storage | null): boolean {
 export function writeTutorialSeen(storage: Storage | null): void {
   if (!storage) return
   try {
-    storage.setItem(TUTORIAL_SEEN_KEY, SEEN_VALUE)
+    storage.setItem(TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
   } catch {
     // Cuota agotada o escritura prohibida: el tutorial volverá a salir en la
     // próxima visita. Es saltable, así que no justifica ningún aviso.
