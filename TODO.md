@@ -165,6 +165,19 @@
 - [x] Regenerar package-lock.json, que quedó desfasado al separar el juego de su web <!-- org:8213b3f0-b0e6-478c-beeb-763df11f3b36 -->
 - [x] Decidir cómo accede xrcade al repo privado para instalar el juego (acceso al CI, repo público o registry) <!-- org:93ff12f4-a19e-4e7c-b614-38b201f9e434 -->
 
+## Del visor — tercera ronda
+
+- [x] [urgente] El botón de volver al arcade estaba en medio de la pantalla
+  Lo ponía el salón además del que trae este juego, colgado de la mirada a metro y pico, así
+  que se quedaba delante de la cara toda la partida y además salía sin preguntar. Retirado en
+  `xrcade`: la salida es la de aquí —el botón de las tres rayitas, fuera de la línea de juego
+  y con su confirmación—, que es lo que ya llamaba a `onExit`.
+
+- [x] [urgente] Los objetos se cogen con el botón de agarre y no con el gatillo
+  Aquí ya se cogía cerrando la mano (`xr-standard-squeeze`), así que no había nada que
+  cambiar. Se apunta porque el repaso fue de los trece: los cinco que lo hacían con el gatillo
+  —hachas, baloncesto, bolos, dardos y minigolf— ya lo hacen con el agarre.
+
 ## Revisión de mejoras
 
 - [x] Terminar la partida no suena
