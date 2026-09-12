@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { dibujarLosNombres } from './XRMenu'
 import { lienzoQueApunta, problemasDeLegibilidad } from './legibilidad'
 import { MENU_PANEL } from './XRMenu'
+import { GAME_MODE_HINTS, GAME_MODE_ORDER } from '../../lib/gameMode'
 import { traductor } from '../../lib/textos'
 
 /**
@@ -18,10 +19,33 @@ const PANEL_MEDIDO = { width: MENU_PANEL[0], height: MENU_PANEL[1] }
 describe('los nombres de las filas del menú se leen', () => {
   it('en los dos idiomas', () => {
     for (const lang of IDIOMAS) {
-      const { ctx, escritos } = lienzoQueApunta()
-      dibujarLosNombres(ctx, traductor(lang))
-      expect(escritos.length, 'no se ha medido nada').toBeGreaterThan(0)
-      expect(problemasDeLegibilidad(escritos, { panel: PANEL_MEDIDO }), lang).toEqual([])
+      for (const gameMode of GAME_MODE_ORDER) {
+        const { ctx, escritos } = lienzoQueApunta()
+        dibujarLosNombres(ctx, traductor(lang), gameMode)
+        expect(escritos.length, 'no se ha medido nada').toBeGreaterThan(0)
+        expect(
+          problemasDeLegibilidad(escritos, { panel: PANEL_MEDIDO }),
+          `${lang} ${gameMode}`,
+        ).toEqual([])
+      }
+    }
+  })
+
+  /**
+   * Y lo que se ha venido a arreglar: dentro del visor los modos eran **solo nombres**
+   * y lo que los distingue solo lo contaba la pantalla de la web.
+   */
+  it('dicen qué es el modo elegido', () => {
+    for (const lang of IDIOMAS) {
+      const t = traductor(lang)
+      for (const gameMode of GAME_MODE_ORDER) {
+        const { ctx, escritos } = lienzoQueApunta()
+        dibujarLosNombres(ctx, t, gameMode)
+        const frase = t(GAME_MODE_HINTS[gameMode])
+        expect(escritos.some((e) => frase.startsWith(e.texto.trim())), `${lang} ${gameMode}`).toBe(
+          true,
+        )
+      }
     }
   })
 

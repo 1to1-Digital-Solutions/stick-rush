@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { MENU_PANEL } from '../components/xr/XRMenu'
 import {
   RETAKE_DELTA,
   RETAKE_SECONDS,
@@ -13,6 +14,10 @@ import {
   worldRise,
   xrUiRise,
   xrUiRiseOverWorld,
+  PISTA_ANCHO,
+  PISTA_Y,
+  XR_MENU_HIT,
+  XR_MENU_SPOT
 } from './xrLayout'
 
 /**
@@ -57,6 +62,56 @@ describe('las esquinas del panel del menú', () => {
     // Ahí solo quedaban quince centímetros entre empezar y silenciar, que es
     // menos de lo que mide un botón de esquina.
     expect(XR_MENU_MUSIC_OFFSET[1]).not.toBe(XR_MENU_SOUND_OFFSET[1])
+  })
+})
+
+/**
+ * Las cajas de pulsación son **invisibles**, así que una que pise a su vecina no se ve:
+ * se nota jugando, como una opción del menú que no responde. Es lo que se reportó del
+ * visor —«hay objetos invisibles que bloquean opciones del menú»—, y aquí se mide.
+ */
+describe('las cajas de pulsación del menú no se pisan', () => {
+  const NOMBRES = Object.keys(XR_MENU_HIT)
+
+  function caja(nombre: string) {
+    const [x, y] = XR_MENU_SPOT[nombre]
+    const [ancho, alto] = XR_MENU_HIT[nombre]
+    return { x, y, ancho, alto }
+  }
+
+  it('ninguna se mete en la de al lado', () => {
+    for (let i = 0; i < NOMBRES.length; i++) {
+      for (let j = i + 1; j < NOMBRES.length; j++) {
+        const a = caja(NOMBRES[i])
+        const b = caja(NOMBRES[j])
+        const pisa =
+          Math.abs(a.x - b.x) * 2 < a.ancho + b.ancho && Math.abs(a.y - b.y) * 2 < a.alto + b.alto
+        expect(pisa, `${NOMBRES[i]} pisa a ${NOMBRES[j]}`).toBe(false)
+      }
+    }
+  })
+
+  it('y ninguna cae encima de la línea que explica el modo', () => {
+    // La línea va centrada, así que solo se le pueden echar encima los botones que
+    // pasen por su banda de x.
+    for (const nombre of NOMBRES) {
+      const { x, y, ancho, alto } = caja(nombre)
+      const enSuAncho = Math.abs(x) * 2 < ancho + PISTA_ANCHO
+      const enSuAlto = y - alto / 2 < PISTA_Y
+      expect(enSuAncho && enSuAlto, `${nombre} cae sobre la línea del modo`).toBe(false)
+    }
+  })
+
+  it('todas caben dentro del panel', () => {
+    for (const nombre of NOMBRES) {
+      const { x, y, ancho, alto } = caja(nombre)
+      expect(Math.abs(x) + ancho / 2, `${nombre} se sale por el lado`).toBeLessThanOrEqual(
+        MENU_PANEL[0] / 2,
+      )
+      expect(Math.abs(y) + alto / 2, `${nombre} se sale por arriba o por abajo`).toBeLessThanOrEqual(
+        MENU_PANEL[1] / 2,
+      )
+    }
   })
 })
 

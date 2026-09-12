@@ -53,6 +53,30 @@ export function xrUiRise(eyeHeight: number | null | undefined): number {
 }
 
 /** Panel del menú, delante del jugador y a la altura de los ojos. */
+/**
+ * Lo que ocupa la línea que explica el modo elegido.
+ *
+ * El panel crece **solo hacia abajo** y no se mueve nada de lo que ya había. Subir las
+ * filas para repartir el crecimiento no cabe aquí: la de arriba —el aro— ya está a 14 cm
+ * de los ojos y el techo cómodo son 15 (`xrInteraction.test.ts`), así que nueve
+ * centímetros más la dejarían donde hay que estirar el cuello para verla.
+ */
+export const BANDA_DE_LA_PISTA = 0.1
+
+/** Nada sube: la banda entera se saca por abajo. */
+export const SUBIDA_DE_LA_PISTA = 0
+
+/** Dónde empieza la línea del modo, por su borde de arriba. */
+export const PISTA_Y = -0.395
+
+/**
+ * Lo ancho que se le deja.
+ *
+ * Menos que el panel: en las dos puntas de esa fila están salir y silenciar, y la frase
+ * pasaría por encima de los dos.
+ */
+export const PISTA_ANCHO = 0.62
+
 export const XR_MENU_POSITION: Vec3 = [0, 1.4, -0.95]
 /** Marcador, por debajo del menú para no cruzarse con los palos. */
 export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
@@ -102,7 +126,7 @@ export const XR_QUIT_YAW = Math.atan2(
   -XR_QUIT_POSITION[2],
 )
 /** Botón de salir del visor, en la esquina del panel del menú. */
-export const XR_MENU_EXIT_OFFSET: Vec3 = [-0.42, -0.37, 0]
+export const XR_MENU_EXIT_OFFSET: Vec3 = [-0.42, -0.37 + SUBIDA_DE_LA_PISTA, 0]
 /**
  * Botón de silenciar, en la esquina opuesta a la de salir del visor. Los dos
  * ajustes de la fila de abajo quedan así uno en cada punta, con el de empezar
@@ -116,7 +140,7 @@ export const XR_MENU_SOUND_OFFSET: Vec3 = [0.42, -0.37, 0]
  * y no juntos en el centro por lo mismo que los botones de la fila de abajo: en
  * el visor se apunta a pulso y un vecino a pocos centímetros se pulsa por error.
  */
-const SETTINGS_ROW_Y = -0.19
+const SETTINGS_ROW_Y = -0.19 + SUBIDA_DE_LA_PISTA
 /**
  * Interruptor de modo: recorre práctica, niveles y desafío, y enseña lo que
  * cada uno pone en juego (nada, estrellas, corazones).
@@ -144,7 +168,7 @@ export const XR_END_RUN_YAW = Math.atan2(
  * encima del resto porque es lo único que se toca **mirando la máquina**: el
  * aro queda justo encima del panel, así que al pulsar se ve subir o bajar.
  */
-const HOOP_ROW_Y = 0.34
+const HOOP_ROW_Y = 0.34 + SUBIDA_DE_LA_PISTA
 /** Botón de bajar el aro, a la izquierda de su indicador. */
 export const XR_HOOP_DOWN_OFFSET: Vec3 = [-0.13, HOOP_ROW_Y, 0]
 /** Botón de subir el aro, a la derecha de su indicador. */
@@ -199,11 +223,61 @@ export const XR_LEVEL_PICKER_SPACING = 0.047
 export const XR_DIFFICULTY_SPACING = 0.17
 
 /** Altura del selector de palos dentro del panel. */
-const STICK_PICKER_Y = 0.19
+const STICK_PICKER_Y = 0.19 + SUBIDA_DE_LA_PISTA
 /** Altura del selector de dificultad dentro del panel. */
-const DIFFICULTY_Y = -0.02
-/** Altura del botón de empezar dentro del panel. */
-const PLAY_Y = -0.26
+const DIFFICULTY_Y = -0.02 + SUBIDA_DE_LA_PISTA
+/**
+ * Dónde va el botón de empezar dentro del panel.
+ *
+ * Lo dice esta declaración y **no el componente**: lo tenía escrito a mano en los dos
+ * sitios con tres centímetros de diferencia, y solo no se notaba porque su caja de
+ * pulsación es más grande que él.
+ *
+ * Y **baja seis centímetros**. Su caja es 6 cm más alta que el botón que se ve, y por
+ * arriba se metía en la fila de ajustes: los dos últimos centímetros del interruptor de
+ * modo y el borde de «Sin fin» quedaban dentro de la caja de empezar, así que apuntarlos
+ * no hacía nada. Es lo que se reportó del visor como «objetos invisibles que bloquean
+ * opciones del menú», y ahora entre las dos filas hay justo lo que suman sus medias cajas.
+ */
+export const XR_MENU_PLAY_OFFSET: Vec3 = [0, -0.32, 0]
+
+/** Lo que mide su caja de pulsación. */
+export const XR_MENU_PLAY_HIT: Vec3 = [0.36, 0.13, 0.06]
+
+/**
+ * Lo que ocupa la caja de pulsación de cada botón fijo del menú, en metros.
+ *
+ * Estaba escrito dentro del componente, botón por botón, y una caja es **invisible**:
+ * más grande que su botón se come al vecino y quien juega ve una opción que no responde
+ * —lo que se reportó del visor como «hay algo que tapa el menú»—. Declaradas aquí se
+ * pueden comparar entre sí, que es lo que hace `xrLayout.test.ts`.
+ */
+export const XR_MENU_HIT: Record<string, Vec3> = {
+  exit: [0.16, 0.13, 0.06],
+  sound: [0.16, 0.13, 0.06],
+  tutorial: [0.14, 0.12, 0.06],
+  music: [0.14, 0.12, 0.06],
+  hoopDown: [0.13, 0.1, 0.06],
+  hoopUp: [0.13, 0.1, 0.06],
+  mode: [0.2, 0.13, 0.06],
+  endless: [0.16, 0.13, 0.06],
+  scenery: [0.14, 0.12, 0.06],
+  play: [0.36, 0.13, 0.06],
+}
+
+/** Dónde va cada uno de esos botones. Mismo nombre, mismo orden. */
+export const XR_MENU_SPOT: Record<keyof typeof XR_MENU_HIT, Vec3> = {
+  exit: XR_MENU_EXIT_OFFSET,
+  sound: XR_MENU_SOUND_OFFSET,
+  tutorial: XR_MENU_TUTORIAL_OFFSET,
+  music: XR_MENU_MUSIC_OFFSET,
+  hoopDown: XR_HOOP_DOWN_OFFSET,
+  hoopUp: XR_HOOP_UP_OFFSET,
+  mode: XR_MODE_TOGGLE_OFFSET,
+  endless: XR_ENDLESS_TOGGLE_OFFSET,
+  scenery: XR_SCENERY_PICKER_OFFSET,
+  play: XR_MENU_PLAY_OFFSET,
+}
 
 /**
  * Cuánto sube el nombre de una fila por encima de sus botones, en metros.
@@ -303,7 +377,8 @@ export function xrTutorialSkipPosition(): Vec3 {
 
 /** Botón de empezar partida. */
 export function xrPlayButtonPosition(): Vec3 {
-  return offset(XR_MENU_POSITION, 0, PLAY_Y)
+  const [dx, dy] = XR_MENU_PLAY_OFFSET
+  return offset(XR_MENU_POSITION, dx, dy)
 }
 
 /**

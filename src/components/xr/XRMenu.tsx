@@ -10,11 +10,16 @@ import {
   MIN_STICKS,
   STICK_COLOR,
 } from '../../lib/gameConfig'
-import { CHALLENGE_LIVES, GAME_MODE_ORDER } from '../../lib/gameMode'
+import {
+  CHALLENGE_LIVES,
+  GAME_MODE_HINTS,
+  GAME_MODE_ORDER,
+  type GameMode,
+} from '../../lib/gameMode'
 import { useGame } from '../../lib/gameStore'
 import { useLang } from '../../lib/ajustesCliente'
 import { traductor, type TextKey } from '../../lib/textos'
-import { CanvasPanel, drawText } from './canvasPanel'
+import { CanvasPanel, drawParagraph, drawText } from './canvasPanel'
 import { LEVEL_COUNT } from '../../lib/levels'
 import { useExit } from '../../game/exit'
 import { HOOP_ADJUST_RANGE } from '../../lib/hoopHeight'
@@ -33,6 +38,11 @@ import {
   XR_MODE_TOGGLE_OFFSET,
   XR_SCENERY_PICKER_OFFSET,
   XR_STICK_PICKER_SPACING,
+  BANDA_DE_LA_PISTA,
+  PISTA_ANCHO,
+  PISTA_Y,
+  XR_MENU_PLAY_HIT,
+  XR_MENU_PLAY_OFFSET,
 } from '../../lib/xrLayout'
 import { ControllerModel } from './XRControllerModel'
 import { HandModel } from './XRHandModel'
@@ -489,7 +499,7 @@ function TutorialButton() {
 }
 
 /** Lo que ocupa la placa del menú, en metros. */
-export const MENU_PANEL: [number, number] = [1.06, 0.92]
+export const MENU_PANEL: [number, number] = [1.06, 0.92 + BANDA_DE_LA_PISTA]
 
 /**
  * De qué es cada fila del menú.
@@ -503,7 +513,11 @@ export const MENU_PANEL: [number, number] = [1.06, 0.92]
  * pueda medirlos con un lienzo de mentira —`legibilidad.ts`— sin montar la escena:
  * si un nombre se pisa con otro o se sale, se ve aquí y no con el visor puesto.
  */
-export function dibujarLosNombres(ctx: CanvasRenderingContext2D, t: (clave: TextKey) => string): void {
+export function dibujarLosNombres(
+  ctx: CanvasRenderingContext2D,
+  t: (clave: TextKey) => string,
+  gameMode: GameMode = 'practice',
+): void {
   for (const { text, x, y } of MENU_LABELS) {
     drawText(ctx, t(text), x, y + ROW_LABEL_RISE, {
       size: 0.032,
@@ -511,14 +525,25 @@ export function dibujarLosNombres(ctx: CanvasRenderingContext2D, t: (clave: Text
       maxWidth: 0.3,
     })
   }
+
+  // Qué es el modo elegido. Los modos eran **solo nombres** en el panel —«Práctica»,
+  // «Desafío»— y lo que los distingue solo lo contaba la pantalla de la web, que con las
+  // gafas puestas no se ve.
+  drawParagraph(ctx, t(GAME_MODE_HINTS[gameMode]), 0, PISTA_Y, {
+    size: 0.022,
+    color: '#94a3b8',
+    maxWidth: PISTA_ANCHO,
+    anchor: 'top',
+  })
 }
 
 function RowLabels() {
   const t = traductor(useLang())
+  const { gameMode } = useGame()
 
   const escribir = useCallback(
-    (ctx: CanvasRenderingContext2D) => dibujarLosNombres(ctx, t),
-    [t],
+    (ctx: CanvasRenderingContext2D) => dibujarLosNombres(ctx, t, gameMode),
+    [t, gameMode],
   )
 
   return (
@@ -563,9 +588,9 @@ export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
           qué botón—, pero eso lo decide el juego y no este botón: dentro de la
           sesión también se puede empezar desde el overlay con el teclado. */}
       <XRPressable
-        position={[0, -0.29, 0]}
+        position={XR_MENU_PLAY_OFFSET}
         onSelect={() => startGame()}
-        hitSize={[0.36, 0.13, 0.06]}
+        hitSize={XR_MENU_PLAY_HIT}
       >
         <mesh position={[0, 0, -0.008]}>
           <boxGeometry args={[0.32, 0.1, 0.014]} />
