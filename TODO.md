@@ -174,15 +174,13 @@
 - [ ] [alta] El menú de ajustes no se entiende ni se lee
   No se ve para qué es cada opción, las letras están juntas y se solapan.
 
-- [ ] [alta] El tutorial: botón de siguiente, botón de saltar, y que enseñe el mando
-  **Hecho en hachas, que queda de referencia** (`lib/tutorial.ts`, `xr/mandoDibujado.ts`,
-  `xr/XRTutorial.tsx`). Aquí falta lo mismo, y lo que cambia de un juego a otro son dos cosas:
-  1. **Los pasos y sus hitos**: qué tiene que pasar para dar cada uno por superado. En hachas
-     son coger, lanzar y clavar; aquí serán los suyos.
-  2. **Dónde se apuntan**: en los mismos sitios del store que ya registran lo que pasa, con
-     `apuntarHito`. No hay que escuchar nada ni parar el juego.
-  Lo demás —el dibujo del mando, los dos botones, calcular el paso en vez de guardarlo y subir
-  la versión de la lección— se copia tal cual.
+- [ ] [alta] El tutorial: que enseñe el mando y se avance haciendo
+  **El único de los trece que se queda con el suyo, y a propósito.** Ya tiene botón de saltar
+  y su panel no es un lienzo dentro de la escena sino una capa de DOM por encima, así que la
+  plantilla de los otros doce no le vale: habría que rehacer el panel entero, no copiarlo.
+  Lo que le falta es lo mismo: dibujar el mando con el botón resaltado, un botón de siguiente
+  y que los pasos se superen atrapando palos en vez de por reloj. Los otros doce quedan de
+  referencia (`lib/tutorial.ts`, `xr/mandoDibujado.ts`, `xr/XRTutorial.tsx` en cualquiera).
 - [ ] [alta] Medir los paneles de este juego con la regla de legibilidad
   `components/xr/legibilidad.ts` ya está en el repo. Falta sacar el dibujo de cada panel a una
   función exportada y comprobarla en los dos idiomas y en sus variantes, como en air hockey
