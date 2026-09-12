@@ -13,7 +13,7 @@ import {
 import { CHALLENGE_LIVES, GAME_MODE_ORDER } from '../../lib/gameMode'
 import { useGame } from '../../lib/gameStore'
 import { useLang } from '../../lib/ajustesCliente'
-import { traductor } from '../../lib/textos'
+import { traductor, type TextKey } from '../../lib/textos'
 import { CanvasPanel, drawText } from './canvasPanel'
 import { LEVEL_COUNT } from '../../lib/levels'
 import { useExit } from '../../game/exit'
@@ -489,7 +489,7 @@ function TutorialButton() {
 }
 
 /** Lo que ocupa la placa del menú, en metros. */
-const MENU_PANEL: [number, number] = [1.06, 0.92]
+export const MENU_PANEL: [number, number] = [1.06, 0.92]
 
 /**
  * De qué es cada fila del menú.
@@ -498,19 +498,26 @@ const MENU_PANEL: [number, number] = [1.06, 0.92]
  * encima de los botones y no dentro: dentro habría que elegir entre el nombre y el icono,
  * y el icono es lo que se pulsa.
  */
+/**
+ * Los rótulos del panel: qué es cada fila. Sale del componente para que un test
+ * pueda medirlos con un lienzo de mentira —`legibilidad.ts`— sin montar la escena:
+ * si un nombre se pisa con otro o se sale, se ve aquí y no con el visor puesto.
+ */
+export function dibujarLosNombres(ctx: CanvasRenderingContext2D, t: (clave: TextKey) => string): void {
+  for (const { text, x, y } of MENU_LABELS) {
+    drawText(ctx, t(text), x, y + ROW_LABEL_RISE, {
+      size: 0.032,
+      color: '#94a3b8',
+      maxWidth: 0.3,
+    })
+  }
+}
+
 function RowLabels() {
   const t = traductor(useLang())
 
   const escribir = useCallback(
-    (ctx: CanvasRenderingContext2D) => {
-      for (const { text, x, y } of MENU_LABELS) {
-        drawText(ctx, t(text), x, y + ROW_LABEL_RISE, {
-          size: 0.032,
-          color: '#94a3b8',
-          maxWidth: 0.3,
-        })
-      }
-    },
+    (ctx: CanvasRenderingContext2D) => dibujarLosNombres(ctx, t),
     [t],
   )
 
