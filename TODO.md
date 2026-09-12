@@ -185,6 +185,11 @@
   4. **El paso se supera haciéndolo**: si el paso es lanzar, no se pasa al siguiente hasta que
      el hacha se clave o el balón entre —o hasta que se pulse siguiente o saltar—.
 
+- [ ] [alta] Medir los paneles de este juego con la regla de legibilidad
+  `components/xr/legibilidad.ts` ya está en el repo. Falta sacar el dibujo de cada panel a una
+  función exportada y comprobarla en los dos idiomas y en sus variantes, como en air hockey
+  (`legibilidad.test.ts`). Es lo que convierte «las letras se pisan» en un test que suspende.
+
 - [ ] [alta] Los rótulos se solapan y la letra es pequeña y apretada
   Es lo que más se repite en la cuarta ronda y pasa en casi todos: las palabras se pisan y no
   se entiende nada. Ver la regla común en el repo de Organízate: **todo texto que se añada se
