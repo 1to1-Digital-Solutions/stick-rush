@@ -1,6 +1,7 @@
 'use client'
 
-import { Suspense } from 'react'
+import { useEffect, Suspense } from 'react'
+import { contarMontaje } from '../../lib/montajes'
 import { Environment } from '@react-three/drei'
 import { useXR } from '@react-three/xr'
 import { assetUrl } from '../../lib/assets'
@@ -140,6 +141,12 @@ export interface GameWorldProps {
 }
 
 export function GameWorld({ hasDomUi = false }: GameWorldProps) {
+  // Cuántas veces se monta el mundo, cuando alguien lo está contando (`lib/montajes.ts`).
+  // Montarlo dos veces al entrar en la sesión **es** el parpadeo que se reporta del visor.
+  useEffect(() => {
+    contarMontaje('mundo')
+  }, [])
+
   // TODO EL MUNDO cuelga de `XRWorldHeight`, que lo baja hasta quien juega si
   // lo ha pedido en los ajustes del arcade. Envuelve la escena entera, luces
   // incluidas: mover solo el objetivo lo dejaría flotando sobre su decorado.
