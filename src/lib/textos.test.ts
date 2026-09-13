@@ -1,7 +1,9 @@
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { GAME_MODE_HINTS, GAME_MODE_LABELS } from './gameMode'
 import { DIFFICULTY_LABELS } from './gameConfig'
-import { texto, traductor } from './textos'
+import { TEXT_KEYS, texto, traductor } from './textos'
 
 /**
  * El diccionario del juego.
@@ -33,5 +35,32 @@ describe('el diccionario', () => {
     ]
     const sinTraducir = etiquetas.filter((e) => texto('es', e) === e)
     expect(sinTraducir).toEqual([])
+  })
+})
+
+/** Dónde vive el código del juego, para leerlo entero. */
+const SRC = join(import.meta.dirname, '..')
+
+/** Todo el código del juego en un solo texto, menos el propio diccionario y los tests. */
+function codigo(carpeta = ''): string {
+  return readdirSync(join(SRC, carpeta), { withFileTypes: true })
+    .map((entrada) => {
+      const ruta = join(carpeta, entrada.name)
+      if (entrada.isDirectory()) return codigo(ruta)
+      if (!/\.tsx?$/.test(entrada.name) || /\.test\.tsx?$/.test(entrada.name)) return ''
+      if (entrada.name === 'textos.ts') return ''
+      return readFileSync(join(SRC, ruta), 'utf8')
+    })
+    .join('\n')
+}
+
+describe('el diccionario no acumula', () => {
+  it('no guarda frases que ya no dice nadie', () => {
+    // Una frase cambia en el componente y la vieja se queda aquí traducida para siempre:
+    // no rompe nada, y por eso nadie la quita nunca. Los otros doce ya lo vigilan; este no.
+    const fuente = codigo()
+    const huerfanas = TEXT_KEYS.filter((clave) => !fuente.includes(clave))
+
+    expect(huerfanas).toEqual([])
   })
 })

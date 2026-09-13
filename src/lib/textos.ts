@@ -121,6 +121,14 @@ const ES = {
 export type TextKey = keyof typeof ES
 
 /**
+ * Todas las claves del diccionario, para poder recorrerlas.
+ *
+ * La clave **es la frase en inglés**, así que esta lista es también la lista de todo lo que
+ * dice el juego. Sirve para comprobar que no queda ninguna que ya no diga nadie.
+ */
+export const TEXT_KEYS = Object.keys(ES) as TextKey[]
+
+/**
  * Una frase en el idioma que se pida.
  *
  * En inglés devuelve la clave, que ya es la frase: guardar el original dos
