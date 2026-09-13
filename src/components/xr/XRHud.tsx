@@ -7,7 +7,7 @@ import { useCallback } from 'react'
 
 import { useGame } from '../../lib/gameStore'
 import { useLang } from '../../lib/ajustesCliente'
-import { traductor } from '../../lib/textos'
+import { traductor, type TextKey } from '../../lib/textos'
 import { CanvasPanel, drawParagraph, drawText } from './canvasPanel'
 import { scoreRatio } from '../../lib/scoring'
 import { type StickStatus, stickStatuses } from '../../lib/stickLayout'
@@ -478,43 +478,50 @@ function QuitButton({ onSelect }: { onSelect: () => void }) {
  * Así que se para la partida y se pregunta; mientras se pregunta no cae ningún palo, porque
  * si no, decidir costaría puntos.
  */
+/**
+ * Lo que se escribe en el aviso de dejar la partida.
+ *
+ * Aparte del componente para poder **medirlo**: un panel del visor se pinta en un lienzo que
+ * nadie mira al tamaño al que se lee, así que un texto que se sale o dos que se pisan solo
+ * se descubren con las gafas puestas. Lo mide `salida.legible.test.ts`, en los dos idiomas
+ * —el español es más largo y es donde se sale—.
+ */
+export function dibujarElAviso(ctx: CanvasRenderingContext2D, t: (clave: TextKey) => string): void {
+  drawParagraph(ctx, t('Leave the game?'), 0, 0.1, {
+    size: 0.05,
+    color: '#e2e8f0',
+    weight: '700',
+    maxWidth: XR_CONFIRM_SIZE[0] - 0.08,
+  })
+  drawParagraph(ctx, t('You lose what you have got so far.'), 0, 0.02, {
+    size: 0.034,
+    color: '#94a3b8',
+    maxWidth: XR_CONFIRM_SIZE[0] - 0.08,
+  })
+  drawText(ctx, t('Leave'), CONFIRM_BOXES.leave.position[0], CONFIRM_BOXES.leave.position[1], {
+    size: 0.034,
+    color: '#e2e8f0',
+    maxWidth: CONFIRM_BOXES.leave.size[0] - 0.03,
+  })
+  drawText(
+    ctx,
+    t('Keep playing'),
+    CONFIRM_BOXES.stay.position[0],
+    CONFIRM_BOXES.stay.position[1],
+    {
+      size: 0.034,
+      color: '#3b1d00',
+      weight: '700',
+      maxWidth: CONFIRM_BOXES.stay.size[0] - 0.03,
+    },
+  )
+}
+
 export function XRQuitConfirm() {
   const { prompt, resetGame, keepPlaying } = useGame()
   const t = traductor(useLang())
 
-  const escribir = useCallback(
-    (ctx: CanvasRenderingContext2D) => {
-      drawParagraph(ctx, t('Leave the game?'), 0, 0.1, {
-        size: 0.05,
-        color: '#e2e8f0',
-        weight: '700',
-        maxWidth: XR_CONFIRM_SIZE[0] - 0.08,
-      })
-      drawParagraph(ctx, t('You lose what you have got so far.'), 0, 0.02, {
-        size: 0.034,
-        color: '#94a3b8',
-        maxWidth: XR_CONFIRM_SIZE[0] - 0.08,
-      })
-      drawText(ctx, t('Leave'), CONFIRM_BOXES.leave.position[0], CONFIRM_BOXES.leave.position[1], {
-        size: 0.034,
-        color: '#e2e8f0',
-        maxWidth: CONFIRM_BOXES.leave.size[0] - 0.03,
-      })
-      drawText(
-        ctx,
-        t('Keep playing'),
-        CONFIRM_BOXES.stay.position[0],
-        CONFIRM_BOXES.stay.position[1],
-        {
-          size: 0.034,
-          color: '#3b1d00',
-          weight: '700',
-          maxWidth: CONFIRM_BOXES.stay.size[0] - 0.03,
-        },
-      )
-    },
-    [t],
-  )
+  const escribir = useCallback((ctx: CanvasRenderingContext2D) => dibujarElAviso(ctx, t), [t])
 
   if (prompt !== 'quit') return null
 
