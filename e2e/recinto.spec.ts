@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { expect, test, type Page } from '@playwright/test'
-import { openGame } from './helpers'
+import { openGame, startGame } from './helpers'
+import { MAX_STICKS } from '../src/lib/gameConfig'
 
 /**
  * Lo que cuesta pintar el recinto de feria, medido sobre la escena de verdad.
@@ -114,6 +115,19 @@ const MENU_DRAW_CALLS = 30
  * cuando la máquina iba con cada tubo suelto.
  */
 const MENU_DRAW_CALL_MARGIN = 4
+
+/**
+ * Y lo que cuesta **en partida**, con los trece palos colgando: el máximo del juego.
+ *
+ * Sale del mismo desglose: lo único que cambia entre el menú y la partida son los palos, a
+ * tres llamadas cada uno mientras cuelgan. Cinco palos son 30; trece son ocho más, a tres:
+ * `30 + 8 × 3 = 54`. Medido sale 53, uno menos, porque en cuanto arranca la cuenta atrás ya
+ * hay un palo resuelto y baja a dos.
+ *
+ * **Faltaba medirlo.** El menú se comprobaba desde siempre y la partida no, que es donde de
+ * verdad se paga: era el único de los trece juegos sin presupuesto de partida.
+ */
+const PARTIDA_DRAW_CALLS = 53
 
 interface DrawFrame {
   /** Llamadas de dibujo del fotograma. */
@@ -229,6 +243,26 @@ test.describe('Coste de dibujo del recinto', () => {
         frames.at(-1)?.instanced.join(' + ') || 'ninguna'
       }`,
     ).toBe(true)
+  })
+
+  test('y la partida entera, con los trece palos, cuesta lo que dice también', async ({
+    page,
+  }) => {
+    // El máximo del juego: más palos no hay. Si esto se dispara, el desglose de arriba se ha
+    // quedado desfasado y hay que rehacerlo, que es de lo que avisa una cifra clavada y no
+    // avisaría un techo holgado.
+    await startGame(page, { sticks: MAX_STICKS })
+
+    const calls = (await sampleFrames(page))
+      .map((frame) => frame.calls)
+      .sort((a, b) => a - b)
+    const median = calls[Math.floor(calls.length / 2)]
+
+    const medido = `llamadas por fotograma en partida (el desglose dice ${PARTIDA_DRAW_CALLS})`
+    expect(median, medido).toBeGreaterThanOrEqual(
+      PARTIDA_DRAW_CALLS - MENU_DRAW_CALL_MARGIN,
+    )
+    expect(median, medido).toBeLessThanOrEqual(PARTIDA_DRAW_CALLS + MENU_DRAW_CALL_MARGIN)
   })
 
   test('el menú cuesta las llamadas de dibujo que dice el desglose', async ({
