@@ -53,9 +53,14 @@ export const HOOP_RISE_ABOVE_EYES = MACHINE_HEIGHT - REFERENCE_EYE_HEIGHT
  * sentado en el suelo hasta alguien muy alto de pie. Fuera de ahí la medida no
  * es una estatura sino un espacio de referencia mal entendido (o un visor sobre
  * la mesa), y se descarta.
+ *
+ * **Las mismas que en los otros doce.** El tope estaba en 2,0, que son los ojos de alguien
+ * de 2,15: existe, y en este juego se le dejaba sin corregir la altura mientras en los demás
+ * sí. Cada repo escribe estas cifras donde quiere —aquí, en `uiHeight.ts`, dentro de
+ * `xrLayout.ts`— así que no las comparaba nadie; ahora sí, en `scripts/repos/comunes.py`.
  */
 export const MIN_EYE_HEIGHT = 0.9
-export const MAX_EYE_HEIGHT = 2.0
+export const MAX_EYE_HEIGHT = 2.2
 
 /**
  * Cuánto se puede corregir la altura a mano, arriba o abajo, en metros.
