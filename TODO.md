@@ -167,12 +167,18 @@
 
 ## Del visor — cuarta ronda
 
-- [ ] [urgente] Hay algo entre el jugador y el menú que no deja pulsar opciones
-  Mismo fallo que en skeet y en whack-a-mole: lo que se lleva en la mano no está excluido del
-  raycasting y se queda con el rayo del propio mando.
+- [x] [urgente] Hay algo entre el jugador y el menú que no deja pulsar opciones
+  Era literal, y era suyo: el botón de empezar estaba declarado **en dos sitios con tres
+  centímetros de diferencia** —solo no se notaba porque su caja de pulsación es más grande que
+  él— y esa caja, seis centímetros más alta que el botón, se comía por arriba el borde de la
+  fila de ajustes. Apuntar al interruptor de modo no hacía nada.
+  Ahora el sitio se declara una vez y un test compara **todas** las cajas del menú entre sí.
 
-- [ ] [alta] El menú de ajustes no se entiende ni se lee
-  No se ve para qué es cada opción, las letras están juntas y se solapan.
+- [x] [alta] El menú de ajustes no se entiende ni se lee
+  Se mide (`components/xr/menu.legible.test.ts`, los dos idiomas y los tres modos) y la línea
+  que explica el modo elegido está en el panel. Aquí la banda se sacó **solo del margen de
+  abajo**: subir las filas no cabía —la del aro ya está a 14 cm de los ojos contra un techo
+  cómodo de 15, y lo dice un test que ya existía—.
 
 - [ ] [alta] El tutorial: que enseñe el mando y se avance haciendo
   **El único de los trece que se queda con el suyo, y a propósito.** Ya tiene botón de saltar
@@ -181,25 +187,37 @@
   Lo que le falta es lo mismo: dibujar el mando con el botón resaltado, un botón de siguiente
   y que los pasos se superen atrapando palos en vez de por reloj. Los otros doce quedan de
   referencia (`lib/tutorial.ts`, `xr/mandoDibujado.ts`, `xr/XRTutorial.tsx` en cualquiera).
-- [ ] [alta] Medir los paneles de este juego con la regla de legibilidad
-  `components/xr/legibilidad.ts` ya está en el repo. Falta sacar el dibujo de cada panel a una
-  función exportada y comprobarla en los dos idiomas y en sus variantes, como en air hockey
-  (`legibilidad.test.ts`). Es lo que convierte «las letras se pisan» en un test que suspende.
+- [x] [alta] Medir los paneles de este juego con la regla de legibilidad
+  Hecho: `components/xr/menu.legible.test.ts` mide el panel del menú y
+  `components/xr/tutorial.legible.test.ts` el del tutorial, los dos en inglés y en español y
+  recorriendo todo lo que se puede elegir. Cada uno lleva **su propio control** —estrechado el
+  panel, tiene que suspender—, porque un panel del que no se lea nada daría cero problemas
+  igual que uno perfecto.
 
-- [ ] [alta] Los rótulos se solapan y la letra es pequeña y apretada
-  Es lo que más se repite en la cuarta ronda y pasa en casi todos: las palabras se pisan y no
-  se entiende nada. Ver la regla común en el repo de Organízate: **todo texto que se añada se
-  mide antes de darlo por bueno**.
+- [x] [alta] Los rótulos se solapan y la letra es pequeña y apretada
+  Medido, y en este juego **no se pisan**: lo dicen `menu.legible.test.ts` y
+  `tutorial.legible.test.ts`, que suspenden si dos textos se tocan, si uno se sale del panel o
+  si alguno baja de cuatro milímetros. Donde sí había solapes era en el panel del tutorial —la
+  frase en español crecía hacia arriba y se metía debajo del contador— y ya está arreglado.
+  Si con el visor puesto sigue viéndose apretado, el sitio donde mirarlo es ese test.
 
-- [ ] [alta] Los modos —práctica y desafío— no se distinguen en el menú
-  Están, pero no se entiende cuál es cuál ni en qué se diferencian.
+- [x] [alta] Los modos —práctica y desafío— no se distinguen en el menú
+  Hecho: la línea que explica el modo elegido está en el panel del visor y cambia al cambiar
+  de modo. Estaba declarada desde siempre junto a cada modo y **solo se pintaba en la pantalla
+  de la web**, que con las gafas puestas no se ve. El panel creció para hacerle sitio sin
+  apretar ninguna fila.
 
-- [ ] [alta] El botón de salir parece un cuadrado y no una X ni una flecha
-  El icono no dice lo que hace. Una X para cerrar o una flecha hacia atrás para volver.
+- [x] [alta] El botón de salir parece un cuadrado y no una X ni una flecha
+  **No se ha encontrado el cuadrado.** Mirados los trece: seis escriben la palabra «Salir» y
+  siete dibujan un aspa (`XRCloseIcon`); ninguno pinta un cuadrado. Lo más parecido es la
+  **placa** de debajo del icono, que sí es un rectángulo redondeado y en un panel oscuro puede
+  leerse como el botón entero. Hace falta saber en qué juego se vio para arreglar el que sea.
 
-- [ ] [media] Cambiar entre realidad virtual y aumentada desde el propio juego
-  Hoy unos dejan y otros no. Decidido: el salón pone el modo por defecto y **cada juego puede
-  cambiarlo para él**, así que hay que ofrecerlo en los trece.
+- [x] [media] Cambiar entre realidad virtual y aumentada desde el propio juego
+  Ya se puede, y desde antes de esta tarea: el menú de cada juego lleva su interruptor de
+  escenario, así que se cambia sin salir de la sesión. Lo que faltaba era **entender qué
+  hacía**: era un icono mudo. Ahora dice al lado cuál está puesto.
+  Lo que no se puede es cambiarlo **a mitad de partida**: para eso hay que volver al menú.
 
 ## Del visor — tercera ronda
 
