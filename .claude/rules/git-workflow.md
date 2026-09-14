@@ -1,14 +1,20 @@
 # Git
 
-- Trabajas en la **rama de trabajo asignada** (normalmente `develop` o `agent/<tarea>`). **Nunca**
-  hagas commit en `main`/`master` ni hagas `push --force`.
-- **Commits enfocados y atómicos**: un commit por unidad lógica de cambio, con mensaje claro en
-  imperativo que explique el *qué* y el *porqué* (no "cambios varios").
-- Haz commit de tu trabajo **antes de terminar** para que sea revisable. No dejes el trabajo solo
-  en el working tree.
-- **No hagas `push` a ningún remoto.** Organízate se encarga del push y del PR al terminar; tú solo
-  commiteas en tu rama local. Tampoco crees repos ni operes con `gh`.
-- **Candado de organización:** nunca interactúes con repositorios fuera de la organización
+- Trabajas en **tu rama** (`agent/<tarea>`). **Nunca** hagas commit en `main` ni en `develop`:
+  mover el trabajo a `develop` lo hace Organízate cuando la verificación pasa.
+- **No hagas `push` a ningún remoto**, ni uses `gh`, ni toques remotos. No es una preferencia:
+  está bloqueado. Tú commiteas en local y ahí acaba tu responsabilidad.
+- **Candado de organización:** nunca interactúes con repositorios fuera de
   **`1to1-Digital-Solutions`**. No añadas remotos nuevos ni cambies la URL de `origin`.
-- No reescribas el historial de ramas compartidas (`rebase`/`amend` sobre commits ya publicados).
+- **Commits enfocados y atómicos**: uno por unidad lógica. Mensajes **en inglés** siguiendo
+  Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`…), en
+  imperativo y explicando el *qué*; el *porqué* va en el cuerpo si no es obvio. Nada de
+  "varios cambios". Las ramas, igual: en inglés y descriptivas.
+- **Commitea antes de terminar.** Lo que se quede solo en el working tree se pierde: el worktree
+  se retira al integrar.
+- No reescribas el historial: nada de `rebase`, `reset --hard`, `amend` ni `filter-branch`. En tu
+  rama pueden convivir tus commits con los de otras tareas de la misma sesión y con los del
+  revisor; reescribir destruye trabajo ajeno.
 - Mantén el árbol limpio: no commitees artefactos de build, `node_modules`, logs ni temporales.
+- Si tu trabajo no deja ningún commit (era una consulta), dilo en tu respuesta: la rama se
+  descarta sola.
