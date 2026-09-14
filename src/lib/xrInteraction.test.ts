@@ -98,6 +98,10 @@ describe('la máquina queda al alcance de la mano', () => {
     // caerían por detrás y no los vería venir.
     expect(PLAYER_OFFSET_Z).toBeLessThan(0)
     expect(PLAYER_OFFSET_Z).toBeGreaterThan(-MACHINE_RADIUS / 2)
+    // Y adelantado **poco**: con dieciocho centímetros se arrancaba encima de la máquina
+    // —«el jugador arranca muy pegado, quizás medio pasito para atrás»—, así que no más de
+    // un palmo.
+    expect(Math.abs(PLAYER_OFFSET_Z)).toBeLessThan(0.1)
   })
 })
 

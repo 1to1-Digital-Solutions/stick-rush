@@ -51,7 +51,7 @@ import {
   PANEL_COLOR,
   XRArrowIcon,
   XRDifficultyBars,
-  XRExitIcon,
+  XRSalirIcon,
   XRHeartIcon,
   XRPanel,
   XRPassthroughIcon,
@@ -623,7 +623,9 @@ export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
             roughness={0.5}
           />
         </mesh>
-        <XRExitIcon position={[0, 0, 0.008]} />
+        <group position={[0, 0, 0.008]}>
+          <XRSalirIcon />
+        </group>
       </XRPressable>
 
     </group>

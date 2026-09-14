@@ -1,5 +1,8 @@
 'use client'
 
+import { FLECHA_DE_SALIR } from './canvasPanel'
+import { NO_RAYCAST } from '../raycast'
+
 import { type ReactNode, useMemo, useRef, useState } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 import { Path, Shape, Vector2 } from 'three'
@@ -12,7 +15,6 @@ import { PRESS_PULSE, pulseHaptics } from '../../lib/haptics'
 import {
   XR_CHECK_ICON,
   XR_CROSS_ICON,
-  XR_EXIT_ICON,
   XR_HEART_ICON,
   XR_HOME_ICON,
   XR_MUSIC_ICON,
@@ -65,6 +67,8 @@ export function XRPanel({
 
 /** Color del halo que marca el botón apuntado. */
 const HOVER_COLOR = '#7dd3fc'
+/** El claro con el que se pintan los iconos sobre placa oscura. */
+const ICONO_COLOR = '#e2e8f0'
 
 /**
  * Ventana, en milisegundos, durante la que se ignora una segunda pulsación.
@@ -361,12 +365,44 @@ export function XRHomeIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_HOME_ICON} {...props} />
 }
 
+/** La flecha de salir, como forma plana: la misma que se pinta en los lienzos. */
+const FORMA_DE_SALIR = (() => {
+  const { punta, cuerpo, grosor, codo, alas } = FLECHA_DE_SALIR
+  const forma = new Shape()
+  forma.moveTo(punta, 0)
+  forma.lineTo(codo, alas)
+  forma.lineTo(codo, grosor / 2)
+  forma.lineTo(cuerpo, grosor / 2)
+  forma.lineTo(cuerpo, -grosor / 2)
+  forma.lineTo(codo, -grosor / 2)
+  forma.lineTo(codo, -alas)
+  forma.closePath()
+  return forma
+})()
+
 /**
- * Puerta con una flecha saliendo: cerrar la sesión y volver al navegador. Es
- * un viaje distinto al de la casa, y compartir icono con ella confundía.
+ * La flecha de **salir del juego**: volver al arcade.
+ *
+ * **Una sola forma para los trece.** Cada juego decía «salir» a su manera —la palabra
+ * «Exit», un aspa, una puerta, una puerta con flecha— y el aspa, además, significa «cerrar
+ * esto» en varios paneles. Reportado con el visor puesto: «no se entiende cuál es el botón de
+ * salir del juego: a veces aparece un cuadrado, otras veces pone "leave"… habría que
+ * unificarlo». La forma sale de `FLECHA_DE_SALIR`, la misma que pintan en su lienzo los
+ * juegos que dibujan el menú con texto.
  */
-export function XRExitIcon(props: IconProps) {
-  return <XRShapeIcon icon={XR_EXIT_ICON} {...props} />
+export function XRSalirIcon({
+  size = 0.05,
+  color = ICONO_COLOR,
+}: {
+  size?: number
+  color?: string
+}) {
+  return (
+    <mesh scale={size} raycast={NO_RAYCAST}>
+      <shapeGeometry args={[FORMA_DE_SALIR]} />
+      <meshBasicMaterial color={color} toneMapped={false} />
+    </mesh>
+  )
 }
 
 /** Altavoz con ondas: el juego suena. */

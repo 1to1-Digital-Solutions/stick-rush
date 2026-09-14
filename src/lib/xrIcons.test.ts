@@ -3,7 +3,6 @@ import { CylinderGeometry, Euler, Vector3 } from 'three'
 import {
   XR_CHECK_ICON,
   XR_CROSS_ICON,
-  XR_EXIT_ICON,
   XR_HEART_ICON,
   XR_HOME_ICON,
   XR_MUTED_ICON,
@@ -132,7 +131,6 @@ function bounds(icon: IconShape, axis: 0 | 1): [number, number] {
 
 const ICONS: [string, IconShape][] = [
   ['casa', XR_HOME_ICON],
-  ['salida', XR_EXIT_ICON],
   ['sonido', XR_SOUND_ICON],
   ['silencio', XR_MUTED_ICON],
   ['vida', XR_HEART_ICON],
@@ -209,38 +207,6 @@ describe('la casa se lee como una casa', () => {
   })
 })
 
-describe('la salida se lee como una puerta con una flecha', () => {
-  const [frame, arrow] = XR_EXIT_ICON
-
-  it('el marco deja abierto el lado por el que se sale', () => {
-    // Relleno sería un cartel: lo que lo convierte en puerta es el vano.
-    expect(contains(frame.outline, [-0.85, 0])).toBe(true)
-    expect(contains(frame.outline, [-0.2, 0])).toBe(false)
-  })
-
-  it('la flecha sale de la puerta, no entra', () => {
-    const tip = arrow.outline.reduce((best, point) =>
-      point[0] > best[0] ? point : best,
-    )
-    expect(tip[0]).toBeGreaterThan(Math.max(...frame.outline.map(([x]) => x)))
-    expect(tip[1]).toBeCloseTo(0)
-  })
-
-  it('la punta es más ancha que el asta', () => {
-    // El fallo del icono anterior: punta y asta se veían como dos piezas
-    // sueltas. Si apenas se ensancha, la flecha se lee como una barra.
-    const shaft = span(crossingsAtX(arrow.outline, 0))
-    const head = span(crossingsAtX(arrow.outline, 0.43))
-    expect(head).toBeGreaterThan(shaft * 2)
-  })
-
-  it('la flecha arranca despegada del marco', () => {
-    // Pegadas, las dos piezas se funden en una sola mancha.
-    const start = Math.min(...arrow.outline.map(([x]) => x))
-    const jamb = Math.max(...crossingsAtY(frame.outline, 0))
-    expect(start).toBeGreaterThan(jamb + 0.1)
-  })
-})
 
 describe('la vida se lee como un corazón', () => {
   const [heart] = XR_HEART_ICON

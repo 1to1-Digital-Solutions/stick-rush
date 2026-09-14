@@ -338,41 +338,6 @@ export const XR_CROSS_ICON: IconShape = [
   },
 ]
 
-/**
- * Puerta con una flecha saliendo: salir del visor.
- *
- * Distinto de la casa a propósito: los dos botones compartían icono y hacían
- * cosas muy distintas —uno vuelve al menú del juego, el otro cierra la sesión y
- * devuelve al navegador—. El marco se dibuja abierto por el lado por el que sale
- * la flecha, que es lo que convierte un rectángulo en una puerta.
- */
-export const XR_EXIT_ICON: IconShape = [
-  {
-    // Marco en forma de C, abierto a la derecha.
-    outline: [
-      [-1, 1],
-      [0.05, 1],
-      [0.05, 0.66],
-      [-0.6, 0.66],
-      [-0.6, -0.66],
-      [0.05, -0.66],
-      [0.05, -1],
-      [-1, -1],
-    ],
-  },
-  {
-    // Flecha de una sola pieza: la punta nace del asta, no se apoya en ella.
-    outline: [
-      [1, 0],
-      [0.42, 0.52],
-      [0.42, 0.2],
-      [-0.35, 0.2],
-      [-0.35, -0.2],
-      [0.42, -0.2],
-      [0.42, -0.52],
-    ],
-  },
-]
 
 /**
  * Los triángulos del menú —el de empezar, los de subir y bajar el aro— no son
