@@ -79,8 +79,15 @@ const ARC_SEGMENTS = 24
 /** Montantes verticales que unen el aro principal con el superior. */
 const TRUSS_POSTS = 9
 const TUBE_RADIUS = 0.032
-/** Separación entre el aro de los palos y el aro superior de la celosía. */
-const TRUSS_RISE = 0.24
+/**
+ * Separación entre el aro de los palos y el aro superior de la celosía.
+ *
+ * Es lo único que crece cuando la máquina «se ve baja»: el aro de los palos no se puede
+ * subir —lo manda la estatura de quien juega, porque de él cuelga lo que hay que coger— pero
+ * la celosía de encima sí, y es la que le da el porte. Reportado con el visor puesto: «hacer
+ * que la máquina sea un pelín más alta».
+ */
+const TRUSS_RISE = 0.34
 
 /** Sube un punto del aro una altura dada. */
 function raise([x, y, z]: Point, dy: number): Point {

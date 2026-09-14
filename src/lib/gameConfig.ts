@@ -141,11 +141,14 @@ export const STICK_CORD_LENGTH = 0.11
  * No va en el centro geométrico. El aro es un **semi**círculo por delante, así
  * que toda su masa queda hacia −Z y desde el centro exacto el jugador se siente
  * echado hacia atrás: en el visor había que dar un paso adelante para estar
- * bien colocado. Se le adelanta poco menos de la mitad de lo que dista el
- * centroide del arco (−0.36 m), lo justo para quedar dentro de la máquina sin
- * que los palos de los extremos se le vayan a la espalda.
+ * bien colocado. Se le adelanta hacia el arco, pero **poco**.
+ *
+ * **Estaba a −0,18 y era demasiado**: «el jugador arranca muy pegado a la máquina, quizás
+ * medio pasito para atrás, o incluso menos». Esos dieciséis centímetros lo dejan casi en el
+ * centro del aro, que es donde los palos de los extremos quedan a un lado y no a la espalda,
+ * y la máquina se ve entera en vez de encima.
  */
-export const PLAYER_OFFSET_Z = -0.18
+export const PLAYER_OFFSET_Z = -0.02
 
 /** Posición del jugador: los pies, en el suelo, adelantados hacia el aro. */
 export const PLAYER_POSITION: [number, number, number] = [
