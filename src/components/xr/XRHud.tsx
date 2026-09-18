@@ -17,6 +17,7 @@ import {
   XR_END_RUN_YAW,
   XR_HUD_POSITION,
   CONFIRM_BOXES,
+  CONFIRM_TEXT,
   XR_CONFIRM_POSITION,
   XR_CONFIRM_SIZE,
   XR_QUIT_POSITION,
@@ -488,18 +489,18 @@ function QuitButton({ onSelect }: { onSelect: () => void }) {
  */
 export function dibujarElAviso(ctx: CanvasRenderingContext2D, t: (clave: TextKey) => string): void {
   drawParagraph(ctx, t('Leave the game?'), 0, 0.1, {
-    size: 0.05,
+    size: CONFIRM_TEXT.title,
     color: '#e2e8f0',
     weight: '700',
     maxWidth: XR_CONFIRM_SIZE[0] - 0.08,
   })
   drawParagraph(ctx, t('You lose what you have got so far.'), 0, 0.02, {
-    size: 0.034,
+    size: CONFIRM_TEXT.body,
     color: '#94a3b8',
     maxWidth: XR_CONFIRM_SIZE[0] - 0.08,
   })
   drawText(ctx, t('Leave'), CONFIRM_BOXES.leave.position[0], CONFIRM_BOXES.leave.position[1], {
-    size: 0.034,
+    size: CONFIRM_TEXT.button,
     color: '#e2e8f0',
     maxWidth: CONFIRM_BOXES.leave.size[0] - 0.03,
   })
@@ -509,7 +510,7 @@ export function dibujarElAviso(ctx: CanvasRenderingContext2D, t: (clave: TextKey
     CONFIRM_BOXES.stay.position[0],
     CONFIRM_BOXES.stay.position[1],
     {
-      size: 0.034,
+      size: CONFIRM_TEXT.button,
       color: '#3b1d00',
       weight: '700',
       maxWidth: CONFIRM_BOXES.stay.size[0] - 0.03,

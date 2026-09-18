@@ -4,8 +4,9 @@ import { MACHINE_HEIGHT, MAX_STICKS, MIN_STICKS } from './gameConfig'
 import { COUNTDOWN_SECONDS, useGame, useGameStoreValue } from './gameStore'
 import { HIGH_SCORE_KEYS } from './highScore'
 import { HOOP_ADJUST_RANGE, HOOP_ADJUST_STEP } from './hoopHeight'
+import { OWN_SCENERY_KEY } from './sceneryPreference'
 import { TUTORIAL_SECONDS, TUTORIAL_SEEN_KEY } from './tutorial'
-import { DEFAULT_VOLUMES, VOLUME_KEYS } from './ajustes'
+import { DEFAULT_VOLUMES, SCENERY_KEY, VOLUME_KEYS } from './ajustes'
 import { setVolume } from './ajustesCliente'
 
 // La cuenta atrás usa `setTimeout`, así que todo el fichero corre con relojes
@@ -602,6 +603,42 @@ describe('escenario o passthrough', () => {
 
     act(() => result.current.resetGame())
     expect(result.current.scenery).toBe('passthrough')
+  })
+
+  it('el selector del menú escribe el escenario del arcade, con sus valores', () => {
+    // Una sola preferencia, la misma que enseña el panel del salón: `passthrough` se guarda
+    // como `room`, que es lo que el salón y los demás juegos entienden.
+    const { result } = renderHook(() => useGameStoreValue())
+
+    act(() => result.current.setScenery('passthrough'))
+    expect(window.localStorage.getItem(SCENERY_KEY)).toBe('room')
+    expect(window.localStorage.getItem(OWN_SCENERY_KEY)).toBeNull()
+
+    act(() => result.current.setScenery('scene'))
+    expect(window.localStorage.getItem(SCENERY_KEY)).toBeNull()
+  })
+
+  it('lo que se elige en el salón llega a la partida sin recargar', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+
+    act(() => {
+      window.localStorage.setItem(SCENERY_KEY, 'room')
+      window.dispatchEvent(new Event('xrcade:ajustes'))
+    })
+
+    expect(result.current.scenery).toBe('passthrough')
+  })
+
+  it('la clave propia del juego no manda y se borra al montar la partida, sin trasladarla', () => {
+    // Con passthrough guardado en la clave propia de esta cabina no se puede quedar sin plaza:
+    // manda lo que diga el salón, y sin nada elegido allí, el sitio dibujado.
+    window.localStorage.setItem(OWN_SCENERY_KEY, 'passthrough')
+
+    const { result } = renderHook(() => useGameStoreValue())
+
+    expect(result.current.scenery).toBe('scene')
+    expect(window.localStorage.getItem(OWN_SCENERY_KEY)).toBeNull()
+    expect(window.localStorage.getItem(SCENERY_KEY)).toBeNull()
   })
 })
 

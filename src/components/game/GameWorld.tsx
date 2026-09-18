@@ -12,7 +12,9 @@ import {
   MACHINE_RADIUS,
   PLAYER_OFFSET_Z,
 } from '../../lib/gameConfig'
+import { showsPlace } from '../../lib/ajustes'
 import { useGame, type SceneryMode } from '../../lib/gameStore'
+import { sceneryOf } from '../../lib/sceneryPreference'
 import { XRCountdown } from '../xr/XRCountdown'
 import { XRGazeAnchor } from '../xr/XRGazeAnchor'
 import { XRHaptics } from '../xr/XRHaptics'
@@ -61,44 +63,57 @@ import { XRWorldHeight } from '../xr/XRWorldHeight'
  */
 function SceneBackdrop({ scenery }: { scenery: SceneryMode }) {
   const mode = useXR((state) => state.mode)
-  // Solo se quita el escenario cuando la sesión concedida es de verdad de
-  // realidad mixta. Fuera de sesión inmersiva no hay passthrough que revelar,
-  // y dentro de una `immersive-vr` tampoco: detrás no hay habitación, solo
-  // negro. Con la preferencia recordada entre visitas, quien la dejó en
-  // passthrough podría abrir la siguiente sesión en VR —un visor sin
-  // passthrough, o uno que no conceda AR— y encontrarse mirando la nada sin
-  // saber por qué. La decisión se toma aquí, que es el único sitio que sabe
-  // qué tipo de sesión hay, y no en el botón que la eligió.
-  const isAR = mode === 'immersive-ar' && scenery === 'passthrough'
+  // Qué se ve lo dice el escenario del arcade (`xrcade:scenery`), con la regla
+  // que siguen el salón y los demás juegos (`showsPlace`): el salón entra
+  // siempre en realidad aumentada si el visor la tiene, así que el tipo de
+  // sesión no dice qué se eligió. Solo hace de guarda: fuera de sesión
+  // inmersiva no hay passthrough que revelar, y dentro de una `immersive-vr`
+  // tampoco —detrás no hay habitación, solo negro—. Con la preferencia
+  // recordada entre visitas, quien la dejó en passthrough podría abrir la
+  // siguiente sesión en VR y encontrarse mirando la nada sin saber por qué.
+  const isAR = !showsPlace(mode, sceneryOf(scenery))
+
+  // Lo que solo es de la plaza se **oculta** en tu habitación, no se desmonta.
+  // Desmontar libera los materiales, y los shaders que solo usaban ellos se
+  // vuelven a compilar al volver: un tirón a cada cambio de escenario, con el
+  // visor puesto. Oculto no se pinta ni da sombra, y se le niegan los punteros,
+  // que no miran si algo se ve.
+  const soloEnLaPlaza = { visible: !isAR, pointerEvents: isAR ? ('none' as const) : undefined }
 
   return (
     <>
-      {!isAR && (
-        <>
-          {/* Solo se ve mientras carga el HDRI; luego lo sustituye el fondo.
-              Con `<color attach="background">` no se veía nunca: ese atajo adjunta
-              el color a **su padre**, y aquí el padre es un grupo, donde
-              `background` no significa nada —no falla, no avisa, simplemente no
-              hace nada—. Así que mientras el HDRI bajaba, lo que había arriba era
-              el negro del compositor. */}
-          <Backdrop color={BACKDROP_COLOR} />
-          <Ground />
-          <Fairground />
-        </>
-      )}
+      {/* Solo se ve mientras carga el HDRI; luego lo sustituye el fondo.
+          Con `<color attach="background">` no se veía nunca: ese atajo adjunta
+          el color a **su padre**, y aquí el padre es un grupo, donde
+          `background` no significa nada —no falla, no avisa, simplemente no
+          hace nada—. Así que mientras el HDRI bajaba, lo que había arriba era
+          el negro del compositor. Este sí se monta y se desmonta: es el color
+          con el que se limpia la imagen, no un material, y no compila nada. */}
+      {!isAR && <Backdrop color={BACKDROP_COLOR} />}
+      <group {...soloEnLaPlaza}>
+        <Ground />
+        <Fairground />
+      </group>
 
       {/* Suspense propio: mientras se carga el HDRI el resto de la escena ya se
           ve, en vez de quedarse todo el Canvas en blanco esperándolo. */}
       <Suspense fallback={null}>
-        <Environment
-          files={assetUrl(HDRI_PATH)}
-          background={!isAR}
-          environmentIntensity={1.4}
-          // Proyecta el HDRI también sobre el suelo, de modo que la máquina se
-          // planta en el empedrado de la plaza en vez de sobre un plano de
-          // color con un corte visible contra el horizonte de la foto.
-          ground={isAR ? undefined : { height: 1.6, radius: 14, scale: 45 }}
-        />
+        {/* El suelo proyectado va siempre montado y dentro de un grupo que se
+            oculta, porque drei monta un componente distinto con suelo y sin él:
+            cambiar entre los dos tiraba la malla del suelo —y su shader— y
+            liberaba la textura del HDRI, que había que volver a subir. El
+            entorno de reflejos se queda puesto en los dos escenarios. */}
+        <group {...soloEnLaPlaza}>
+          <Environment
+            files={assetUrl(HDRI_PATH)}
+            background={!isAR}
+            environmentIntensity={1.4}
+            // Proyecta el HDRI también sobre el suelo, de modo que la máquina se
+            // planta en el empedrado de la plaza en vez de sobre un plano de
+            // color con un corte visible contra el horizonte de la foto.
+            ground={{ height: 1.6, radius: 14, scale: 45 }}
+          />
+        </group>
       </Suspense>
     </>
   )

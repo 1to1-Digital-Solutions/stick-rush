@@ -26,6 +26,7 @@ import { HOOP_ADJUST_RANGE } from '../../lib/hoopHeight'
 import {
   MENU_LABELS,
   ROW_LABEL_RISE,
+  MENU_TEXT,
   XR_DIFFICULTY_SPACING,
   XR_ENDLESS_TOGGLE_OFFSET,
   XR_HOOP_DOWN_OFFSET,
@@ -312,7 +313,8 @@ function EndlessToggle() {
  * En una sesión `immersive-ar` los dos modos son la misma sesión pintada de dos
  * formas, así que el cambio es inmediato (con su fundido, ver `SceneryFade`).
  * En una sesión `immersive-vr` no hay passthrough que enseñar —el visor no lo
- * entrega—, así que la opción se muestra apagada en vez de mentir.
+ * entrega—, así que la opción se muestra apagada en vez de mentir. Escribe el
+ * escenario del arcade: el panel del salón y este selector enseñan lo mismo.
  */
 function SceneryPicker({ passthroughAvailable }: { passthroughAvailable: boolean }) {
   const { scenery, setScenery } = useGame()
@@ -520,7 +522,7 @@ export function dibujarLosNombres(
 ): void {
   for (const { text, x, y } of MENU_LABELS) {
     drawText(ctx, t(text), x, y + ROW_LABEL_RISE, {
-      size: 0.032,
+      size: MENU_TEXT.label,
       color: '#94a3b8',
       maxWidth: 0.3,
     })
@@ -530,7 +532,7 @@ export function dibujarLosNombres(
   // «Desafío»— y lo que los distingue solo lo contaba la pantalla de la web, que con las
   // gafas puestas no se ve.
   drawParagraph(ctx, t(GAME_MODE_HINTS[gameMode]), 0, PISTA_Y, {
-    size: 0.022,
+    size: MENU_TEXT.hint,
     color: '#94a3b8',
     maxWidth: PISTA_ANCHO,
     anchor: 'top',

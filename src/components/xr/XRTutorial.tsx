@@ -53,17 +53,47 @@ import {
 
 /** Medidas del panel, en metros. Más bajo que el del menú: cabe menos cosa. */
 /** Lo que hay que hacer en cada tramo, dicho con palabras. */
-const FRASES: Record<TutorialStepKey, TextKey> = {
+export const FRASES: Record<TutorialStepKey, TextKey> = {
   grab: 'Close your hand around the stick: reach it, do not point at it',
   sticks: 'They fall one at a time, all around you',
   level: 'Every level they fall faster',
 }
 
 /** Alto de la banda de texto, encima del dibujo. */
-const TEXT_HEIGHT = 0.2
+export const TEXT_HEIGHT = 0.2
 
-const PANEL_WIDTH = 1.06
-const PANEL_HEIGHT = 0.62
+export const PANEL_WIDTH = 1.06
+export const PANEL_HEIGHT = 0.62
+
+/**
+ * A qué tamaño se escribe la frase de cada tramo, en metros de alto de letra.
+ *
+ * Una sola lista para quien pinta y para quien mide (`tutorial.legible.test.ts`).
+ */
+export const TUTORIAL_TEXT = { phrase: 0.045 } as const
+
+/**
+ * Dónde va la banda de la frase: encima del dibujo, en coordenadas del panel del tutorial.
+ */
+export const TEXT_OFFSET_Y = PANEL_HEIGHT / 2 + TEXT_HEIGHT / 2 + 0.01
+
+/**
+ * La frase del tramo, fuera del componente **para poder medirla**: es el único texto del
+ * tutorial, y se lee por encima de la vista.
+ */
+export function dibujarLaFrase(
+  ctx: CanvasRenderingContext2D,
+  t: (clave: TextKey) => string,
+  step: TutorialStepKey | null,
+): void {
+  if (step == null) return
+  drawParagraph(ctx, t(FRASES[step]), 0, 0, {
+    size: TUTORIAL_TEXT.phrase,
+    color: '#e2e8f0',
+    weight: '600',
+    maxWidth: PANEL_WIDTH - 0.08,
+  })
+}
 
 /** Ancho del carril de progreso. */
 const PROGRESS_WIDTH = 0.34
@@ -394,18 +424,7 @@ function TutorialPanel() {
 
   // La frase del tramo, en un lienzo aparte: el resto del tutorial es geometría y ahí no
   // cabe una letra. Sin ella el dibujo enseña un gesto y nadie sabe de qué gesto habla.
-  const escribir = useCallback(
-    (ctx: CanvasRenderingContext2D) => {
-      if (step == null) return
-      drawParagraph(ctx, t(FRASES[step]), 0, 0, {
-        size: 0.045,
-        color: '#e2e8f0',
-        weight: '600',
-        maxWidth: PANEL_WIDTH - 0.08,
-      })
-    },
-    [step, t],
-  )
+  const escribir = useCallback((ctx: CanvasRenderingContext2D) => dibujarLaFrase(ctx, t, step), [step, t])
 
   return (
     <group position={XR_TUTORIAL_POSITION}>
@@ -413,7 +432,7 @@ function TutorialPanel() {
 
       {/* Lo que hay que hacer, escrito, encima del dibujo: el dibujo enseña el gesto y la
           frase lo nombra. */}
-      <group position={[0, PANEL_HEIGHT / 2 + TEXT_HEIGHT / 2 + 0.01, 0]}>
+      <group position={[0, TEXT_OFFSET_Y, 0]}>
         <CanvasPanel
           width={PANEL_WIDTH}
           height={TEXT_HEIGHT}

@@ -1,103 +1,75 @@
-import { describe, expect, it, vi } from 'vitest'
-import {
-  getScenery,
-  getServerScenery,
-  parseScenery,
-  readScenery,
-  saveScenery,
-  SCENERY_KEY,
-  writeScenery,
-} from './sceneryPreference'
+import { afterEach, describe, expect, it } from 'vitest'
+
+import { SCENERIES, readScenery } from './ajustes'
+import { OWN_SCENERY_KEY, forgetOwnScenery, sceneryModeOf, sceneryOf } from './sceneryPreference'
 
 /**
- * Tests de recordar el escenario entre visitas (`sceneryPreference.ts`).
+ * El escenario del arcade visto desde Stick Rush (`sceneryPreference.ts`).
  *
- * Lo que se protege: que un almacenamiento raro nunca acabe en 'passthrough'. Ese valor, en
- * una sesión sin habitación real detrás, deja al jugador mirando la nada — por eso se
- * dejó fuera cuando se persistió el silencio.
+ * La preferencia y la regla del decorado se prueban con el puente (`ajustes.test.ts` y
+ * `ajustesCliente.test.tsx`). Lo que queda aquí es lo que es de este juego: la traducción a
+ * `scene` y `passthrough`, y que la clave propia del juego no mande y desaparezca.
  */
 
-/** Almacenamiento de mentira, con lo justo que usa la preferencia. */
-function fakeStorage(initial?: string): Storage {
-  const values = new Map<string, string>()
-  if (initial !== undefined) values.set(SCENERY_KEY, initial)
-  return {
-    getItem: (key: string) => values.get(key) ?? null,
-    setItem: (key: string, value: string) => void values.set(key, value),
-    removeItem: (key: string) => void values.delete(key),
-    get length() {
-      return values.size
-    },
-  } as unknown as Storage
-}
+afterEach(() => {
+  window.localStorage.clear()
+})
 
-/** El que tienen los navegadores en modo privado: lanza en vez de fallar. */
-function blockedStorage(): Storage {
-  return {
-    getItem: () => {
-      throw new Error('bloqueado')
-    },
-    setItem: () => {
-      throw new Error('bloqueado')
-    },
-    removeItem: () => {
-      throw new Error('bloqueado')
-    },
-  } as unknown as Storage
-}
-
-describe('el escenario se recuerda entre visitas', () => {
-  it('la primera visita entra con escenario', () => {
-    expect(readScenery(fakeStorage())).toBe('scene')
-    expect(readScenery(null)).toBe('scene')
+describe('la traducción en el borde', () => {
+  it('el sitio dibujado del arcade es la plaza, y la habitación es el passthrough', () => {
+    expect(sceneryModeOf('place')).toBe('scene')
+    expect(sceneryModeOf('room')).toBe('passthrough')
   })
 
-  it('quien lo quitó vuelve a su cuarto', () => {
-    expect(readScenery(fakeStorage('passthrough'))).toBe('passthrough')
+  it('va y vuelve sin perder nada', () => {
+    for (const scenery of SCENERIES) expect(sceneryOf(sceneryModeOf(scenery))).toBe(scenery)
   })
 
-  it('solo se guarda el passthrough; volver al escenario borra la clave', () => {
-    // El arranque por defecto es con escenario, así que el almacenamiento solo tiene algo
-    // cuando el jugador se aparta de él.
-    const storage = fakeStorage()
-    writeScenery(storage, 'passthrough')
-    expect(storage.length).toBe(1)
-    writeScenery(storage, 'scene')
-    expect(storage.length).toBe(0)
-  })
-
-  it('lo editado a mano no vale como passthrough', () => {
-    // Es entrada externa: cualquiera puede tocarla desde las herramientas del navegador, y
-    // el valor peligroso es justo el que quita el escenario.
-    for (const raw of ['PASSTHROUGH', 'true', '1', 'scene', '', 'null'])
-      expect(parseScenery(raw)).toBe('scene')
-    expect(parseScenery(null)).toBe('scene')
-  })
-
-  it('con el almacenamiento bloqueado se entra con escenario, sin romperse', () => {
-    expect(readScenery(blockedStorage())).toBe('scene')
-    expect(writeScenery(blockedStorage(), 'passthrough')).toBe(false)
-  })
-
-  it('el servidor prerenderiza siempre con escenario', () => {
-    // No hay navegador que consultar; si dijera otra cosa, el HTML del servidor y el del
-    // cliente diferirían.
-    expect(getServerScenery()).toBe('scene')
+  it('lo que elige el menú del juego se escribe con los valores del arcade', () => {
+    // Escritos a mano: si se escribiera `passthrough` en la clave del arcade, el salón lo leería
+    // como basura y volvería al sitio dibujado.
+    expect(sceneryOf('scene')).toBe('place')
+    expect(sceneryOf('passthrough')).toBe('room')
   })
 })
 
-describe('cuando el navegador no deja guardar el escenario', () => {
-  it('la elección vale al menos para esta visita', () => {
-    // Sin la copia en memoria, el botón no haría nada: lo guardado no cambia,
-    // así que la lectura devolvería siempre lo mismo.
-    vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
-      throw new DOMException('bloqueado', 'SecurityError')
-    })
+describe('la clave propia del juego', () => {
+  it('es la del juego, escrita a mano', () => {
+    // Si se apartara, se quedaría sin borrar la de verdad y se borraría una que no existe.
+    expect(OWN_SCENERY_KEY).toBe('stick-rush:scenery')
+  })
 
-    saveScenery('passthrough')
-    expect(getScenery()).toBe('passthrough')
+  it('no manda: con ella en passthrough y la del arcade sin poner, se ve la plaza', () => {
+    window.localStorage.setItem(OWN_SCENERY_KEY, 'passthrough')
 
-    saveScenery('scene')
-    expect(getScenery()).toBe('scene')
+    expect(sceneryModeOf(readScenery(window.localStorage))).toBe('scene')
+  })
+
+  it('se borra sin trasladarla a la del arcade', () => {
+    window.localStorage.setItem(OWN_SCENERY_KEY, 'passthrough')
+
+    forgetOwnScenery(window.localStorage)
+
+    expect(window.localStorage.getItem(OWN_SCENERY_KEY)).toBeNull()
+    expect(window.localStorage.getItem('xrcade:scenery')).toBeNull()
+  })
+
+  it('no toca lo que se eligió en el salón', () => {
+    window.localStorage.setItem('xrcade:scenery', 'room')
+
+    forgetOwnScenery(window.localStorage)
+
+    expect(readScenery(window.localStorage)).toBe('room')
+  })
+
+  it('sin almacenamiento, o con uno que lanza, no revienta', () => {
+    const roto = {
+      removeItem() {
+        throw new Error('bloqueado')
+      },
+    }
+
+    expect(() => forgetOwnScenery(null)).not.toThrow()
+    expect(() => forgetOwnScenery(roto)).not.toThrow()
   })
 })

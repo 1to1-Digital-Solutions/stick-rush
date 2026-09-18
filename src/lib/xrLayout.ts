@@ -1,5 +1,6 @@
 import { DIFFICULTY_ORDER, MAX_STICKS, type Difficulty } from './gameConfig'
 import { REFERENCE_EYE_HEIGHT, isPlausibleEyeHeight } from './hoopHeight'
+import { EYE_HEIGHTS, eyesAt, type PanelPose, type Point } from './panelReading'
 
 /**
  * Dónde se coloca cada cosa de la interfaz inmersiva, en metros. Las alturas se
@@ -77,6 +78,19 @@ export const PISTA_Y = -0.395
  */
 export const PISTA_ANCHO = 0.62
 
+/**
+ * A qué tamaño se escribe cada cosa del panel del menú, en metros de alto de letra.
+ *
+ * **Una sola lista para quien pinta y para quien mide.** `dibujarLosNombres` escribe con estos
+ * tamaños y `menu.legible.test.ts` comprueba que todo lo que el lienzo apunta está en ella: una
+ * letra escrita a mano, o encogida para caber, no pasa sin verse.
+ *
+ * La explicación del modo iba a 22 mm: abajo del todo, medio metro por debajo de los ojos y
+ * medida en su fila con el escorzo, se quedaba en 0,92°. A 35 mm cabe en dos renglones; a 36, la
+ * de los niveles pide tres y se sale del panel.
+ */
+export const MENU_TEXT = { label: 0.032, hint: 0.035 } as const
+
 export const XR_MENU_POSITION: Vec3 = [0, 1.4, -0.95]
 /** Marcador, por debajo del menú para no cruzarse con los palos. */
 export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
@@ -107,10 +121,20 @@ export const XR_CONFIRM_POSITION: Vec3 = [
 ]
 export const XR_CONFIRM_SIZE: [number, number] = [0.78, 0.38]
 
-/** Sus dos botones, en coordenadas del propio aviso. */
+/**
+ * A qué tamaño se escribe el aviso, en metros de alto de letra (`salida.legible.test.ts`).
+ */
+export const CONFIRM_TEXT = { title: 0.05, body: 0.034, button: 0.034 } as const
+
+/**
+ * Sus dos botones, en coordenadas del propio aviso.
+ *
+ * «Seguir jugando» no cabía en 32 cm con la letra de `CONFIRM_TEXT` y se encogía: el botón mide lo
+ * que pide su etiqueta en español.
+ */
 export const CONFIRM_BOXES = {
   /** Seguir jugando va a la derecha y más grande: es la respuesta que no pierde nada. */
-  stay: { position: [0.17, -0.1, 0.02] as Vec3, size: [0.32, 0.11, 0.04] as Vec3 },
+  stay: { position: [0.17, -0.1, 0.02] as Vec3, size: [0.34, 0.11, 0.04] as Vec3 },
   leave: { position: [-0.19, -0.1, 0.02] as Vec3, size: [0.28, 0.11, 0.04] as Vec3 },
 }
 /**
@@ -511,4 +535,28 @@ export function xrUiRiseOverWorld(
   atEyeLevel: boolean,
 ): number {
   return xrUiRise(eyeHeight) - worldRise(eyeHeight, atEyeLevel)
+}
+
+/**
+ * Desde dónde se lee un panel de la interfaz: con los ojos a cada altura de `EYE_HEIGHTS` y con la
+ * altura de juego del salón de pie o a la de los ojos.
+ *
+ * Todo cuelga de `XRGazeAnchor`, así que el panel queda delante de los ojos, a la altura que suben
+ * el mundo (`worldRise`) y la interfaz sobre él (`xrUiRiseOverWorld`). Es lo que usan los
+ * `*.legible.test.ts` para medir cada letra donde queda de verdad.
+ */
+export function xrPanelViews(position: Vec3): { donde: string; pose: PanelPose; ojos: Point }[] {
+  return EYE_HEIGHTS.flatMap((ojos) =>
+    [false, true].map((aLaAlturaDeLosOjos) => ({
+      donde: `ojos a ${ojos} m${aLaAlturaDeLosOjos ? ', mundo a su altura' : ''}`,
+      pose: {
+        position: [
+          position[0],
+          position[1] + worldRise(ojos, aLaAlturaDeLosOjos) + xrUiRiseOverWorld(ojos, aLaAlturaDeLosOjos),
+          position[2],
+        ] as const,
+      },
+      ojos: eyesAt(ojos),
+    })),
+  )
 }

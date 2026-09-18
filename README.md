@@ -125,16 +125,21 @@ Both menus — the desktop one and the immersive one — can mute it, and while
 muted the game never touches the Web Audio API at all. **The choice is
 remembered between visits** (`src/lib/mutePreference.ts`): in a headset, muting
 again every time you put the visor on is the most tedious gesture in the game.
-The scenery choice is remembered the same way
-(`src/lib/sceneryPreference.ts`), and for the same reason. It never overrides
-what the session can actually do: a stored `passthrough` opening as
+The scenery choice is not the game's own: it is the arcade's `xrcade:scenery`
+(`place` or `room`, read through `src/lib/ajustes.ts` and translated to
+`scene`/`passthrough` in `src/lib/sceneryPreference.ts`), so choosing it in the
+xrcade lounge or in this game's menu is the same single preference, and it
+changes what is drawn without leaving the session. The game's own key,
+`stick-rush:scenery`, is written by nobody: if a browser has it, it is deleted
+when the game state mounts and not carried over. It never
+overrides what the session can actually do: a stored `room` opening as
 `immersive-vr` still gets the scenery, because behind that one there is no real
 room — only black.
 
 That is all the game ever writes to the browser — the best score (one integer
 per mode, `src/lib/highScore.ts`), the ring height correction
 (`src/lib/hoopHeight.ts`), whether the in-headset tutorial has been seen
-(`src/lib/tutorial.ts`), the scenery and this — six `localStorage` keys once you
+(`src/lib/tutorial.ts`), the arcade's scenery and this — six `localStorage` keys once you
 count a best score per mode, all of them local preferences with nothing that describes
 who is playing, no cookies and nothing that leaves the device. With storage unavailable — private mode, or a headset
 with it blocked — there is no record to show and nothing is remembered for next

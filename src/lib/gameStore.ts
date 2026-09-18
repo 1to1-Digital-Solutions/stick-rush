@@ -42,7 +42,7 @@ import {
   subscribeUnlockedLevel,
 } from './progress'
 import { volumeFactor } from './ajustes'
-import { useVolumes } from './ajustesCliente'
+import { setScenery as setArcadeScenery, useScenery, useVolumes } from './ajustesCliente'
 import {
   HOOP_ADJUST_STEP,
   clampHoopAdjustment,
@@ -50,12 +50,8 @@ import {
   hoopHeightFor,
   saveHoopAdjustment,
 } from './hoopHeight'
-import {
-  getScenery,
-  getServerScenery,
-  saveScenery,
-  subscribeScenery,
-} from './sceneryPreference'
+import { forgetOwnScenery, sceneryModeOf, sceneryOf } from './sceneryPreference'
+import { gameStorage } from './storage'
 import { stickPoints } from './scoring'
 import {
   TUTORIAL_SECONDS,
@@ -351,17 +347,22 @@ export function useGameStoreValue(): GameStore {
   // los palos resueltos, así no hay fuentes de verdad que sincronizar ni
   // efectos que cambien de fase provocando renders en cascada.
   const [running, setRunning] = useState(false)
-  // El escenario tampoco es estado de React: vive en el navegador, como el
-  // silencio. Se entra con él puesto —es la experiencia completa— salvo que la
-  // visita anterior lo quitara. Que la preferencia diga passthrough no basta
-  // para servirlo: en una sesión sin habitación real detrás, quien pinta la
-  // escena lo ignora y mantiene el escenario.
-  const scenery = useSyncExternalStore(
-    subscribeScenery,
-    getScenery,
-    getServerScenery,
+  // El escenario tampoco es estado de React, y además no es del juego: es el
+  // escenario del arcade (`xrcade:scenery`), traducido a `scene`/`passthrough` en
+  // el borde (`sceneryPreference.ts`). Se cambia desde el panel del salón y desde
+  // el menú de aquí, y los dos tienen que ver lo mismo a la vez. Que diga
+  // passthrough no basta para servirlo: en una sesión sin habitación real detrás,
+  // quien pinta la escena lo ignora y mantiene el escenario.
+  const scenery = sceneryModeOf(useScenery())
+  const setScenery = useCallback(
+    (value: SceneryMode) => setArcadeScenery(sceneryOf(value)),
+    [],
   )
-  const setScenery = useCallback((value: SceneryMode) => saveScenery(value), [])
+  // La clave propia del juego se borra al montar el estado de la partida, sin
+  // trasladarla: la elección que manda es la del salón.
+  useEffect(() => {
+    forgetOwnScenery(gameStorage())
+  }, [])
   // El sonido no es estado de este juego: sale de los ajustes del arcade, que
   // se eligen una vez en xrcade y valen para los doce. Aquí solo se traduce a
   // lo que la escena pregunta: si está mudo y a qué volumen (ver `ajustes.ts`).
