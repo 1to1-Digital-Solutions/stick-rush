@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { problemasDeLaSalida, type PanelBox } from './exitCorner'
 import { MENU_PANEL } from '../components/xr/XRMenu'
 import {
   RETAKE_DELTA,
@@ -202,5 +203,34 @@ describe('la interfaz cuando el mundo ya se ha movido', () => {
   it('sin medida buena no se mueve nada, se pida lo que se pida', () => {
     expect(xrUiRiseOverWorld(null, true)).toBe(0)
     expect(xrUiRiseOverWorld(null, false)).toBe(0)
+  })
+})
+
+
+/**
+ * Dónde cae la salida, que hasta ahora dependía del juego.
+ *
+ * La regla —abajo a la derecha, al final de la fila de las acciones— y el porqué están en
+ * `exitCorner.ts`, el mismo fichero en los trece. Aquí solo se le da el reparto de ESTE panel,
+ * traducido a lo que la regla sabe leer.
+ */
+describe('la salida', () => {
+  const comoCaja = (nombre: string): PanelBox => ({
+    x: XR_MENU_SPOT[nombre][0],
+    y: XR_MENU_SPOT[nombre][1],
+    width: XR_MENU_HIT[nombre][0],
+    height: XR_MENU_HIT[nombre][1],
+  })
+
+  it('está en la esquina de abajo a la derecha del panel del menú', () => {
+    const nombres = Object.keys(XR_MENU_HIT)
+
+    expect(
+      problemasDeLaSalida(
+        comoCaja('exit'),
+        nombres.filter((nombre) => nombre !== 'exit').map(comoCaja),
+        { width: MENU_PANEL[0], height: MENU_PANEL[1] },
+      ),
+    ).toEqual([])
   })
 })

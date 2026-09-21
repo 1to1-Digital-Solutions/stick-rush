@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber'
 import { BackSide } from 'three'
 import type { Mesh, MeshBasicMaterial } from 'three'
 import { BACKDROP_COLOR } from '../../lib/gameConfig'
+import { DECOR_POINTER_EVENTS } from '../../lib/punteros'
 import type { SceneryMode } from '../../lib/gameStore'
 
 /**
@@ -56,7 +57,21 @@ export function SceneryFade({
     // La cortina va pegada a la cabeza. En el visor el jugador se mueve por la
     // habitación, y una esfera anclada al origen de la escena se le quedaría
     // detrás justo durante el cambio.
+    //
+    // **Y la posición del mundo se traduce al espacio de su padre.** La cortina cuelga del
+    // decorado, que va corrido hacia delante y —montado en el salón— girado hacia donde
+    // estaba el arco (`HostAnchored`): asignada tal cual, la esfera se planta desplazada
+    // justo lo que se haya movido el mundo, y con 35 cm de radio eso es dejar la cabeza
+    // fuera. `worldToLocal` recorre la cadena entera de padres, que es lo que hay que
+    // deshacer.
     state.camera.getWorldPosition(mesh.position)
+    const padre = mesh.parent
+    if (padre != null) {
+      // three solo pone al día las matrices al pintar, y el decorado se coloca en su propio
+      // render: sin esto se traduciría con el mundo del fotograma anterior.
+      padre.updateWorldMatrix(true, false)
+      padre.worldToLocal(mesh.position)
+    }
 
     const step = delta / FADE_SECONDS
 
@@ -80,7 +95,11 @@ export function SceneryFade({
 
   return (
     <>
-      <mesh ref={meshRef} visible={false}>
+      {/* Y fuera del alcance de los punteros, dicho aquí además de heredarlo del mundo: es una
+          esfera de 35 cm **alrededor de la cabeza**, y una forma que envuelve la mano cuenta
+          como tocada a distancia cero. Estar invisible no la aparta: a la librería de punteros
+          la visibilidad no le dice nada (`lib/punteros.ts`). */}
+      <mesh ref={meshRef} visible={false} pointerEvents={DECOR_POINTER_EVENTS}>
         {/* Vista desde dentro: la esfera envuelve al jugador. */}
         <sphereGeometry args={[CURTAIN_RADIUS, 16, 12]} />
         <meshBasicMaterial

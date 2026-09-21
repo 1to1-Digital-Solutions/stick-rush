@@ -1,6 +1,7 @@
 'use client'
 
 import { FLECHA_DE_SALIR } from './canvasPanel'
+import { PANEL_ORDER } from './buttonHighlight'
 import { NO_RAYCAST } from '../raycast'
 
 import { type ReactNode, useMemo, useRef, useState } from 'react'
@@ -53,11 +54,19 @@ export function XRPanel({
   opacity?: number
 }) {
   return (
-    <mesh position={[0, 0, -0.02]}>
+    /*
+      **Sin escribir profundidad, y con su sitio en el orden.** Es un plano transparente de
+      un panel, y a milímetros de los botones que lleva encima la ordenación por profundidad
+      no decide nada fiable: basta inclinar la cabeza hacia un botón del borde para que el
+      fondo se pinte DESPUÉS de él y, escribiendo profundidad, se lo lleve por delante
+      (ver `buttonHighlight.tsx`).
+    */
+    <mesh position={[0, 0, -0.02]} renderOrder={PANEL_ORDER.back}>
       <planeGeometry args={[width, height]} />
       <meshBasicMaterial
         color={color}
         transparent
+        depthWrite={false}
         opacity={opacity}
         toneMapped={false}
       />
@@ -67,6 +76,20 @@ export function XRPanel({
 
 /** Color del halo que marca el botón apuntado. */
 const HOVER_COLOR = '#7dd3fc'
+
+/**
+ * Y con el que se enciende al apretarlo, que es otra cosa que apuntarlo.
+ *
+ * El botón **se hunde y cambia de color** en vez de desaparecer: encoge por debajo de su
+ * tamaño de reposo —que a un metro se lee como que se mete hacia dentro— y el halo pasa de
+ * este azul a blanco y sube de intensidad. Reportado con el visor puesto: «cuando se pulsa el
+ * botón, el botón debería de seguir ahí (reaccionar bien, como hundiéndose, cambiando de
+ * color y eso bien, pero no desapareciendo)».
+ */
+const PRESSED_COLOR = '#ffffff'
+
+/** Lo que encoge un botón apretado, desde el 1,08 que crece al apuntarlo. */
+const PRESSED_SCALE = 0.98
 /** El claro con el que se pintan los iconos sobre placa oscura. */
 const ICONO_COLOR = '#e2e8f0'
 
@@ -124,9 +147,11 @@ export function XRPressable({
   disabled?: boolean
 }) {
   const [hovered, setHovered] = useState(false)
+  const [pressed, setPressed] = useState(false)
   const lastFired = useRef(0)
 
   const handle = (event: ThreeEvent<PointerEvent | MouseEvent>) => {
+    setPressed(true)
     event.stopPropagation()
     if (disabled) return
 
@@ -151,23 +176,36 @@ export function XRPressable({
     <group
       position={position}
       rotation={rotation}
-      scale={active ? 1.08 : 1}
+      scale={pressed ? PRESSED_SCALE : active ? 1.08 : 1}
       onPointerDown={handle}
       onPointerOver={(event) => {
         event.stopPropagation()
         if (!disabled) setHovered(true)
       }}
-      onPointerOut={() => setHovered(false)}
+      onPointerUp={() => setPressed(false)}
+      onPointerOut={() => {
+        setHovered(false)
+        setPressed(false)
+      }}
     >
       {children}
 
-      {/* Halo de foco: por detrás del dibujo, para enmarcarlo sin taparlo. */}
-      <mesh position={[0, 0, -0.014]} visible={active}>
+      {/* Halo de foco: por detrás del dibujo, para enmarcarlo sin taparlo.
+          **Sin escribir profundidad y con su sitio en el orden.** Un plano transparente
+          de un panel sí apunta su profundidad salvo que se le diga que no, y a
+          milímetros de sus vecinos la ordenación por profundidad se da la vuelta en
+          cuanto se inclina la cabeza hacia un botón del borde: entonces el halo se
+          pintaba antes que el fondo del panel y lo borraba, y el botón se veía como un
+          agujero a la escena. El porqué entero, en `buttonHighlight.tsx`.
+          Apretado se enciende más y cambia de color: es lo único que dice, desde
+          dentro, que el botón ha oído. */}
+      <mesh position={[0, 0, -0.014]} visible={active || pressed} renderOrder={PANEL_ORDER.behind}>
         <planeGeometry args={[hitWidth * 0.98, hitHeight * 0.94]} />
         <meshBasicMaterial
-          color={HOVER_COLOR}
+          color={pressed ? PRESSED_COLOR : HOVER_COLOR}
           transparent
-          opacity={0.34}
+          depthWrite={false}
+          opacity={pressed ? 0.55 : 0.34}
           toneMapped={false}
         />
       </mesh>

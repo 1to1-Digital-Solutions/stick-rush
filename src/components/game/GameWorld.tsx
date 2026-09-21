@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, Suspense } from 'react'
+import { useEffect, useState, Suspense, type ReactNode } from 'react'
 import { contarMontaje } from '../../lib/montajes'
 import { Environment } from '@react-three/drei'
 import { useXR } from '@react-three/xr'
@@ -13,7 +13,9 @@ import {
   PLAYER_OFFSET_Z,
 } from '../../lib/gameConfig'
 import { showsPlace } from '../../lib/ajustes'
+import { entryPlacement, type HostAnchor } from '../../lib/hostAnchor'
 import { useGame, type SceneryMode } from '../../lib/gameStore'
+import { DECOR_POINTER_EVENTS, MENU_POINTER_ORDER } from '../../lib/punteros'
 import { sceneryOf } from '../../lib/sceneryPreference'
 import { XRCountdown } from '../xr/XRCountdown'
 import { XRGazeAnchor } from '../xr/XRGazeAnchor'
@@ -23,6 +25,7 @@ import { XRMenu } from '../xr/XRMenu'
 import { XRPlayerHeight } from '../xr/XRPlayerHeight'
 import { XRSessionController } from '../xr/XRSessionController'
 import { XRTutorial } from '../xr/XRTutorial'
+import { Calentar } from './Calentar'
 import { Backdrop } from './Backdrop'
 import { Fairground } from './Fairground'
 import { SceneryFade } from './SceneryFade'
@@ -119,6 +122,46 @@ function SceneBackdrop({ scenery }: { scenery: SceneryMode }) {
   )
 }
 
+/** El origen del anfitrión, para cuando no presta ningún anclaje: el mundo se queda ahí. */
+const ORIGEN = { x: 0, z: 0 }
+
+/**
+ * Planta el mundo donde y con qué rumbo diga el anfitrión.
+ *
+ * **Aquí el decorado no se ancla a la mirada**, a diferencia de los otros doce: la máquina
+ * se queda donde el anfitrión ponga el origen, corrida hacia delante para dejar a quien
+ * juega a su distancia. Dentro del salón eso se notaba: el arco de cabinas está plantado a
+ * los pies de quien entró y girado hacia donde miraba, y la máquina aparecía en el −Z de la
+ * calibración de la sala, o sea donde cayera. Con el anclaje prestado sale justo donde
+ * estaba el arco.
+ *
+ * **Se planta una vez y se queda.** Un decorado que se recoloca mientras se juega es lo que
+ * hace imposible apuntar. Lo único que lo suelta es recentrar la sala: entonces el espacio
+ * de referencia se mueve entero, lo prestado apunta a donde ya no hay nada, y el mundo
+ * vuelve al origen del anfitrión, que es lo que hacía antes de esto.
+ */
+function HostAnchored({ anchor, children }: { anchor?: HostAnchor; children: ReactNode }) {
+  const [lent, setLent] = useState(anchor ?? null)
+  const referenceSpace = useXR((state) => state.originReferenceSpace)
+
+  useEffect(() => {
+    if (referenceSpace == null) return
+    const alRecentrar = () => setLent(null)
+    referenceSpace.addEventListener('reset', alRecentrar)
+    return () => referenceSpace.removeEventListener('reset', alRecentrar)
+  }, [referenceSpace])
+
+  // Sin nada prestado sale el origen y el grupo es la identidad, que es lo de siempre.
+  const sitio = entryPlacement(lent, ORIGEN, 0)
+
+  return (
+    // La altura no se hereda: el anfitrión solo sabe del suelo (ver `lib/hostAnchor.ts`).
+    <group name="world-anchor" position={[sitio.x, 0, sitio.z]} rotation={[0, sitio.yaw, 0]}>
+      {children}
+    </group>
+  )
+}
+
 /** Enchufa el escenario a lo que el jugador elige en el menú inmersivo. */
 function SceneryFadeBridge() {
   const { scenery } = useGame()
@@ -153,9 +196,15 @@ export interface GameWorldProps {
    * forma de empezar la partida.
    */
   hasDomUi?: boolean
+  /**
+   * Dónde y con qué rumbo plantar el mundo, si quien monta la escena lo sabe: el
+   * salón de xrcade presta el anclaje con el que tiene plantado su arco de cabinas.
+   * Sin él, el mundo se queda en el origen que ponga el anfitrión.
+   */
+  anchor?: HostAnchor
 }
 
-export function GameWorld({ hasDomUi = false }: GameWorldProps) {
+export function GameWorld({ hasDomUi = false, anchor }: GameWorldProps) {
   // Cuántas veces se monta el mundo, cuando alguien lo está contando (`lib/montajes.ts`).
   // Montarlo dos veces al entrar en la sesión **es** el parpadeo que se reporta del visor.
   useEffect(() => {
@@ -181,7 +230,10 @@ export function GameWorld({ hasDomUi = false }: GameWorldProps) {
           dejaba el menú a la espalda, invisible e imposible de apuntar.
           Va fuera del grupo del mundo a propósito: acompaña al jugador, no al
           decorado. */}
-      <XRGazeAnchor always={!hasDomUi}>
+      {/* Y gana el rayo pase lo que pase por delante (`lib/punteros.ts`): la pregunta de
+          salir sale en plena partida, con palos cayendo entre la mano y el botón, y ahí sí
+          hay palos que se pueden coger. Es un orden, no una distancia. */}
+      <XRGazeAnchor always={!hasDomUi} pointerEventsOrder={MENU_POINTER_ORDER}>
         <XRHud hasDomUi={hasDomUi} />
         <XRMenu hasDomUi={hasDomUi} />
         <XRTutorial />
@@ -198,29 +250,40 @@ export function GameWorld({ hasDomUi = false }: GameWorldProps) {
           dos orígenes en la misma sesión se pisan. Se mueve el decorado la misma
           distancia en sentido contrario: la geometría que ve el jugador es
           idéntica y el origen se queda donde su dueño lo puso. */}
-      <group position={[0, 0, -PLAYER_OFFSET_Z]}>
-        <ambientLight intensity={0.35} />
-        {/* Foco cálido sobre la máquina, como el de una caseta de feria de noche. */}
-        <pointLight
-          position={[0, MACHINE_HEIGHT + 1, -MACHINE_RADIUS * 0.4]}
-          intensity={16}
-          color="#ffd479"
-          distance={10}
-          castShadow
-        />
-        {/* Relleno frío por detrás, para despegar la máquina del fondo oscuro. */}
-        <directionalLight position={[2.5, 4, 3]} intensity={0.35} color="#9fb6d6" />
+      <HostAnchored anchor={anchor}>
+        {/* **El mundo no está para el rayo** (`lib/punteros.ts`): quien juega está DENTRO de
+            la máquina, así que entre su mano y el menú hay siempre travesaños, palos y
+            decorado. Nada de eso escucha nada, pero basta un anfitrión con un oyente por
+            encima —el salón— para que todo lo que cuelgue de él cuente como tocado. Lo único
+            que vuelve a encenderse es el palo que se puede coger, y lo dice él. */}
+        <group position={[0, 0, -PLAYER_OFFSET_Z]} pointerEvents={DECOR_POINTER_EVENTS}>
+          <ambientLight intensity={0.35} />
+          {/* Foco cálido sobre la máquina, como el de una caseta de feria de noche. */}
+          <pointLight
+            position={[0, MACHINE_HEIGHT + 1, -MACHINE_RADIUS * 0.4]}
+            intensity={16}
+            color="#ffd479"
+            distance={10}
+            castShadow
+          />
+          {/* Relleno frío por detrás, para despegar la máquina del fondo oscuro. */}
+          <directionalLight position={[2.5, 4, 3]} intensity={0.35} color="#9fb6d6" />
 
-        {/* Las texturas de la madera se cargan aquí dentro; con su propio
-            Suspense la máquina aparece en cuanto están, sin bloquear el resto. */}
-        <Suspense fallback={null}>
-          <StickMachine />
-        </Suspense>
+          {/* Las texturas de la madera se cargan aquí dentro; con su propio
+              Suspense la máquina aparece en cuanto están, sin bloquear el resto. */}
+          <Suspense fallback={null}>
+            <StickMachine />
+          </Suspense>
 
-        {/* El decorado cambia con la cortina cerrada, para que el salto entre
-            la plaza y la habitación del jugador no se vea. */}
-        <SceneryFadeBridge />
-      </group>
+          {/* El decorado cambia con la cortina cerrada, para que el salto entre
+              la plaza y la habitación del jugador no se vea. */}
+          <SceneryFadeBridge />
+        </group>
+      </HostAnchored>
+      {/* Calienta los shaders de la escena, y va AQUÍ y no en el Canvas de la web del
+          juego: el salón monta esto y no aquello, así que colgado de allí no se
+          precalentaba nada justo donde se juega de verdad. */}
+      <Calentar />
     </XRWorldHeight>
   )
 }

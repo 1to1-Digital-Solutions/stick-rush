@@ -149,15 +149,23 @@ export const XR_QUIT_YAW = Math.atan2(
   -XR_QUIT_POSITION[0],
   -XR_QUIT_POSITION[2],
 )
-/** Botón de salir del visor, en la esquina del panel del menú. */
-export const XR_MENU_EXIT_OFFSET: Vec3 = [-0.42, -0.37 + SUBIDA_DE_LA_PISTA, 0]
+/**
+ * Botón de salir del visor, **en la esquina de abajo a la derecha del panel del menú**.
+ *
+ * Esa esquina es la misma en los trece juegos y el porqué está en `lib/exitCorner.ts`: el
+ * dibujo ya se había unificado —la flecha de volver— pero el sitio no, y con el visor puesto
+ * eso se nota como que hay que buscarla en cada cabina. Aquí estaba en la punta izquierda de
+ * la fila, así que las dos puntas se intercambiaron: la distancia entre ellas, que es lo que
+ * evita pulsar una por otra a pulso, no cambia.
+ */
+export const XR_MENU_EXIT_OFFSET: Vec3 = [0.42, -0.37 + SUBIDA_DE_LA_PISTA, 0]
 /**
  * Botón de silenciar, en la esquina opuesta a la de salir del visor. Los dos
  * ajustes de la fila de abajo quedan así uno en cada punta, con el de empezar
  * en medio: en el visor se apunta a pulso y un vecino a pocos centímetros se
  * pulsa por error.
  */
-export const XR_MENU_SOUND_OFFSET: Vec3 = [0.42, -0.37, 0]
+export const XR_MENU_SOUND_OFFSET: Vec3 = [-0.42, -0.37, 0]
 /**
  * Fila de ajustes bajo las dificultades: a la izquierda con qué se juega
  * (práctica o desafío) y a la derecha qué se ve alrededor. Van a las dos puntas

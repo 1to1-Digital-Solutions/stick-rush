@@ -35,6 +35,7 @@ import { xrUiRiseOverWorld } from '../../lib/xrLayout'
 export function XRGazeAnchor({
   children,
   always = false,
+  pointerEventsOrder,
 }: {
   children: ReactNode
   /**
@@ -44,6 +45,12 @@ export function XRGazeAnchor({
    * caiga, normalmente a la espalda de quien mira.
    */
   always?: boolean
+  /**
+   * Con qué prioridad se lleva el rayo lo que cuelgue de aquí frente al resto de la escena
+   * (`lib/punteros.ts`). Va en el grupo y no panel por panel porque es de la interfaz entera:
+   * entre la mano y cualquier botón hay siempre palos, que es de lo que va esta máquina.
+   */
+  pointerEventsOrder?: number
 }) {
   const ref = useRef<Group>(null)
   const anchor = useRef<AnchorState | null>(null)
@@ -105,7 +112,11 @@ export function XRGazeAnchor({
     group.rotation.set(0, next.yaw, 0)
   })
 
-  return <group ref={ref}>{children}</group>
+  return (
+    <group ref={ref} pointerEventsOrder={pointerEventsOrder}>
+      {children}
+    </group>
+  )
 }
 
 // Reutilizados entre frames: crear vectores dentro de useFrame genera basura en

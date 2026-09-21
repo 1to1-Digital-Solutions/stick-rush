@@ -3,6 +3,7 @@
 import { GameProvider } from '../components/GameProvider'
 import { GameWorld } from '../components/game/GameWorld'
 import { setAssetsBase } from '../lib/assets'
+import type { HostAnchor } from '../lib/hostAnchor'
 import { ExitProvider } from './exit'
 
 export interface StickRushSceneProps {
@@ -12,6 +13,17 @@ export interface StickRushSceneProps {
    * bajo su propio prefijo: dos juegos en el mismo origen se pisarían.
    */
   assetsBase?: string
+  /**
+   * Dónde y con qué rumbo plantar el mundo del juego, si quien monta la escena
+   * lo sabe: el salón de xrcade presta el anclaje con el que tiene plantado su
+   * arco de cabinas.
+   *
+   * **Sin él, el mundo se planta delante de donde se mire al entrar**, que es
+   * lo único que se sabe en la web propia del juego. Dentro del salón eso
+   * descoloca: leer las cabinas de la izquierda obliga a girar la cabeza, y el
+   * juego salía girado hacia allí.
+   */
+  anchor?: HostAnchor
   /**
    * Devolver al jugador a donde estaba. Lo llama el juego desde su interfaz
    * inmersiva; qué significa volver lo decide quien monta.
@@ -33,7 +45,7 @@ export interface StickRushSceneProps {
  *
  * El contrato completo, en `docs/montar-el-juego.md`.
  */
-export function StickRushScene({ assetsBase, onExit }: StickRushSceneProps) {
+export function StickRushScene({ assetsBase, anchor, onExit }: StickRushSceneProps) {
   // Durante el render y no en un efecto: la escena pide el HDRI y las texturas
   // en cuanto se monta, es decir, antes de que corra ningún efecto. Escribir la
   // misma base dos veces no cambia nada, así que repetir el render es inocuo.
@@ -42,7 +54,7 @@ export function StickRushScene({ assetsBase, onExit }: StickRushSceneProps) {
   return (
     <GameProvider>
       <ExitProvider onExit={onExit}>
-        <GameWorld />
+        <GameWorld anchor={anchor} />
       </ExitProvider>
     </GameProvider>
   )

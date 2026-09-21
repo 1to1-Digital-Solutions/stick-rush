@@ -16,6 +16,7 @@ import {
 } from '../../lib/gameConfig'
 import { CATCH_PULSE, pulseHaptics } from '../../lib/haptics'
 import { publishStick, stickProbeRequested } from '../../lib/sceneProbe'
+import { stickPointerEvents } from '../../lib/punteros'
 import { SWING_RELEASE_DECAY, hangingSwing } from '../../lib/stickSwing'
 import {
   type StickState,
@@ -321,7 +322,15 @@ export function Stick({
   })
 
   return (
-    <group ref={groupRef} position={[anchorX, anchorY, anchorZ]} visible={visible}>
+    // **Y solo está para el rayo mientras se pueda coger** (`lib/punteros.ts`). Apagar un palo
+    // con `visible` no lo aparta del puntero: el ya atrapado se quedaba escuchando, invisible,
+    // a medio metro de la cara y justo entre la mano y el menú.
+    <group
+      ref={groupRef}
+      position={[anchorX, anchorY, anchorZ]}
+      visible={visible}
+      pointerEvents={stickPointerEvents(catchable)}
+    >
       {/* Hilo que une el arco con el palo. Solo mientras cuelga: en cuanto el
           palo se suelta deja de haber nada que lo sujete. */}
       <mesh position={[0, -STICK_CORD_LENGTH / 2, 0]} visible={state === 'hanging'}>
