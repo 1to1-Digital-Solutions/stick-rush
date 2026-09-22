@@ -17,6 +17,12 @@ import type { NextConfig } from 'next'
  * dangerouslySetInnerHTML en todo el proyecto.
  *
  * `blob:` en img-src y worker-src lo necesitan three.js y sus loaders.
+ *
+ * Y `connect-src blob:` lo pide el modelo del mando que enseña el tutorial: el
+ * `.glb` se sirve desde el propio origen, pero sus texturas van dentro del
+ * fichero y three las saca a una URL `blob:` que después **pide con `fetch`**
+ * (`ImageBitmapLoader`). Sin ella el mando sale en negro y la consola escupe un
+ * error de política. Sigue siendo de casa: no abre el paso a nada de fuera.
  */
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -29,7 +35,7 @@ const CONTENT_SECURITY_POLICY = [
   "style-src 'self' 'unsafe-inline'",
   "script-src 'self' 'unsafe-inline'",
   "worker-src 'self' blob:",
-  "connect-src 'self'",
+  "connect-src 'self' blob:",
   // La música de fondo se sirve desde el propio origen, como todo lo demás.
   "media-src 'self'",
 ].join('; ')
@@ -63,6 +69,25 @@ const nextConfig: NextConfig = {
    * `CLAUDE.md` y `.claude/rules/`; que las escriba un paso de build, no.
    */
   agentRules: false,
+  /**
+   * Desde qué máquinas se puede abrir el servidor de desarrollo.
+   *
+   * **Sin esto, `npm run dev` da una página muerta en cuanto no se entra por `localhost`.**
+   * Next bloquea por defecto los recursos de `/_next/*` cuando la petición llega con un
+   * `Origin` que no reconoce, y contesta un 403 a cada trozo de JavaScript: el HTML carga, el
+   * texto de la portada se ve y no se monta nada. No sale un error de CSP ni una traza — solo
+   * una pantalla a medias—, y por eso se diagnosticó mal durante tandas: no es que al React de
+   * desarrollo le falte `unsafe-eval`, es esto.
+   *
+   * Y aquí importa más que en un proyecto normal, porque **el visor no entra por `localhost`**:
+   * se prueba con `dev:https` desde el Quest, contra la IP de esta máquina en la red de casa.
+   * Por eso van los dos rangos privados además del propio equipo.
+   *
+   * Es una opción **solo de desarrollo**: `next build` la ignora, así que no afloja nada de lo
+   * que se sirve de verdad.
+   */
+  allowedDevOrigins: ['127.0.0.1', '192.168.*.*', '10.*.*.*'],
+
   async headers() {
     return [
       {
