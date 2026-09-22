@@ -54,21 +54,16 @@ import { forgetOwnScenery, sceneryModeOf, sceneryOf } from './sceneryPreference'
 import { gameStorage } from './storage'
 import { stickPoints } from './scoring'
 import {
-  TUTORIAL_SECONDS,
-  getTutorialSeen,
-  saveTutorialSeen,
+  PLAZO_DEL_PASO,
+  type TutorialStepKey,
+  hitosAtrapando,
+  markTutorialSeen,
+  saltarPaso,
+  tutorialSeen as leerTutorialVisto,
+  tutorialStep as pasoDelTutorial,
 } from './tutorial'
 
-export type GameState =
-  | 'menu'
-  /**
-   * Demostración de cómo se juega, antes de la cuenta atrás. Solo en el visor y
-   * solo la primera vez (ver `tutorial.ts`).
-   */
-  | 'tutorial'
-  | 'countdown'
-  | 'playing'
-  | 'finished'
+export type GameState = 'menu' | 'countdown' | 'playing' | 'finished'
 
 /**
  * Qué se ve alrededor de la máquina en una sesión inmersiva.
@@ -200,11 +195,43 @@ export interface GameStore {
   playerEyeHeight: number | null
   /**
    * Si el tutorial del visor ya se vio en este navegador. Se guarda entre
-   * visitas: es lo que hace que se interponga una sola vez.
+   * visitas: es lo que hace que se enseñe una sola vez.
    */
   tutorialSeen: boolean
+  /**
+   * Si esta partida arrancó enseñando a jugar. Lo decide `startGame` y lo apaga
+   * `finishTutorial`; la lección corre **con la partida en marcha**, así que no
+   * es un estado del juego sino un acompañante suyo (ver `tutorial.ts`).
+   *
+   * Superados los pasos no se apaga: lo que retira el panel es quedarse sin
+   * paso que enseñar, y es `tutorialStep` quien lo dice.
+   */
+  teaching: boolean
+  /**
+   * Qué paso del tutorial toca enseñar, o `null` si no hay lección o ya no
+   * queda nada. Se **deduce** de los palos atrapados, así que avanza solo al
+   * atrapar; el plazo de seguridad de cada paso también lo lleva el store, para
+   * que la lección no dependa de que el Canvas pinte a tiempo.
+   *
+   * Lo leen los dos sitios que la enseñan: el panel del visor y su reflejo en
+   * el overlay, que tienen que ir por el mismo paso.
+   */
+  tutorialStep: TutorialStepKey | null
+  /** Da por pasado el paso de ahora. Lo llama el botón de siguiente. */
+  nextTutorialStep: () => void
   /** Si hay una sesión inmersiva abierta, es decir, si se juega con gafas. */
   immersive: boolean
+  /**
+   * Si se está jugando con las manos desnudas, sin mandos (ver
+   * `playingBareHanded`). Cambia **lo que hay que enseñar**, no lo que hay que
+   * hacer: los palos se cogen igual, pero el gesto se llama de otra manera.
+   *
+   * Vive aquí, y no solo dentro del Canvas, porque lo necesitan los dos sitios
+   * que enseñan la lección: el panel del visor y su reflejo en el overlay, que
+   * es DOM y no alcanza el estado de la sesión. Lo pone al día
+   * `XRSessionController`, que es quien ya mira lo que hay conectado.
+   */
+  bareHanded: boolean
 
   setScenery: (scenery: SceneryMode) => void
   setStickCount: (count: number) => void
@@ -232,15 +259,8 @@ export interface GameStore {
   setPlayerEyeHeight: (height: number | null) => void
   /** Apunta si se está jugando dentro del visor. Lo lleva al día la sesión. */
   setImmersive: (immersive: boolean) => void
-  /**
-   * Empieza una partida.
-   *
-   * Por su cuenta antepone la demostración de cómo se juega cuando toca: con
-   * las gafas puestas y sin haberla visto nunca. Es del juego y no del botón
-   * que se pulse, porque dentro de la sesión también se puede empezar desde el
-   * overlay con el teclado. `tutorial` fuerza la decisión en los dos sentidos:
-   * lo usa el botón de volver a verlo desde el menú.
-   */
+  /** Apunta si se juega con las manos desnudas. Lo lleva al día la sesión. */
+  setBareHanded: (bareHanded: boolean) => void
   /**
    * Lo que se está preguntando ahora mismo, o `null` si no se pregunta nada.
    *
@@ -255,11 +275,20 @@ export interface GameStore {
   /** No: se sigue jugando desde donde estaba. */
   keepPlaying: () => void
 
+  /**
+   * Empieza una partida.
+   *
+   * Por su cuenta enciende la lección de cómo se juega cuando toca: con las
+   * gafas puestas y sin haberla visto nunca. Es del juego y no del botón que se
+   * pulse, porque dentro de la sesión también se puede empezar desde el overlay
+   * con el teclado. `tutorial` fuerza la decisión en los dos sentidos: lo usa el
+   * botón de volver a verla desde el menú.
+   */
   startGame: (options?: { tutorial?: boolean }) => void
   /**
-   * Cierra el tutorial y pasa a la cuenta atrás. Lo llaman el botón de saltar y
-   * el propio final de la demostración: las dos cosas cuentan como visto, así
-   * que a partir de ahí no vuelve a interponerse.
+   * Retira el tutorial y lo da por visto. Lo llaman el botón de saltar y el
+   * propio final de la lección: las dos cosas cuentan, así que a partir de ahí
+   * no vuelve a salir. **No toca la partida**, que sigue donde estaba.
    */
   finishTutorial: () => void
   /**
@@ -385,13 +414,18 @@ export function useGameStoreValue(): GameStore {
   // El tutorial se ve una vez y se recuerda, como la altura del aro. Se lee al
   // montar y no en cada consulta porque decide qué se pinta: leer el
   // almacenamiento en mitad de un render lo volvería impredecible.
-  const [tutorialSeen, setTutorialSeen] = useState(getTutorialSeen)
-  // Si la partida en curso arrancó enseñando cómo se juega. Es una fase de la
-  // partida y no una pantalla aparte: al acabar encadena con la cuenta atrás.
-  const [tutorialRunning, setTutorialRunning] = useState(false)
+  const [tutorialSeen, setTutorialSeen] = useState(() => leerTutorialVisto())
+  // Si esta partida va enseñando a jugar. **No para nada**: la lección se hace
+  // atrapando palos, así que corre en paralelo a la partida y se retira cuando
+  // se han superado sus pasos o cuando se salta (ver `tutorial.ts`).
+  const [teaching, setTeaching] = useState(false)
+  // Los pasos que se han dado por pasados sin hacerlos: a botón o por plazo.
+  const [tutorialSkipped, setTutorialSkipped] = useState(0)
   // Si hay gafas puestas. El juego lo necesita para saber a quién enseñar cómo
   // se juega: en escritorio la pantalla de inicio ya lo explica con texto.
   const [immersive, setImmersive] = useState(false)
+  // Con qué se está jugando: mandos o manos desnudas. Solo cambia la lección.
+  const [bareHanded, setBareHanded] = useState(false)
 
   const levels = gameMode === 'levels'
   const endlessRun = gameMode === 'practice' && endless
@@ -422,13 +456,19 @@ export function useGameStoreValue(): GameStore {
   const lives = remainingLives(gameMode, misses)
   const gameState: GameState = !running
     ? 'menu'
-    : tutorialRunning
-      ? 'tutorial'
-      : countdown > 0
-        ? 'countdown'
-        : outcome
-          ? 'finished'
-          : 'playing'
+    : countdown > 0
+      ? 'countdown'
+      : outcome
+        ? 'finished'
+        : 'playing'
+
+  // Por qué paso va la lección. Sale de lo que ya ha hecho quien juega —los
+  // palos que lleva atrapados— y de lo que se haya dado por pasado: una cuenta
+  // propia del tutorial acabaría discrepando de la partida, y aquí lo que manda
+  // es la partida.
+  const tutorialStep = teaching
+    ? pasoDelTutorial(hitosAtrapando(score), tutorialSkipped)
+    : null
 
   // Un tic por segundo hasta soltar el primer palo. La cuenta atrás da tiempo a
   // colocarse —en el visor uno acaba de pulsar un botón y tiene las manos donde
@@ -439,26 +479,44 @@ export function useGameStoreValue(): GameStore {
     return () => clearTimeout(timer)
   }, [running, countdown, prompt])
 
-  // Saltar y agotar el tiempo son la misma salida: en los dos casos el jugador
-  // ya ha decidido y el tutorial no vuelve a interponerse. Se anota como visto
-  // antes de dar paso a la cuenta atrás.
+  // Saltarlo y terminarlo son la misma salida: en los dos casos quien juega ya
+  // ha decidido, y la lección no vuelve a salir. La partida no se toca, porque
+  // nunca llegó a pararse.
   const finishTutorial = useCallback(() => {
-    if (!tutorialRunning) return
-    saveTutorialSeen()
+    if (!teaching) return
+    markTutorialSeen()
     setTutorialSeen(true)
-    setTutorialRunning(false)
-    setCountdown(COUNTDOWN_SECONDS)
-  }, [tutorialRunning])
+    setTeaching(false)
+  }, [teaching])
 
-  // La demostración dura lo que dure el guion (ver `tutorial.ts`) y cierra
-  // sola. La escena lleva su propio reloj para animar, pero quien decide cuándo
-  // se acaba es el store: así el jugador entra en la cuenta atrás aunque el
-  // Canvas esté pintando a trompicones.
+  // Superados todos los pasos, la lección queda anotada como vista. Es un
+  // efecto porque no lo dispara ningún gesto —lo dispara haber atrapado los
+  // palos que pedía—, y **solo escribe fuera de React**: el panel ya se retira
+  // solo, porque lo que lo monta es el paso y el paso se ha quedado en `null`.
+  // Apagar además `teaching` desde aquí sería pedir un render de más para algo
+  // que no se ve.
   useEffect(() => {
-    if (!tutorialRunning) return
-    const timer = setTimeout(finishTutorial, TUTORIAL_SECONDS * 1000)
-    return () => clearTimeout(timer)
-  }, [tutorialRunning, finishTutorial])
+    if (!teaching || tutorialStep !== null) return
+    markTutorialSeen()
+  }, [teaching, tutorialStep])
+
+  // El plazo de seguridad del paso: si el hito no llega —porque los palos se
+  // escapan, o porque quien juega se queda leyendo—, se pasa solo. Corre solo
+  // mientras se juega de verdad: con la cuenta atrás no hay palos que atrapar,
+  // y con la pregunta de salir en pantalla la partida está parada.
+  useEffect(() => {
+    if (tutorialStep === null || gameState !== 'playing' || prompt !== null) return
+    const plazo = setTimeout(
+      () => setTutorialSkipped((pasados) => saltarPaso(pasados, tutorialStep)),
+      PLAZO_DEL_PASO[tutorialStep] * 1000,
+    )
+    return () => clearTimeout(plazo)
+  }, [tutorialStep, gameState, prompt])
+
+  const nextTutorialStep = useCallback(() => {
+    if (tutorialStep === null) return
+    setTutorialSkipped((pasados) => saltarPaso(pasados, tutorialStep))
+  }, [tutorialStep])
 
   // Sin fin: tanda resuelta, la máquina se recarga. Se apunta de qué tanda se
   // pasó para que dos ejecuciones del efecto —Strict Mode las provoca— no
@@ -577,10 +635,16 @@ export function useGameStoreValue(): GameStore {
   const startGame = useCallback(
     (options?: { tutorial?: boolean }) => {
       setPrompt(null)
-      // Con las gafas puestas y sin haberlo visto nunca, la partida empieza
-      // enseñando: es el único momento en que el jugador está mirando y aún no
-      // hay palos cayéndole encima.
-      const tutorial = options?.tutorial ?? (immersive && !tutorialSeen)
+      // Con las gafas puestas y sin haberla visto nunca, la partida va
+      // enseñando. La cuenta atrás no cambia: la lección se aprende atrapando
+      // palos, así que empieza cuando empiezan a caer y no antes.
+      //
+      // Se **relee** del almacenamiento en vez de mirar lo que se leyó al
+      // montar: la lección que se termina atrapando queda anotada sin pasar por
+      // React, así que el estado se habría quedado atrás y la segunda partida
+      // de la misma visita volvería a enseñar lo ya aprendido.
+      const visto = leerTutorialVisto()
+      setTutorialSeen(visto)
       clearRun()
       setRecordToBeat(
         gameMode === 'practice' && endless ? getBestEndlessStreak() : getBestPoints(gameMode),
@@ -588,13 +652,12 @@ export function useGameStoreValue(): GameStore {
       setUnlockedAtStart(getUnlockedLevel())
       setLevelAtStart(selectedLevel)
       setRunId((id) => id + 1)
-      setTutorialRunning(tutorial)
-      // Con tutorial la cuenta espera: sus tres segundos son para colocarse, y
-      // gastarlos mientras el jugador mira la demostración los desperdicia.
-      setCountdown(tutorial ? 0 : COUNTDOWN_SECONDS)
+      setTeaching(options?.tutorial ?? (immersive && !visto))
+      setTutorialSkipped(0)
+      setCountdown(COUNTDOWN_SECONDS)
       setRunning(true)
     },
-    [clearRun, gameMode, endless, selectedLevel, immersive, tutorialSeen],
+    [clearRun, gameMode, endless, selectedLevel, immersive],
   )
 
   const catchStick = useCallback(
@@ -628,9 +691,10 @@ export function useGameStoreValue(): GameStore {
     setPrompt(null)
     clearRun()
     setCountdown(0)
-    // Dejar la demostración a medias no cuenta como haberla visto: quien vuelve
-    // al menú desde ella se la encuentra otra vez al empezar.
-    setTutorialRunning(false)
+    // Dejar la lección a medias no cuenta como haberla visto: quien vuelve al
+    // menú con el panel puesto se la encuentra otra vez al empezar.
+    setTeaching(false)
+    setTutorialSkipped(0)
     setRunning(false)
   }, [clearRun])
 
@@ -675,7 +739,10 @@ export function useGameStoreValue(): GameStore {
       hoopAdjustment,
       playerEyeHeight,
       tutorialSeen,
+      teaching,
+      tutorialStep,
       immersive,
+      bareHanded,
       setScenery,
       setStickCount,
       setDifficulty,
@@ -686,8 +753,10 @@ export function useGameStoreValue(): GameStore {
       adjustHoop,
       setPlayerEyeHeight,
       setImmersive,
+      setBareHanded,
       startGame,
       finishTutorial,
+      nextTutorialStep,
       catchStick,
       missStick,
       resetGame,
@@ -732,7 +801,10 @@ export function useGameStoreValue(): GameStore {
       hoopAdjustment,
       playerEyeHeight,
       tutorialSeen,
+      teaching,
+      tutorialStep,
       immersive,
+      bareHanded,
       setScenery,
       setStickCount,
       setGameMode,
@@ -741,6 +813,7 @@ export function useGameStoreValue(): GameStore {
       adjustHoop,
       startGame,
       finishTutorial,
+      nextTutorialStep,
       catchStick,
       missStick,
       resetGame,

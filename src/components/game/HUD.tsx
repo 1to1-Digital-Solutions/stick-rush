@@ -4,10 +4,11 @@ import { DIFFICULTY_LABELS, LIFE_COLOR } from '../../lib/gameConfig'
 import { startingLives } from '../../lib/gameMode'
 import { useGame } from '../../lib/gameStore'
 import { maxScore } from '../../lib/scoring'
-import { type ShareStatus, useShareResult } from '../../lib/useShareResult'
+import { FRASES, FRASES_CON_LAS_MANOS } from '../../lib/tutorial'
+import { type ShareStatus, useShareResult } from '../useShareResult'
 import { HeartIcon, ShareIcon, StarIcon } from '../ui/icons'
 import { useLang } from '../../lib/ajustesCliente'
-import { traductor } from '../../lib/textos'
+import { formatoDeCifra, traductor } from '../../lib/textos'
 /**
  * Vidas que quedan, una por corazón: llenos los que conservas, de contorno los
  * gastados. Solo en desafío; en práctica no hay nada que perder y una fila de
@@ -49,7 +50,7 @@ const SHARE_MESSAGES: Record<ShareStatus, string> = {
 
 /**
  * Sacar el resultado del dispositivo: la hoja de compartir del sistema si la
- * hay y el portapapeles si no (ver `shareResult.ts`).
+ * hay y el portapapeles si no (ver `shareOrCopy.ts`).
  *
  * El aviso se pinta siempre, vacío mientras no haya nada que decir: una región
  * viva que aparece a la vez que su texto no se anuncia, porque el lector de
@@ -82,7 +83,11 @@ function ShareResultButton() {
 }
 
 export function HUD() {
-  const t = traductor(useLang())
+  // El idioma se pide una vez y se pasa entero: las palabras se traducen y las cifras
+  // se agrupan a la manera del idioma, y con una cosa por un lado y otra por otro el
+  // marcador acababa en español con los miles escritos a la inglesa.
+  const lang = useLang()
+  const t = traductor(lang)
   const {
     score,
     points,
@@ -102,10 +107,14 @@ export function HUD() {
     outcome,
     gameState,
     countdown,
+    bareHanded,
+    tutorialStep,
     finishTutorial,
+    nextTutorialStep,
     resetGame,
     endRun,
   } = useGame()
+  const frasesDelTutorial = bareHanded ? FRASES_CON_LAS_MANOS : FRASES
 
   const sinFin = gameMode === 'practice' && endless
   const levels = gameMode === 'levels'
@@ -153,7 +162,7 @@ export function HUD() {
              {t('Points')}
 </p>
           <p className="text-2xl font-bold tabular-nums text-[var(--color-primary)]">
-            {points.toLocaleString('en-GB')}
+            {formatoDeCifra(points, lang)}
           </p>
           <p className="text-xs font-medium text-white/50">
             {sinFin ? `${score} sticks · set ${waveScore} / ${stickCount}` : `${score} / ${stickCount} sticks`}
@@ -192,24 +201,35 @@ export function HUD() {
       )}
       {/*
         Tutorial en marcha (solo se llega aquí dentro del visor, ver
-        `XRTutorial`). Lo que el jugador mira es la demostración en 3D; esto es
-        su reflejo en el DOM, que sigue montado bajo la sesión inmersiva: deja
-        el salto a un botón de verdad —alcanzable con teclado, como el resto del
-        overlay— y no solo a un objeto de la escena.
+        `XRTutorial`). Lo que el jugador mira es el panel en 3D; esto es su
+        reflejo en el DOM, que sigue montado bajo la sesión inmersiva: deja la
+        lección **y sus dos salidas** en elementos de verdad —anunciables y
+        alcanzables con teclado, como el resto del overlay— y no solo en objetos
+        de la escena, que solo se pueden apuntar con el mando.
+
+        La frase es la misma que pinta el panel, elegida por el mismo criterio:
+        quien juega con las manos desnudas no tiene ningún botón que mantener.
       */}
-      {gameState === 'tutorial' && (
+      {tutorialStep !== null && gameState === 'playing' && (
         <div className="fixed inset-x-0 bottom-6 z-20 flex justify-center px-6">
           <div className="animate-fade-slide-up flex items-center gap-4 rounded-xl border border-white/10 bg-[var(--color-muted)]/90 px-5 py-3 backdrop-blur motion-reduce:animate-none">
-            <p className="text-sm text-white/70">
-               {t('How it plays, in a few seconds.')}
-</p>
+            <p role="note" className="text-sm text-white/70">
+              {t(frasesDelTutorial[tutorialStep])}
+            </p>
+            <button
+              type="button"
+              onClick={nextTutorialStep}
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            >
+              {t('Next')}
+            </button>
             <button
               type="button"
               onClick={finishTutorial}
               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
             >
-               {t('Skip tutorial')}
-</button>
+              {t('Skip tutorial')}
+            </button>
           </div>
         </div>
       )}
@@ -263,11 +283,11 @@ export function HUD() {
             )}
             <div className="flex flex-col items-center gap-1">
               <p className="text-5xl font-bold tabular-nums text-[var(--color-accent)]">
-                {points.toLocaleString('en-GB')}
+                {formatoDeCifra(points, lang)}
               </p>
               {!sinFin && (
                 <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-                  of {maxPossible.toLocaleString('en-GB')} possible
+                  of {formatoDeCifra(maxPossible, lang)} possible
                 </p>
               )}
               {/* El récord: batido, se anuncia; si no, se enseña la marca que
@@ -289,7 +309,7 @@ export function HUD() {
                   <p className="mt-2 text-sm text-white/50">
                     {sinFin ? 'Your best streak:' : 'Your record:'}{' '}
                     <span className="font-bold tabular-nums text-white/80">
-                      {sinFin ? `×${bestPoints}` : bestPoints.toLocaleString('en-GB')}
+                      {sinFin ? `×${bestPoints}` : formatoDeCifra(bestPoints, lang)}
                     </span>
                   </p>
                 )

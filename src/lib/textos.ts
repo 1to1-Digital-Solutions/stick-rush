@@ -67,10 +67,20 @@ const ES = {
   Lives: 'Vidas',
   'Best streak': 'Mejor racha',
   'End run': 'Terminar',
-'Close your hand around the stick: reach it, do not point at it':
-    'Cierra la mano sobre el palo: llega hasta él, no lo apuntes',
-  'They fall one at a time, all around you': 'Caen de uno en uno, por todos lados',
-  'Every level they fall faster': 'Cada nivel caen más rápido',
+  // Tutorial del visor. Una frase por paso **y por gesto**: con mando se nombra
+  // el botón de agarre; con las manos desnudas, el pellizco, que es lo que mueve
+  // ese mismo puntero cuando no hay botón que apretar.
+  //
+  // Cortas a propósito: lo que enseña el gesto es el dibujo de al lado, y la frase que
+  // explicaba además que la mano se cierra encima ocupaba cuatro renglones en inglés y no
+  // dejaba sitio al dibujo. Lo mide `tutorial.legible.test.ts`.
+  'Hold the grip button on a stick, do not point at it':
+    'Mantén el botón de agarre sobre un palo, no lo apuntes',
+  'Pinch your fingers on a stick, do not point at it':
+    'Junta los dedos sobre un palo, no lo apuntes',
+  'They fall all around you: turn and catch another one':
+    'Caen por todos lados: gírate y atrapa otro',
+  Next: 'Siguiente',
   Hoop: 'Aro',
   Sticks: 'Palos',
   Speed: 'Velocidad',
@@ -106,7 +116,6 @@ const ES = {
   'Enter the headset': 'Entrar en el visor',
   'Inside you choose between the scene and your room': 'Dentro eliges entre escenario y tu habitación',
   'Your headset only supports virtual reality': 'Tu visor solo admite realidad virtual',
-  'How it plays, in a few seconds.': 'Cómo se juega, en unos segundos.',
   'Skip tutorial': 'Saltar tutorial',
   'Loading scene…': 'Cargando escena…',
 
@@ -146,4 +155,32 @@ export function texto(lang: Lang, key: TextKey): string {
  */
 export function traductor(lang: Lang) {
   return (key: TextKey) => texto(lang, key)
+}
+
+/**
+ * Una cifra con los miles separados, sin `Intl`.
+ *
+ * El marcador no puede pedirle el formato al motor: el que ejecutará esta lógica fuera del
+ * navegador no lleva las tablas de idioma dentro —QuickJS-ng no trae `Intl` y el V8 de
+ * GodotJS se compila sin ICU—, así que ahí `toLocaleString` o revienta o devuelve el número
+ * pelado, sin separadores. Y la puntuación es lo primero que se mira. Aquí solo hay
+ * aritmética y concatenación, que valen igual en todos los motores.
+ *
+ * Lo único que cambia con el idioma es el separador: punto en español, coma en inglés. Una
+ * cifra que no es un número —un récord editado a mano en el almacenamiento— se cuenta como
+ * cero, que es mejor que enseñar «NaN» a quien está jugando.
+ */
+export function formatoDeCifra(n: number, lang: Lang): string {
+  if (!Number.isFinite(n)) return '0'
+
+  const separator = lang === 'es' ? '.' : ','
+  const rounded = Math.round(n)
+  let rest = String(Math.abs(rounded))
+  let thousands = ''
+  while (rest.length > 3) {
+    thousands = `${separator}${rest.slice(-3)}${thousands}`
+    rest = rest.slice(0, -3)
+  }
+
+  return `${rounded < 0 ? '-' : ''}${rest}${thousands}`
 }

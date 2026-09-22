@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { HOOP_ADJUST_KEY } from '@/lib/hoopHeight'
+import { COUNTDOWN_SECONDS } from '@/lib/gameStore'
 import {
-  TUTORIAL_MIN_SECONDS,
   TUTORIAL_SECONDS,
   TUTORIAL_SEEN_KEY,
+  TUTORIAL_SEEN_VALUE,
 } from '@/lib/tutorial'
 import { xrPlayButtonPosition } from '@/lib/xrLayout'
 import { openGame } from './helpers'
@@ -17,8 +18,23 @@ import {
   pressPlayInsideSession,
   startGameInsideSession,
   toPoint,
+  tutorialNextButton,
+  tutorialPhrase,
   tutorialSkipButton,
 } from './support/xr'
+
+/**
+ * Lo que tarda la lección en poder salir: la cuenta atrás entera y el margen
+ * con el que se arranca la partida dentro de la sesión. Antes de eso no hay
+ * palos cayendo, y la lección se aprende atrapándolos.
+ */
+const ESPERA_A_JUGAR = (COUNTDOWN_SECONDS + 5) * 1000
+
+/**
+ * Lo que dura la lección si nadie atrapa nada: de plazo de seguridad en plazo
+ * de seguridad, que es el peor caso que cuenta `TUTORIAL_SECONDS`.
+ */
+const PLAZO_TOTAL = TUTORIAL_SECONDS
 
 /**
  * Modo inmersivo, sobre un Quest 3 emulado con IWER.
@@ -145,13 +161,13 @@ test.describe('Sesión inmersiva', () => {
 /**
  * Tutorial de la primera vez.
  *
- * Lo que el jugador ve es la demostración en 3D (mando, palos y nivel), y eso
- * solo se puede juzgar con las gafas puestas. Lo que sí se comprueba aquí es el
- * contrato: que se interponga la primera vez y solo la primera, que dure lo que
- * dice durar, y que se pueda salir de él desde el primer segundo. El botón de
- * saltar que se pulsa es el reflejo en DOM del que hay en la escena —los dos
- * llaman a lo mismo—, porque el emulador no propaga los punteros de los mandos
- * (ver la nota de arriba).
+ * Lo que quien juega ve es el panel dentro del visor con el gesto dibujado, y
+ * eso solo se puede juzgar con las gafas puestas. Lo que sí se comprueba aquí
+ * es el contrato: que salga la primera vez y solo la primera, que salga **con
+ * la partida en marcha** y no antes, que se pueda pasar de paso y que siempre
+ * se pueda salir. Los botones que se pulsan son el reflejo en DOM de los del
+ * panel —los dos llaman a lo mismo—, porque el emulador no propaga los
+ * punteros de los mandos (ver la nota de arriba).
  */
 test.describe('Tutorial en el visor', () => {
   test.beforeEach(async ({ page }) => {
@@ -159,52 +175,77 @@ test.describe('Tutorial en el visor', () => {
     await openGame(page)
   })
 
-  test('la primera partida empieza enseñando cómo se juega', async ({ page }) => {
-    await enterVR(page)
-    await pressPlayInsideSession(page)
-
-    // Con el salto a mano desde el primer instante: sin esperas ni margen, que
-    // es justo lo que pide "saltable siempre".
-    await expect(tutorialSkipButton(page)).toBeVisible()
-    // Y sin gastar la cuenta atrás: esos tres segundos son para colocarse.
-    await expect(page.getByRole('timer')).toHaveCount(0)
-  })
-
-  test('dura unos segundos y da paso a la partida sin tocar nada', async ({
+  test('la primera partida enseña, pero solo cuando ya se está jugando', async ({
     page,
   }) => {
     await enterVR(page)
     await pressPlayInsideSession(page)
 
-    const skip = tutorialSkipButton(page)
-    await expect(skip).toBeVisible()
-
-    // Ni tan corto que no dé tiempo a verlo...
-    await page.waitForTimeout((TUTORIAL_MIN_SECONDS - 1) * 1000)
-    await expect(skip).toBeVisible()
-
-    // ...ni tan largo como para estorbar: se cierra solo y arranca la partida.
-    await expect(skip).toHaveCount(0, {
-      timeout: (TUTORIAL_SECONDS + 4) * 1000,
-    })
-    // La cuenta atrás y no el marcador: el marcador ya estaba en pantalla
-    // durante la demostración —el overlay lo pinta en cuanto hay partida—, así
-    // que exigirlo aquí no probaría que el tutorial haya dado paso a nada.
+    // Durante la cuenta atrás no hay nada que atrapar: la lección se aprende
+    // atrapando palos, así que espera a que empiecen a caer.
     await expect(page.getByRole('timer')).toBeVisible()
+    await expect(tutorialSkipButton(page)).toHaveCount(0)
+
+    // Y en cuanto se juega, sale con sus dos salidas a mano.
+    await expect(tutorialSkipButton(page)).toBeVisible({ timeout: ESPERA_A_JUGAR })
+    await expect(tutorialNextButton(page)).toBeVisible()
   })
 
-  test('se puede saltar desde el primer segundo', async ({ page }) => {
+  test('la partida no se para para enseñar', async ({ page }) => {
+    // Es la diferencia con la demostración de antes: quien la miraba sin hacer
+    // nada salía igual que entró. Ahora los palos caen mientras se explica.
+    await enterVR(page)
+    await pressPlayInsideSession(page)
+
+    await expect(tutorialSkipButton(page)).toBeVisible({ timeout: ESPERA_A_JUGAR })
+    await expect(page.getByRole('timer')).toHaveCount(0)
+    await expect(page.getByRole('status')).toBeVisible()
+  })
+
+  test('el botón de siguiente pasa de paso, y el segundo la termina', async ({
+    page,
+  }) => {
+    await enterVR(page)
+    await pressPlayInsideSession(page)
+
+    const siguiente = tutorialNextButton(page)
+    await expect(siguiente).toBeVisible({ timeout: ESPERA_A_JUGAR })
+    const primera = (await tutorialPhrase(page).textContent()) ?? ''
+
+    await siguiente.focus()
+    await page.keyboard.press('Enter')
+    await expect(tutorialPhrase(page)).not.toHaveText(primera)
+
+    await siguiente.focus()
+    await page.keyboard.press('Enter')
+    await expect(siguiente).toHaveCount(0)
+  })
+
+  test('y si nadie hace nada, se retira sola por plazo', async ({ page }) => {
+    // Un paso que no se consiga —porque los palos se escapan— dejaría a alguien
+    // encerrado en él con el panel delante de la cara toda la partida.
     await enterVR(page)
     await pressPlayInsideSession(page)
 
     const skip = tutorialSkipButton(page)
+    await expect(skip).toBeVisible({ timeout: ESPERA_A_JUGAR })
+    await expect(skip).toHaveCount(0, { timeout: (PLAZO_TOTAL + 6) * 1000 })
+    // Y la partida sigue donde estaba: nunca llegó a pararse.
+    await expect(page.getByRole('status')).toBeVisible()
+  })
+
+  test('se puede saltar en cuanto aparece', async ({ page }) => {
+    await enterVR(page)
+    await pressPlayInsideSession(page)
+
+    const skip = tutorialSkipButton(page)
+    await expect(skip).toBeVisible({ timeout: ESPERA_A_JUGAR })
     await skip.focus()
     await page.keyboard.press('Enter')
 
-    // Saltarlo lleva a la cuenta atrás, no directo a los palos cayendo: quien
-    // se lo salta también necesita el margen para colocarse.
-    await expect(page.getByRole('timer')).toBeVisible({ timeout: 2000 })
+    // Saltarla no toca la partida, que sigue exactamente donde estaba.
     await expect(skip).toHaveCount(0)
+    await expect(page.getByRole('status')).toBeVisible()
   })
 
   test('solo la primera vez: al volver a abrir el juego ya no aparece', async ({
@@ -213,9 +254,9 @@ test.describe('Tutorial en el visor', () => {
     await enterVR(page)
     await pressPlayInsideSession(page)
 
-    // La primera vez sí sale, y saltarlo lo da por visto.
+    // La primera vez sí sale, y saltarla la da por vista.
     const skip = tutorialSkipButton(page)
-    await expect(skip).toBeVisible()
+    await expect(skip).toBeVisible({ timeout: ESPERA_A_JUGAR })
     await skip.focus()
     await page.keyboard.press('Enter')
     await expect(skip).toHaveCount(0)
@@ -226,11 +267,29 @@ test.describe('Tutorial en el visor', () => {
     await enterVR(page)
     await pressPlayInsideSession(page)
 
+    await page.waitForTimeout(ESPERA_A_JUGAR)
     await expect(tutorialSkipButton(page)).toHaveCount(0)
-    await expect(page.getByRole('timer')).toBeVisible({ timeout: 2000 })
+    await expect(page.getByRole('status')).toBeVisible()
   })
 
-  test('quien ya lo vio en otra visita entra directo a jugar', async ({ page }) => {
+  test('quien ya la vio en otra visita entra directo a jugar', async ({ page }) => {
+    await page.addInitScript(
+      ([key, value]) => window.localStorage.setItem(key, value),
+      [TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE] as [string, string],
+    )
+    await openGame(page)
+    await enterVR(page)
+    await pressPlayInsideSession(page)
+
+    await page.waitForTimeout(ESPERA_A_JUGAR)
+    await expect(tutorialSkipButton(page)).toHaveCount(0)
+  })
+
+  test('quien vio la lección vieja la vuelve a ver: no es la misma', async ({
+    page,
+  }) => {
+    // Lo guardado es la versión de la lección. La 1 era la demostración por
+    // reloj, con la partida en cola, y no se hacía jugando.
     await page.addInitScript(
       (key) => window.localStorage.setItem(key, '1'),
       TUTORIAL_SEEN_KEY,
@@ -239,12 +298,13 @@ test.describe('Tutorial en el visor', () => {
     await enterVR(page)
     await pressPlayInsideSession(page)
 
-    await expect(tutorialSkipButton(page)).toHaveCount(0)
+    await expect(tutorialSkipButton(page)).toBeVisible({ timeout: ESPERA_A_JUGAR })
   })
 
-  test('la demostración se pinta sin ensuciar la consola', async ({ page }) => {
-    // Monta geometría que ningún otro test toca: el mando de la demostración
-    // con su gatillo, el palo que le cae encima y las barras del nivel.
+  test('la lección se pinta sin ensuciar la consola', async ({ page }) => {
+    // Monta geometría que ningún otro test toca: el panel con el gesto dibujado
+    // y el modelo del mando de verdad puesto sobre las dos manos, que llega en
+    // un `.glb` con las texturas dentro del fichero.
     const errors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') errors.push(message.text())
@@ -253,9 +313,9 @@ test.describe('Tutorial en el visor', () => {
 
     await enterVR(page)
     await pressPlayInsideSession(page)
-    await expect(tutorialSkipButton(page)).toBeVisible()
-    // Lo suficiente para pasar por los tres tramos del guion.
-    await page.waitForTimeout((TUTORIAL_SECONDS + 1) * 1000)
+    await expect(tutorialSkipButton(page)).toBeVisible({ timeout: ESPERA_A_JUGAR })
+    // Lo suficiente para pasar por los dos pasos del guion.
+    await page.waitForTimeout((PLAZO_TOTAL + 1) * 1000)
 
     expect(errors).toEqual([])
     await expect(page.getByRole('status')).toBeVisible()

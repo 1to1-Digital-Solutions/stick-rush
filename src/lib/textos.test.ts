@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { GAME_MODE_HINTS, GAME_MODE_LABELS } from './gameMode'
 import { DIFFICULTY_LABELS } from './gameConfig'
-import { TEXT_KEYS, texto, traductor } from './textos'
+import { TEXT_KEYS, formatoDeCifra, texto, traductor } from './textos'
 
 /**
  * El diccionario del juego.
@@ -76,5 +76,48 @@ describe('el diccionario no acumula', () => {
     const huerfanas = TEXT_KEYS.filter((clave) => !fuente.includes(clave))
 
     expect(huerfanas).toEqual([])
+  })
+})
+
+/**
+ * Las cifras que se enseñan.
+ *
+ * Se prueba con números y no con `toLocaleString` delante porque es justo lo contrario
+ * de lo que se busca: el formato tiene que salir de aquí, que es lo único que el motor
+ * del visor y el del puerto a Godot ejecutan igual.
+ */
+describe('las cifras que enseña el juego', () => {
+  it('separa los miles con punto en español y con coma en inglés', () => {
+    expect(formatoDeCifra(1000, 'es')).toBe('1.000')
+    expect(formatoDeCifra(1000, 'en')).toBe('1,000')
+    expect(formatoDeCifra(12400, 'es')).toBe('12.400')
+    expect(formatoDeCifra(12400, 'en')).toBe('12,400')
+    expect(formatoDeCifra(1234567, 'es')).toBe('1.234.567')
+    expect(formatoDeCifra(1234567, 'en')).toBe('1,234,567')
+  })
+
+  it('deja tal cual lo que no llega a mil', () => {
+    expect(formatoDeCifra(0, 'es')).toBe('0')
+    expect(formatoDeCifra(0, 'en')).toBe('0')
+    expect(formatoDeCifra(7, 'es')).toBe('7')
+    expect(formatoDeCifra(7, 'en')).toBe('7')
+    expect(formatoDeCifra(999, 'es')).toBe('999')
+    expect(formatoDeCifra(999, 'en')).toBe('999')
+  })
+
+  it('conserva el signo de lo que va en negativo', () => {
+    expect(formatoDeCifra(-7, 'es')).toBe('-7')
+    expect(formatoDeCifra(-7, 'en')).toBe('-7')
+    expect(formatoDeCifra(-1234, 'es')).toBe('-1.234')
+    expect(formatoDeCifra(-1234, 'en')).toBe('-1,234')
+    // Menos de medio punto por debajo de cero es cero, y no «-0».
+    expect(formatoDeCifra(-0.4, 'es')).toBe('0')
+    expect(formatoDeCifra(-0.4, 'en')).toBe('0')
+  })
+
+  it('cuenta como cero lo que no es un número', () => {
+    // El récord sale del almacenamiento, que cualquiera puede editar a mano.
+    expect(formatoDeCifra(Number.NaN, 'es')).toBe('0')
+    expect(formatoDeCifra(Number.POSITIVE_INFINITY, 'en')).toBe('0')
   })
 })

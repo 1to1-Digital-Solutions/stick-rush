@@ -11,10 +11,11 @@ import { traductor, type TextKey } from '../../lib/textos'
 import { CanvasPanel, drawParagraph, drawText } from './canvasPanel'
 import { scoreRatio } from '../../lib/scoring'
 import { type StickStatus, stickStatuses } from '../../lib/stickLayout'
-import { type ShareStatus, useShareResult } from '../../lib/useShareResult'
+import { type ShareStatus, useShareResult } from '../useShareResult'
 import {
   XR_END_RUN_POSITION,
   XR_END_RUN_YAW,
+  XR_HUD_PANEL,
   XR_HUD_POSITION,
   CONFIRM_BOXES,
   CONFIRM_TEXT,
@@ -148,9 +149,8 @@ function StreakPips({ streak }: { streak: number }) {
 /** Separación y tamaño de los corazones de vida en el marcador. */
 const LIFE_SPACING = 0.05
 const LIFE_SIZE = 0.019
-/** Dónde va la fila de vidas dentro del marcador, y cuánto lo alarga. */
+/** Dónde va la fila de vidas dentro del marcador. Cuánto lo alarga lo dice `XR_HUD_PANEL`. */
 const LIFE_ROW_Y = -0.105
-const LIFE_ROW_HEIGHT = 0.06
 /** El gastado se apaga a gris y encoge; el vivo va del rojo de siempre. */
 const LIFE_SPENT_COLOR = '#3f4a5a'
 
@@ -236,7 +236,7 @@ const SHARE_FEEDBACK: Record<
  *
  * Dentro de la sesión la hoja de compartir del sistema puede no abrirse; ahí el
  * texto se queda en el portapapeles y el jugador lo pega al salir (ver
- * `shareResult.ts`). Lo que no puede pasar es que el botón no conteste, y por
+ * `shareOrCopy.ts`). Lo que no puede pasar es que el botón no conteste, y por
  * eso el resultado del intento se ve en la propia placa.
  */
 function ShareButton({ position }: { position: [number, number, number] }) {
@@ -299,10 +299,10 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
   } = useGame()
   const sinFin = gameMode === 'practice' && endless
   // Fuera de sesión inmersiva manda el HUD en DOM, y en el menú manda XRMenu.
-  // Durante el tutorial tampoco: un marcador vacío al lado de la demostración
-  // es una ficha por palo compitiendo con los palos que la demostración está
-  // contando. Aparece con la cuenta atrás, que es cuando empieza a medir algo.
-  if ((hasDomUi && mode == null) || gameState === 'menu' || gameState === 'tutorial') {
+  // Aparece con la cuenta atrás, que es cuando empieza a medir algo. Ya no hay
+  // fase de tutorial que esquivar: la lección corre con la partida en marcha y
+  // su panel se planta por encima de este (ver `XR_TUTORIAL_POSITION`).
+  if ((hasDomUi && mode == null) || gameState === 'menu') {
     return null
   }
 
@@ -346,7 +346,10 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
         // con los pocos de una partida corta, la fila de tres botones se
         // saldría del panel y perdería el fondo que la despega del passthrough.
         width={Math.max(width + 0.2, finished ? BUTTONS_WIDTH + 0.06 : 0)}
-        height={(finished ? 0.42 : 0.27) + (showLives || showStars ? LIFE_ROW_HEIGHT : 0)}
+        height={
+          (finished ? XR_HUD_PANEL.finished : XR_HUD_PANEL.run) +
+          (showLives || showStars ? XR_HUD_PANEL.livesRow : 0)
+        }
         color={PANEL_COLOR}
         opacity={0.72}
       />

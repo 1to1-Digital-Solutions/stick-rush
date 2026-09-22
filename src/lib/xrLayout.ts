@@ -94,6 +94,19 @@ export const MENU_TEXT = { label: 0.032, hint: 0.035 } as const
 export const XR_MENU_POSITION: Vec3 = [0, 1.4, -0.95]
 /** Marcador, por debajo del menú para no cruzarse con los palos. */
 export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
+
+/**
+ * Lo alto que se pone el panel del marcador, en metros.
+ *
+ * Vive aquí y no dentro de `XRHud.tsx` porque **no es solo suyo**: el tutorial ahora se
+ * enseña con la partida en marcha, así que los dos paneles están a la vez delante de la
+ * misma cara y el de arriba tiene que dejar sitio al de abajo. Escrito dentro del
+ * componente, ese reparto no se podría comprobar desde ningún test.
+ *
+ * `run` es lo que ocupa jugando; `finished`, con el resultado y su fila de botones; y
+ * `livesRow` lo que se le añade cuando lleva corazones o estrellas.
+ */
+export const XR_HUD_PANEL = { run: 0.27, finished: 0.42, livesRow: 0.06 } as const
 /**
  * Botón de volver al menú durante la partida —deja la partida, no la sesión:
  * el de salir del visor es `XR_MENU_EXIT_OFFSET`, y por eso llevan iconos
@@ -231,18 +244,47 @@ export const XR_MENU_MUSIC_OFFSET: Vec3 = [0.4, HOOP_ROW_Y, 0]
 export const XR_COUNTDOWN_POSITION: Vec3 = [0, 1.5, -0.9]
 
 /**
- * Tutorial: exactamente donde estaba el menú del que viene. Toma su relevo
- * durante unos segundos, así que aparecer en otro sitio obligaría a buscarlo.
+ * Lo que mide el panel del tutorial, en metros.
+ *
+ * Las medidas de la flota, para que el panel sea el mismo en los quince: lleva contador,
+ * frase, el gesto dibujado y dos botones, y la frase ocupa **tres líneas en español donde
+ * ocupa dos en inglés**.
  */
-export const XR_TUTORIAL_POSITION: Vec3 = XR_MENU_POSITION
+export const TUTORIAL_PANEL = { width: 0.78, height: 0.62 } as const
+
 /**
- * Botón de saltar el tutorial, en la esquina de abajo de su panel. Apartado de
- * lo que se está demostrando, pero dentro del mismo panel: tiene que verse
- * desde el primer segundo sin competir con la demostración.
+ * A qué tamaño se escribe cada cosa de ese panel, en metros de alto de letra.
+ *
+ * Una sola lista para quien pinta y para quien mide (`tutorial.legible.test.ts`), como
+ * `MENU_TEXT`: una letra escrita a mano, o encogida para caber, no pasa sin verse.
  */
-export const XR_TUTORIAL_SKIP_OFFSET: Vec3 = [0.4, -0.24, 0]
-/** Barra de cuánto queda de tutorial, bajo la demostración. */
-export const XR_TUTORIAL_PROGRESS_OFFSET: Vec3 = [0, -0.26, 0]
+export const TUTORIAL_TEXT = { counter: 0.03, phrase: 0.042, button: 0.032 } as const
+
+/** Lo que mide cada uno de sus dos botones: lo bastante ancho para «Saltar tutorial». */
+export const TUTORIAL_BOTON = { width: 0.33, height: 0.09 } as const
+
+/**
+ * Tutorial: al frente, **por encima del marcador**.
+ *
+ * Ya no toma el relevo del menú —ahora se aprende jugando, con los palos cayendo—, así que
+ * comparte pantalla con el marcador del visor (`XR_HUD_POSITION`) en vez de sustituirlo. De
+ * ahí que suba: en el sitio del menú, su borde de abajo se metía en el borde de arriba del
+ * marcador y el resultado era leer una cosa encima de la otra. Lo vigila
+ * `xrInteraction.test.ts`.
+ */
+export const XR_TUTORIAL_POSITION: Vec3 = [0, 1.52, -0.95]
+/** Altura de la fila de botones dentro del panel, medida desde su centro. */
+const TUTORIAL_BOTON_Y = -TUTORIAL_PANEL.height / 2 + 0.08
+/**
+ * Botón de saltar el tutorial, abajo a la izquierda de su panel.
+ *
+ * Apartado de lo que se está enseñando, pero dentro del mismo panel: tiene que verse desde
+ * el primer segundo sin competir con la lección. Y en la punta contraria a la de siguiente:
+ * en el visor se apunta a pulso y un vecino a pocos centímetros se pulsa por error.
+ */
+export const XR_TUTORIAL_SKIP_OFFSET: Vec3 = [-0.19, TUTORIAL_BOTON_Y, 0]
+/** Botón de pasar al paso siguiente, en la otra punta de esa fila. */
+export const XR_TUTORIAL_NEXT_OFFSET: Vec3 = [0.19, TUTORIAL_BOTON_Y, 0]
 
 /** Separación entre los palos del selector de cantidad. */
 export const XR_STICK_PICKER_SPACING = 0.055
@@ -404,6 +446,12 @@ export function xrMenuTutorialPosition(): Vec3 {
 /** Botón de saltar el tutorial, dentro de su panel. */
 export function xrTutorialSkipPosition(): Vec3 {
   const [dx, dy] = XR_TUTORIAL_SKIP_OFFSET
+  return offset(XR_TUTORIAL_POSITION, dx, dy)
+}
+
+/** Botón de pasar al paso siguiente, dentro del panel del tutorial. */
+export function xrTutorialNextPosition(): Vec3 {
+  const [dx, dy] = XR_TUTORIAL_NEXT_OFFSET
   return offset(XR_TUTORIAL_POSITION, dx, dy)
 }
 

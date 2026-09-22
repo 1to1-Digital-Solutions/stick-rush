@@ -1,17 +1,34 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+
 import {
-  getTutorialSeen,
-  parseTutorialSeen,
-  readTutorialSeen,
-  saveTutorialSeen,
+  COMPONENTE_DEL_BOTON,
+  FRASES,
+  FRASES_CON_LAS_MANOS,
+  hitosAtrapando,
+  markTutorialSeen,
+  PALOS_DEL_PASO,
+  PLAZO_DEL_PASO,
+  saltarPaso,
+  SIN_HITOS,
+  TUTORIAL_BUTTONS,
   TUTORIAL_MAX_SECONDS,
   TUTORIAL_MIN_SECONDS,
   TUTORIAL_SECONDS,
   TUTORIAL_SEEN_KEY,
+  TUTORIAL_SEEN_VALUE,
   TUTORIAL_STEPS,
-  tutorialFrameAt,
-  writeTutorialSeen,
+  tutorialSeen,
+  tutorialStep,
 } from './tutorial'
+
+/**
+ * El guion del tutorial, probado sin navegador ni visor.
+ *
+ * Lo que se comprueba aquí es lo que no se ve mirando el panel: que los pasos se superan
+ * **haciendo** —atrapando palos de verdad, con la cuenta que lleva la partida—, que ninguno
+ * puede encerrar a nadie, y que un almacenamiento capado vuelve a enseñar la lección en vez
+ * de romperse.
+ */
 
 /** Almacenamiento de mentira, con lo justo que usa el tutorial. */
 function fakeStorage(initial?: string): Storage {
@@ -35,150 +52,179 @@ function blockedStorage(): Storage {
   } as unknown as Storage
 }
 
-describe('el tutorial es corto', () => {
-  it('dura entre cinco y diez segundos', () => {
-    // Es el criterio de la tarea, no una preferencia: por debajo no da tiempo a
-    // entender los tres tramos y por encima estorba a quien quiere jugar. Al
-    // estar aquí, alargar un paso obliga a acortar otro.
+describe('la lección cabe en una partida', () => {
+  it('dura entre el mínimo y el máximo aunque no se atrape nada', () => {
+    // `TUTORIAL_SECONDS` es el peor caso: de plazo en plazo, sin un solo palo atrapado. Al
+    // estar acotado aquí, alargar un paso obliga a acortar otro.
     expect(TUTORIAL_SECONDS).toBeGreaterThanOrEqual(TUTORIAL_MIN_SECONDS)
     expect(TUTORIAL_SECONDS).toBeLessThanOrEqual(TUTORIAL_MAX_SECONDS)
   })
 
-  it('enseña el agarre, cuántos palos caen y en qué nivel', () => {
-    expect(TUTORIAL_STEPS.map((step) => step.key)).toEqual([
-      'grab',
-      'sticks',
-      'level',
-    ])
+  it('enseña a atrapar y a buscar alrededor, en ese orden', () => {
+    expect([...TUTORIAL_STEPS]).toEqual(['grab', 'around'])
   })
 
-  it('ningún tramo se queda sin tiempo en pantalla', () => {
+  it('ningún paso se escapa antes de haber podido intentarlo', () => {
     for (const step of TUTORIAL_STEPS) {
-      // Menos de un segundo pasa como un parpadeo: se vería el cambio, no lo
-      // que enseña.
-      expect(step.seconds).toBeGreaterThanOrEqual(1)
+      // El plazo es una red, no un reloj: por debajo de unos segundos pasaría como un
+      // parpadeo y nadie llegaría a hacer lo que pide.
+      expect(PLAZO_DEL_PASO[step], step).toBeGreaterThanOrEqual(5)
     }
+    // El primero espera más: antes de poder atrapar hay que esperar a que caiga un palo.
+    expect(PLAZO_DEL_PASO.grab).toBeGreaterThan(PLAZO_DEL_PASO.around)
   })
 
-  it('el gesto es lo que más tiempo ocupa', () => {
-    // Es el único tramo que enseña algo que no se puede deducir: los otros dos
-    // recuerdan lo que el jugador acaba de elegir en el menú.
-    const [grab, ...rest] = TUTORIAL_STEPS
-    expect(grab.key).toBe('grab')
-    for (const step of rest) {
-      expect(grab.seconds).toBeGreaterThan(step.seconds)
-    }
+  it('y cada paso pide un palo más que el anterior', () => {
+    // Si el segundo se conformara con los mismos palos que el primero, se cumpliría con el
+    // palo que ya cumplió el primero y nadie llegaría a girarse.
+    const palos = TUTORIAL_STEPS.map((step) => PALOS_DEL_PASO[step])
+    for (let i = 1; i < palos.length; i += 1) expect(palos[i]).toBeGreaterThan(palos[i - 1])
   })
 })
 
-describe('qué se enseña en cada momento', () => {
-  it('arranca por el gesto de agarrar, desde el primer instante', () => {
-    const frame = tutorialFrameAt(0)
-    expect(frame.step).toBe('grab')
-    expect(frame.stepProgress).toBe(0)
-    expect(frame.progress).toBe(0)
-    expect(frame.done).toBe(false)
+describe('lo que se enseña con cada paso', () => {
+  it('el primero pide el agarre y el segundo no pide ningún botón', () => {
+    // El segundo es el mismo gesto mirando a otro lado: repetir la marca sobre el mando la
+    // convertiría en decorado y taparía el palo que hay que ir a buscar.
+    expect(TUTORIAL_BUTTONS.grab).toBe('agarre')
+    expect(TUTORIAL_BUTTONS.around).toBeNull()
   })
 
-  it('recorre los tramos en orden, cada uno en su ventana', () => {
-    let start = 0
+  it('los botones que se nombran son los del estándar de WebXR', () => {
+    // Es lo que permite encontrar la pieza dentro del modelo del mando que se tenga puesto,
+    // sea cual sea: un nombre de Quest no valdría para los demás.
+    for (const boton of Object.values(TUTORIAL_BUTTONS)) {
+      if (boton == null) continue
+      expect(COMPONENTE_DEL_BOTON[boton], boton).toMatch(/^xr-standard-/)
+    }
+  })
+
+  it('hay frase para cada paso, con mando y con las manos desnudas', () => {
     for (const step of TUTORIAL_STEPS) {
-      // Justo al entrar, a la mitad y a un pelo de acabar: los tres momentos
-      // tienen que caer en el mismo tramo.
-      expect(tutorialFrameAt(start).step).toBe(step.key)
-      expect(tutorialFrameAt(start + step.seconds / 2).step).toBe(step.key)
-      expect(tutorialFrameAt(start + step.seconds - 0.01).step).toBe(step.key)
-      start += step.seconds
+      expect(FRASES[step], step).toBeTruthy()
+      expect(FRASES_CON_LAS_MANOS[step], step).toBeTruthy()
     }
   })
 
-  it('el progreso del tramo va de cero a uno', () => {
-    const [first] = TUTORIAL_STEPS
-    expect(tutorialFrameAt(first.seconds / 2).stepProgress).toBeCloseTo(0.5)
-    // El último instante del tramo, todavía dentro de él.
-    expect(tutorialFrameAt(first.seconds - 0.001).stepProgress).toBeCloseTo(1, 2)
-  })
-
-  it('el progreso total crece hasta llenarse', () => {
-    expect(tutorialFrameAt(TUTORIAL_SECONDS / 2).progress).toBeCloseTo(0.5)
-    expect(tutorialFrameAt(TUTORIAL_SECONDS).progress).toBe(1)
-  })
-
-  it('al agotarse el tiempo no queda nada que enseñar', () => {
-    const frame = tutorialFrameAt(TUTORIAL_SECONDS)
-    expect(frame.step).toBeNull()
-    expect(frame.done).toBe(true)
-    // Y sigue terminado por mucho que el reloj corra: si un fotograma llega
-    // tarde, el tutorial no vuelve a empezar.
-    expect(tutorialFrameAt(TUTORIAL_SECONDS + 30).done).toBe(true)
-  })
-
-  it('un reloj imposible no revive el tutorial', () => {
-    // El reloj lo lleva la escena fotograma a fotograma; si algo lo corrompe,
-    // el tutorial se da por visto en vez de quedarse dando vueltas delante del
-    // jugador.
-    expect(tutorialFrameAt(Number.NaN).done).toBe(true)
-    expect(tutorialFrameAt(Number.POSITIVE_INFINITY).done).toBe(true)
-    // Un tiempo negativo es el principio, no el final.
-    expect(tutorialFrameAt(-1).step).toBe('grab')
+  it('y a quien no tiene mando no se le nombra un botón', () => {
+    // Nombrarle el agarre a quien juega con las manos sería explicarle el juego al revés: ahí
+    // el puntero lo mueve el pellizco.
+    expect(FRASES_CON_LAS_MANOS.grab).not.toBe(FRASES.grab)
+    expect(FRASES.grab.toLowerCase()).toContain('grip button')
+    expect(FRASES_CON_LAS_MANOS.grab.toLowerCase()).not.toContain('button')
+    // El que va de girarse se hace igual con mando o sin él.
+    expect(FRASES_CON_LAS_MANOS.around).toBe(FRASES.around)
   })
 })
 
-describe('solo la primera vez', () => {
-  it('un navegador sin nada guardado no lo ha visto', () => {
-    expect(readTutorialSeen(fakeStorage())).toBe(false)
+describe('los hitos salen de lo que lleva atrapado la partida', () => {
+  it('sin atrapar nada no hay ninguno hecho', () => {
+    expect(hitosAtrapando(0)).toEqual(SIN_HITOS)
   })
 
-  it('lo guardado por el juego cuenta como visto', () => {
-    const storage = fakeStorage()
-    writeTutorialSeen(storage)
-    expect(readTutorialSeen(storage)).toBe(true)
+  it('el primer palo da el primer paso, y el segundo da el segundo', () => {
+    expect(hitosAtrapando(1)).toEqual({ grab: true, around: false })
+    expect(hitosAtrapando(2)).toEqual({ grab: true, around: true })
   })
 
-  it('cualquier otra cosa cuenta como no visto', () => {
-    // Es entrada externa: ante la duda se enseña, que cuesta unos segundos
-    // saltables, en vez de dar por sabido algo que quizá nadie ha visto.
-    expect(parseTutorialSeen(null)).toBe(false)
-    expect(parseTutorialSeen('')).toBe(false)
-    expect(parseTutorialSeen('0')).toBe(false)
-    expect(parseTutorialSeen('true')).toBe(false)
-    expect(parseTutorialSeen('sí')).toBe(false)
+  it('no se deshacen: más palos no quitan lo hecho', () => {
+    expect(hitosAtrapando(37)).toEqual({ grab: true, around: true })
   })
 
-  it('sin almacenamiento se enseña, y guardar no rompe nada', () => {
-    expect(readTutorialSeen(null)).toBe(false)
-    expect(() => writeTutorialSeen(null)).not.toThrow()
-  })
-
-  it('un almacenamiento bloqueado no impide jugar', () => {
-    // En modo privado `localStorage` existe pero lanza al tocarlo: el tutorial
-    // volverá a salir, y es saltable.
-    expect(readTutorialSeen(blockedStorage())).toBe(false)
-    expect(() => writeTutorialSeen(blockedStorage())).not.toThrow()
+  it('una cuenta rota se cuenta como cero en vez de encallar el panel', () => {
+    // Un `NaN` colado aquí dejaría los dos pasos sin cumplir para siempre y el panel puesto
+    // hasta agotar los dos plazos.
+    expect(hitosAtrapando(Number.NaN)).toEqual(SIN_HITOS)
+    expect(hitosAtrapando(Number.POSITIVE_INFINITY)).toEqual(SIN_HITOS)
+    expect(hitosAtrapando(1.9)).toEqual({ grab: true, around: false })
   })
 })
 
-describe('lo que ve el juego', () => {
-  // Aquí sí se usa el `localStorage` de jsdom, que es lo que el juego consulta.
+describe('qué paso toca enseñar', () => {
+  it('el primero que no esté hecho', () => {
+    expect(tutorialStep(SIN_HITOS, 0)).toBe('grab')
+    expect(tutorialStep(hitosAtrapando(1), 0)).toBe('around')
+  })
+
+  it('y nada cuando ya están todos', () => {
+    expect(tutorialStep(hitosAtrapando(2), 0)).toBeNull()
+  })
+
+  it('los dados por pasados no vuelven, aunque no se hayan hecho', () => {
+    expect(tutorialStep(SIN_HITOS, 1)).toBe('around')
+    expect(tutorialStep(SIN_HITOS, 2)).toBeNull()
+  })
+
+  it('una cuenta de saltados por debajo de cero no revive pasos', () => {
+    expect(tutorialStep(SIN_HITOS, -3)).toBe('grab')
+  })
+})
+
+describe('dar un paso por pasado', () => {
+  it('apunta su posición, no uno más de los que iban', () => {
+    // Con un hito ya cumplido por delante, sumar uno a la cuenta puede dejar el mismo paso en
+    // pantalla: ni el botón de siguiente ni el plazo harían nada.
+    expect(saltarPaso(0, 'around')).toBe(2)
+    expect(tutorialStep(SIN_HITOS, saltarPaso(0, 'around'))).toBeNull()
+  })
+
+  it('y nunca retrocede', () => {
+    expect(saltarPaso(2, 'grab')).toBe(2)
+  })
+
+  it('saltar el primero deja el segundo en pantalla', () => {
+    expect(tutorialStep(SIN_HITOS, saltarPaso(0, 'grab'))).toBe('around')
+  })
+})
+
+describe('recordar que ya se ha visto', () => {
   beforeEach(() => {
-    localStorage.clear()
+    window.localStorage.clear()
   })
 
-  it('la primera visita no lo ha visto; después sí', () => {
-    expect(getTutorialSeen()).toBe(false)
-
-    saveTutorialSeen()
-    expect(getTutorialSeen()).toBe(true)
-    expect(localStorage.getItem(TUTORIAL_SEEN_KEY)).toBe('1')
+  it('solo el valor exacto cuenta como visto', () => {
+    expect(tutorialSeen(fakeStorage(TUTORIAL_SEEN_VALUE))).toBe(true)
+    expect(tutorialSeen(fakeStorage())).toBe(false)
   })
 
-  it('guardarlo dos veces no escribe dos veces distinto', () => {
-    const setItem = vi.spyOn(Storage.prototype, 'setItem')
-    saveTutorialSeen()
-    saveTutorialSeen()
-    expect(setItem).toHaveBeenCalledTimes(2)
-    expect(getTutorialSeen()).toBe(true)
-    setItem.mockRestore()
+  it('quien vio la lección vieja la vuelve a ver', () => {
+    // Lo guardado es la versión de la lección: la 1 era la demostración por reloj y no se
+    // hizo jugando, así que quien la vio no ha hecho esta.
+    expect(TUTORIAL_SEEN_VALUE).not.toBe('1')
+    expect(tutorialSeen(fakeStorage('1'))).toBe(false)
+  })
+
+  it('cualquier cosa editada a mano la vuelve a enseñar', () => {
+    // Es entrada externa: se elige el lado seguro, que es enseñarla de más.
+    expect(tutorialSeen(fakeStorage('sí'))).toBe(false)
+  })
+
+  it('sin almacenamiento, y con el almacenamiento capado, se enseña otra vez', () => {
+    expect(tutorialSeen(null)).toBe(false)
+    expect(tutorialSeen(blockedStorage())).toBe(false)
+  })
+
+  it('deja constancia, y luego se lee', () => {
+    const storage = fakeStorage()
+    expect(markTutorialSeen(storage)).toBe(true)
+    expect(storage.getItem(TUTORIAL_SEEN_KEY)).toBe(TUTORIAL_SEEN_VALUE)
+    expect(tutorialSeen(storage)).toBe(true)
+  })
+
+  it('y no poder guardarlo no es un error: se verá también la próxima vez', () => {
+    expect(markTutorialSeen(null)).toBe(false)
+    expect(markTutorialSeen(blockedStorage())).toBe(false)
+  })
+
+  it('sin decir en cuál, usa el del navegador', () => {
+    // Es el camino de verdad: el juego llama a las dos sin argumento.
+    expect(tutorialSeen()).toBe(false)
+    expect(markTutorialSeen()).toBe(true)
+    expect(window.localStorage.getItem(TUTORIAL_SEEN_KEY)).toBe(TUTORIAL_SEEN_VALUE)
+    expect(tutorialSeen()).toBe(true)
+  })
+
+  it('la clave lleva el prefijo del juego, para no chocar con nada del mismo origen', () => {
+    expect(TUTORIAL_SEEN_KEY).toMatch(/^stick-rush:/)
   })
 })
-

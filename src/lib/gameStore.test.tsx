@@ -5,7 +5,7 @@ import { COUNTDOWN_SECONDS, useGame, useGameStoreValue } from './gameStore'
 import { HIGH_SCORE_KEYS } from './highScore'
 import { HOOP_ADJUST_RANGE, HOOP_ADJUST_STEP } from './hoopHeight'
 import { OWN_SCENERY_KEY } from './sceneryPreference'
-import { TUTORIAL_SECONDS, TUTORIAL_SEEN_KEY } from './tutorial'
+import { PLAZO_DEL_PASO, TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE, type TutorialStepKey } from './tutorial'
 import { DEFAULT_VOLUMES, SCENERY_KEY, VOLUME_KEYS } from './ajustes'
 import { setVolume } from './ajustesCliente'
 
@@ -239,11 +239,6 @@ describe('cuenta atrás', () => {
 })
 
 describe('tutorial de la primera vez', () => {
-  /** Deja correr la demostración entera, como si nadie la saltara. */
-  function watchTutorial() {
-    act(() => void vi.advanceTimersByTime(TUTORIAL_SECONDS * 1000))
-  }
-
   /** Pone las gafas: es lo que hace `XRSessionController` al abrirse la sesión. */
   function wearHeadset(store: {
     current: ReturnType<typeof useGameStoreValue>
@@ -251,7 +246,20 @@ describe('tutorial de la primera vez', () => {
     act(() => store.current.setImmersive(true))
   }
 
-  it('con las gafas puestas, la primera partida empieza enseñando', () => {
+  /** Atrapa un palo, que es lo que supera los pasos de la lección. */
+  function catchOne(store: { current: ReturnType<typeof useGameStoreValue> }) {
+    act(() => store.current.catchStick(0.5))
+  }
+
+  /** Deja correr el plazo de seguridad del paso que esté puesto. */
+  function waitOutStep(
+    store: { current: ReturnType<typeof useGameStoreValue> },
+    step: TutorialStepKey,
+  ) {
+    act(() => void vi.advanceTimersByTime(PLAZO_DEL_PASO[step] * 1000))
+  }
+
+  it('con las gafas puestas, la primera partida va enseñando', () => {
     // Y sin que nadie lo pida: quien llega por primera vez no sabe que hay algo
     // que pedir. La decisión es del juego y no del botón que se pulse, porque
     // dentro de la sesión también se empieza desde el overlay con el teclado.
@@ -259,110 +267,222 @@ describe('tutorial de la primera vez', () => {
     wearHeadset(result)
 
     act(() => result.current.startGame())
-    expect(result.current.gameState).toBe('tutorial')
+    expect(result.current.teaching).toBe(true)
+    expect(result.current.tutorialStep).toBe('grab')
   })
 
-  it('en escritorio no se antepone nada, aunque no se haya visto', () => {
-    // Allí la pantalla de inicio lo explica con texto, que se lee antes de lo
-    // que dura la demostración.
-    const { result } = renderHook(() => useGameStoreValue())
-    act(() => result.current.startGame())
-
-    expect(result.current.tutorialSeen).toBe(false)
-    expect(result.current.gameState).toBe('countdown')
-  })
-
-  it('con las gafas puestas pero ya visto, se juega directamente', () => {
-    localStorage.setItem(TUTORIAL_SEEN_KEY, '1')
-    const { result } = renderHook(() => useGameStoreValue())
-    wearHeadset(result)
-
-    act(() => result.current.startGame())
-    expect(result.current.gameState).toBe('countdown')
-  })
-
-  it('con tutorial, la partida empieza enseñando y no contando', () => {
+  it('pero la partida no se para: la lección corre encima', () => {
+    // Es la diferencia con la demostración de antes, que ponía la partida en
+    // cola: quien la miraba sin hacer nada salía igual que entró.
     const { result } = renderHook(() => useGameStoreValue())
     act(() => result.current.startGame({ tutorial: true }))
-
-    expect(result.current.gameState).toBe('tutorial')
-    // La cuenta atrás no corre por debajo: sus tres segundos son para
-    // colocarse, y gastarlos mirando la demostración los desperdicia.
-    expect(result.current.countdown).toBe(0)
-  })
-
-  it('los palos no caen mientras se enseña', () => {
-    // `StickMachine` los mantiene parados en cualquier fase que no sea jugar.
-    const { result } = renderHook(() => useGameStoreValue())
-    act(() => result.current.startGame({ tutorial: true }))
-    expect(result.current.gameState).not.toBe('playing')
-  })
-
-  it('al acabar da paso a la cuenta atrás entera', () => {
-    const { result } = renderHook(() => useGameStoreValue())
-    act(() => result.current.startGame({ tutorial: true }))
-    watchTutorial()
 
     expect(result.current.gameState).toBe('countdown')
     expect(result.current.countdown).toBe(COUNTDOWN_SECONDS)
 
     runOutCountdown()
     expect(result.current.gameState).toBe('playing')
+    expect(result.current.teaching).toBe(true)
   })
 
-  it('se puede saltar en cualquier momento', () => {
+  it('en escritorio no enseña nada, aunque no se haya visto', () => {
+    // Allí la pantalla de inicio lo explica con texto, que se lee antes de
+    // empezar y sin gafas puestas.
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame())
+
+    expect(result.current.tutorialSeen).toBe(false)
+    expect(result.current.teaching).toBe(false)
+    expect(result.current.tutorialStep).toBeNull()
+  })
+
+  it('con las gafas puestas pero ya vista, se juega directamente', () => {
+    localStorage.setItem(TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
+    const { result } = renderHook(() => useGameStoreValue())
+    wearHeadset(result)
+
+    act(() => result.current.startGame())
+    expect(result.current.teaching).toBe(false)
+  })
+
+  it('quien vio la lección vieja la vuelve a ver: no es la misma', () => {
+    // Lo guardado es la versión de la lección. La 1 era la demostración por
+    // reloj, que no se hacía jugando.
+    localStorage.setItem(TUTORIAL_SEEN_KEY, '1')
+    const { result } = renderHook(() => useGameStoreValue())
+    wearHeadset(result)
+
+    expect(result.current.tutorialSeen).toBe(false)
+    act(() => result.current.startGame())
+    expect(result.current.teaching).toBe(true)
+  })
+
+  it('cada paso se supera atrapando un palo, no mirando', () => {
     const { result } = renderHook(() => useGameStoreValue())
     act(() => result.current.startGame({ tutorial: true }))
+    runOutCountdown()
+
+    expect(result.current.tutorialStep).toBe('grab')
+    catchOne(result)
+    expect(result.current.tutorialStep).toBe('around')
+    catchOne(result)
+    expect(result.current.tutorialStep).toBeNull()
+  })
+
+  it('y al superarlos todos la lección se retira y queda vista', () => {
+    // Retirarla es quedarse sin paso: eso es lo que desmonta el panel, en el
+    // visor y en el overlay. Lo que se guarda es lo que la quita de las
+    // próximas partidas.
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame({ tutorial: true }))
+    runOutCountdown()
+    catchOne(result)
+    catchOne(result)
+
+    expect(result.current.tutorialStep).toBeNull()
+    expect(localStorage.getItem(TUTORIAL_SEEN_KEY)).toBe(TUTORIAL_SEEN_VALUE)
+  })
+
+  it('y no vuelve a salir en la siguiente partida de la misma visita', () => {
+    // Lo aprendido atrapando se anota fuera de React, así que `startGame` tiene
+    // que releerlo: mirando lo que se leyó al montar, la segunda partida de la
+    // misma visita volvería a enseñar lo ya aprendido.
+    const { result } = renderHook(() => useGameStoreValue())
+    wearHeadset(result)
+    act(() => result.current.startGame())
+    runOutCountdown()
+    catchOne(result)
+    catchOne(result)
+
+    act(() => result.current.resetGame())
+    act(() => result.current.startGame())
+    expect(result.current.teaching).toBe(false)
+    expect(result.current.tutorialSeen).toBe(true)
+  })
+
+  it('el botón de siguiente da el paso por pasado sin haberlo hecho', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame({ tutorial: true }))
+    runOutCountdown()
+
+    act(() => result.current.nextTutorialStep())
+    expect(result.current.tutorialStep).toBe('around')
+    act(() => result.current.nextTutorialStep())
+    expect(result.current.tutorialStep).toBeNull()
+  })
+
+  it('y sin paso puesto no hace nada', () => {
+    // Sin lección en marcha no hay nada que pasar, y sumar a la cuenta de
+    // saltados dejaría el primer paso oculto en la próxima partida.
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame())
+    runOutCountdown()
+
+    act(() => result.current.nextTutorialStep())
+    expect(result.current.tutorialStep).toBeNull()
+  })
+
+  it('el plazo de seguridad pasa el paso solo, si el hito no llega', () => {
+    // Un paso que no se consiga —porque los palos se escapan— dejaría a alguien
+    // encerrado en él con el panel delante de la cara toda la partida.
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame({ tutorial: true }))
+    runOutCountdown()
+
+    waitOutStep(result, 'grab')
+    expect(result.current.tutorialStep).toBe('around')
+    waitOutStep(result, 'around')
+    expect(result.current.tutorialStep).toBeNull()
+  })
+
+  it('el plazo no corre mientras no se juega', () => {
+    // Con la cuenta atrás no hay palos que atrapar: gastar ahí el plazo del
+    // primer paso sería pasarlo antes de que nadie haya podido intentarlo.
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame({ tutorial: true }))
+
+    act(() => void vi.advanceTimersByTime(PLAZO_DEL_PASO.grab * 1000))
+    expect(result.current.tutorialStep).toBe('grab')
+  })
+
+  it('ni con la pregunta de salir en pantalla, que para la partida', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame({ tutorial: true }))
+    runOutCountdown()
+    act(() => result.current.askToQuit())
+
+    waitOutStep(result, 'grab')
+    expect(result.current.tutorialStep).toBe('grab')
+  })
+
+  it('saltarla cuenta como vista: ya ha decidido', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame({ tutorial: true }))
+    act(() => result.current.finishTutorial())
+
+    expect(result.current.teaching).toBe(false)
+    expect(result.current.tutorialStep).toBeNull()
+    expect(result.current.tutorialSeen).toBe(true)
+    expect(localStorage.getItem(TUTORIAL_SEEN_KEY)).toBe(TUTORIAL_SEEN_VALUE)
+  })
+
+  it('y saltarla no toca la partida, que nunca llegó a pararse', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame({ tutorial: true }))
+    runOutCountdown()
+    act(() => result.current.catchStick(0.5))
+    act(() => result.current.finishTutorial())
+
+    expect(result.current.gameState).toBe('playing')
+    expect(result.current.score).toBe(1)
+  })
+
+  it('retirarla dos veces no vuelve a escribir nada', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame({ tutorial: true }))
+    act(() => result.current.finishTutorial())
+    localStorage.removeItem(TUTORIAL_SEEN_KEY)
 
     act(() => result.current.finishTutorial())
-    expect(result.current.gameState).toBe('countdown')
-    expect(result.current.countdown).toBe(COUNTDOWN_SECONDS)
-
-    // Y el temporizador de la demostración no puede devolverle a ella después.
-    act(() => void vi.advanceTimersByTime(TUTORIAL_SECONDS * 1000))
-    expect(result.current.gameState).not.toBe('tutorial')
+    expect(localStorage.getItem(TUTORIAL_SEEN_KEY)).toBeNull()
   })
 
-  it('verlo entero cuenta como visto, y no vuelve a salir al empezar', () => {
+  it('dejarla a medias no cuenta como vista', () => {
+    // Volver al menú con el panel puesto no es haberla hecho: se la encontrará
+    // otra vez al darle a empezar.
     const { result } = renderHook(() => useGameStoreValue())
     act(() => result.current.startGame({ tutorial: true }))
-    watchTutorial()
-
-    expect(result.current.tutorialSeen).toBe(true)
-    expect(localStorage.getItem(TUTORIAL_SEEN_KEY)).toBe('1')
-  })
-
-  it('saltarlo también cuenta como visto: ya ha decidido', () => {
-    const { result } = renderHook(() => useGameStoreValue())
-    act(() => result.current.startGame({ tutorial: true }))
-    act(() => result.current.finishTutorial())
-
-    expect(result.current.tutorialSeen).toBe(true)
-    expect(localStorage.getItem(TUTORIAL_SEEN_KEY)).toBe('1')
-  })
-
-  it('dejarlo a medias no cuenta como visto', () => {
-    // Volver al menú desde la demostración no es haberla visto: se la
-    // encontrará otra vez al darle a empezar.
-    const { result } = renderHook(() => useGameStoreValue())
-    act(() => result.current.startGame({ tutorial: true }))
+    runOutCountdown()
     act(() => result.current.resetGame())
 
     expect(result.current.gameState).toBe('menu')
+    expect(result.current.teaching).toBe(false)
     expect(result.current.tutorialSeen).toBe(false)
     expect(localStorage.getItem(TUTORIAL_SEEN_KEY)).toBeNull()
 
-    // Y el temporizador que quedara vivo no puede darlo por visto desde el
-    // menú, ni dejar preparada una cuenta atrás que nadie ha pedido.
-    watchTutorial()
+    // Y el plazo que quedara vivo no puede darla por vista desde el menú.
+    waitOutStep(result, 'grab')
     expect(result.current.gameState).toBe('menu')
     expect(result.current.tutorialSeen).toBe(false)
-    expect(result.current.countdown).toBe(0)
   })
 
-  it('la revancha no vuelve a enseñarlo', () => {
-    // Al acabar una partida en el visor se puede repetir sin pasar por el menú:
-    // ahí el tutorial ya se ha visto, y repetirlo sería un peaje por partida.
+  it('y la siguiente partida empieza la lección desde el principio', () => {
+    // Los pasos dados por pasados se olvidan al volver al menú: si no, quien
+    // dejó la lección a medias se encontraría el segundo paso sin ver el
+    // primero.
+    const { result } = renderHook(() => useGameStoreValue())
+    wearHeadset(result)
+    act(() => result.current.startGame())
+    runOutCountdown()
+    act(() => result.current.nextTutorialStep())
+    expect(result.current.tutorialStep).toBe('around')
+
+    act(() => result.current.resetGame())
+    act(() => result.current.startGame())
+    expect(result.current.tutorialStep).toBe('grab')
+  })
+
+  it('una vez vista no vuelve a salir al empezar otra', () => {
     const { result } = renderHook(() => useGameStoreValue())
     wearHeadset(result)
     act(() => result.current.startGame())
@@ -370,11 +490,11 @@ describe('tutorial de la primera vez', () => {
     runOutCountdown()
 
     act(() => result.current.startGame())
-    expect(result.current.gameState).toBe('countdown')
+    expect(result.current.teaching).toBe(false)
   })
 
   it('lo visto en otra visita sigue visto al volver', () => {
-    localStorage.setItem(TUTORIAL_SEEN_KEY, '1')
+    localStorage.setItem(TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
     const { result } = renderHook(() => useGameStoreValue())
 
     expect(result.current.tutorialSeen).toBe(true)
@@ -383,11 +503,22 @@ describe('tutorial de la primera vez', () => {
   it('se puede volver a ver aunque ya se conozca', () => {
     // Es lo que hace el botón del menú inmersivo: pedirlo explícitamente vale
     // más que lo que hubiera guardado.
-    localStorage.setItem(TUTORIAL_SEEN_KEY, '1')
+    localStorage.setItem(TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
     const { result } = renderHook(() => useGameStoreValue())
 
     act(() => result.current.startGame({ tutorial: true }))
-    expect(result.current.gameState).toBe('tutorial')
+    expect(result.current.teaching).toBe(true)
+    expect(result.current.tutorialStep).toBe('grab')
+  })
+
+  it('con qué se juega lo apunta la sesión, y solo cambia lo que se enseña', () => {
+    // Con las manos desnudas no hay botón que nombrar: cambia la frase, no lo
+    // que hay que hacer.
+    const { result } = renderHook(() => useGameStoreValue())
+    expect(result.current.bareHanded).toBe(false)
+
+    act(() => result.current.setBareHanded(true))
+    expect(result.current.bareHanded).toBe(true)
   })
 })
 

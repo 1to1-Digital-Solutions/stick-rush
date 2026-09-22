@@ -1,501 +1,220 @@
 'use client'
 
-import { type RefObject, useCallback, useRef, useState } from 'react'
-import { useFrame } from '@react-three/fiber'
 import { useXR } from '@react-three/xr'
-import type { Group, Mesh, MeshBasicMaterial, MeshStandardMaterial } from 'three'
-import {
-  DIFFICULTY_COLORS,
-  STICK_CAUGHT_COLOR,
-  STICK_COLOR,
-} from '../../lib/gameConfig'
-import { useGame } from '../../lib/gameStore'
+import { useCallback } from 'react'
+
 import { useLang } from '../../lib/ajustesCliente'
+import { useGame } from '../../lib/gameStore'
 import { traductor, type TextKey } from '../../lib/textos'
-import { CanvasPanel, drawParagraph } from './canvasPanel'
-import { type TutorialStepKey, tutorialFrameAt } from '../../lib/tutorial'
 import {
+  FRASES,
+  FRASES_CON_LAS_MANOS,
+  TUTORIAL_BUTTONS,
+  TUTORIAL_STEPS,
+  type TutorialStepKey,
+} from '../../lib/tutorial'
+import {
+  TUTORIAL_BOTON,
+  TUTORIAL_PANEL,
+  TUTORIAL_TEXT,
+  XR_TUTORIAL_NEXT_OFFSET,
   XR_TUTORIAL_POSITION,
-  XR_TUTORIAL_PROGRESS_OFFSET,
   XR_TUTORIAL_SKIP_OFFSET,
 } from '../../lib/xrLayout'
-import { useReducedMotion } from '../game/useReducedMotion'
-import { ControllerModel } from './XRControllerModel'
-import { HandModel } from './XRHandModel'
-import { useBareHands } from './useBareHands'
-import {
-  PANEL_COLOR,
-  XRDifficultyBars,
-  XRPanel,
-  XRPressable,
-  XRSkipIcon,
-} from './XRUi'
+import { NO_RAYCAST } from '../raycast'
+import { ButtonHighlight, useButtonFeedback } from './buttonHighlight'
+import { CanvasPanel, alturaDelParrafo, drawParagraph, drawText, roundedRect } from './canvasPanel'
+import { MandoDeVerdad } from './MandoDeVerdad'
+import { dibujarMando } from './mandoDibujado'
+import { dibujarMano } from './manoDibujada'
+import { PANEL_COLOR } from './XRUi'
 
 /**
- * Tutorial de unos segundos, dentro del visor y solo la primera vez.
+ * Cómo se atrapa un palo, dentro del visor y solo la primera vez.
  *
- * Con las gafas puestas, quien llega nuevo no sabe que los palos se agarran ni
- * con qué botón: el menú se maneja apuntando con el rayo, así que lo primero
- * que aprende es justo lo que no sirve para jugar. Esto se interpone entre
- * «empezar» y la cuenta atrás y enseña tres cosas: el gatillo que agarra
- * —marcado sobre el mando de verdad, el mismo que tiene en la mano—, cuántos
- * palos van a caer y en qué nivel.
+ * **Se aprende haciendo, no mirando.** Cada paso se supera atrapando un palo de verdad, y la
+ * partida **no se para** mientras tanto: la máquina suelta palos y el panel espera. Antes
+ * era una demostración por reloj con la partida en cola —un mando de mentira cogiendo un
+ * palo de mentira—, y quien la miraba sin hacer nada salía igual que entró.
  *
- * **Sin una sola letra**, como el resto de la interfaz inmersiva: `<Text>` de
- * drei descarga las fuentes de un CDN que la CSP bloquea. Cada cosa se dice con
- * la geometría que ya significa eso en el juego —el mando, los palos, las
- * barras del nivel— y con movimiento, que es lo que convierte un dibujo en una
- * instrucción.
+ * **Y se enseña el gesto que le sirve a quien juega.** Con mandos, el botón de agarre
+ * resaltado sobre el dibujo (`mandoDibujado.ts`) **y sobre el mando que se tiene en la mano**
+ * (`MandoDeVerdad.tsx`): con el visor puesto lo que hay ahí tiene cinco botones y ninguno con
+ * su nombre escrito. Con las manos desnudas, el pellizco (`manoDibujada.ts`), que es lo que
+ * mueve el puntero de agarre cuando no hay mando: cambia la frase y cambia el dibujo.
  *
- * El guion (qué se enseña y cuánto dura) vive en `@/lib/tutorial`, probado sin
- * navegador. Aquí solo se pinta.
+ * **Siempre hay salida**: siguiente, saltar y un plazo por paso. Un hito que no llegue
+ * —porque los palos se escapan— dejaría a alguien encerrado en su paso.
+ *
+ * El guion vive en `lib/tutorial.ts`, probado sin navegador; aquí solo se pinta y se escucha.
  */
 
-/** Medidas del panel, en metros. Más bajo que el del menú: cabe menos cosa. */
-/** Lo que hay que hacer en cada tramo, dicho con palabras. */
-export const FRASES: Record<TutorialStepKey, TextKey> = {
-  grab: 'Close your hand around the stick: reach it, do not point at it',
-  sticks: 'They fall one at a time, all around you',
-  level: 'Every level they fall faster',
-}
+/** Medidas del panel, en metros: lo dice `TUTORIAL_PANEL`. */
+export const PANEL_WIDTH = TUTORIAL_PANEL.width
+export const PANEL_HEIGHT = TUTORIAL_PANEL.height
 
-/** Alto de la banda de texto, encima del dibujo. */
-export const TEXT_HEIGHT = 0.2
-
-export const PANEL_WIDTH = 1.06
-export const PANEL_HEIGHT = 0.62
+/** Los dos botones, abajo del panel. */
+const BOTONES = [
+  { id: 'next' as const, offset: XR_TUTORIAL_NEXT_OFFSET, texto: 'Next' as TextKey },
+  { id: 'skip' as const, offset: XR_TUTORIAL_SKIP_OFFSET, texto: 'Skip tutorial' as TextKey },
+]
 
 /**
- * A qué tamaño se escribe la frase de cada tramo, en metros de alto de letra.
+ * Lo apagado del panel y lo que se lee encima: los mismos grises con los que escribe el menú
+ * del visor, para que el tutorial no parezca de otro juego.
+ */
+const DIM_COLOR = '#94a3b8'
+const LIGHT_COLOR = '#e2e8f0'
+
+/** Cómo se llama la frase, para medirla igual que se pinta. */
+const FRASE = { size: TUTORIAL_TEXT.phrase, maxWidth: PANEL_WIDTH - 0.1 }
+
+/**
+ * Dónde cae cada cosa en el panel de un paso.
  *
- * Una sola lista para quien pinta y para quien mide (`tutorial.legible.test.ts`).
+ * Se calcula y no se escribe a mano porque **la frase no ocupa lo mismo en los dos
+ * idiomas**: la misma línea son dos renglones en inglés y tres en español, y el dibujo tiene
+ * que bajar con ella. Sale de aquí y no de dentro del dibujo para que el test pueda
+ * comprobar los mismos números que se pintan, y no una copia suya.
  */
-export const TUTORIAL_TEXT = { phrase: 0.045 } as const
-
-/**
- * Dónde va la banda de la frase: encima del dibujo, en coordenadas del panel del tutorial.
- */
-export const TEXT_OFFSET_Y = PANEL_HEIGHT / 2 + TEXT_HEIGHT / 2 + 0.01
-
-/**
- * La frase del tramo, fuera del componente **para poder medirla**: es el único texto del
- * tutorial, y se lee por encima de la vista.
- */
-export function dibujarLaFrase(
+export function repartoDelPaso(
   ctx: CanvasRenderingContext2D,
+  step: TutorialStepKey,
+  frases: Record<TutorialStepKey, TextKey>,
   t: (clave: TextKey) => string,
+): { techoDeLaFrase: number; sueloDeLaFrase: number; gesto: number } {
+  const techoDeLaFrase = PANEL_HEIGHT / 2 - 0.13
+  const sueloDeLaFrase = techoDeLaFrase - alturaDelParrafo(ctx, t(frases[step]), FRASE)
+  const techoDeLosBotones = XR_TUTORIAL_SKIP_OFFSET[1] + TUTORIAL_BOTON.height / 2
+  return { techoDeLaFrase, sueloDeLaFrase, gesto: (sueloDeLaFrase + techoDeLosBotones) / 2 }
+}
+
+/**
+ * El panel del tutorial: por qué paso va, lo que pide, el gesto que lo hace y los dos
+ * botones de abajo.
+ *
+ * Sale del componente para que un test lo pueda medir con un lienzo de mentira
+ * (`legibilidad.ts`): es texto que nadie ha visto aún con el visor puesto, y la frase larga
+ * en español es donde se sale.
+ */
+export function dibujarElPaso(
+  ctx: CanvasRenderingContext2D,
   step: TutorialStepKey | null,
+  frases: Record<TutorialStepKey, TextKey>,
+  t: (clave: TextKey) => string,
+  conLasManos: boolean,
 ): void {
+  roundedRect(ctx, 0, 0, PANEL_WIDTH, PANEL_HEIGHT, 0.02)
+  ctx.fillStyle = PANEL_COLOR
+  ctx.fill()
+
   if (step == null) return
-  drawParagraph(ctx, t(FRASES[step]), 0, 0, {
-    size: TUTORIAL_TEXT.phrase,
-    color: '#e2e8f0',
+
+  // Por cuál se va, que es lo que dice cuánto queda.
+  drawText(ctx, `${TUTORIAL_STEPS.indexOf(step) + 1}/${TUTORIAL_STEPS.length}`, 0, PANEL_HEIGHT / 2 - 0.05, {
+    size: TUTORIAL_TEXT.counter,
+    color: DIM_COLOR,
+  })
+
+  // En párrafo y no en una línea: encogida hasta caber de una, la frase quedaba en letra de
+  // dos centímetros y con el visor puesto no se entendía nada.
+  //
+  // **Anclado por arriba**, no centrado: centrado, la frase que pasa de dos líneas a tres
+  // crece hacia arriba y se mete debajo del contador. El español las tiene casi siempre.
+  const reparto = repartoDelPaso(ctx, step, frases, t)
+  drawParagraph(ctx, t(frases[step]), 0, reparto.techoDeLaFrase, {
+    ...FRASE,
+    color: LIGHT_COLOR,
     weight: '600',
-    maxWidth: PANEL_WIDTH - 0.08,
-  })
-}
-
-/** Ancho del carril de progreso. */
-const PROGRESS_WIDTH = 0.34
-
-/**
- * Cuánto dura un ciclo completo de la demostración del agarre, en segundos: el
- * palo baja, se agarra y vuelve a empezar. El tramo dura para dos ciclos, que
- * es lo que hace falta para que se lea como un gesto y no como una casualidad.
- */
-const GRAB_CYCLE = 1.7
-/** En qué punto del ciclo se cierra la mano sobre el palo. */
-const GRAB_AT = 0.62
-
-/** De dónde sale el palo de la demostración y dónde lo espera la mano. */
-const DEMO_STICK_TOP = 0.24
-const DEMO_STICK_CATCH = 0.03
-
-/**
- * El mando de la demostración con un palo cayéndole encima.
- *
- * El palo baja, la mano se cierra —el gatillo se pone verde, igual que cuando
- * el jugador lo aprieta de verdad— y el palo se deshace en un destello, que es
- * exactamente lo que se ve al atrapar uno en la partida.
- */
-function GrabDemo({
-  elapsed,
-  reducedMotion,
-}: {
-  elapsed: RefObject<number>
-  reducedMotion: boolean
-}) {
-  const bareHanded = useBareHands()
-  const stickRef = useRef<Group>(null)
-  const stickMaterialRef = useRef<MeshStandardMaterial>(null)
-  const flashRef = useRef<Mesh>(null)
-  const flashMaterialRef = useRef<MeshBasicMaterial>(null)
-  // El agarre es el primer tramo del guion, así que su reloj es el del tutorial
-  // entero: no hace falta descontarle nada.
-  const grabbed = useRef(false)
-
-  useFrame(() => {
-    const stick = stickRef.current
-    const material = stickMaterialRef.current
-    const flash = flashRef.current
-    const flashMaterial = flashMaterialRef.current
-    if (!stick || !material || !flash || !flashMaterial) return
-
-    // Con el movimiento reducido no hay caída ni destello: el palo se queda
-    // donde la mano lo agarra y el gatillo, marcado. Y **sin darlo por
-    // apretado**: el verde de la confirmación releva a la marca ámbar y apaga
-    // su onda (ver `SqueezeButton`), así que la única imagen que le queda a
-    // quien ha pedido no ver movimiento dejaría de señalar qué botón es, que es
-    // justo lo que hay que enseñar. Se reponen los valores del material porque
-    // la preferencia puede cambiar a media demostración, con el palo a medio
-    // desvanecer.
-    if (reducedMotion) {
-      stick.position.y = DEMO_STICK_CATCH
-      stick.scale.setScalar(1)
-      material.opacity = 1
-      material.emissiveIntensity = 0.35
-      flash.visible = false
-      grabbed.current = false
-      return
-    }
-
-    const phase = (elapsed.current % GRAB_CYCLE) / GRAB_CYCLE
-    grabbed.current = phase >= GRAB_AT
-
-    if (!grabbed.current) {
-      const fall = phase / GRAB_AT
-      stick.position.y = DEMO_STICK_TOP - (DEMO_STICK_TOP - DEMO_STICK_CATCH) * fall
-      stick.scale.setScalar(1)
-      material.opacity = 1
-      material.emissiveIntensity = 0.35
-      flash.visible = false
-      return
-    }
-
-    // Atrapado: el palo se enciende, crece y se desvanece mientras sale la onda.
-    const t = (phase - GRAB_AT) / (1 - GRAB_AT)
-    stick.position.y = DEMO_STICK_CATCH
-    stick.scale.setScalar(1 + t * 0.4)
-    material.opacity = Math.max(0, 1 - t * 1.4)
-    material.emissiveIntensity = 1.6 * (1 - t)
-    flash.visible = true
-    flash.scale.setScalar(0.4 + t * 2.2)
-    flashMaterial.opacity = Math.max(0, 0.7 * (1 - t))
+    anchor: 'top',
   })
 
-  return (
-    <group position={[0, -0.02, 0]}>
-      {/* Lo que el jugador tiene de verdad en la mano: su mando, o su propia
-          mano si entró sin ellos. Enseñar un mando a quien juega con las manos
-          es enseñar un botón que no puede apretar. El mando va en tres cuartos
-          para que el gatillo lateral quede de cara; la mano, de frente y más
-          pequeña, porque lo que hay que ver de ella es cómo se cierra. */}
-      {bareHanded ? (
-        <group position={[0, -0.115, 0.02]} rotation={[0.2, -0.2, 0]} scale={1.1}>
-          <HandModel
-            side={1}
-            highlight
-            pulsing={!reducedMotion}
-            isClosed={() => grabbed.current}
-          />
-        </group>
-      ) : (
-        <group position={[0, -0.11, 0.02]} rotation={[0.25, -0.5, 0]} scale={1.6}>
-          <ControllerModel
-            side={1}
-            highlight
-            pulsing={!reducedMotion}
-            isPressed={() => grabbed.current}
-          />
-        </group>
-      )}
+  // Lo que quien juega tiene de verdad en la mano, y no lo que trae la mayoría.
+  const colores = { cuerpo: DIM_COLOR, resaltado: LIGHT_COLOR }
+  if (conLasManos) {
+    dibujarMano(ctx, 0, reparto.gesto, TUTORIAL_BUTTONS[step] != null, colores)
+  } else {
+    dibujarMando(ctx, 0, reparto.gesto, TUTORIAL_BUTTONS[step], colores)
+  }
 
-      {/* El palo que cae hacia la mano. */}
-      <group ref={stickRef} position={[0, DEMO_STICK_TOP, 0.04]}>
-        <mesh>
-          <cylinderGeometry args={[0.011, 0.011, 0.15, 12]} />
-          <meshStandardMaterial
-            ref={stickMaterialRef}
-            color={STICK_COLOR}
-            emissive={STICK_COLOR}
-            emissiveIntensity={0.35}
-            roughness={0.65}
-            transparent
-            opacity={1}
-          />
-        </mesh>
-      </group>
-
-      {/* Onda del acierto, donde se cierra la mano. */}
-      <mesh
-        ref={flashRef}
-        position={[0, DEMO_STICK_CATCH, 0.04]}
-        rotation={[Math.PI / 2, 0, 0]}
-        visible={false}
-      >
-        <torusGeometry args={[0.05, 0.006, 6, 24]} />
-        <meshBasicMaterial
-          ref={flashMaterialRef}
-          color={STICK_CAUGHT_COLOR}
-          transparent
-          opacity={0}
-          toneMapped={false}
-        />
-      </mesh>
-    </group>
-  )
-}
-
-/** Separación entre los palos de la fila, en metros. */
-const COUNT_SPACING = 0.062
-
-/**
- * Cuántos palos van a caer: tantos como se hayan elegido, apareciendo uno a uno
- * para que se puedan contar, y cayendo después como caerán de verdad.
- */
-function StickCountDemo({
-  elapsed,
-  stickCount,
-  reducedMotion,
-}: {
-  elapsed: RefObject<number>
-  stickCount: number
-  reducedMotion: boolean
-}) {
-  const sticks = useRef<(Group | null)[]>([])
-  const width = (stickCount - 1) * COUNT_SPACING
-
-  useFrame(() => {
-    const { stepProgress } = tutorialFrameAt(elapsed.current)
-
-    sticks.current.forEach((stick, index) => {
-      if (!stick) return
-      if (reducedMotion) {
-        stick.scale.setScalar(1)
-        stick.position.y = 0
-        return
-      }
-
-      // Cada palo entra un poco después del anterior, y todos han entrado a
-      // media demostración: la otra mitad es la caída.
-      const entrance = (index / Math.max(stickCount, 1)) * 0.5
-      const appear = Math.min(1, Math.max(0, (stepProgress - entrance) * 8))
-      stick.scale.setScalar(appear)
-      // Ya contados, se sueltan escalonados, como en la partida.
-      const fall = Math.min(1, Math.max(0, (stepProgress - 0.55 - entrance) * 2.2))
-      stick.position.y = -fall * 0.12
+  for (const boton of BOTONES) {
+    const [bx, by] = boton.offset
+    roundedRect(ctx, bx, by, TUTORIAL_BOTON.width, TUTORIAL_BOTON.height, 0.016)
+    ctx.fillStyle = DIM_COLOR
+    ctx.fill()
+    drawText(ctx, t(boton.texto), bx, by, {
+      size: TUTORIAL_TEXT.button,
+      color: PANEL_COLOR,
+      weight: '700',
+      maxWidth: TUTORIAL_BOTON.width - 0.03,
     })
-  })
-
-  return (
-    <group position={[0, 0.02, 0.02]}>
-      {Array.from({ length: stickCount }, (_, index) => (
-        <group
-          key={index}
-          ref={(node) => {
-            sticks.current[index] = node
-          }}
-          position={[index * COUNT_SPACING - width / 2, 0, 0]}
-        >
-          <mesh>
-            <cylinderGeometry args={[0.01, 0.01, 0.14, 10]} />
-            <meshStandardMaterial
-              color={STICK_COLOR}
-              emissive={STICK_COLOR}
-              emissiveIntensity={0.5}
-              roughness={0.6}
-            />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  )
-}
-
-/**
- * En qué nivel se juega: la misma ficha del menú, agrandada y entrando de
- * frente. Sin cifras ni nombres, igual que donde se elige.
- */
-function LevelDemo({
-  elapsed,
-  reducedMotion,
-}: {
-  elapsed: RefObject<number>
-  reducedMotion: boolean
-}) {
-  const cardRef = useRef<Group>(null)
-  const { difficulty } = useGame()
-
-  useFrame(() => {
-    const card = cardRef.current
-    if (!card) return
-    if (reducedMotion) {
-      card.scale.setScalar(1)
-      return
-    }
-    const { stepProgress } = tutorialFrameAt(elapsed.current)
-    // Entra creciendo en el primer cuarto y se queda quieta: es un dato, no una
-    // animación que haya que seguir.
-    card.scale.setScalar(0.6 + 0.4 * Math.min(1, stepProgress * 4))
-  })
-
-  return (
-    <group ref={cardRef} position={[0, -0.02, 0.02]} scale={0.6}>
-      <mesh>
-        <boxGeometry args={[0.34, 0.24, 0.014]} />
-        <meshStandardMaterial
-          color={DIFFICULTY_COLORS[difficulty]}
-          emissive={DIFFICULTY_COLORS[difficulty]}
-          emissiveIntensity={0.45}
-          roughness={0.55}
-        />
-      </mesh>
-      <XRDifficultyBars
-        difficulty={difficulty}
-        lit
-        position={[0, -0.075, 0.012]}
-        scale={2.4}
-      />
-    </group>
-  )
-}
-
-/** Lo que se enseña en cada tramo del guion. */
-function TutorialStage({
-  step,
-  elapsed,
-  stickCount,
-  reducedMotion,
-}: {
-  step: TutorialStepKey
-  elapsed: RefObject<number>
-  stickCount: number
-  reducedMotion: boolean
-}) {
-  if (step === 'grab') {
-    return <GrabDemo elapsed={elapsed} reducedMotion={reducedMotion} />
   }
-  if (step === 'sticks') {
-    return (
-      <StickCountDemo
-        elapsed={elapsed}
-        stickCount={stickCount}
-        reducedMotion={reducedMotion}
-      />
-    )
-  }
-  return <LevelDemo elapsed={elapsed} reducedMotion={reducedMotion} />
-}
-
-/**
- * El tutorial en marcha: lleva el reloj, decide qué tramo toca y pinta cuánto
- * queda.
- *
- * El reloj es un ref y no estado: la barra de progreso y las animaciones se
- * mueven en cada fotograma, y renderizar noventa veces por segundo para eso
- * sería tirar el visor. Lo único que provoca un render es el cambio de tramo,
- * tres veces en toda la demostración.
- */
-function TutorialPanel() {
-  const { stickCount, finishTutorial } = useGame()
-  const t = traductor(useLang())
-  const reducedMotion = useReducedMotion()
-  const elapsed = useRef(0)
-  const [step, setStep] = useState<TutorialStepKey | null>(
-    () => tutorialFrameAt(0).step,
-  )
-  const progressRef = useRef<Mesh>(null)
-
-  useFrame((_, delta) => {
-    // El delta se limita como en `Stick`: si el visor se queda sin fotogramas,
-    // el tutorial no se salta medio guion de un salto.
-    elapsed.current += Math.min(delta, 0.05)
-    const frame = tutorialFrameAt(elapsed.current)
-    if (frame.step !== step) setStep(frame.step)
-
-    const bar = progressRef.current
-    if (bar) {
-      // Anclada a la izquierda: crece hacia la derecha desde su extremo.
-      const filled = Math.max(frame.progress, 0.001)
-      bar.scale.x = filled
-      bar.position.x = (-PROGRESS_WIDTH * (1 - filled)) / 2
-    }
-  })
-
-  // La frase del tramo, en un lienzo aparte: el resto del tutorial es geometría y ahí no
-  // cabe una letra. Sin ella el dibujo enseña un gesto y nadie sabe de qué gesto habla.
-  const escribir = useCallback((ctx: CanvasRenderingContext2D) => dibujarLaFrase(ctx, t, step), [step, t])
-
-  return (
-    <group position={XR_TUTORIAL_POSITION}>
-      <XRPanel width={PANEL_WIDTH} height={PANEL_HEIGHT} color={PANEL_COLOR} />
-
-      {/* Lo que hay que hacer, escrito, encima del dibujo: el dibujo enseña el gesto y la
-          frase lo nombra. */}
-      <group position={[0, TEXT_OFFSET_Y, 0]}>
-        <CanvasPanel
-          width={PANEL_WIDTH}
-          height={TEXT_HEIGHT}
-          draw={escribir}
-          fallbackColor={PANEL_COLOR}
-        />
-      </group>
-
-      {step != null && (
-        <TutorialStage
-          step={step}
-          elapsed={elapsed}
-          stickCount={stickCount}
-          reducedMotion={reducedMotion}
-        />
-      )}
-
-      {/* Cuánto queda. Es lo que convierte la espera en algo que se aguanta:
-          se ve que dura segundos, no minutos. */}
-      <group position={XR_TUTORIAL_PROGRESS_OFFSET}>
-        <mesh>
-          <boxGeometry args={[PROGRESS_WIDTH, 0.01, 0.006]} />
-          <meshBasicMaterial color="#1c2634" toneMapped={false} />
-        </mesh>
-        <mesh ref={progressRef} position={[0, 0, 0.004]}>
-          <boxGeometry args={[PROGRESS_WIDTH, 0.01, 0.006]} />
-          <meshBasicMaterial color="#22c55e" toneMapped={false} />
-        </mesh>
-      </group>
-
-      {/* Saltar. Está montado desde el primer fotograma y en su sitio de
-          siempre: quien ya sabe jugar no tiene que esperar a que aparezca. */}
-      <XRPressable
-        position={XR_TUTORIAL_SKIP_OFFSET}
-        onSelect={finishTutorial}
-        hitSize={[0.18, 0.13, 0.06]}
-      >
-        <mesh position={[0, 0, -0.008]}>
-          <boxGeometry args={[0.15, 0.1, 0.014]} />
-          <meshStandardMaterial
-            color="#334155"
-            emissive="#94a3b8"
-            emissiveIntensity={0.28}
-            roughness={0.5}
-          />
-        </mesh>
-        <XRSkipIcon position={[0, 0, 0.008]} />
-      </XRPressable>
-    </group>
-  )
 }
 
 export function XRTutorial() {
-  const mode = useXR((state) => state.mode)
-  const { gameState } = useGame()
+  const {
+    gameState,
+    bareHanded: conLasManos,
+    tutorialStep: step,
+    finishTutorial,
+    nextTutorialStep,
+  } = useGame()
+  const t = traductor(useLang())
+  const frases = conLasManos ? FRASES_CON_LAS_MANOS : FRASES
+  const enSesion = useXR((state) => state.mode != null)
+  // Apuntado y pulsado, que es lo que el botón tiene que contestar (`buttonHighlight.tsx`).
+  const { stateOf, handlersFor } = useButtonFeedback()
 
-  // Solo dentro del visor: en escritorio el menú lo explica con texto, que se
-  // lee antes de lo que dura esta demostración.
-  if (mode == null || gameState !== 'tutorial') {
-    return null
-  }
+  // **El paso lo lleva el store**, que es quien ve los palos atrapados y quien cuenta los
+  // plazos: aquí solo se pinta. Y solo mientras se juega de verdad —durante la cuenta atrás
+  // no hay nada que atrapar, y encima del cartel de fin el panel taparía el resultado—.
+  const activo = enSesion && gameState === 'playing' && step !== null
 
-  // Fuera de la fase no queda montado, así que cada pase estrena su reloj:
-  // volverlo a ver desde el menú empieza por el principio.
-  return <TutorialPanel />
+  const draw = useCallback(
+    (ctx: CanvasRenderingContext2D) => dibujarElPaso(ctx, step, frases, t, conLasManos),
+    [step, frases, t, conLasManos],
+  )
+
+  if (!activo) return null
+
+  return (
+    <>
+      {/* Fuera del grupo del panel a propósito: esto no vive en el panel, vive en la mano.
+          Se coloca solo, deshaciendo lo que le pongan sus padres. En las dos manos porque
+          aquí vale cualquiera de ellas: encender solo una sería decir que la otra no sirve.
+          Con las manos desnudas no hay mando que enseñar y no se monta nada. */}
+      <MandoDeVerdad mano="left" boton={TUTORIAL_BUTTONS[step]} />
+      <MandoDeVerdad mano="right" boton={TUTORIAL_BUTTONS[step]} />
+      <group position={XR_TUTORIAL_POSITION}>
+        <CanvasPanel width={PANEL_WIDTH} height={PANEL_HEIGHT} draw={draw} fallbackColor={PANEL_COLOR} />
+        {BOTONES.map((boton) => (
+          <group key={boton.id} position={[boton.offset[0], boton.offset[1], 0.002]}>
+            {/* Saltar no es «pasar todos los pasos»: es dar la lección por vista, lo que
+                además la retira de las próximas partidas. Quien la salta ya ha decidido. */}
+            <mesh
+              onClick={boton.id === 'next' ? nextTutorialStep : finishTutorial}
+              {...handlersFor(boton.id)}
+            >
+              <planeGeometry args={[TUTORIAL_BOTON.width, TUTORIAL_BOTON.height]} />
+              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+            </mesh>
+            {/* **Encenderse al apuntar es lo que dice que el botón responde.** El resto de
+                paneles del juego ya lo hacen. */}
+            <ButtonHighlight
+              width={TUTORIAL_BOTON.width}
+              height={TUTORIAL_BOTON.height}
+              state={stateOf(boton.id)}
+              glow={LIGHT_COLOR}
+              ink={PANEL_COLOR}
+            />
+          </group>
+        ))}
+        {/* El panel no se puede pulsar entero: solo sus botones. */}
+        <mesh position={[0, 0, -0.001]} raycast={NO_RAYCAST}>
+          <planeGeometry args={[PANEL_WIDTH, PANEL_HEIGHT]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      </group>
+    </>
+  )
 }

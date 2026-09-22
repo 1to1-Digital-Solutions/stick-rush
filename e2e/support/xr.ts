@@ -155,8 +155,9 @@ export async function pressAndRelease(
  * overlay. Se reintenta porque al entrar en sesión el documento puede perder el
  * foco durante un instante y la pulsación se va al vacío.
  *
- * La primera vez, esto deja el juego en el **tutorial** y no en la partida (ver
- * `XRTutorial`): quien quiera jugar de verdad usa `startGameInsideSession`.
+ * La partida arranca con su cuenta atrás, y la primera vez de este navegador
+ * además **con la lección puesta** en cuanto empiezan a caer palos (ver
+ * `XRTutorial`): quien quiera la pantalla limpia usa `startGameInsideSession`.
  */
 export async function pressPlayInsideSession(page: Page, attempts = 8) {
   const score = page.getByRole('status')
@@ -179,17 +180,34 @@ export async function pressPlayInsideSession(page: Page, attempts = 8) {
 }
 
 /**
- * El botón de saltar el tutorial. Es el reflejo en DOM del botón 3D que ve el
- * jugador: los dos llaman a lo mismo, y este además se alcanza con el teclado
- * (el 3D hay que apuntarlo con el mando, que el emulador no sabe hacer).
+ * Los botones de la lección y la frase que explican. Son el reflejo en DOM de
+ * lo que pinta el panel 3D: los dos llaman a lo mismo, y estos además se
+ * alcanzan con el teclado (los 3D hay que apuntarlos con el mando, que el
+ * emulador no sabe hacer).
  */
 export function tutorialSkipButton(page: Page) {
   return page.getByRole('button', { name: 'Skip tutorial' })
 }
 
-/** Salta el tutorial si el juego lo ha antepuesto (solo la primera vez). */
+export function tutorialNextButton(page: Page) {
+  return page.getByRole('button', { name: 'Next' })
+}
+
+export function tutorialPhrase(page: Page) {
+  return page.getByRole('note')
+}
+
+/**
+ * Quita la lección de en medio si el juego la ha puesto (solo la primera vez).
+ *
+ * **Espera a que pueda salir** en vez de mirar si está: no sale hasta que se
+ * juega de verdad, y preguntar antes de que caiga el primer palo daría siempre
+ * que no hay nada que saltar —y la lección aparecería después, encima de lo que
+ * el test estuviera comprobando.
+ */
 export async function skipTutorialIfShown(page: Page) {
   const skip = tutorialSkipButton(page)
+  await expect(page.getByRole('timer')).toHaveCount(0, { timeout: 10_000 })
   if ((await skip.count()) === 0) return
 
   await skip.focus()
@@ -198,8 +216,8 @@ export async function skipTutorialIfShown(page: Page) {
 }
 
 /**
- * Arranca una partida estando ya dentro de la sesión inmersiva, dejando atrás
- * el tutorial si es la primera vez en este navegador.
+ * Arranca una partida estando ya dentro de la sesión inmersiva y deja la
+ * pantalla limpia, quitando la lección si es la primera vez en este navegador.
  */
 export async function startGameInsideSession(page: Page, attempts = 8) {
   await pressPlayInsideSession(page, attempts)

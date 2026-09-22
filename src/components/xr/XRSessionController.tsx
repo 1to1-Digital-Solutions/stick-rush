@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useXR } from '@react-three/xr'
 import { useGame } from '../../lib/gameStore'
+import { useBareHands } from './useBareHands'
 
 /**
  * Puente entre el estado de la sesión WebXR y el estado del juego.
@@ -16,7 +17,16 @@ import { useGame } from '../../lib/gameStore'
  */
 export function XRSessionController() {
   const mode = useXR((state) => state.mode)
-  const { gameState, resetGame, setImmersive } = useGame()
+  const bareHanded = useBareHands()
+  const { gameState, resetGame, setImmersive, setBareHanded } = useGame()
+
+  // Con qué se juega solo se sabe dentro de la sesión, y hace falta fuera: el
+  // reflejo del tutorial en el overlay es DOM y no alcanza este estado. Va en su
+  // propio efecto porque cambia por su cuenta —los mandos se dejan en la mesa a
+  // media partida— y no al entrar o salir de la sesión.
+  useEffect(() => {
+    setBareHanded(bareHanded)
+  }, [bareHanded, setBareHanded])
 
   // Recordar que hubo sesión es imprescindible: en escritorio `mode` es null
   // siempre, y sin esta guarda cualquier partida iniciada con el ratón se

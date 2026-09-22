@@ -3,15 +3,20 @@
  *
  * **Por qué hace falta.** @react-three/xr necesita el perfil del mando para
  * saber qué botón es cuál, y por defecto lo descarga de `cdn.jsdelivr.net`. Ese
- * fetch lo bloquea nuestra CSP (`connect-src 'self'`) —y también lo bloquearía
- * un visor sin salida a internet—. Cuando falla, la librería se traga el error
- * en un `.catch(console.error)` y **nunca llega a registrar el mando**: no se
- * monta ni el modelo, ni el rayo, ni el puntero de agarre. El resultado en el
- * visor era quedarse sin mandos y sin poder pulsar nada.
+ * fetch lo bloquea la CSP del juego (`connect-src 'self'`), y también lo
+ * bloquearía un visor sin salida a internet. Cuando falla, la librería se traga
+ * el error y **nunca llega a registrar el mando**: no se monta ni el rayo ni el
+ * puntero, que en el visor es quedarse sin poder tocar nada.
  *
- * Solo se copian los `profile.json` (528 KB en total). Los `.glb` con los
- * modelos 3D —los 100 MB largos del paquete— no se tocan: el mando lo dibuja el
- * juego con geometría propia en `XRController.tsx`.
+ * De los `profile.json` se copian **todos**: son ficheros pequeños y hace falta
+ * el del mando que traiga quien juegue, sea cual sea.
+ *
+ * De los `.glb` con los modelos 3D —los 100 MB largos del paquete— solo se
+ * copian los de `MODELOS`. Jugando, el mando lo dibuja el propio juego con
+ * geometría suya (`XRController.tsx`); el único sitio donde hace falta el
+ * modelo del fabricante es el tutorial, que enseña el botón encendido sobre el
+ * mando que se tiene en la mano (`MandoDeVerdad.tsx`), y ahí un mando que no
+ * esté en la lista se queda con el dibujo del panel y no se rompe nada.
  *
  * Uso: `npm run sync:xr-profiles`. El resultado se commitea, así que esto solo
  * hay que ejecutarlo al actualizar `@webxr-input-profiles/assets`.
@@ -28,6 +33,22 @@ const source = join(
 const destination = join(root, 'public/webxr-profiles')
 
 const LIST = 'profilesList.json'
+
+/**
+ * De qué mandos se copia además el modelo 3D.
+ *
+ * Los dos de Quest, que es el visor del arcade: `meta-quest-touch-plus` son los
+ * del Quest 3 y 3S, y `oculus-touch-v3` los del Quest 2. Entre los cuatro
+ * ficheros —las dos manos de cada uno— son 1,7 MB de los 97 del paquete.
+ *
+ * Añadir un mando es escribir aquí su identificador; quitarlo, borrarlo. Lo que
+ * no esté no falla: el tutorial se queda con el dibujo.
+ */
+const MODELOS = ['meta-quest-touch-plus', 'oculus-touch-v3']
+
+/** Las dos manos de cada modelo, tal y como se llaman los ficheros del paquete. */
+const MANOS = ['left.glb', 'right.glb']
+
 
 async function main() {
   const list = JSON.parse(await readFile(join(source, LIST), 'utf8'))
@@ -50,7 +71,19 @@ async function main() {
     copied++
   }
 
-  console.log(`${copied} perfiles de mando copiados a public/webxr-profiles/`)
+  let modelos = 0
+  for (const id of MODELOS) {
+    for (const mano of MANOS) {
+      // Un identificador mal escrito aquí pasaría desapercibido —el tutorial se
+      // quedaría sin modelo y sin decir por qué—, así que se cae al copiar.
+      await copyFile(join(source, id, mano), join(destination, id, mano))
+      modelos++
+    }
+  }
+
+  console.log(
+    `${copied} perfiles de mando y ${modelos} modelos copiados a public/webxr-profiles/`,
+  )
 }
 
 await main()

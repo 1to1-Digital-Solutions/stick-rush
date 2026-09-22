@@ -1,166 +1,240 @@
 import { gameStorage } from './storage'
+import type { TextKey } from './textos'
 
 /**
- * Guion del tutorial que se ve dentro del visor la primera vez.
+ * El tutorial que se ve dentro del visor la primera vez.
  *
- * **El problema que resuelve.** Con las gafas puestas, quien llega por primera
- * vez no sabe que los palos se agarran ni con qué botón: el menú inmersivo se
- * maneja con el rayo del mando, así que lo primero que aprende es justo lo que
- * *no* sirve para jugar. Se perdía gente en el momento de enseñárselo.
+ * **El problema que resuelve.** Con las gafas puestas, quien llega nuevo no sabe que los
+ * palos se agarran: el menú inmersivo se maneja con el rayo del mando, así que lo primero
+ * que aprende es justo lo que **no** sirve para jugar —apuntar desde lejos no atrapa nada
+ * (ver `xrInteraction.ts`)—.
  *
- * **Cómo se resuelve.** Una demostración de unos siete segundos entre pulsar
- * «empezar» y la cuenta atrás: el mando con su gatillo de agarre marcado
- * cogiendo un palo, cuántos palos van a caer y en qué nivel. Sin una sola
- * letra, como el resto de la interfaz inmersiva (`<Text>` de drei descarga las
- * fuentes de un CDN que la CSP bloquea), así que cada cosa se dice con la
- * geometría que ya significa eso en el juego.
+ * **Y cómo se resolvía mal.** Era un pase de diapositivas por reloj, con la partida en
+ * espera: tres tramos —un mando con un palo cayéndole encima, cuántos palos venían y en qué
+ * nivel— y al agotarse los segundos se daba por aprendido. Quien lo miraba sin hacer nada
+ * salía igual que entró, y de propina era el único de la flota con un tutorial propio: dos
+ * paneles distintos que mantener y, el día de portarlo a Godot, dos portes.
  *
- * **Corto de verdad.** La duración total está acotada entre
- * `TUTORIAL_MIN_SECONDS` y `TUTORIAL_MAX_SECONDS`: por debajo no da tiempo a
- * leer nada y por encima estorba a quien solo quiere jugar. Un test lo vigila,
- * de modo que alargar un paso obliga a acortar otro.
+ * **Cómo se resuelve ahora: por hitos.** Cada paso se supera **atrapando un palo**. La
+ * partida no se para —los palos caen mientras se explica—, y el panel espera a que pase lo
+ * que tiene que pasar en vez de contar segundos. Cada paso lleva además un **plazo de
+ * seguridad** por si alguien se queda mirando: se pasa solo, porque un paso que no se
+ * consiga dejaría a alguien encerrado en él. Y siempre hay salida a mano: siguiente y saltar.
  *
- * Aquí solo vive el guion —qué se enseña, cuánto dura y si ya se ha visto—, sin
- * three.js ni React, para poder probarlo sin navegador ni visor.
+ * Aquí vive solo el guion —qué pasos hay, qué los supera, cuánto esperan y si ya se ha
+ * visto—, sin three ni React, para poder probarlo sin navegador ni visor.
  */
 
-/** Qué enseña cada tramo de la demostración. */
+/** Qué enseña cada paso, y qué hay que hacer para superarlo. */
 export type TutorialStepKey =
-  /** El gatillo que agarra, marcado sobre el mando, cogiendo un palo. */
+  /** Cerrar la mano sobre un palo: se supera al atrapar el primero. */
   | 'grab'
-  /** Cuántos palos van a caer: tantos como se hayan elegido. */
-  | 'sticks'
-  /** En qué nivel se juega, con las barras del menú. */
-  | 'level'
+  /** Que caen por todas partes: se supera al atrapar otro, que obliga a buscarlo. */
+  | 'around'
 
-export interface TutorialStep {
-  key: TutorialStepKey
-  /** Cuánto dura en pantalla, en segundos. */
-  seconds: number
+/** Los pasos, en orden. */
+export const TUTORIAL_STEPS: readonly TutorialStepKey[] = ['grab', 'around']
+
+/**
+ * Qué botón del mando enseña cada paso, para dibujarlo resaltado.
+ *
+ * **Es la mitad de la lección.** Una frase que dice «el botón de agarre» solo sirve a quien ya
+ * sabe cuál es; con el visor puesto, lo que hay en la mano es un mando con cinco botones y
+ * ninguno con su nombre escrito. `null` es un paso que no va de apretar nada.
+ */
+export type BotonDelMando = 'agarre' | 'gatillo'
+
+export const TUTORIAL_BUTTONS: Record<TutorialStepKey, BotonDelMando | null> = {
+  grab: 'agarre',
+  // El segundo paso no enseña otro botón: es el mismo gesto, mirando a otro lado. Repetir la
+  // marca sobre el mando aquí la convertiría en decorado, y de paso taparía el palo que hay
+  // que ir a buscar justo cuando toca buscarlo.
+  around: null,
 }
 
 /**
- * Los tres tramos, en orden. El del agarre es el más largo porque es el único
- * que enseña un gesto —y lo repite dos veces—; los otros dos solo enseñan un
- * número y un nivel que el jugador acaba de elegir.
+ * Cómo llama WebXR a cada uno de esos botones.
+ *
+ * Es el puente entre el nombre de andar por casa —el que se usa al escribir la lección— y el
+ * identificador del perfil de mando, que es con el que se encuentra la pieza dentro del
+ * modelo 3D cuando el tutorial lo enseña a tamaño real sobre la mano (`MandoDeVerdad.tsx`).
+ * Los dos nombres son los del estándar y valen para cualquier mando, no solo para los de
+ * Quest.
  */
-export const TUTORIAL_STEPS: readonly TutorialStep[] = [
-  { key: 'grab', seconds: 3.4 },
-  { key: 'sticks', seconds: 2.2 },
-  { key: 'level', seconds: 1.8 },
-]
+export const COMPONENTE_DEL_BOTON: Record<BotonDelMando, string> = {
+  agarre: 'xr-standard-squeeze',
+  gatillo: 'xr-standard-trigger',
+}
 
-/** Lo mínimo para que dé tiempo a entender los tres tramos. */
-export const TUTORIAL_MIN_SECONDS = 5
-/** Lo máximo antes de que estorbe a quien solo quiere empezar a jugar. */
-export const TUTORIAL_MAX_SECONDS = 10
+/**
+ * Lo que se pide en cada paso, con un mando en la mano.
+ *
+ * Las frases viven aquí y no en el panel que las pinta porque **las enseñan dos sitios**: el
+ * panel del visor y su reflejo en el overlay, que es DOM y no puede importar nada de three.
+ * Un juego con una sola pantalla las tendría junto al dibujo, como el resto de la flota.
+ */
+export const FRASES: Record<TutorialStepKey, TextKey> = {
+  grab: 'Hold the grip button on a stick, do not point at it',
+  around: 'They fall all around you: turn and catch another one',
+}
 
-/** Lo que dura la demostración entera, en segundos. */
+/**
+ * Y lo que se pide **con las manos desnudas**, que es como también se puede jugar.
+ *
+ * Ahí no hay botón que apretar: el puntero de agarre lo mueve el pellizco (ver
+ * `xrInteraction.ts`). El tutorial es la única pantalla que explica el gesto, así que
+ * nombrarle un botón a quien no tiene mando sería explicarle el juego al revés.
+ */
+export const FRASES_CON_LAS_MANOS: Record<TutorialStepKey, TextKey> = {
+  grab: 'Pinch your fingers on a stick, do not point at it',
+  around: 'They fall all around you: turn and catch another one',
+}
+
+/**
+ * Cuántos palos hay que llevar atrapados para dar cada paso por hecho.
+ *
+ * El hito es **atrapar**, que es lo único que el juego pide aprender, y se cuenta acumulado
+ * desde el principio de la partida: así el segundo paso no puede cumplirse con el mismo palo
+ * que cumplió el primero.
+ */
+export const PALOS_DEL_PASO: Record<TutorialStepKey, number> = {
+  grab: 1,
+  around: 2,
+}
+
+/**
+ * Cuánto espera cada paso antes de pasar solo, en segundos.
+ *
+ * Es una red, no un reloj: lo normal es que el paso se supere atrapando mucho antes. Existe
+ * porque el hito puede no llegar nunca —quien se queda leyendo el panel, o quien falla los
+ * palos uno tras otro— y el panel se quedaría delante de la cara toda la partida.
+ *
+ * El primero espera más: es el que enseña el gesto, y antes de poder hacerlo hay que esperar
+ * a que caiga un palo.
+ */
+export const PLAZO_DEL_PASO: Record<TutorialStepKey, number> = {
+  grab: 12,
+  around: 8,
+}
+
+/** Lo mínimo para que un paso no se escape antes de haber podido intentarlo. */
+export const TUTORIAL_MIN_SECONDS = 12
+/** Lo máximo que la lección puede ocupar de una partida si nadie atrapa nada. */
+export const TUTORIAL_MAX_SECONDS = 25
+
+/**
+ * Lo que dura la lección en el peor caso: sin atrapar un solo palo, de plazo en plazo.
+ *
+ * Acotado entre el mínimo y el máximo por un test, así que alargar un paso obliga a acortar
+ * otro.
+ */
 export const TUTORIAL_SECONDS = TUTORIAL_STEPS.reduce(
-  (total, step) => total + step.seconds,
+  (total, step) => total + PLAZO_DEL_PASO[step],
   0,
 )
 
-export interface TutorialFrame {
-  /** Tramo que toca enseñar, o `null` cuando la demostración ya ha acabado. */
-  step: TutorialStepKey | null
-  /** Cuánto lleva recorrido ese tramo, de 0 a 1. */
-  stepProgress: number
-  /** Cuánto lleva recorrido el tutorial entero, de 0 a 1. */
-  progress: number
-  done: boolean
-}
-
-/** Estado del tutorial cuando ya no queda nada que enseñar. */
-const FINISHED: TutorialFrame = {
-  step: null,
-  stepProgress: 1,
-  progress: 1,
-  done: true,
-}
-
 /**
- * Qué se está enseñando a los `elapsed` segundos de arrancar.
+ * Lo que quien juega ya ha hecho. Se **acumula**: hacer algo no se deshace.
  *
- * El reloj lo lleva quien pinta la escena, fotograma a fotograma, así que esto
- * es una función del tiempo y no una máquina de estados: no hay nada que
- * sincronizar si un fotograma llega tarde o si el visor baja de frecuencia.
+ * Se deduce de lo que ya cuenta la partida —cuántos palos lleva atrapados— en vez de
+ * apuntarse aparte: un tutorial que lleva su propia cuenta acaba discrepando de lo que pasa
+ * en la escena, y aquí lo que manda es lo que pasa en la escena.
  */
-export function tutorialFrameAt(elapsed: number): TutorialFrame {
-  if (!Number.isFinite(elapsed)) return FINISHED
-  const time = Math.max(0, elapsed)
+export type TutorialHitos = Readonly<Record<TutorialStepKey, boolean>>
 
-  let start = 0
-  for (const step of TUTORIAL_STEPS) {
-    const end = start + step.seconds
-    if (time < end) {
-      return {
-        step: step.key,
-        stepProgress: (time - start) / step.seconds,
-        progress: time / TUTORIAL_SECONDS,
-        done: false,
-      }
-    }
-    start = end
+/** Nada hecho todavía. */
+export const SIN_HITOS: TutorialHitos = { grab: false, around: false }
+
+/**
+ * Los hitos que se deducen de los palos atrapados hasta ahora.
+ *
+ * La cuenta viene de la partida, no de fuera, pero se sanea igual: un `NaN` que se colara
+ * aquí dejaría los dos pasos sin cumplir para siempre y el panel puesto hasta agotar los dos
+ * plazos.
+ */
+export function hitosAtrapando(caught: number): TutorialHitos {
+  const atrapados = Number.isFinite(caught) ? Math.floor(caught) : 0
+  return {
+    grab: atrapados >= PALOS_DEL_PASO.grab,
+    around: atrapados >= PALOS_DEL_PASO.around,
   }
-
-  // Pasado el último paso no queda nada que enseñar: el tutorial se ha visto.
-  // Es la única salida del final, así que sumar un paso a la lista no puede
-  // dejarlo colgado en el anterior.
-  return FINISHED
 }
 
 /**
- * Dónde se recuerda que el tutorial ya se ha visto. Con prefijo, como el récord
- * y la altura del aro, para no chocar con nada más del mismo origen.
+ * Qué paso toca enseñar, o `null` si ya no queda nada.
+ *
+ * El primero que no esté hecho, saltándose los que se hayan dado por pasados con el botón o
+ * por plazo. Se **calcula** en vez de guardarse, por lo mismo que los hitos.
+ *
+ * @param saltados Cuántos pasos se han dado por pasados sin haberlos hecho.
+ */
+export function tutorialStep(hitos: TutorialHitos, saltados: number): TutorialStepKey | null {
+  for (let i = Math.max(0, saltados); i < TUTORIAL_STEPS.length; i += 1) {
+    const paso = TUTORIAL_STEPS[i]
+    if (!hitos[paso]) return paso
+  }
+  return null
+}
+
+/**
+ * Dar por pasado el paso que se está enseñando: desde dónde seguir buscando.
+ *
+ * Se apunta **la posición del paso**, no «uno más de los que iban»: con un hito ya cumplido
+ * por delante, sumar uno a la cuenta puede dejar el mismo paso en pantalla, y entonces ni el
+ * botón de siguiente ni el plazo harían nada. Y nunca retrocede: lo dado por pasado no
+ * vuelve.
+ */
+export function saltarPaso(saltados: number, step: TutorialStepKey): number {
+  return Math.max(saltados, TUTORIAL_STEPS.indexOf(step) + 1)
+}
+
+/**
+ * Dónde se recuerda que el tutorial ya se ha visto. Con prefijo, como el récord y la altura
+ * del aro, para no chocar con nada más del mismo origen.
  */
 export const TUTORIAL_SEEN_KEY = 'stick-rush:tutorial-seen'
 
-/** Lo que se escribe cuando ya se ha visto. */
-export const TUTORIAL_SEEN_VALUE = '1'
+/**
+ * Qué se guarda como «ya visto»: **la versión de la lección**, no un sí.
+ *
+ * Cualquier otro valor la vuelve a enseñar, así que subir este número es la forma de que
+ * quien ya la vio la vuelva a ver cuando lo que enseña ha cambiado. La 1 fue la demostración
+ * por reloj, con la partida esperando y un mando de mentira cogiendo un palo de mentira; la
+ * **2** es esta, que se hace jugando y se supera atrapando palos de verdad. Quien vio la 1
+ * no ha hecho esta.
+ */
+export const TUTORIAL_SEEN_VALUE = '2'
 
 /**
- * Interpreta lo leído del almacenamiento.
+ * ¿Ya se ha visto la lección?
  *
- * Es entrada externa —cualquiera puede editarla desde las herramientas del
- * navegador—, así que solo el valor exacto cuenta como visto. Cualquier otra
- * cosa se trata como "aún no", que es el lado seguro: enseñar el tutorial de
- * más cuesta siete segundos saltables, y no enseñarlo deja a alguien sin saber
- * cómo se juega.
+ * Lo leído es entrada externa —cualquiera puede editarla desde las herramientas del
+ * navegador—, así que solo el valor exacto cuenta como visto: cualquier otra cosa la vuelve
+ * a enseñar, que es el lado seguro. Enseñarla de más cuesta un panel saltable; no enseñarla
+ * deja a alguien sin saber cómo se juega.
  */
-export function parseTutorialSeen(raw: string | null): boolean {
-  return raw === TUTORIAL_SEEN_VALUE
-}
-
-/** ¿Ya se vio el tutorial en este navegador? */
-export function readTutorialSeen(storage: Storage | null): boolean {
-  if (!storage) return false
+export function tutorialSeen(storage: Pick<Storage, 'getItem'> | null = gameStorage()): boolean {
+  if (storage === null) return false
   try {
-    return parseTutorialSeen(storage.getItem(TUTORIAL_SEEN_KEY))
+    return storage.getItem(TUTORIAL_SEEN_KEY) === TUTORIAL_SEEN_VALUE
   } catch {
-    // Almacenamiento bloqueado: se enseña otra vez, que es preferible a dar por
-    // sabido algo que quizá no se ha visto nunca.
+    // Almacenamiento capado: se enseña otra vez. Ver de más es mejor que no entender.
     return false
   }
 }
 
-/** Recuerda que ya se ha visto, para no volver a interponerlo. */
-export function writeTutorialSeen(storage: Storage | null): void {
-  if (!storage) return
+/**
+ * Deja constancia de que ya se ha visto.
+ *
+ * @returns si quedó guardado. Un `false` no es un error: significa que este navegador no
+ *   guarda nada y la lección se verá también la próxima vez.
+ */
+export function markTutorialSeen(storage: Storage | null = gameStorage()): boolean {
+  if (storage === null) return false
   try {
     storage.setItem(TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
+    return true
   } catch {
-    // Cuota agotada o escritura prohibida: el tutorial volverá a salir en la
-    // próxima visita. Es saltable, así que no justifica ningún aviso.
+    return false
   }
-}
-
-/** Si el tutorial ya se vio en este navegador. */
-export function getTutorialSeen(): boolean {
-  return readTutorialSeen(gameStorage())
-}
-
-/** Anota que el tutorial se ha visto (entero o saltado: ya lo ha decidido). */
-export function saveTutorialSeen(): void {
-  writeTutorialSeen(gameStorage())
 }
