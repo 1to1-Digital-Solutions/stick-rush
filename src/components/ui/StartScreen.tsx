@@ -20,7 +20,7 @@ import { LEVEL_COUNT, levelSpec } from '../../lib/levels'
 import { HeartIcon, InfinityIcon, StarIcon } from './icons'
 import { XRWrapper } from '../xr/XRWrapper'
 import { useLang } from '../../lib/ajustesCliente'
-import { traductor } from '../../lib/textos'
+import { formatoDeCifra, traductor } from '../../lib/textos'
 
 const STICK_OPTIONS = Array.from(
   { length: MAX_STICKS - MIN_STICKS + 1 },
@@ -36,7 +36,8 @@ const STICK_OPTIONS = Array.from(
  * que el récord se ha perdido.
  */
 function BestScore() {
-  const t = traductor(useLang())
+  const lang = useLang()
+  const t = traductor(lang)
   const { bestPoints, gameMode, endless } = useGame()
   if (bestPoints <= 0 || gameMode === 'levels') return null
   // Sin fin no mide puntos —crecen sin tope— sino la racha más larga.
@@ -46,7 +47,7 @@ function BestScore() {
     <p className="mt-2 inline-flex items-center gap-2 self-center rounded-full border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 px-4 py-1.5 text-sm text-white/70">
       {sinFin ? t('Best endless streak') : `${t('Best score in')} ${t(GAME_MODE_LABELS[gameMode])}`}{' '}
       <span className="font-bold tabular-nums text-[var(--color-accent)]">
-        {sinFin ? `×${bestPoints}` : bestPoints.toLocaleString('en-GB')}
+        {sinFin ? `×${bestPoints}` : formatoDeCifra(bestPoints, lang)}
       </span>
     </p>
   )

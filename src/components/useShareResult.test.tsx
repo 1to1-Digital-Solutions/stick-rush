@@ -1,8 +1,9 @@
 import { type ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { GameProvider } from '../components/GameProvider'
-import { COUNTDOWN_SECONDS, useGame } from './gameStore'
+import { GameProvider } from './GameProvider'
+import { COUNTDOWN_SECONDS, useGame } from '../lib/gameStore'
+import { formatoDeCifra } from '../lib/textos'
 import { useShareResult } from './useShareResult'
 
 /**
@@ -77,7 +78,7 @@ describe('compartir la partida recién jugada', () => {
     expect(shared).toHaveLength(1)
     const text = shared[0].text ?? ''
     expect(text).toContain(
-      `${result.current.game.points.toLocaleString('en-GB')} points`,
+      `${formatoDeCifra(result.current.game.points, 'en')} points`,
     )
     expect(text).toContain('3 of 5 sticks')
     expect(text).toContain(window.location.origin)

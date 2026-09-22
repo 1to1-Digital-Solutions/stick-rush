@@ -4,6 +4,7 @@ import {
   GAME_MODE_LABELS,
   startingLives,
 } from './gameMode'
+import { formatoDeCifra } from './textos'
 
 /**
  * Enseñar la marca fuera del dispositivo.
@@ -16,8 +17,9 @@ import {
  *
  * El texto se arma en una función pura para poder probarlo sin navegador —es
  * lo que acaba leyendo otra persona, así que su forma importa— y el reparto va
- * aparte, en `shareOrCopy`, que recibe el navegador por parámetro y así también
- * se prueba sin uno.
+ * aparte, en `components/shareOrCopy.ts`, fuera de `lib/`: pide el navegador, y aquí
+ * dentro no puede haber nada que lo necesite. Esto es la lógica del juego y tiene que
+ * correr también en el motor del puerto a Godot, donde no hay `navigator` ni `window`.
  */
 
 /** Cómo se presenta el juego en la hoja de compartir del sistema. */
@@ -41,10 +43,19 @@ export interface ShareResultInput {
   url: string
 }
 
-/** Igual que el resto del juego: miles con punto y sin decimales. */
-function formatPoints(points: number): string {
-  if (!Number.isFinite(points)) return '0'
-  return Math.max(0, Math.round(points)).toLocaleString('en-GB')
+/**
+ * Una cifra del texto que se comparte.
+ *
+ * En inglés, como el resto de este texto: lo que se comparte no está traducido —ni los
+ * modos, ni las dificultades, ni las palabras—, así que una cifra a la española dentro de
+ * una frase en inglés sería lo único fuera de sitio. El día que se traduzca, el idioma
+ * entra por aquí.
+ *
+ * Sin números por debajo de cero: el récord sale del almacenamiento, que cualquiera puede
+ * editar a mano, y esto lo lee otra persona que no ha jugado la partida.
+ */
+function scoreText(points: number): string {
+  return formatoDeCifra(Math.max(0, points), 'en')
 }
 
 /**
@@ -72,7 +83,7 @@ export function buildShareText({
 }: ShareResultInput): string {
   const totalLives = startingLives(gameMode)
   const stats = [
-    `${formatPoints(points)} points`,
+    `${scoreText(points)} points`,
     `${score} of ${stickCount} sticks`,
     // `lives` puede faltar aunque el modo las tenga (una partida que no llegó a
     // empezar): sin el dato se calla, que es mejor que inventarse un número.
@@ -84,7 +95,7 @@ export function buildShareText({
   const record = isRecord
     ? 'New record!'
     : bestPoints > 0
-      ? `My record: ${formatPoints(bestPoints)}`
+      ? `My record: ${scoreText(bestPoints)}`
       : null
 
   return [
@@ -93,69 +104,4 @@ export function buildShareText({
     ...(record ? [record] : []),
     url,
   ].join('\n')
-}
-
-/** Cómo ha acabado el intento de compartir. */
-export type ShareOutcome =
-  /** Se abrió la hoja de compartir del sistema y siguió su curso. */
-  | 'shared'
-  /** No había con qué compartir (o no dejó): el texto quedó en el portapapeles. */
-  | 'copied'
-  /** El jugador cerró la hoja de compartir. No es un fallo. */
-  | 'cancelled'
-  /** Ni se pudo compartir ni copiar. */
-  | 'unavailable'
-
-/**
- * Lo que se necesita del navegador. Se declara aquí, en vez de pedir un
- * `Navigator` entero, para poder probar cada camino con un objeto de tres
- * líneas: los dos existen o no según el navegador, y ese es justo el caso que
- * hay que cubrir.
- */
-export interface ShareTarget {
-  share?: (data: { title?: string; text?: string }) => Promise<void>
-  clipboard?: { writeText?: (text: string) => Promise<void> }
-}
-
-/** Cerrar la hoja de compartir llega como un `AbortError`. */
-function isCancelled(error: unknown): boolean {
-  return (error as { name?: string } | null)?.name === 'AbortError'
-}
-
-/**
- * Comparte el texto, y si no se puede lo deja en el portapapeles.
- *
- * El plan B no es una cortesía: dentro de una sesión inmersiva la hoja de
- * compartir puede no abrirse —no hay dónde pintarla, o el navegador no
- * considera activación de usuario el gatillo de un mando—, y ahí un botón que
- * no hace nada es peor que no tener botón. Copiado, el texto sigue en el
- * portapapeles al quitarse el visor.
- *
- * Cancelar sí termina el intento: quien cierra la hoja ha decidido no
- * compartir, y copiarle el texto a escondidas sería hacer lo contrario de lo
- * que acaba de pedir.
- */
-export async function shareOrCopy(
-  text: string,
-  target?: ShareTarget | null,
-): Promise<ShareOutcome> {
-  if (target?.share) {
-    try {
-      await target.share({ title: SHARE_TITLE, text })
-      return 'shared'
-    } catch (error) {
-      if (isCancelled(error)) return 'cancelled'
-      // Cualquier otro rechazo (sin permiso, sin activación, sin soporte real)
-      // no cierra el intento: queda el portapapeles.
-    }
-  }
-
-  const clipboard = target?.clipboard
-  if (!clipboard?.writeText) return 'unavailable'
-  try {
-    await clipboard.writeText(text)
-    return 'copied'
-  } catch {
-    return 'unavailable'
-  }
 }

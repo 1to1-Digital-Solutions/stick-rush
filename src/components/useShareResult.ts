@@ -1,12 +1,9 @@
 'use client'
 
 import { useCallback, useState } from 'react'
-import { useGame } from './gameStore'
-import {
-  type ShareOutcome,
-  buildShareText,
-  shareOrCopy,
-} from './shareResult'
+import { useGame } from '../lib/gameStore'
+import { buildShareText } from '../lib/shareResult'
+import { type ShareOutcome, shareOrCopy } from './shareOrCopy'
 
 /**
  * Compartir el resultado desde donde se esté jugando.

@@ -2,7 +2,9 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
 /**
- * Tests unitarios de la lógica del juego (`src/lib`) y del estado en React.
+ * Tests unitarios de la lógica del juego (`src/lib`), del estado en React y del paquete
+ * que se publica (`scripts/`: lo que declara el `package.json` y qué puede haber dentro
+ * de la lógica que se lleva el puerto a Godot).
  * Los tests de extremo a extremo viven en `e2e/` y los corre Playwright, que
  * necesita un navegador real por el Canvas WebGL.
  *
@@ -18,7 +20,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts'],
     restoreMocks: true,
     coverage: {
       provider: 'v8',

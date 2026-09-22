@@ -1,13 +1,7 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { DIFFICULTY_LABELS, DIFFICULTY_ORDER } from './gameConfig'
 import { CHALLENGE_LIVES } from './gameMode'
-import {
-  SHARE_TITLE,
-  type ShareResultInput,
-  type ShareTarget,
-  buildShareText,
-  shareOrCopy,
-} from './shareResult'
+import { SHARE_TITLE, type ShareResultInput, buildShareText } from './shareResult'
 
 /**
  * El texto de compartir es lo único del juego que lee alguien que no ha jugado:
@@ -20,8 +14,8 @@ const GAME_URL = 'https://stick-rush.example/'
 
 /**
  * Una partida de práctica corriente, sobre la que varían los demás casos. La
- * puntuación pasa de las cinco cifras a propósito: es a partir de ahí donde el
- * español agrupa los miles, así que es lo que prueba el formato.
+ * puntuación pasa de las cuatro cifras a propósito: es lo que prueba que los miles se
+ * agrupan.
  */
 const PRACTICE: ShareResultInput = {
   points: 12400,
@@ -49,8 +43,11 @@ describe('lo que cuenta el texto', () => {
   })
 
   it('dice la puntuación y los palos atrapados', () => {
-    // Con el mismo formato de miles que el marcador: la cifra que se comparte
-    // tiene que ser la que el jugador acaba de ver en pantalla.
+    // Los miles se agrupan a la inglesa, como el resto de este texto: va entero en
+    // inglés —el modo, la dificultad y las palabras—, así que una cifra a la española
+    // aquí dentro sería lo único fuera de sitio. El formato lo pone `formatoDeCifra`
+    // (ver `textos.ts`), no el navegador: este texto se arma igual dentro del visor que
+    // fuera de él.
     expect(buildShareText(PRACTICE)).toContain('12,400 points · 4 of 5 sticks')
   })
 
@@ -140,95 +137,5 @@ describe('cifras imposibles', () => {
       '0 points',
     )
     expect(buildShareText({ ...PRACTICE, points: -50 })).toContain('0 points')
-  })
-})
-
-/** Navegador de mentira con lo justo que usa `shareOrCopy`. */
-function fakeTarget({
-  share,
-  writeText,
-}: {
-  share?: ShareTarget['share']
-  writeText?: (text: string) => Promise<void>
-} = {}): ShareTarget {
-  return {
-    ...(share ? { share } : {}),
-    ...(writeText ? { clipboard: { writeText } } : {}),
-  }
-}
-
-/** El error con el que los navegadores cuentan que se cerró el diálogo. */
-function abortError(): Error {
-  const error = new Error('cancelado')
-  error.name = 'AbortError'
-  return error
-}
-
-describe('compartir o, si no se puede, copiar', () => {
-  it('usa la hoja de compartir del sistema cuando la hay', async () => {
-    const share = vi.fn().mockResolvedValue(undefined)
-    const writeText = vi.fn().mockResolvedValue(undefined)
-
-    expect(await shareOrCopy('resultado', fakeTarget({ share, writeText }))).toBe(
-      'shared',
-    )
-    expect(share).toHaveBeenCalledWith({
-      title: SHARE_TITLE,
-      text: 'resultado',
-    })
-    // Y no copia además: dos caminos a la vez dejarían el portapapeles pisado
-    // sin que nadie lo haya pedido.
-    expect(writeText).not.toHaveBeenCalled()
-  })
-
-  it('sin hoja de compartir, deja el texto en el portapapeles', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined)
-
-    expect(await shareOrCopy('resultado', fakeTarget({ writeText }))).toBe(
-      'copied',
-    )
-    expect(writeText).toHaveBeenCalledWith('resultado')
-  })
-
-  it('cerrar el diálogo no es un error, y no copia por detrás', async () => {
-    const share = vi.fn().mockRejectedValue(abortError())
-    const writeText = vi.fn().mockResolvedValue(undefined)
-
-    expect(await shareOrCopy('resultado', fakeTarget({ share, writeText }))).toBe(
-      'cancelled',
-    )
-    expect(writeText).not.toHaveBeenCalled()
-  })
-
-  it('si la hoja de compartir no arranca, copia', async () => {
-    // Es el caso del visor: la sesión inmersiva no tiene dónde pintar la hoja
-    // del sistema, o el navegador no la considera pedida por el jugador. Sin
-    // este camino, ahí el botón no haría nada.
-    const share = vi
-      .fn()
-      .mockRejectedValue(
-        new DOMException('sin permiso', 'NotAllowedError'),
-      )
-    const writeText = vi.fn().mockResolvedValue(undefined)
-
-    expect(await shareOrCopy('resultado', fakeTarget({ share, writeText }))).toBe(
-      'copied',
-    )
-    expect(writeText).toHaveBeenCalledWith('resultado')
-  })
-
-  it('sin ninguna de las dos cosas, lo dice', async () => {
-    expect(await shareOrCopy('resultado', fakeTarget())).toBe('unavailable')
-    expect(await shareOrCopy('resultado', null)).toBe('unavailable')
-  })
-
-  it('un portapapeles que falla tampoco rompe la partida', async () => {
-    const writeText = vi
-      .fn()
-      .mockRejectedValue(new DOMException('sin foco', 'NotAllowedError'))
-
-    expect(await shareOrCopy('resultado', fakeTarget({ writeText }))).toBe(
-      'unavailable',
-    )
   })
 })

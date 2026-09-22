@@ -15,7 +15,7 @@ import { openGame, startGame, waitForGameOver } from './helpers'
  * (ver la cabecera de `xr.spec.ts`), así que esa parte solo se valida en
  * hardware. Lo que sí está cubierto sin navegador es la decisión que la hace
  * funcionar allí: cuando la hoja de compartir no arranca, el texto se copia
- * (`shareResult.test.ts`).
+ * (`src/components/shareOrCopy.test.ts`).
  */
 
 /**
