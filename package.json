@@ -1,6 +1,6 @@
 {
   "name": "stick-rush",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "private": true,
   "description": "Atrapa los palos que caen de la máquina antes de que toquen el suelo. Juego web en 3D para navegador y realidad mixta (VR/AR), montable dentro de otra aplicación.",
   "license": "MIT",
