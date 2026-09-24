@@ -136,21 +136,24 @@ export const GROUND_Y = 0
 export const STICK_CORD_LENGTH = 0.11
 
 /**
- * Dónde se planta el jugador respecto al centro del aro, en metros.
+ * Dónde se planta el jugador respecto al centro del aro, en metros (−Z es hacia el arco).
  *
- * No va en el centro geométrico. El aro es un **semi**círculo por delante, así
- * que toda su masa queda hacia −Z y desde el centro exacto el jugador se siente
- * echado hacia atrás: en el visor había que dar un paso adelante para estar
- * bien colocado. Se le adelanta hacia el arco, pero **poco**.
+ * Se ha movido dos veces, siempre por lo que se vio con el visor puesto:
  *
- * **Estaba a −0,18 y era demasiado**: «el jugador arranca muy pegado a la máquina, quizás
- * medio pasito para atrás, o incluso menos». Esos dieciséis centímetros lo dejan casi en el
- * centro del aro, que es donde los palos de los extremos quedan a un lado y no a la espalda,
- * y la máquina se ve entera en vez de encima.
+ * - **A −0,18 era demasiado**: «el jugador arranca muy pegado a la máquina, quizás medio
+ *   pasito para atrás». Se dejó en −0,02, casi en el centro del aro.
+ * - **Y desde ahí, un minipaso atrás** («está perfecto», con este único retoque): diez
+ *   centímetros **por detrás** del centro. Los palos del frente quedan algo más lejos
+ *   —65 cm en horizontal, dentro de los 75 del brazo— y los de los extremos, que antes
+ *   caían a un lado, pasan a caer un poco por delante: la máquina entera se ve delante y
+ *   nada le cae encima a quien juega. Lo que se sigue exigiendo es que cada palo **cruce**
+ *   el alcance del brazo al caer (`xrInteraction.test.ts`, `hoopHeight.test.ts`).
+ *
+ * A CALIBRAR CON EL VISOR.
  */
-export const PLAYER_OFFSET_Z = -0.02
+export const PLAYER_OFFSET_Z = 0.08
 
-/** Posición del jugador: los pies, en el suelo, adelantados hacia el aro. */
+/** Posición del jugador: los pies, en el suelo, un paso por detrás del centro del aro. */
 export const PLAYER_POSITION: [number, number, number] = [
   0,
   GROUND_Y,

@@ -50,6 +50,29 @@ function reachTo(t: number, hoopHeight: number, eyeHeight: number): number {
 }
 
 /**
+ * Cuántos metros de su caída pasa el palo del punto `t` dentro del brazo: el tramo de la
+ * vertical, entre donde cuelga y donde se da por perdido, que queda a menos de `ARM_REACH`
+ * del hombro.
+ */
+function reachableFall(t: number, hoopHeight: number, eyeHeight: number): number {
+  const [x, , z] = machinePoint(t, hoopHeight)
+  const [px, , pz] = PLAYER_POSITION
+  const horizontal = Math.hypot(x - px, z - pz)
+  if (horizontal >= ARM_REACH) return 0
+  const half = Math.sqrt(ARM_REACH ** 2 - horizontal ** 2)
+  const shoulder = shoulderHeightFor(eyeHeight)
+  const hanging = hoopHeight - STICK_CORD_LENGTH - STICK_LENGTH / 2
+  const lost = STICK_MISS_Y - STICK_CORD_LENGTH - STICK_LENGTH / 2
+  return Math.max(0, Math.min(hanging, shoulder + half) - Math.max(lost, shoulder - half))
+}
+
+/**
+ * Lo menos que tiene que pasar un palo dentro del brazo, en metros. En Imposible cae a
+ * unos 2 m/s: con 40 cm de franja la mano tiene un par de décimas para cerrarse.
+ */
+const MIN_REACHABLE_FALL = 0.4
+
+/**
  * Estaturas de prueba: sentado, bajo, de referencia y muy alto, más los dos
  * extremos que se aceptan como persona —que son justo donde el tope absoluto
  * puede entrar a recortar y separar el aro del brazo—.
@@ -159,7 +182,11 @@ describe('altura del aro', () => {
 
     // Y el cálculo la acota aunque le llegue sin acotar.
     expect(hoopHeightFor({ eyeHeight: 1.6, adjustment: 99 })).toBeCloseTo(
-      MACHINE_HEIGHT + HOOP_ADJUST_RANGE,
+      1.6 + HOOP_RISE_ABOVE_EYES + HOOP_ADJUST_RANGE,
+      6,
+    )
+    expect(hoopHeightFor({ adjustment: -99 })).toBeCloseTo(
+      MACHINE_HEIGHT - HOOP_ADJUST_RANGE,
       6,
     )
   })
@@ -191,19 +218,39 @@ describe('altura del aro', () => {
     }
   })
 
-  it('ningún palo queda fuera del brazo, se ponga el aro donde se ponga', () => {
-    // El invariante que hace jugable la máquina (`xrInteraction.test.ts` lo fija
-    // para la altura por defecto): si el ajuste pudiera sacar los palos del
-    // alcance, el menú del visor sería una forma de romper la partida.
+  it('cada palo cruza el alcance del brazo al caer, se ponga el aro donde se ponga', () => {
+    // El invariante que hace jugable la máquina. Con el aro medio metro sobre los
+    // ojos, un palo colgado puede quedar por encima de la mano —es lo que se pidió:
+    // que no cuelguen delante de la cara—, así que lo que se exige es que **al
+    // caer** pase un buen trecho dentro del brazo. Si el ajuste pudiera sacarlos,
+    // el menú del visor sería una forma de romper la partida.
     for (const eyeHeight of EYE_HEIGHTS) {
       for (const adjustment of [-HOOP_ADJUST_RANGE, 0, HOOP_ADJUST_RANGE]) {
         const height = hoopHeightFor({ eyeHeight, adjustment })
         for (let i = 0; i <= 20; i++) {
-          expect(reachTo(i / 20, height, eyeHeight)).toBeLessThanOrEqual(
-            ARM_REACH,
-          )
+          expect(
+            reachableFall(i / 20, height, eyeHeight),
+            `ojos ${eyeHeight}, ajuste ${adjustment}, palo ${i}/20`,
+          ).toBeGreaterThanOrEqual(MIN_REACHABLE_FALL)
         }
       }
+    }
+  })
+
+  it('y con el aro por defecto, el palo se coge incluso colgado', () => {
+    for (let i = 0; i <= 20; i++) {
+      expect(reachTo(i / 20, hoopHeightFor({ eyeHeight: REFERENCE_EYE_HEIGHT }), REFERENCE_EYE_HEIGHT)).toBeLessThanOrEqual(
+        ARM_REACH,
+      )
+    }
+  })
+
+  it('los palos cuelgan por encima de la cara, no delante', () => {
+    // «La máquina más alta», con el visor: la punta de abajo del palo colgado queda por
+    // encima de los ojos a cualquier estatura.
+    for (const eyeHeight of EYE_HEIGHTS) {
+      const height = hoopHeightFor({ eyeHeight })
+      expect(height - STICK_CORD_LENGTH - STICK_LENGTH).toBeGreaterThan(eyeHeight - 0.2)
     }
   })
 

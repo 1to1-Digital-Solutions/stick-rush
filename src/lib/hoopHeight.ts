@@ -42,11 +42,19 @@ import { gameStorage } from './storage'
 export const REFERENCE_EYE_HEIGHT = 1.6
 
 /**
- * Cuánto queda el aro por encima de los ojos. Es la relación que hace jugable la
- * máquina —los palos cuelgan hasta la altura del pecho, que es donde la mano
- * llega cómoda—, así que es lo que se conserva al cambiar de jugador.
+ * Cuánto queda el aro por encima de los ojos en el visor. Es la relación que hace jugable
+ * la máquina —los palos cuelgan por encima del pecho y caen atravesándolo, que es donde la
+ * mano llega cómoda—, así que es lo que se conserva al cambiar de jugador.
+ *
+ * **Era `MACHINE_HEIGHT − REFERENCE_EYE_HEIGHT` (35 cm) y se ha subido a 50** (con el
+ * visor: «la máquina más alta»). Ya no sale de la cota de escritorio: con 35 cm los palos
+ * colgaban a la altura de la cara; con 50 cuelgan por encima y bajan hasta la mano. El
+ * escritorio sigue en `MACHINE_HEIGHT`, que es lo que ve su cámara. El recorrido más largo
+ * no cambia la dificultad: la velocidad se escala con él (`hoopFallSpeed`).
+ *
+ * A CALIBRAR CON EL VISOR.
  */
-export const HOOP_RISE_ABOVE_EYES = MACHINE_HEIGHT - REFERENCE_EYE_HEIGHT
+export const HOOP_RISE_ABOVE_EYES = 0.5
 
 /**
  * Alturas de ojos que se aceptan como las de una persona, en metros: desde
@@ -151,15 +159,21 @@ export type HoopHeightInput = {
   adjustment?: number
 }
 
-/** Altura del aro para quien está jugando, en metros. */
+/**
+ * Altura del aro para quien está jugando, en metros.
+ *
+ * Con la altura del visor, `HOOP_RISE_ABOVE_EYES` sobre los ojos; sin ella —escritorio, o un
+ * visor que no dice dónde está el suelo—, la cota nominal `MACHINE_HEIGHT`. En los dos casos
+ * con la corrección manual encima.
+ */
 export function hoopHeightFor({
   eyeHeight,
   adjustment = 0,
 }: HoopHeightInput): number {
-  const eyes = isPlausibleEyeHeight(eyeHeight)
-    ? eyeHeight
-    : REFERENCE_EYE_HEIGHT
-  const height = eyes + HOOP_RISE_ABOVE_EYES + clampHoopAdjustment(adjustment)
+  const base = isPlausibleEyeHeight(eyeHeight)
+    ? eyeHeight + HOOP_RISE_ABOVE_EYES
+    : MACHINE_HEIGHT
+  const height = base + clampHoopAdjustment(adjustment)
   return Math.min(HOOP_MAX_HEIGHT, Math.max(HOOP_MIN_HEIGHT, height))
 }
 

@@ -244,7 +244,7 @@ export function GameWorld({ hasDomUi = false, anchor }: GameWorldProps) {
 
       {/* EL MUNDO, corrido para dejar al jugador donde le toca.
           La escena está dibujada con la máquina en el origen y el jugador
-          adelantado hacia el aro (`PLAYER_OFFSET_Z`). Antes eso se conseguía
+          un paso por detrás del centro del aro (`PLAYER_OFFSET_Z`). Antes eso se conseguía
           moviendo al jugador con `<XROrigin position={PLAYER_POSITION}>`, pero
           el origen es de quien monta —el salón planta ahí su arco de cabinas— y
           dos orígenes en la misma sesión se pisan. Se mueve el decorado la misma

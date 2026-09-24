@@ -95,11 +95,11 @@ describe('mover el decorado equivale a mover al jugador', () => {
     expect(ahora).toEqual(antes)
   })
 
-  it('el desplazamiento va hacia adelante, no hacia atrás', () => {
-    // Con el signo cambiado el aro quedaría al doble de distancia y de espaldas
-    // a la máquina: el fallo se vería solo con las gafas puestas.
-    expect(DESPLAZAMIENTO[2]).toBeGreaterThan(0)
-    expect(PLAYER_OFFSET_Z).toBeLessThan(0)
+  it('el jugador queda un paso por detrás del centro: la máquina se aleja, no se acerca', () => {
+    // Con el signo cambiado la máquina se le echaría encima en vez de apartarse un paso:
+    // el fallo se vería solo con las gafas puestas.
+    expect(PLAYER_OFFSET_Z).toBeGreaterThan(0)
+    expect(DESPLAZAMIENTO[2]).toBeLessThan(0)
   })
 
   it('solo se mueve en profundidad', () => {

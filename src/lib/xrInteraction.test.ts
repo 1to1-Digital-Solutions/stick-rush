@@ -84,9 +84,8 @@ describe('la máquina queda al alcance de la mano', () => {
 
   it('ningún palo del aro queda fuera del brazo extendido', () => {
     // Se mide desde donde está el jugador de verdad, que no es el centro del
-    // aro: va adelantado (`PLAYER_OFFSET_Z`) porque el semicírculo solo cubre
-    // su frente. El peor caso son los extremos, que con ese adelanto quedan más
-    // lejos que el palo del centro.
+    // aro: va un paso por detrás (`PLAYER_OFFSET_Z`). El peor caso es ahora el
+    // palo del frente, el más lejano.
     for (let i = 0; i <= 20; i++) {
       expect(distanceFromPlayer(hangingStickCenter(i / 20))).toBeLessThanOrEqual(
         ARM_REACH,
@@ -94,15 +93,14 @@ describe('la máquina queda al alcance de la mano', () => {
     }
   })
 
-  it('el jugador va adelantado, pero sin dejarse palos a la espalda', () => {
-    // Si se adelantara más que los extremos del aro, los palos de los lados le
-    // caerían por detrás y no los vería venir.
-    expect(PLAYER_OFFSET_Z).toBeLessThan(0)
-    expect(PLAYER_OFFSET_Z).toBeGreaterThan(-MACHINE_RADIUS / 2)
-    // Y adelantado **poco**: con dieciocho centímetros se arrancaba encima de la máquina
-    // —«el jugador arranca muy pegado, quizás medio pasito para atrás»—, así que no más de
-    // un palmo.
-    expect(Math.abs(PLAYER_OFFSET_Z)).toBeLessThan(0.1)
+  it('el jugador va un minipaso por detrás del centro, sin alejarse de los palos', () => {
+    // «Está perfecto; un minipaso atrás», con el visor. Por detrás del centro, los
+    // palos de los extremos le caen un poco por delante y no a los lados.
+    expect(PLAYER_OFFSET_Z).toBeGreaterThan(0)
+    // Y un paso **mini**: a −0,18 se arrancaba encima de la máquina y un palmo
+    // hacia atrás dejaría los palos del frente a la punta de los dedos.
+    expect(PLAYER_OFFSET_Z).toBeLessThan(0.15)
+    expect(MACHINE_RADIUS + PLAYER_OFFSET_Z).toBeLessThan(ARM_REACH)
   })
 })
 
