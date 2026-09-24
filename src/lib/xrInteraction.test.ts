@@ -25,7 +25,12 @@ import { DIFFICULTY_ORDER, MAX_STICKS } from './gameConfig'
 import {
   XR_COUNTDOWN_POSITION,
   XR_HUD_POSITION,
+  XR_COLUMN,
+  XR_MENU_DESK_POSE,
+  XR_MENU_POSE,
   XR_MENU_POSITION,
+  menuPoseFor,
+  onMenu,
   XR_QUIT_POSITION,
   XR_QUIT_YAW,
   XR_TUTORIAL_POSITION,
@@ -112,24 +117,30 @@ function gazeAngle([x, , z]: Vec3): number {
   return Math.abs(Math.atan2(x, -z))
 }
 
+/**
+ * El menú sin visor, delante: lo que se comprueba aquí para él es lo que se comprobaba para
+ * el menú de siempre. En el visor va a la columna de la izquierda, más abajo.
+ */
+const DESK = XR_MENU_DESK_POSE
+
 describe('la interfaz cae dentro del campo de visión', () => {
   const elements: Array<[string, Vec3]> = [
-    ['el menú', XR_MENU_POSITION],
+    ['el menú', XR_MENU_DESK_POSE.position],
     ['el marcador', XR_HUD_POSITION],
     ['el botón de volver al menú', XR_QUIT_POSITION],
-    ['el botón de salir del visor', xrMenuExitPosition()],
-    ['el botón de silenciar', xrMenuSoundPosition()],
+    ['el botón de salir del visor', xrMenuExitPosition(DESK)],
+    ['el botón de silenciar', xrMenuSoundPosition(DESK)],
     // Los dos ajustes de la fila del medio están apartados a las puntas del
     // panel para no pulsarse por error, así que ya no caen sobre el eje de la
     // mirada y hay que comprobarlos como los demás.
-    ['el interruptor de modo', xrModeTogglePosition()],
-    ['el interruptor de sin fin', xrEndlessTogglePosition()],
-    ['el selector de escenario', xrSceneryPickerPosition()],
+    ['el interruptor de modo', xrModeTogglePosition(DESK)],
+    ['el interruptor de sin fin', xrEndlessTogglePosition(DESK)],
+    ['el selector de escenario', xrSceneryPickerPosition(DESK)],
     ['el botón de terminar la partida sin fin', XR_END_RUN_POSITION],
     // La fila del ajuste del aro es la más alta del panel, así que es la que
     // primero se saldría por arriba de lo que se mira sin estirar el cuello.
-    ['el botón de bajar el aro', xrHoopDownPosition()],
-    ['el botón de subir el aro', xrHoopUpPosition()],
+    ['el botón de bajar el aro', xrHoopDownPosition(DESK)],
+    ['el botón de subir el aro', xrHoopUpPosition(DESK)],
     // El tutorial se enseña con la partida en marcha, así que su panel y sus
     // dos salidas responden a las mismas reglas que todo lo demás: si uno de
     // los botones quedara donde no se ve, el paso dejaría de poder pasarse y
@@ -137,7 +148,7 @@ describe('la interfaz cae dentro del campo de visión', () => {
     ['el tutorial', XR_TUTORIAL_POSITION],
     ['el botón de saltar el tutorial', xrTutorialSkipPosition()],
     ['el botón de pasar al paso siguiente', xrTutorialNextPosition()],
-    ['el botón de volver a ver el tutorial', xrMenuTutorialPosition()],
+    ['el botón de volver a ver el tutorial', xrMenuTutorialPosition(DESK)],
     // Es lo primero que se mira tras pulsar «empezar», y sube y baja con el
     // resto de la interfaz.
     ['la cuenta atrás', XR_COUNTDOWN_POSITION],
@@ -322,44 +333,44 @@ describe('los botones del panel del visor', () => {
   it('empezar va en el panel del menú, por debajo de su centro', () => {
     const jugar = xrPlayButtonPosition()
 
-    expect(jugar[0]).toBe(XR_MENU_POSITION[0])
+    expect(jugar[0]).toBeCloseTo(XR_MENU_POSITION[0], 9)
     expect(jugar[1]).toBeLessThan(XR_MENU_POSITION[1])
-    expect(jugar[2]).toBe(XR_MENU_POSITION[2])
+    expect(jugar[2]).toBeCloseTo(XR_MENU_POSITION[2], 9)
   })
 
   it('los niveles se reparten en fila y centrados en el panel', () => {
     const total = 5
-    const casillas = Array.from({ length: total }, (_, i) => xrLevelOptionPosition(i + 1, total))
+    const casillas = Array.from({ length: total }, (_, i) => xrLevelOptionPosition(i + 1, total, DESK))
     const xs = casillas.map(([x]) => x)
 
     expect(xs[0]).toBeLessThan(xs[total - 1])
-    expect((xs[0] + xs[total - 1]) / 2).toBeCloseTo(XR_MENU_POSITION[0], 9)
+    expect((xs[0] + xs[total - 1]) / 2).toBeCloseTo(DESK.position[0], 9)
     for (const [, y, z] of casillas) {
       expect(y).toBe(casillas[0][1])
-      expect(z).toBe(XR_MENU_POSITION[2])
+      expect(z).toBe(DESK.position[2])
     }
   })
 
   it('un solo nivel se pone en el centro, sin salirse', () => {
-    expect(xrLevelOptionPosition(1, 1)[0]).toBeCloseTo(XR_MENU_POSITION[0], 9)
+    expect(xrLevelOptionPosition(1, 1, DESK)[0]).toBeCloseTo(DESK.position[0], 9)
   })
 
   it('los palos del selector van en fila y no se pisan', () => {
-    const palos = Array.from({ length: MAX_STICKS }, (_, i) => xrStickOptionPosition(i))
+    const palos = Array.from({ length: MAX_STICKS }, (_, i) => xrStickOptionPosition(i, DESK))
     const xs = palos.map(([x]) => x)
 
     expect(new Set(xs).size).toBe(MAX_STICKS)
-    expect((xs[0] + xs[MAX_STICKS - 1]) / 2).toBeCloseTo(XR_MENU_POSITION[0], 9)
+    expect((xs[0] + xs[MAX_STICKS - 1]) / 2).toBeCloseTo(DESK.position[0], 9)
   })
 })
 
 describe('las fichas de dificultad', () => {
   it('van en fila, centradas y en el orden del menú', () => {
-    const fichas = DIFFICULTY_ORDER.map(xrDifficultyOptionPosition)
+    const fichas = DIFFICULTY_ORDER.map((d) => xrDifficultyOptionPosition(d, DESK))
     const xs = fichas.map(([x]) => x)
 
     expect([...xs].sort((a, b) => a - b)).toEqual(xs)
-    expect((xs[0] + xs[xs.length - 1]) / 2).toBeCloseTo(XR_MENU_POSITION[0], 9)
+    expect((xs[0] + xs[xs.length - 1]) / 2).toBeCloseTo(DESK.position[0], 9)
     for (const [, y] of fichas) expect(y).toBe(fichas[0][1])
   })
 })
@@ -387,5 +398,87 @@ describe('quién está jugando: mandos o manos desnudas', () => {
   it('lo que no es ni mando ni mano no cuenta como manos', () => {
     // La mirada y el toque en pantalla son otros modos de entrada de WebXR.
     expect(playingBareHanded(['gaze', 'screenInput'])).toBe(false)
+  })
+})
+
+/**
+ * La columna del menú en el visor: la regla común de los juegos del salón (`.claude/rules/xr.md`,
+ * «La columna va lejos y a la izquierda, fuera de donde se juega»).
+ */
+describe('la columna del menú va lejos, a la izquierda y fuera del aro', () => {
+  const botones: Array<[string, Vec3]> = [
+    ['el centro', XR_MENU_POSITION],
+    ['salir del visor', xrMenuExitPosition()],
+    ['silenciar', xrMenuSoundPosition()],
+    ['el modo', xrModeTogglePosition()],
+    ['sin fin', xrEndlessTogglePosition()],
+    ['el escenario', xrSceneryPickerPosition()],
+    ['bajar el aro', xrHoopDownPosition()],
+    ['subir el aro', xrHoopUpPosition()],
+    ['volver a ver el tutorial', xrMenuTutorialPosition()],
+    ['empezar', xrPlayButtonPosition()],
+    ['el primer palo', xrStickOptionPosition(0)],
+    ['el último palo', xrStickOptionPosition(MAX_STICKS - 1)],
+  ]
+
+  /** Hacia dónde queda, en radianes: positivo a la izquierda. */
+  const azimut = ([x, , z]: Vec3) => Math.atan2(-x, -z)
+
+  it('su centro, a metro y medio de los ojos y entre 50° y 65° a la izquierda', () => {
+    const [x, y, z] = XR_MENU_POSITION
+    expect(Math.hypot(x, z)).toBeGreaterThanOrEqual(1.4)
+    expect(Math.hypot(x, z)).toBeLessThanOrEqual(1.6)
+    expect((azimut(XR_MENU_POSITION) * 180) / Math.PI).toBeGreaterThanOrEqual(50)
+    expect((azimut(XR_MENU_POSITION) * 180) / Math.PI).toBeLessThanOrEqual(65)
+    expect(y).toBe(REFERENCE_EYE_HEIGHT)
+  })
+
+  it('de cara a quien juega', () => {
+    const [x, , z] = XR_MENU_POSITION
+    const normal = [Math.sin(XR_MENU_POSE.yaw), Math.cos(XR_MENU_POSE.yaw)]
+    const hacia = [-x, -z].map((v) => v / Math.hypot(x, z))
+    expect(normal[0] * hacia[0] + normal[1] * hacia[1]).toBeCloseTo(1, 9)
+  })
+
+  it('solo con visor: sin él —el salón en escritorio— el menú se queda delante', () => {
+    expect(menuPoseFor(true)).toBe(XR_MENU_POSE)
+    expect(menuPoseFor(false)).toBe(XR_MENU_DESK_POSE)
+    expect(XR_MENU_DESK_POSE.yaw).toBe(0)
+  })
+
+  it('el botón que la abre jugando va del mismo lado', () => {
+    expect(XR_QUIT_POSITION[0]).toBeLessThan(0)
+    expect(XR_MENU_POSITION[0]).toBeLessThan(0)
+  })
+
+  it.each(botones)('%s queda fuera del aro de la máquina', (_, [x, , z]) => {
+    // El aro está centrado un paso por delante del jugador (`PLAYER_OFFSET_Z`) y los palos
+    // cuelgan de él: la columna no puede caer entre ellos.
+    expect(Math.hypot(x, z + PLAYER_OFFSET_Z)).toBeGreaterThan(MACHINE_RADIUS + 0.4)
+  })
+
+  it.each(botones)('%s se mira girando la cabeza, sin que la interfaz huya', (_, position) => {
+    // Hacia la izquierda la zona muerta del anclaje se alarga lo que está apartada la
+    // columna (`XRGazeAnchor`); con margen, como el resto.
+    expect(azimut(position)).toBeGreaterThan(0)
+    expect(azimut(position)).toBeLessThan((XR_ANCHOR_DEADZONE + XR_COLUMN.azimuth) * 0.85)
+  })
+
+  it.each(botones)('%s queda a una altura que se mira sin estirar el cuello', (_, position) => {
+    const [x, y, z] = position
+    const grados = (Math.atan2(y - REFERENCE_EYE_HEIGHT, Math.hypot(x, z)) * 180) / Math.PI
+    expect(grados).toBeLessThan(20)
+    expect(grados).toBeGreaterThan(-35)
+  })
+
+  it('el panel se agranda y gira entero: un punto del panel cae donde lo pinta three', () => {
+    // Escalar y luego girar alrededor de la vertical, que es lo que hace three con el grupo.
+    const [x, y, z] = onMenu(0.1, 0.2)
+    const [cx, cy, cz] = XR_MENU_POSITION
+    const s = XR_MENU_POSE.scale
+    expect(y - cy).toBeCloseTo(0.2 * s, 9)
+    expect(Math.hypot(x - cx, z - cz)).toBeCloseTo(0.1 * s, 9)
+    // Y lo que en el panel está a la derecha, quien juega lo ve a la derecha.
+    expect(azimut([x, y, z])).toBeLessThan(azimut(XR_MENU_POSITION))
   })
 })

@@ -105,6 +105,14 @@ export type AnchorState = {
 
 export type AnchorOptions = {
   deadzone?: number
+  /**
+   * La zona muerta hacia la izquierda, si es distinta. Por defecto, la misma que a la
+   * derecha. Es para lo que la interfaz tiene a un lado a propósito —la columna del menú,
+   * a 55° a la izquierda (`XR_COLUMN`)—: con la zona muerta de siempre, girarse a mirarla
+   * haría que la interfaz entera la persiguiera, y la columna se escaparía cada vez que
+   * uno se vuelve hacia ella.
+   */
+  leftDeadzone?: number
   speed?: number
   settle?: number
 }
@@ -129,15 +137,19 @@ export function stepAnchor(
 ): AnchorState {
   const {
     deadzone = XR_ANCHOR_DEADZONE,
+    leftDeadzone = deadzone,
     speed = XR_ANCHOR_FOLLOW_SPEED,
     settle = XR_ANCHOR_SETTLE,
   } = options
 
   const target = normalizeAngle(gazeYaw)
-  const offset = Math.abs(angleDelta(state.yaw, target))
+  const signed = angleDelta(state.yaw, target)
+  const offset = Math.abs(signed)
+  // Un giro positivo alrededor de la vertical es mirar a la izquierda (−Z hacia −X).
+  const limit = signed > 0 ? leftDeadzone : deadzone
 
   // Quieta y el jugador mirándola: no se toca, para poder apuntar con calma.
-  if (!state.following && offset <= deadzone) {
+  if (!state.following && offset <= limit) {
     return state
   }
 

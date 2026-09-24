@@ -53,7 +53,6 @@ export function xrUiRise(eyeHeight: number | null | undefined): number {
   return eyeHeight - REFERENCE_EYE_HEIGHT
 }
 
-/** Panel del menú, delante del jugador y a la altura de los ojos. */
 /**
  * Lo que ocupa la línea que explica el modo elegido.
  *
@@ -91,7 +90,75 @@ export const PISTA_ANCHO = 0.62
  */
 export const MENU_TEXT = { label: 0.032, hint: 0.035 } as const
 
-export const XR_MENU_POSITION: Vec3 = [0, 1.4, -0.95]
+/**
+ * Cómo cuelga el panel del menú de la interfaz: dónde, de cara a quién y a qué escala.
+ *
+ * Los botones se declaran en coordenadas del panel (`XR_MENU_SPOT`, los `*_OFFSET`) y esta
+ * pose los lleva al espacio de la interfaz (`onMenu`). Con la escala, el panel entero crece
+ * con la distancia y conserva los ángulos: lo que se leía y se apuntaba a un metro se lee y
+ * se apunta igual a metro y medio.
+ */
+export interface MenuPose {
+  readonly position: Vec3
+  /** Giro alrededor de la vertical, como el `rotation.y` de three. */
+  readonly yaw: number
+  readonly scale: number
+}
+
+/**
+ * Dónde va la columna de ajustes en el visor: la regla común de los juegos del salón
+ * (`.claude/rules/xr.md`, «La columna va lejos y a la izquierda, fuera de donde se juega»).
+ *
+ * **Estaba de frente, a 95 cm**: en medio del aro, justo donde caen los palos. Con las gafas
+ * todas las columnas estorbaban jugando, y esta la que más. Ahora va a metro y medio
+ * de los ojos y 55° a la izquierda: **fuera del aro** —que tiene 57 cm de radio— y fuera de
+ * donde se mira jugando. El botón que la abre durante la partida (`XR_QUIT_POSITION`) ya
+ * estaba a la izquierda, que es lo que pide la regla.
+ *
+ * A CALIBRAR CON EL VISOR (distancia entre 1,4 y 1,6; ángulo entre 50° y 65°).
+ */
+export const XR_COLUMN = { distance: 1.5, azimuth: (55 * Math.PI) / 180 } as const
+
+/**
+ * Cuánto crece el panel en la columna.
+ *
+ * El panel se diseñó a 97 cm de los ojos (95 delante y 20 por debajo), pero no crece todo lo
+ * que se aleja (1,5 / 0,97 = 1,55): a ese tamaño pasaba de metro y medio de alto. Crece lo que pide la letra más pequeña para seguir leyéndose de un vistazo
+ * en los dos idiomas y a las tres alturas de ojos (`menu.legible.test.ts`): la que manda es
+ * «Aro», arriba del todo y vista en escorzo, que con 1,31 ya se queda en 1,39°. A CALIBRAR
+ * CON EL VISOR.
+ */
+export const XR_MENU_SCALE = 1.35
+
+/** La columna del menú en el visor: a la izquierda, a la altura de los ojos, de cara. */
+export const XR_MENU_POSE: MenuPose = {
+  position: [
+    -Math.sin(XR_COLUMN.azimuth) * XR_COLUMN.distance,
+    REFERENCE_EYE_HEIGHT,
+    -Math.cos(XR_COLUMN.azimuth) * XR_COLUMN.distance,
+  ],
+  yaw: XR_COLUMN.azimuth,
+  scale: XR_MENU_SCALE,
+}
+
+/**
+ * El menú sin visor: el salón de xrcade en escritorio, donde la interfaz de la escena es la
+ * única que hay y no se puede girar la cabeza para buscarla. Ahí se queda delante, donde
+ * estuvo siempre.
+ */
+export const XR_MENU_DESK_POSE: MenuPose = {
+  position: [0, 1.4, -0.95],
+  yaw: 0,
+  scale: 1,
+}
+
+/** La pose del menú según haya sesión inmersiva o no. */
+export function menuPoseFor(immersive: boolean): MenuPose {
+  return immersive ? XR_MENU_POSE : XR_MENU_DESK_POSE
+}
+
+/** Centro del panel del menú en el visor. */
+export const XR_MENU_POSITION: Vec3 = XR_MENU_POSE.position
 /** Marcador, por debajo del menú para no cruzarse con los palos. */
 export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
 
@@ -122,16 +189,13 @@ export const XR_HUD_PANEL = { run: 0.27, finished: 0.42, livesRow: 0.06 } as con
 export const XR_QUIT_POSITION: Vec3 = [-0.42, 1.62, -0.75]
 
 /**
- * El aviso de dejar la partida: **donde el menú, a la altura de la vista**.
+ * El aviso de dejar la partida: **delante, a la altura de la vista**.
  *
  * Se pregunta con la partida parada, así que ocupa el sitio donde ya se está mirando y no
- * un rincón: lo que se decide aquí es perder lo que se lleve hecho.
+ * un rincón: lo que se decide aquí es perder lo que se lleve hecho. Era el sitio del menú;
+ * el menú se ha ido a la columna de la izquierda y el aviso se queda delante.
  */
-export const XR_CONFIRM_POSITION: Vec3 = [
-  XR_MENU_POSITION[0],
-  XR_MENU_POSITION[1],
-  XR_MENU_POSITION[2] + 0.06,
-]
+export const XR_CONFIRM_POSITION: Vec3 = [0, 1.4, -0.89]
 export const XR_CONFIRM_SIZE: [number, number] = [0.78, 0.38]
 
 /**
@@ -210,8 +274,9 @@ export const XR_END_RUN_YAW = Math.atan2(
 )
 /**
  * Fila del ajuste de altura del aro, arriba del todo del panel. Va sola y por
- * encima del resto porque es lo único que se toca **mirando la máquina**: el
- * aro queda justo encima del panel, así que al pulsar se ve subir o bajar.
+ * encima del resto porque es lo único que se toca **mirando la máquina**: con la
+ * columna a la izquierda, el aro pasa por delante del panel, a la derecha de lo
+ * que se mira, así que al pulsar se ve subir o bajar.
  */
 const HOOP_ROW_Y = 0.34 + SUBIDA_DE_LA_PISTA
 /** Botón de bajar el aro, a la izquierda de su indicador. */
@@ -381,66 +446,77 @@ function offset([x, y, z]: Vec3, dx: number, dy: number): Vec3 {
   return [x + dx, y + dy, z]
 }
 
+/**
+ * Dónde cae un punto del panel del menú, dado en coordenadas del panel, en el espacio de la
+ * interfaz: escalado y girado como lo hace three con el grupo del panel.
+ */
+export function onMenu(dx: number, dy: number, pose: MenuPose = XR_MENU_POSE): Vec3 {
+  const [x, y, z] = pose.position
+  const cos = Math.cos(pose.yaw)
+  const sin = Math.sin(pose.yaw)
+  return [x + dx * pose.scale * cos, y + dy * pose.scale, z - dx * pose.scale * sin]
+}
+
 /** Botón de volver al menú durante la partida. */
 export function xrQuitButtonPosition(): Vec3 {
   return XR_QUIT_POSITION
 }
 
 /** Botón de salir del visor, dentro del panel del menú. */
-export function xrMenuExitPosition(): Vec3 {
+export function xrMenuExitPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_MENU_EXIT_OFFSET
-  return offset(XR_MENU_POSITION, dx, dy)
+  return onMenu(dx, dy, pose)
 }
 
 /** Botón de silenciar, dentro del panel del menú. */
-export function xrMenuSoundPosition(): Vec3 {
+export function xrMenuSoundPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_MENU_SOUND_OFFSET
-  return offset(XR_MENU_POSITION, dx, dy)
+  return onMenu(dx, dy, pose)
 }
 
 /** Interruptor de modo (práctica, niveles o desafío), dentro del panel del menú. */
-export function xrModeTogglePosition(): Vec3 {
+export function xrModeTogglePosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_MODE_TOGGLE_OFFSET
-  return offset(XR_MENU_POSITION, dx, dy)
+  return onMenu(dx, dy, pose)
 }
 
 /** Interruptor de tanda o sin fin, dentro del panel del menú. */
-export function xrEndlessTogglePosition(): Vec3 {
+export function xrEndlessTogglePosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_ENDLESS_TOGGLE_OFFSET
-  return offset(XR_MENU_POSITION, dx, dy)
+  return onMenu(dx, dy, pose)
 }
 
 /** Casilla del nivel `level` (1-based) del selector de nivel. */
-export function xrLevelOptionPosition(level: number, levelCount: number): Vec3 {
+export function xrLevelOptionPosition(
+  level: number,
+  levelCount: number,
+  pose: MenuPose = XR_MENU_POSE,
+): Vec3 {
   const width = (levelCount - 1) * XR_LEVEL_PICKER_SPACING
-  return offset(
-    XR_MENU_POSITION,
-    (level - 1) * XR_LEVEL_PICKER_SPACING - width / 2,
-    STICK_PICKER_Y,
-  )
+  return onMenu((level - 1) * XR_LEVEL_PICKER_SPACING - width / 2, STICK_PICKER_Y, pose)
 }
 /** Selector de escenario o passthrough, dentro del panel del menú. */
-export function xrSceneryPickerPosition(): Vec3 {
+export function xrSceneryPickerPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_SCENERY_PICKER_OFFSET
-  return offset(XR_MENU_POSITION, dx, dy)
+  return onMenu(dx, dy, pose)
 }
 
 /** Botón de bajar el aro, dentro del panel del menú. */
-export function xrHoopDownPosition(): Vec3 {
+export function xrHoopDownPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_HOOP_DOWN_OFFSET
-  return offset(XR_MENU_POSITION, dx, dy)
+  return onMenu(dx, dy, pose)
 }
 
 /** Botón de subir el aro, dentro del panel del menú. */
-export function xrHoopUpPosition(): Vec3 {
+export function xrHoopUpPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_HOOP_UP_OFFSET
-  return offset(XR_MENU_POSITION, dx, dy)
+  return onMenu(dx, dy, pose)
 }
 
 /** Botón de volver a ver el tutorial, dentro del panel del menú. */
-export function xrMenuTutorialPosition(): Vec3 {
+export function xrMenuTutorialPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_MENU_TUTORIAL_OFFSET
-  return offset(XR_MENU_POSITION, dx, dy)
+  return onMenu(dx, dy, pose)
 }
 
 /** Botón de saltar el tutorial, dentro de su panel. */
@@ -456,33 +532,28 @@ export function xrTutorialNextPosition(): Vec3 {
 }
 
 /** Botón de empezar partida. */
-export function xrPlayButtonPosition(): Vec3 {
+export function xrPlayButtonPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_MENU_PLAY_OFFSET
-  return offset(XR_MENU_POSITION, dx, dy)
+  return onMenu(dx, dy, pose)
 }
 
 /**
  * Posición del palo `index` (0-based) del selector de cantidad. El selector
  * muestra los `MAX_STICKS` posibles y se elige tocando hasta cuál se quiere.
  */
-export function xrStickOptionPosition(index: number): Vec3 {
+export function xrStickOptionPosition(index: number, pose: MenuPose = XR_MENU_POSE): Vec3 {
   const width = (MAX_STICKS - 1) * XR_STICK_PICKER_SPACING
-  return offset(
-    XR_MENU_POSITION,
-    index * XR_STICK_PICKER_SPACING - width / 2,
-    STICK_PICKER_Y,
-  )
+  return onMenu(index * XR_STICK_PICKER_SPACING - width / 2, STICK_PICKER_Y, pose)
 }
 
 /** Posición de la ficha de una dificultad. */
-export function xrDifficultyOptionPosition(difficulty: Difficulty): Vec3 {
+export function xrDifficultyOptionPosition(
+  difficulty: Difficulty,
+  pose: MenuPose = XR_MENU_POSE,
+): Vec3 {
   const index = DIFFICULTY_ORDER.indexOf(difficulty)
   const width = (DIFFICULTY_ORDER.length - 1) * XR_DIFFICULTY_SPACING
-  return offset(
-    XR_MENU_POSITION,
-    index * XR_DIFFICULTY_SPACING - width / 2,
-    DIFFICULTY_Y,
-  )
+  return onMenu(index * XR_DIFFICULTY_SPACING - width / 2, DIFFICULTY_Y, pose)
 }
 
 /**
@@ -599,9 +670,10 @@ export function xrUiRiseOverWorld(
  *
  * Todo cuelga de `XRGazeAnchor`, así que el panel queda delante de los ojos, a la altura que suben
  * el mundo (`worldRise`) y la interfaz sobre él (`xrUiRiseOverWorld`). Es lo que usan los
- * `*.legible.test.ts` para medir cada letra donde queda de verdad.
+ * `*.legible.test.ts` para medir cada letra donde queda de verdad. `yaw` es el giro del panel
+ * cuando no está de frente, como la columna del menú.
  */
-export function xrPanelViews(position: Vec3): { donde: string; pose: PanelPose; ojos: Point }[] {
+export function xrPanelViews(position: Vec3, yaw = 0): { donde: string; pose: PanelPose; ojos: Point }[] {
   return EYE_HEIGHTS.flatMap((ojos) =>
     [false, true].map((aLaAlturaDeLosOjos) => ({
       donde: `ojos a ${ojos} m${aLaAlturaDeLosOjos ? ', mundo a su altura' : ''}`,
@@ -611,6 +683,7 @@ export function xrPanelViews(position: Vec3): { donde: string; pose: PanelPose; 
           position[1] + worldRise(ojos, aLaAlturaDeLosOjos) + xrUiRiseOverWorld(ojos, aLaAlturaDeLosOjos),
           position[2],
         ] as const,
+        ...(yaw === 0 ? {} : { rotation: [0, yaw, 0] as const }),
       },
       ojos: eyesAt(ojos),
     })),

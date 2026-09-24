@@ -34,7 +34,7 @@ import {
   XR_HOOP_UP_OFFSET,
   XR_LEVEL_PICKER_SPACING,
   XR_MENU_EXIT_OFFSET,
-  XR_MENU_POSITION,
+  menuPoseFor,
   XR_MENU_TUTORIAL_OFFSET,
   XR_MODE_TOGGLE_OFFSET,
   XR_SCENERY_PICKER_OFFSET,
@@ -378,8 +378,8 @@ const HOOP_GAUGE_TRAVEL = HOOP_GAUGE_HEIGHT / 2 - 0.014
  * cabeza, y quien juega sentado en un sofá con el espacio calibrado de pie sale
  * medido de más. Esto es la corrección.
  *
- * **La respuesta es la propia máquina.** El aro está justo encima del panel, así
- * que al pulsar se ve subir o bajar: no hace falta ninguna cifra, que además no
+ * **La respuesta es la propia máquina.** El aro pasa por delante del panel, a su
+ * derecha, así que al pulsar se ve subir o bajar: no hace falta ninguna cifra, que además no
  * se podría escribir (el menú inmersivo va sin una sola letra, ver arriba). La
  * regla del medio solo dice cuánto queda de recorrido, y los botones se apagan
  * al llegar al tope, así que el límite se ve antes de chocar con él.
@@ -570,8 +570,11 @@ export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
     return null
   }
 
+  // En el visor, la columna de la izquierda (`XR_MENU_POSE`); sin visor —el salón en
+  // escritorio— delante, que ahí no se gira la cabeza para buscarla.
+  const pose = menuPoseFor(mode != null)
   return (
-    <group position={XR_MENU_POSITION}>
+    <group position={pose.position} rotation={[0, pose.yaw, 0]} scale={pose.scale}>
       {/* Más alto que antes: la fila del aro va arriba del todo y necesita
           panel detrás para no quedar flotando fuera de él. */}
       <XRPanel width={MENU_PANEL[0]} height={MENU_PANEL[1]} color={PANEL_COLOR} />

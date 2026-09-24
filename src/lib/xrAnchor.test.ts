@@ -136,3 +136,22 @@ describe('pero no se pega a la cara', () => {
     expect(Math.abs(state.yaw)).toBeLessThan(Math.PI / 2)
   })
 })
+
+describe('con la columna a un lado, mirarla no la espanta', () => {
+  const opciones = { leftDeadzone: XR_ANCHOR_DEADZONE + 1 }
+
+  it('girarse a la izquierda hasta la columna deja la interfaz quieta', () => {
+    const state = initialAnchorState(0)
+    expect(stepAnchor(state, XR_ANCHOR_DEADZONE + 0.9, 1 / 90, opciones)).toBe(state)
+  })
+
+  it('a la derecha la zona muerta sigue siendo la de siempre', () => {
+    const state = initialAnchorState(0)
+    expect(stepAnchor(state, -(XR_ANCHOR_DEADZONE + 0.1), 1 / 90, opciones).following).toBe(true)
+  })
+
+  it('y más allá de la columna, la interfaz sí viene detrás', () => {
+    const state = initialAnchorState(0)
+    expect(stepAnchor(state, XR_ANCHOR_DEADZONE + 1.1, 1 / 90, opciones).following).toBe(true)
+  })
+})

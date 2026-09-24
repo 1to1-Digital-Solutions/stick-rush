@@ -4,7 +4,15 @@ import { ALTO_DE_LINEA } from './canvasPanel'
 import { lienzoQueApunta, problemasDeLegibilidad, type Escrito } from './legibilidad'
 import { MENU_PANEL } from './XRMenu'
 import { GAME_MODE_HINTS, GAME_MODE_ORDER } from '../../lib/gameMode'
-import { MENU_TEXT, XR_MENU_HIT, XR_MENU_POSITION, XR_MENU_SPOT, xrPanelViews } from '../../lib/xrLayout'
+import {
+  MENU_TEXT,
+  XR_MENU_DESK_POSE,
+  XR_MENU_HIT,
+  XR_MENU_POSE,
+  XR_MENU_SPOT,
+  type MenuPose,
+  xrPanelViews,
+} from '../../lib/xrLayout'
 import {
   MIN_READING_DEGREES,
   eyesAt,
@@ -26,12 +34,29 @@ import { traductor } from '../../lib/textos'
 
 const IDIOMAS = ['en', 'es'] as const
 const PANEL_MEDIDO = { width: MENU_PANEL[0], height: MENU_PANEL[1] }
-/** Desde dónde se lee: el panel delante de los ojos, a tres alturas y con el mundo de pie o no. */
-const VISTAS = xrPanelViews(XR_MENU_POSITION)
+
+/**
+ * Los dos sitios donde se lee el menú: la columna del visor —a metro y medio, a la izquierda,
+ * girada y más grande— y delante, sin visor (el salón en escritorio). A tres alturas de ojos y
+ * con el mundo de pie o no.
+ */
+const SITIOS: { nombre: string; pose: MenuPose }[] = [
+  { nombre: 'columna del visor', pose: XR_MENU_POSE },
+  { nombre: 'escritorio', pose: XR_MENU_DESK_POSE },
+]
+
+function vistasDe(pose: MenuPose) {
+  return xrPanelViews(pose.position, pose.yaw)
+}
+
+/** Lo escrito, a la escala a la que se pinta el panel: la escala del grupo lo agranda todo. */
+function aEscala(escritos: readonly Escrito[], escala: number): Escrito[] {
+  return escritos.map((e) => ({ ...e, x: e.x * escala, y: e.y * escala, ancho: e.ancho * escala, alto: e.alto * escala }))
+}
 
 /** A qué distancia se miden los problemas: la de lectura del texto que peor se lee, con el escorzo. */
-function distancia(escritos: readonly Escrito[]): number {
-  return Math.max(...VISTAS.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, ALTO_DE_LINEA)))
+function distancia(escritos: readonly Escrito[], pose: MenuPose): number {
+  return Math.max(...vistasDe(pose).map(({ pose: vista, ojos }) => worstReadingDistance(escritos, vista, ojos, ALTO_DE_LINEA)))
 }
 
 describe('los nombres de las filas del menú se leen', () => {
@@ -41,10 +66,14 @@ describe('los nombres de las filas del menú se leen', () => {
         const { ctx, escritos } = lienzoQueApunta()
         dibujarLosNombres(ctx, traductor(lang), gameMode)
         expect(escritos.length, 'no se ha medido nada').toBeGreaterThan(0)
-        expect(
-          problemasDeLegibilidad(escritos, { panel: PANEL_MEDIDO, distancia: distancia(escritos) }),
-          `${lang} ${gameMode}`,
-        ).toEqual([])
+        for (const { nombre, pose } of SITIOS) {
+          const escalados = aEscala(escritos, pose.scale)
+          const panel = { width: PANEL_MEDIDO.width * pose.scale, height: PANEL_MEDIDO.height * pose.scale }
+          expect(
+            problemasDeLegibilidad(escalados, { panel, distancia: distancia(escalados, pose) }),
+            `${lang} ${gameMode}, ${nombre}`,
+          ).toEqual([])
+        }
       }
     }
   })
@@ -99,8 +128,13 @@ function todosLosMomentos(): { donde: string; escritos: Escrito[] }[] {
 describe('cada letra del menú se lee de un vistazo', () => {
   it(`ninguna baja de ${MIN_READING_DEGREES}°, en ningún modo, idioma ni altura de ojos`, () => {
     for (const { donde, escritos } of todosLosMomentos()) {
-      for (const vista of VISTAS) {
-        expect(unreadableTexts(escritos, vista.pose, vista.ojos, ALTO_DE_LINEA), `${donde}, ${vista.donde}`).toEqual([])
+      for (const { nombre, pose } of SITIOS) {
+        for (const vista of vistasDe(pose)) {
+          expect(
+            unreadableTexts(aEscala(escritos, pose.scale), vista.pose, vista.ojos, ALTO_DE_LINEA),
+            `${donde}, ${nombre}, ${vista.donde}`,
+          ).toEqual([])
+        }
       }
     }
   })
@@ -128,6 +162,16 @@ describe('cada letra del menú se lee de un vistazo', () => {
   it('el control: la explicación a 22 mm, abajo del todo, no llegaba', () => {
     const { escritos } = todosLosMomentos().find(({ donde }) => donde === 'es levels')!
     const ultima = escritos.reduce((abajo, e) => (e.y < abajo.y ? e : abajo))
-    expect(unreadableTexts([{ ...ultima, alto: 0.022 * ALTO_DE_LINEA }], { position: XR_MENU_POSITION }, eyesAt(1.6), ALTO_DE_LINEA)).toHaveLength(1)
+    const pequena = [{ ...ultima, alto: 0.022 * ALTO_DE_LINEA }]
+    expect(unreadableTexts(pequena, { position: XR_MENU_DESK_POSE.position }, eyesAt(1.6), ALTO_DE_LINEA)).toHaveLength(1)
+  })
+
+  it('y en la columna, sin agrandar el panel, el texto no llegaría', () => {
+    // El control de la escala: a metro y medio, el panel a su tamaño de diseño no se lee.
+    const { escritos } = todosLosMomentos().find(({ donde }) => donde === 'es levels')!
+    const fallos = vistasDe(XR_MENU_POSE).flatMap((vista) =>
+      unreadableTexts(escritos, vista.pose, vista.ojos, ALTO_DE_LINEA),
+    )
+    expect(fallos.length).toBeGreaterThan(0)
   })
 })

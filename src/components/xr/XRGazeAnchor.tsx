@@ -6,12 +6,13 @@ import { useXR } from '@react-three/xr'
 import { Euler, Quaternion, Vector3, type Group } from 'three'
 import { useGame } from '../../lib/gameStore'
 import {
+  XR_ANCHOR_DEADZONE,
   initialAnchorState,
   stepAnchor,
   type AnchorState,
 } from '../../lib/xrAnchor'
 import { usePlayHeight } from '../../lib/ajustesCliente'
-import { xrUiRiseOverWorld } from '../../lib/xrLayout'
+import { XR_COLUMN, xrUiRiseOverWorld } from '../../lib/xrLayout'
 
 /**
  * Mantiene la interfaz inmersiva donde el jugador la ve: delante de su cara y a
@@ -98,7 +99,7 @@ export function XRGazeAnchor({
     const next =
       previous == null
         ? initialAnchorState(gazeYaw)
-        : stepAnchor(previous, gazeYaw, delta)
+        : stepAnchor(previous, gazeYaw, delta, ANCHOR_OPTIONS)
     anchor.current = next
 
     // A la altura de los ojos de quien juega, no a la del suelo: las cotas de
@@ -118,6 +119,12 @@ export function XRGazeAnchor({
     </group>
   )
 }
+
+/**
+ * La columna del menú está a la izquierda a propósito (`XR_COLUMN`): hacia ese lado la zona
+ * muerta se alarga lo que está apartada, para que volverse a mirarla no la haga huir.
+ */
+const ANCHOR_OPTIONS = { leftDeadzone: XR_ANCHOR_DEADZONE + XR_COLUMN.azimuth }
 
 // Reutilizados entre frames: crear vectores dentro de useFrame genera basura en
 // cada uno de los 90 fotogramas por segundo del visor.
