@@ -1,84 +1,155 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
-  CATCH_PULSE,
-  MISS_PULSE,
+  IN_EXTREMIS,
+  IN_EXTREMIS_BOOST,
   PRESS_PULSE,
-  pulseAllHaptics,
+  manoDelEvento,
+  pulsarAtrape,
   pulseHaptics,
+  pulsosDelAtrape,
+  reproducirPulsos,
+  tactoDelAtrape,
 } from './haptics'
+import { RECETAS, pulsosDe } from './tactos'
 
 /** Doble de un mando de WebXR, con los motores de vibración que se le pidan. */
-function fakeInputSource(actuators: unknown[]) {
-  return { gamepad: { hapticActuators: actuators } } as unknown as XRInputSource
+function fakeInputSource(actuators: unknown[], handedness: XRHandedness = 'right') {
+  return { handedness, gamepad: { hapticActuators: actuators } } as unknown as XRInputSource
 }
 
 /**
  * Doble de un evento de mando: lo que le llega a la app es el estado del
  * puntero, con el `inputSource` de la sesión colgando.
  */
-function fakeController(actuators: unknown[]) {
-  return { pointerState: { inputSource: fakeInputSource(actuators) } }
+function fakeController(actuators: unknown[], handedness: XRHandedness = 'right') {
+  return { pointerState: { inputSource: fakeInputSource(actuators, handedness) } }
 }
 
-/** Doble de una sesión inmersiva con los mandos que se le pasen. */
-function fakeSession(...sources: XRInputSource[]) {
-  return { inputSources: sources }
-}
+const CATCH = { intensity: 0.5, durationMs: 20 }
 
-describe('el golpe del acierto', () => {
-  it('aprieta de verdad pero no llega a saturar el mando', () => {
-    expect(CATCH_PULSE.intensity).toBeGreaterThan(0.3)
-    expect(CATCH_PULSE.intensity).toBeLessThanOrEqual(1)
+describe('atrapar un palo, en la mano que lo coge', () => {
+  it('es un agarre de las recetas comunes', () => {
+    expect(tactoDelAtrape('left')).toEqual({ tipo: 'agarre', mano: 'left' })
+    expect(pulsosDelAtrape('left', 0.3)).toEqual(pulsosDe({ tipo: 'agarre', mano: 'left' }))
   })
 
-  it('dura un golpe, no un zumbido', () => {
-    // Una partida encadena hasta trece aciertos con el mando en la mano: un
-    // pulso largo dejaría de leerse como "otro palo" y pasaría a molestar.
-    expect(CATCH_PULSE.durationMs).toBeGreaterThan(10)
-    expect(CATCH_PULSE.durationMs).toBeLessThan(120)
+  it('in extremis se siente más, sin pasar de un agarre a un golpe', () => {
+    const normal = pulsosDelAtrape('right', IN_EXTREMIS - 0.01)[0]
+    const extremo = pulsosDelAtrape('right', IN_EXTREMIS)[0]
+    expect(extremo.intensidad).toBeCloseTo(normal.intensidad * IN_EXTREMIS_BOOST, 9)
+    expect(extremo.intensidad).toBeLessThan(RECETAS.impacto.maximo)
+    expect(extremo.ms).toBe(normal.ms)
+    expect(extremo.mano).toBe('right')
+  })
+
+  it('una caída que no es un número se trata como un atrape cualquiera', () => {
+    expect(pulsosDelAtrape('left', Number.NaN)).toEqual(pulsosDe(tactoDelAtrape('left')))
   })
 })
 
-describe('el golpe del fallo', () => {
-  it('se distingue del acierto por las dos cosas: dura más y aprieta menos', () => {
-    // Si solo cambiara una, con el brazo en movimiento los dos se sentirían
-    // igual y la vibración diría menos que el sonido, que sí los distingue.
-    expect(MISS_PULSE.durationMs).toBeGreaterThan(CATCH_PULSE.durationMs * 2)
-    expect(MISS_PULSE.intensity).toBeLessThan(CATCH_PULSE.intensity)
+describe('de qué mano viene un evento', () => {
+  it('del mando o de la mano de XR, su lado', () => {
+    expect(manoDelEvento(fakeController([], 'left'))).toBe('left')
+    expect(manoDelEvento(fakeController([], 'right'))).toBe('right')
   })
 
-  it('sigue siendo un aviso y no un zumbido', () => {
-    // Suena en los dos mandos a la vez: pasado de largo o de fuerte, un par de
-    // palos escapados seguidos dejarían las manos vibrando sin parar.
-    expect(MISS_PULSE.durationMs).toBeLessThanOrEqual(250)
-    expect(MISS_PULSE.intensity).toBeGreaterThan(0.1)
+  it('el ratón y lo que no tiene lado no son ninguna mano', () => {
+    expect(manoDelEvento({})).toBeNull()
+    expect(manoDelEvento(null)).toBeNull()
+    expect(manoDelEvento('clic')).toBeNull()
+    expect(manoDelEvento(fakeController([], 'none'))).toBeNull()
+  })
+})
+
+describe('reproducir los pulsos', () => {
+  it('cada pulso va al mando de su mano, y solo a ese', () => {
+    const izquierda = vi.fn(() => Promise.resolve(true))
+    const derecha = vi.fn(() => Promise.resolve(true))
+    reproducirPulsos(
+      [fakeInputSource([{ pulse: izquierda }], 'left'), fakeInputSource([{ pulse: derecha }], 'right')],
+      [{ mano: 'left', intensidad: 0.3, ms: 20, retardo: 0 }],
+    )
+    expect(izquierda).toHaveBeenCalledWith(0.3, 20)
+    expect(derecha).not.toHaveBeenCalled()
+  })
+
+  it('los que llevan retardo se programan, y se pueden cancelar', () => {
+    const pulse = vi.fn(() => Promise.resolve(true))
+    const programados: { hacer: () => void; ms: number }[] = []
+    const cancelado = vi.fn()
+    const cancelar = reproducirPulsos(
+      [fakeInputSource([{ pulse }], 'left')],
+      pulsosDe({ tipo: 'impacto', mano: 'left', fuerza: 1 }),
+      (hacer, ms) => {
+        programados.push({ hacer, ms })
+        return cancelado
+      },
+    )
+    // El golpe sale ya; la cola, cuando acaba el golpe.
+    expect(pulse).toHaveBeenCalledOnce()
+    expect(programados.map((p) => p.ms)).toEqual([RECETAS.impacto.ms])
+    programados[0].hacer()
+    expect(pulse).toHaveBeenCalledTimes(2)
+    cancelar()
+    expect(cancelado).toHaveBeenCalledOnce()
+  })
+
+  it('con setTimeout de verdad, cancelar antes de tiempo deja la cola sin sonar', () => {
+    vi.useFakeTimers()
+    const pulse = vi.fn(() => Promise.resolve(true))
+    const cancelar = reproducirPulsos(
+      [fakeInputSource([{ pulse }], 'right')],
+      pulsosDe({ tipo: 'impacto', mano: 'right', fuerza: 0.5 }),
+    )
+    cancelar()
+    vi.runAllTimers()
+    expect(pulse).toHaveBeenCalledOnce()
+    vi.useRealTimers()
+  })
+
+  it('sin mando en esa mano no ocurre nada', () => {
+    const pulse = vi.fn()
+    reproducirPulsos([undefined, fakeInputSource([{ pulse }], 'left')], [{ mano: 'right', intensidad: 1, ms: 10, retardo: 0 }])
+    expect(pulse).not.toHaveBeenCalled()
+  })
+})
+
+describe('el atrape de verdad, desde el evento del agarre', () => {
+  it('vibra el mando que lo ha cogido', () => {
+    const pulse = vi.fn(() => Promise.resolve(true))
+    pulsarAtrape(fakeController([{ pulse }], 'left'), 0.2)
+    expect(pulse).toHaveBeenCalledWith(RECETAS.agarre.intensidad, RECETAS.agarre.ms)
+  })
+
+  it('con el ratón o la mano desnuda, nada', () => {
+    expect(() => pulsarAtrape({}, 0.5)()).not.toThrow()
+    const hand = { pointerState: { inputSource: { handedness: 'left' } } }
+    expect(() => pulsarAtrape(hand, 0.5)).not.toThrow()
   })
 })
 
 describe('el toque de un botón', () => {
-  it('es el más discreto de los tres', () => {
-    // Elegir trece palos son trece pulsaciones seguidas: aquí lo que se pide es
-    // notar que el botón respondió, no que pase algo en la partida.
-    expect(PRESS_PULSE.durationMs).toBeLessThan(CATCH_PULSE.durationMs)
-    expect(PRESS_PULSE.intensity).toBeLessThan(CATCH_PULSE.intensity)
+  it('es discreto: se notan trece seguidos sin molestar', () => {
+    expect(PRESS_PULSE.durationMs).toBeLessThanOrEqual(30)
+    expect(PRESS_PULSE.intensity).toBeLessThanOrEqual(0.3)
     expect(PRESS_PULSE.intensity).toBeGreaterThan(0)
   })
 })
 
 describe('vibración del mando', () => {
-  it('golpea el mando que ha atrapado el palo, con la receta que se le pide', () => {
+  it('golpea el mando que ha pulsado, con la receta que se le pide', () => {
     const pulse = vi.fn(() => Promise.resolve(true))
     const event = fakeController([{ pulse }])
 
-    expect(pulseHaptics(event, CATCH_PULSE)).toBe(true)
-    expect(pulse).toHaveBeenCalledWith(CATCH_PULSE.intensity, CATCH_PULSE.durationMs)
+    expect(pulseHaptics(event, CATCH)).toBe(true)
+    expect(pulse).toHaveBeenCalledWith(CATCH.intensity, CATCH.durationMs)
   })
 
   it('usa el primer actuador cuando el mando declara varios', () => {
     const first = vi.fn(() => Promise.resolve(true))
     const second = vi.fn(() => Promise.resolve(true))
 
-    pulseHaptics(fakeController([{ pulse: first }, { pulse: second }]), CATCH_PULSE)
+    pulseHaptics(fakeController([{ pulse: first }, { pulse: second }]), CATCH)
 
     expect(first).toHaveBeenCalledOnce()
     expect(second).not.toHaveBeenCalled()
@@ -87,21 +158,21 @@ describe('vibración del mando', () => {
   it('con el ratón no vibra nada', () => {
     // En escritorio se juega a clics y el evento no trae puntero de XR: no es
     // un fallo, es que ahí no hay mando que hacer vibrar.
-    expect(pulseHaptics({}, CATCH_PULSE)).toBe(false)
-    expect(pulseHaptics(undefined, CATCH_PULSE)).toBe(false)
+    expect(pulseHaptics({}, CATCH)).toBe(false)
+    expect(pulseHaptics(undefined, CATCH)).toBe(false)
   })
 
   it('la mano desnuda no vibra', () => {
     // Sin mando no hay `gamepad`: se coge el palo igual, solo que sin golpe.
     const hand = { pointerState: { inputSource: { handedness: 'left' } } }
 
-    expect(pulseHaptics(hand, CATCH_PULSE)).toBe(false)
+    expect(pulseHaptics(hand, CATCH)).toBe(false)
   })
 
   it('un mando sin motor de vibración no rompe la captura', () => {
-    expect(pulseHaptics(fakeController([]), CATCH_PULSE)).toBe(false)
+    expect(pulseHaptics(fakeController([]), CATCH)).toBe(false)
     // Navegador que expone el actuador pero no la API `pulse` de WebXR.
-    expect(pulseHaptics(fakeController([{ playEffect: vi.fn() }]), CATCH_PULSE)).toBe(false)
+    expect(pulseHaptics(fakeController([{ playEffect: vi.fn() }]), CATCH)).toBe(false)
   })
 
   it('un mando que revienta al vibrar no se lleva por delante la captura', () => {
@@ -116,8 +187,8 @@ describe('vibración del mando', () => {
       },
     ])
 
-    expect(() => pulseHaptics(broken, CATCH_PULSE)).not.toThrow()
-    expect(pulseHaptics(broken, CATCH_PULSE)).toBe(false)
+    expect(() => pulseHaptics(broken, CATCH)).not.toThrow()
+    expect(pulseHaptics(broken, CATCH)).toBe(false)
   })
 
   it('un mando que no devuelve promesa vibra igual', () => {
@@ -126,8 +197,8 @@ describe('vibración del mando', () => {
     // golpe ya se ha dado y no hay rechazo que recoger.
     const mute = fakeController([{ pulse: () => undefined }])
 
-    expect(() => pulseHaptics(mute, CATCH_PULSE)).not.toThrow()
-    expect(pulseHaptics(mute, CATCH_PULSE)).toBe(true)
+    expect(() => pulseHaptics(mute, CATCH)).not.toThrow()
+    expect(pulseHaptics(mute, CATCH)).toBe(true)
   })
 
   it('recoge el rechazo del mando en vez de dejar la promesa suelta', () => {
@@ -137,58 +208,7 @@ describe('vibración del mando', () => {
     const recover = vi.fn()
     const pending = { catch: recover } as unknown as Promise<boolean>
 
-    expect(pulseHaptics(fakeController([{ pulse: () => pending }]), CATCH_PULSE)).toBe(true)
+    expect(pulseHaptics(fakeController([{ pulse: () => pending }]), CATCH)).toBe(true)
     expect(recover).toHaveBeenCalled()
-  })
-})
-
-describe('vibración de toda la sesión', () => {
-  it('avisa por los dos mandos, que es lo que no tiene el palo perdido', () => {
-    // Nadie lo ha tocado: no hay mano a la que cobrarle el fallo, así que el
-    // aviso va a las dos.
-    const left = vi.fn(() => Promise.resolve(true))
-    const right = vi.fn(() => Promise.resolve(true))
-    const session = fakeSession(
-      fakeInputSource([{ pulse: left }]),
-      fakeInputSource([{ pulse: right }]),
-    )
-
-    expect(pulseAllHaptics(session, MISS_PULSE)).toBe(2)
-    expect(left).toHaveBeenCalledWith(MISS_PULSE.intensity, MISS_PULSE.durationMs)
-    expect(right).toHaveBeenCalledWith(MISS_PULSE.intensity, MISS_PULSE.durationMs)
-  })
-
-  it('un mando roto no deja mudo al otro', () => {
-    // Con un solo mando encendido y el otro agotándose, el aviso tiene que
-    // llegar igual por el que funciona.
-    const good = vi.fn(() => Promise.resolve(true))
-    const session = fakeSession(
-      fakeInputSource([
-        {
-          pulse: () => {
-            throw new Error('el mando se está apagando')
-          },
-        },
-      ]),
-      fakeInputSource([{ pulse: good }]),
-    )
-
-    expect(pulseAllHaptics(session, MISS_PULSE)).toBe(1)
-    expect(good).toHaveBeenCalled()
-  })
-
-  it('las manos desnudas no cuentan como mando', () => {
-    // Jugando con las manos no hay motor que hacer vibrar: el fallo se ve y se
-    // oye, como en escritorio.
-    const hand = { handedness: 'left' } as unknown as XRInputSource
-
-    expect(pulseAllHaptics(fakeSession(hand), MISS_PULSE)).toBe(0)
-  })
-
-  it('sin sesión no ocurre nada', () => {
-    // Es el caso de escritorio, donde este mismo aviso corre en cada partida.
-    expect(pulseAllHaptics(null, MISS_PULSE)).toBe(0)
-    expect(pulseAllHaptics(undefined, MISS_PULSE)).toBe(0)
-    expect(pulseAllHaptics(fakeSession(), MISS_PULSE)).toBe(0)
   })
 })

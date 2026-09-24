@@ -1,23 +1,24 @@
+import { pulsosDe, type Mano, type Pulso, type Tacto } from './tactos'
+
 /**
  * Vibración de los mandos (haptics de WebXR).
  *
- * En el visor el acierto se cuenta de tres formas a la vez: el palo destella en
- * verde, suena un "ding" y **el mando da un golpe**. La vibración es la única de
- * las tres que llega aunque el jugador esté mirando otro palo y tenga el sonido
- * quitado, y además cae en la mano que ha cogido el palo, así que confirma
- * *quién* lo cogió y no solo *que* se cogió.
+ * **Lo que vibra es el contacto, y en la mano que toca** (`.claude/rules/xr.md`, «Cada
+ * contacto se siente en la mano que toca, y nada más»). En este juego hay un solo contacto:
+ * **atrapar un palo**. Se traduce a un `agarre` de las recetas comunes (`tactos.ts`), en la
+ * mano que lo ha cogido, y con algo más de fuerza si se ha cogido in extremis, a punto de
+ * tocar el suelo: ese es el que se celebra.
+ *
+ * Y lo que no es contacto no vibra. **El palo que se escapa ya no vibra**: antes daba un
+ * golpe largo en los dos mandos, pero ninguna mano lo ha tocado, y el sonido y el palo rojo
+ * en el suelo ya lo dicen. Lo que sí se conserva es el toque de un botón del menú
+ * (`PRESS_PULSE`): no es un contacto con nada del juego, es la confirmación de que el rayo
+ * ha pulsado, y va en la mano que apunta.
  *
  * No hay nada que descargar: el motor del mando lo expone el propio WebXR en
  * `XRInputSource.gamepad.hapticActuators`, un array de actuadores con `pulse()`.
  * Fuera de una sesión inmersiva —el ratón en escritorio, o una mano desnuda sin
  * mando— no hay actuador y el juego sigue igual, sin vibración.
- *
- * Como en `sound.ts`, la receta son datos puros (probables sin navegador) y las
- * dos funciones de abajo son lo único que habla con el hardware. Hay dos porque
- * hay dos formas de saber a qué mando le toca vibrar: el acierto y la pulsación
- * de un botón vienen de un evento de puntero y se cobran en la mano que lo
- * produjo (`pulseHaptics`), mientras que el palo que toca el suelo no lo
- * produce nadie y se anuncia en los dos (`pulseAllHaptics`).
  */
 
 /** Un golpe de vibración. */
@@ -29,55 +30,60 @@ export interface HapticPulse {
 }
 
 /**
- * El golpe del acierto: seco y corto.
- *
- * Corto a propósito. Una partida encadena hasta trece aciertos y el mando se
- * lleva pegado a la mano: alargarlo convertiría una racha en un zumbido
- * continuo, que deja de leerse como "otro palo" y empieza a molestar. Fuerte,
- * en cambio, sí: el golpe llega con el brazo en movimiento, que es cuando peor
- * se nota.
- */
-export const CATCH_PULSE: HapticPulse = { intensity: 0.7, durationMs: 45 }
-
-/**
- * El golpe del fallo: largo y blando, lo contrario del acierto.
- *
- * El sonido ya distingue acierto de fallo, así que la vibración tiene que
- * hacerlo también o dirá menos que él justo cuando el jugador la tiene por
- * única señal —mirando otro palo, o con el sonido quitado—. Se distinguen por
- * las dos cosas a la vez, como en el resto del juego: dura el triple y aprieta
- * la mitad, de modo que uno se siente como un golpe seco y el otro como un
- * lamento. Puede sonar en los dos mandos a la vez, y por eso conviene que sea
- * suave: no lo ha provocado ninguna de las dos manos.
- */
-export const MISS_PULSE: HapticPulse = { intensity: 0.35, durationMs: 140 }
-
-/**
  * El toque de un botón del menú inmersivo: lo justo para notar que se ha
  * activado.
  *
  * Los botones se pulsan **apuntando** con el rayo, así que la mano no toca
  * nada y no hay nada que confirme la pulsación salvo lo que cambie en la
  * escena, que a veces es un panel entero cambiando y a veces un palito que se
- * enciende al otro lado del menú. El más discreto de los tres golpes a
- * propósito: elegir trece palos son trece pulsaciones seguidas.
+ * enciende al otro lado del menú. Discreto a propósito: elegir trece palos son
+ * trece pulsaciones seguidas.
  */
 export const PRESS_PULSE: HapticPulse = { intensity: 0.25, durationMs: 18 }
+
+/**
+ * A partir de qué punto de la caída un palo se ha cogido **in extremis**: 0 recién soltado,
+ * 1 tocando el suelo (`stickFallProgress`). A CALIBRAR CON EL VISOR.
+ */
+export const IN_EXTREMIS = 0.8
+
+/**
+ * Cuánto más fuerte se siente el palo cogido in extremis que uno cualquiera. Multiplica la
+ * intensidad del `agarre` común (0,25 → 0,45): se tiene que notar distinto sin llegar a ser
+ * un golpe. A CALIBRAR CON EL VISOR.
+ */
+export const IN_EXTREMIS_BOOST = 1.8
+
+/** El contacto de atrapar un palo, dicho desde la mano que lo coge. */
+export function tactoDelAtrape(mano: Mano): Tacto {
+  return { tipo: 'agarre', mano }
+}
+
+/**
+ * Los pulsos de atrapar un palo con esa mano, cogido en ese punto de la caída.
+ *
+ * @param fallProgress cuánto había caído el palo al cogerlo, de 0 a 1.
+ */
+export function pulsosDelAtrape(mano: Mano, fallProgress: number): Pulso[] {
+  const pulsos = pulsosDe(tactoDelAtrape(mano))
+  if (!(fallProgress >= IN_EXTREMIS)) return pulsos
+  return pulsos.map((p) => ({ ...p, intensidad: Math.min(1, p.intensidad * IN_EXTREMIS_BOOST) }))
+}
+
+/**
+ * La mano que ha producido un evento de puntero, si es de un mando o de una mano de XR.
+ *
+ * El ratón no tiene mano, y una fuente sin lado (`'none'`) tampoco: a ninguna de las dos se
+ * le puede cobrar un contacto.
+ */
+export function manoDelEvento(event: unknown): Mano | null {
+  const handedness = inputSourceOf(event)?.handedness
+  return handedness === 'left' || handedness === 'right' ? handedness : null
+}
 
 /** Lo único que se le pide al mando: dar un golpe. */
 interface HapticActuator {
   pulse(value: number, duration: number): Promise<boolean>
-}
-
-/**
- * Lo único que se le pide a la sesión: quién tiene algo en la mano ahora mismo.
- *
- * `XRSession.inputSources` está vivo —los mandos entran y salen de la lista al
- * encenderse o dormirse—, así que se lee en el momento de vibrar y no se
- * guarda.
- */
-export interface HapticSession {
-  inputSources: Iterable<XRInputSource>
 }
 
 /**
@@ -152,27 +158,51 @@ export function pulseHaptics(event: unknown, pulse: HapticPulse): boolean {
   return fire(actuator, pulse)
 }
 
-/**
- * Hace vibrar todos los mandos de la sesión.
- *
- * Para lo que no ha provocado ninguna mano: el palo que se escapa toca el suelo
- * solo, sin evento de puntero del que sacar un mando, así que el aviso va a las
- * dos —además, no saber en cuál se habría notado es parte de lo que significa—.
- * Un mando que se niegue a vibrar no impide que el otro lo haga.
- *
- * @returns cuántos mandos recibieron el golpe. Fuera de sesión, con las manos
- *   desnudas o con mandos sin motor devuelve 0 y no ocurre nada.
- */
-export function pulseAllHaptics(
-  session: HapticSession | null | undefined,
-  pulse: HapticPulse,
-): number {
-  if (session == null) return 0
+/** Cómo se programa un pulso que sale más tarde; `setTimeout` salvo en los tests. */
+export type Programar = (hacer: () => void, ms: number) => () => void
 
-  let pulsed = 0
-  for (const inputSource of session.inputSources) {
-    const actuator = actuatorOf(inputSource)
-    if (actuator != null && fire(actuator, pulse)) pulsed++
+const conSetTimeout: Programar = (hacer, ms) => {
+  const id = setTimeout(hacer, ms)
+  return () => clearTimeout(id)
+}
+
+/**
+ * Reproduce unos pulsos en los mandos de su mano.
+ *
+ * Los que llevan `retardo` se programan; el resto sale en el acto. Devuelve cómo cancelar
+ * los que quedan pendientes, para llamarlo al desmontar: un pulso que saliera después
+ * vibraría por algo que ya no está.
+ *
+ * @param fuentes los mandos entre los que buscar el de cada mano: los de la sesión, o solo
+ *   el que ha producido el evento.
+ */
+export function reproducirPulsos(
+  fuentes: Iterable<XRInputSource | undefined>,
+  pulsos: readonly Pulso[],
+  programar: Programar = conSetTimeout,
+): () => void {
+  const lista = [...fuentes]
+  const pendientes: (() => void)[] = []
+  for (const pulso of pulsos) {
+    const actuator = actuatorOf(lista.find((fuente) => fuente?.handedness === pulso.mano))
+    if (actuator == null) continue
+    const golpe = { intensity: pulso.intensidad, durationMs: pulso.ms }
+    if (pulso.retardo > 0) pendientes.push(programar(() => fire(actuator, golpe), pulso.retardo))
+    else fire(actuator, golpe)
   }
-  return pulsed
+  return () => {
+    for (const cancelar of pendientes) cancelar()
+  }
+}
+
+/**
+ * Hace sentir en su mano que ha atrapado un palo.
+ *
+ * @returns cómo cancelar lo que quede pendiente. Con el ratón, la mano desnuda o un mando
+ *   sin motor no ocurre nada.
+ */
+export function pulsarAtrape(event: unknown, fallProgress: number): () => void {
+  const mano = manoDelEvento(event)
+  if (mano == null) return () => {}
+  return reproducirPulsos([inputSourceOf(event)], pulsosDelAtrape(mano, fallProgress))
 }

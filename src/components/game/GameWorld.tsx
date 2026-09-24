@@ -19,7 +19,6 @@ import { DECOR_POINTER_EVENTS, MENU_POINTER_ORDER } from '../../lib/punteros'
 import { sceneryOf } from '../../lib/sceneryPreference'
 import { XRCountdown } from '../xr/XRCountdown'
 import { XRGazeAnchor } from '../xr/XRGazeAnchor'
-import { XRHaptics } from '../xr/XRHaptics'
 import { XRHud, XRQuitButton, XRQuitConfirm } from '../xr/XRHud'
 import { XRMenu } from '../xr/XRMenu'
 import { XRPlayerHeight } from '../xr/XRPlayerHeight'
@@ -220,8 +219,6 @@ export function GameWorld({ hasDomUi = false, anchor }: GameWorldProps) {
       <XRSessionController />
       {/* Pone el aro al alcance de quien lleva el visor. */}
       <XRPlayerHeight />
-      {/* Avisa por los mandos del palo que se ha escapado. */}
-      <XRHaptics />
       <GameSound />
 
       {/* La interfaz inmersiva NO cuelga del origen del jugador, sino de

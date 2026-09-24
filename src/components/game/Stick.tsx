@@ -14,7 +14,7 @@ import {
   STICK_RADIUS,
   stickFallProgress,
 } from '../../lib/gameConfig'
-import { CATCH_PULSE, pulseHaptics } from '../../lib/haptics'
+import { pulsarAtrape } from '../../lib/haptics'
 import { publishStick, stickProbeRequested } from '../../lib/sceneProbe'
 import { stickPointerEvents } from '../../lib/punteros'
 import { SWING_RELEASE_DECAY, hangingSwing } from '../../lib/stickSwing'
@@ -158,6 +158,11 @@ export function Stick({
   // quedaría en 'pointer'.
   useEffect(() => releaseCursor, [])
 
+  // Lo que quede por vibrar del último atrape se cancela al desmontar el palo: un pulso
+  // programado que saliera después vibraría por algo que ya no está.
+  const cancelarPulsos = useRef<() => void>(() => {})
+  useEffect(() => () => cancelarPulsos.current(), [])
+
   // Y deja de anunciarse al irse: una clave que se queda puesta le dice a quien
   // mire desde fuera que sigue habiendo un palo ahí, quieto para siempre.
   useEffect(() => () => publishStick(probeId, null), [probeId])
@@ -208,11 +213,13 @@ export function Stick({
     // la posición viva y no del estado, que aún no se ha vuelto a renderizar, y
     // se mide contra su propio anclaje: el aro se acomoda a quien juega, así que
     // no todos los palos salen de la misma altura.
-    onCatch(stickFallProgress(groupRef.current?.position.y ?? anchorY, anchorY))
-    // El golpe en el mando va después de contar el palo: la vibración es el
+    const fallProgress = stickFallProgress(groupRef.current?.position.y ?? anchorY, anchorY)
+    onCatch(fallProgress)
+    // El toque en el mando va después de contar el palo: la vibración es el
     // adorno y la puntuación es el juego, así que un mando que se porte mal no
-    // puede llevarse por delante el acierto.
-    pulseHaptics(event, CATCH_PULSE)
+    // puede llevarse por delante el acierto. Vibra la mano que lo ha cogido, y
+    // más si ha sido in extremis (`lib/haptics.ts`).
+    cancelarPulsos.current = pulsarAtrape(event, fallProgress)
   }
 
   useFrame((_, rawDelta) => {
