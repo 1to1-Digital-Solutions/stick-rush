@@ -49,3 +49,5 @@ next-env.d.ts
 
 # bundle generado del emulador WebXR para los tests
 /e2e/support/xr-emulator.bundle.js
+# y el del anfitrión de prueba
+/e2e/support/host.bundle.js

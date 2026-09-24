@@ -23,7 +23,7 @@ const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const source = join(packageRoot, 'public')
 
 /** Lo que necesita el juego. El resto de `public/` es de su propia web. */
-const ASSETS = ['audio', 'hdri', 'textures', 'webxr-profiles', 'CREDITS.md']
+const ASSETS = ['audio', 'hdri', 'manos', 'textures', 'webxr-profiles', 'CREDITS.md']
 
 async function main() {
   const target = process.argv[2]

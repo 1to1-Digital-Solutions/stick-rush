@@ -17,6 +17,7 @@ import { entryPlacement, type HostAnchor } from '../../lib/hostAnchor'
 import { useGame, type SceneryMode } from '../../lib/gameStore'
 import { DECOR_POINTER_EVENTS, MENU_POINTER_ORDER } from '../../lib/punteros'
 import { sceneryOf } from '../../lib/sceneryPreference'
+import { ManosDelJugador } from '../xr/ManosDelJugador'
 import { XRCountdown } from '../xr/XRCountdown'
 import { XRGazeAnchor } from '../xr/XRGazeAnchor'
 import { XRHud, XRQuitButton, XRQuitConfirm } from '../xr/XRHud'
@@ -220,6 +221,9 @@ export function GameWorld({ hasDomUi = false, anchor }: GameWorldProps) {
       {/* Pone el aro al alcance de quien lleva el visor. */}
       <XRPlayerHeight />
       <GameSound />
+      {/* Las manos: el guante con mandos, la mano articulada sin ellos. Van aquí y no en el
+          store porque el store es de quien monta, y el del salón no dibuja manos. */}
+      <ManosDelJugador />
 
       {/* La interfaz inmersiva NO cuelga del origen del jugador, sino de
           `<XRGazeAnchor always={!hasDomUi}>`, que la planta delante de su cara: el -Z del origen lo

@@ -1,0 +1,110 @@
+import path from 'node:path'
+import { expect, type Page } from '@playwright/test'
+
+import { HOST_BUNDLE } from './globalSetup'
+
+/** Donde el salón sirve los estáticos de este juego. */
+export const ASSETS_BASE = '/juegos/stick-rush/'
+/** Lo que el anfitrión NO sirve desde la raíz: en el salón, ahí no hay nada de este juego. */
+const ASSET_ROOTS = ['/webxr-profiles/']
+const PAGE_PATH = '/anfitrion-de-prueba'
+const BUNDLE_PATH = '/anfitrion-de-prueba.js'
+const PUBLIC_DIR = path.join(process.cwd(), 'public')
+
+const HTML = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Anfitrión de prueba</title>
+    <style>
+      html, body, #juego { height: 100%; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="juego" data-assets-base="${ASSETS_BASE}"></div>
+    <script src="${BUNDLE_PATH}"></script>
+  </body>
+</html>
+`
+
+export interface TestHost {
+  /** Las rutas que la página ha pedido, en orden. */
+  requested: string[]
+}
+
+/**
+ * Sirve una página que monta la escena como la montaría el salón: bajo su prefijo, con la misma
+ * política de seguridad que la web del juego y con la raíz de estáticos respondiendo 404.
+ *
+ * **Lo del 404 no es adorno.** Dentro del salón, `/webxr-profiles/` de la raíz es del hub, no de
+ * este juego: lo suyo cuelga de `/juegos/stick-rush/`. Algo que lo pidiera de la raíz
+ * funcionaría en la web propia y faltaría justo donde se juega.
+ */
+export async function openHost(page: Page): Promise<TestHost> {
+  const csp = (await page.request.get('/')).headers()['content-security-policy']
+  expect(csp, 'el servidor no devolvió política de seguridad').toBeTruthy()
+
+  const requested: string[] = []
+  await page.route('**/*', async (route) => {
+    const { pathname } = new URL(route.request().url())
+    requested.push(pathname)
+    if (pathname === PAGE_PATH) {
+      return route.fulfill({
+        contentType: 'text/html; charset=utf-8',
+        headers: { 'content-security-policy': csp },
+        body: HTML,
+      })
+    }
+    if (pathname === BUNDLE_PATH) {
+      return route.fulfill({ contentType: 'text/javascript; charset=utf-8', path: HOST_BUNDLE })
+    }
+    if (pathname.startsWith(ASSETS_BASE)) {
+      return route.fulfill({ path: path.join(PUBLIC_DIR, pathname.slice(ASSETS_BASE.length)) })
+    }
+    if (ASSET_ROOTS.some((root) => pathname.startsWith(root))) {
+      return route.fulfill({ status: 404, body: '' })
+    }
+    return route.continue()
+  })
+
+  await page.goto(PAGE_PATH)
+  const canvas = page.locator('canvas')
+  await expect(canvas).toBeVisible()
+  await expect
+    .poll(async () => (await canvas.boundingBox())?.width ?? 0, {
+      timeout: 30_000,
+      message: 'la escena no llegó a pintarse dentro del anfitrión',
+    })
+    .toBeGreaterThan(0)
+  return { requested }
+}
+
+/**
+ * Entra en la sesión inmersiva desde el anfitrión, que es como entra el salón: quien es dueño
+ * del Canvas es dueño de la sesión.
+ *
+ * Se reintenta porque el store no acepta la sesión hasta que el Canvas lo ha conectado con
+ * three, un poco después del primer fotograma.
+ */
+export async function enterHostVR(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() =>
+          window.__stickRushHost.enterVR().then(
+            () => true,
+            () => false,
+          ),
+        ),
+      { message: 'el anfitrión no pudo abrir la sesión inmersiva' },
+    )
+    .toBe(true)
+  await expect
+    .poll(() => page.evaluate(() => window.__xrTest.hasSession()))
+    .toBe(true)
+}
+
+/** Un objeto de la escena, por nombre, visto desde fuera del Canvas. */
+export function buscarEnLaEscena(page: Page, nombre: string) {
+  return page.evaluate((n) => window.__stickRushHost.buscar(n), nombre)
+}

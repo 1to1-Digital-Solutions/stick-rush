@@ -46,6 +46,20 @@ const LIST = 'profilesList.json'
  */
 const MODELOS = ['meta-quest-touch-plus', 'oculus-touch-v3']
 
+/**
+ * La mano articulada que pinta la escena cuando se juega con las manos
+ * desnudas (`ManosDelJugador.tsx`, ruta en `lib/manos.ts`): 190 KB, sin
+ * texturas, servida con el juego porque la CSP bloquea el CDN.
+ *
+ * **Va en `public/manos/`, fuera de `webxr-profiles/`**, por dos motivos: el
+ * salón de xrcade **borra** los `webxr-profiles/` de cada juego al instalarlo
+ * (sirve los suyos, `install-game-assets.ts`), así que ahí dentro la mano no
+ * llegaría a donde más se juega; y todo `.glb` de la raíz de los perfiles se
+ * toma por un mando con modelo (`mandoDeVerdad.test.ts`).
+ */
+const MANO = 'generic-hand'
+const MANOS_DIR = join(root, 'public/manos')
+
 /** Las dos manos de cada modelo, tal y como se llaman los ficheros del paquete. */
 const MANOS = ['left.glb', 'right.glb']
 
@@ -84,6 +98,13 @@ async function main() {
   console.log(
     `${copied} perfiles de mando y ${modelos} modelos copiados a public/webxr-profiles/`,
   )
+
+  await rm(MANOS_DIR, { recursive: true, force: true })
+  await mkdir(join(MANOS_DIR, MANO), { recursive: true })
+  for (const mano of MANOS) {
+    await copyFile(join(source, MANO, mano), join(MANOS_DIR, MANO, mano))
+  }
+  console.log(`Mano articulada (${MANO}) copiada a public/manos/`)
 }
 
 await main()

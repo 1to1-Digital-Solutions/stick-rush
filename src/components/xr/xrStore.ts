@@ -48,9 +48,11 @@ function profilesBasePath(): string {
  *   punteros. El modelo real es un `.glb` del mismo CDN, y auto-hospedarlo
  *   costaría los 100 MB del paquete de assets para algo que se ve de refilón.
  *
- * Las manos desnudas van sin modelo: en AR se ven las de verdad por
- * passthrough, y en VR el cursor del agarre basta para situarlas. Su modelo sí
- * es una descarga del CDN y no hay equivalente local ligero.
+ * - **Las manos NO las dibuja el store** (`hand.model: false`), ni el guante con
+ *   mandos ni la mano articulada sin ellos: las monta la escena
+ *   (`ManosDelJugador`). Lo que cuelga de aquí solo existe en la web propia, y
+ *   el juego se juega sobre todo dentro del salón de xrcade, cuyo store no
+ *   dibuja manos. Encenderlas también aquí las pintaría dos veces.
  */
 let store: ReturnType<typeof createXRStore> | null = null
 
@@ -59,6 +61,7 @@ export function getXrStore(): ReturnType<typeof createXRStore> {
     baseAssetPath: profilesBasePath(),
     controller: StickRushController,
     hand: {
+      // La dibuja la escena (`ManosDelJugador`), que es lo que sale también en el salón.
       model: false,
       grabPointer: { radius: HAND_GRAB_RADIUS, cursorModel: true },
       rayPointer: { rayModel: true, cursorModel: true },

@@ -65,6 +65,12 @@ nueva. Conviene dejarlo en un script de `package.json` para que no se olvide.
 si no llegan, se traga el error y **no registra el mando**: en el visor eso es quedarse sin mandos
 y sin poder pulsar nada. Por eso los sirve el juego.
 
+**Las manos las dibuja el juego, no el anfitrión.** El guante sobre el mando y la mano articulada
+de las manos desnudas los monta la escena, así que salen aunque el store del anfitrión no dibuje
+manos (el del salón no las dibuja). La mano articulada es `manos/generic-hand/{left,right}.glb`,
+que va **fuera** de `webxr-profiles/`: un anfitrión que sirva sus propios perfiles y borre los del
+juego no se la lleva por delante.
+
 ## 4. Montar el juego
 
 Hay **dos formas**, y la diferencia es de quién es la sesión inmersiva.

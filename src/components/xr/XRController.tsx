@@ -8,6 +8,7 @@ import {
   useXRInputSourceStateContext,
 } from '@react-three/xr'
 import { useGame } from '../../lib/gameStore'
+import { llevaLaAyuda } from '../../lib/manos'
 import { ControllerModel } from './XRControllerModel'
 
 /**
@@ -21,6 +22,10 @@ import { ControllerModel } from './XRControllerModel'
  *
  * El dibujo del mando vive en `XRControllerModel`, porque el tutorial enseña
  * ese mismo mando antes de que el jugador tenga nada que agarrar.
+ *
+ * **La mano no va aquí.** El guante que lo sostiene lo monta la escena
+ * (`ManosDelJugador`), porque este componente solo existe en la web propia: dentro
+ * del salón de xrcade el store es del salón y esto no se monta. Aquí iría duplicado.
  */
 export function StickRushController() {
   const state = useXRInputSourceStateContext('controller')
@@ -35,8 +40,7 @@ export function StickRushController() {
   // cuando conviene enseñar el control, antes de que caiga nada— y hasta que
   // atrape el primer palo. En el menú estorbaría, porque allí se usa el rayo, y
   // durante el tutorial la lleva el mando de la demostración.
-  const highlight =
-    (gameState === 'countdown' || gameState === 'playing') && score === 0
+  const highlight = llevaLaAyuda(gameState, score)
 
   return (
     <>
