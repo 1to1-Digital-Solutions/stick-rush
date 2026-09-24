@@ -8,7 +8,68 @@
 
 ---
 
-## 📍 v0.7.2 (2026-09-07): los tests dicen ahora cuánto código ejecutan
+## 📍 Tanda del visor del 24/09 (en develop, sin versión; la última es v0.21.0)
+
+«Está perfecto», con cuatro retoques. Hecho:
+
+- **Un minipaso atrás**: `PLAYER_OFFSET_Z` −0,02 → **+0,08** (`lib/gameConfig.ts`). El signo
+  importa: negativo es *hacia* el arco (a −0,18 se arrancaba encima de la máquina), así que el
+  paso atrás es positivo. El palo del frente queda a 65 cm en horizontal (brazo: 75).
+- **Máquina más alta**: `HOOP_RISE_ABOVE_EYES` 0,35 → **0,5** (`lib/hoopHeight.ts`), ya
+  desacoplado de `MACHINE_HEIGHT` (escritorio sigue en 1,95). La velocidad se escala con el
+  recorrido, así que la dificultad no cambia. El invariante de alcance pasa a ser «cada palo
+  **cruza** el brazo al caer, ≥ 40 cm de franja» (`hoopHeight.test.ts`), no «colgado al alcance».
+- **Manos en VR, montadas por la escena** (`components/xr/ManosDelJugador.tsx`, lógica en
+  `lib/manos.ts`), no por el `XRStore`: lo del store solo existe en la web propia y en el salón
+  el store es del salón, que no dibuja manos. Así salen igual en los dos sitios. Se colocan como
+  `MandoDeVerdad` (pose de WebXR con los padres deshechos, `colocarEnElOrigen`).
+  - Con mandos, un **guante** low-poly procedural en el `grip-space` (`Guante.tsx`, lógica en
+    `lib/guante.ts`): 16 cajas en una `InstancedMesh`, cierra el puño con el lateral y el índice
+    con el gatillo; las yemas llevan la ayuda del agarre. Ya **no** va en `StickRushController`
+    (que sigue dibujando el mando y los punteros solo en la web propia).
+  - Sin mandos, la **mano articulada** `generic-hand` hueso a hueso (`fillPoses`), cargada sin
+    suspender desde `public/manos/generic-hand/` (190 KB; `npm run sync:xr-profiles`). Va **fuera
+    de `webxr-profiles/`** porque el salón borra esa carpeta de cada juego al instalarlo
+    (`xrcade/scripts/install-game-assets.ts`); `copy-assets.mjs` copia ya `manos/`. El store
+    propio queda con `hand.model: false` para no pintarla dos veces.
+  - **No se tocó xrcade** (opción B): encender `hand.model` en el salón cambiaba los dieciséis
+    juegos, todos con `hand.model: false` a propósito, y cinco dibujan su herramienta en la mano
+    desnuda (arco, pistola, pala, dos mazos).
+  - e2e nuevo con **anfitrión de prueba** (`e2e/support/host*.ts(x)`, `globalSetup.ts` común con
+    ocho juegos): escena en Canvas ajeno, store sin mando ni mano como el del salón. Comprueba
+    guante en la mano (±12 cm), manos desnudas visibles, `.glb` pedido bajo el prefijo del juego.
+- **Columna de ajustes** (regla común): el menú del visor pasa de estar de frente a 95 cm a
+  **1,5 m y 55° a la izquierda**, a la altura de los ojos, de cara y escalado ×1,35
+  (`XR_COLUMN`, `XR_MENU_POSE`, `onMenu` en `lib/xrLayout.ts`). Sin visor (salón en escritorio)
+  sigue delante (`XR_MENU_DESK_POSE`). La zona muerta del anclaje se alarga hacia la izquierda lo
+  que está apartada la columna (`leftDeadzone`, `lib/xrAnchor.ts`): si no, mirarla la hacía huir.
+  El aviso de dejar la partida se queda delante.
+- **Hápticos por contacto** (`lib/tactos.ts` común + `lib/haptics.ts`): atrapar = `agarre` en la
+  mano que coge, ×1,8 si es in extremis (≥ 80 % de la caída). El palo que se escapa ya no vibra
+  (`XRHaptics` borrado). Se conserva el toque del botón del menú (no es un contacto).
+- **Mando junto al gesto**: no aplica tal cual (stick-rush no tiene `Ayudas.tsx`); la ayuda del
+  agarre va en la mano dibujada.
+
+**Pendiente de visor:**
+
+| Qué mirar con las gafas | Dónde se toca |
+|---|---|
+| ¿El paso atrás es el justo? ¿Se llega al palo del frente? | `PLAYER_OFFSET_Z` (`gameConfig.ts`) |
+| ¿Máquina a buena altura? ¿Cuelgan por encima de la cara? | `HOOP_RISE_ABOVE_EYES` (`hoopHeight.ts`) |
+| Columna: distancia, ángulo, tamaño; ¿estorban los palos que cuelgan delante de ella? | `XR_COLUMN`, `XR_MENU_SCALE` (`xrLayout.ts`) |
+| ¿Se lee el guante como mano? ¿Se ve cerrarse? Posición sobre el mando real. **En el salón va sin mando dibujado debajo** (el del juego es del store propio): ¿se entiende así? | `PALMA`, `NUDILLOS`, `PULGAR` (`Guante.tsx`); `REPOSO`, `VELOCIDAD_DE_CIERRE` (`guante.ts`) |
+| Manos desnudas, en la web y en el salón: ¿el modelo encaja con la mano real? | `ManosDelJugador.tsx` (`ManoDesnuda`) |
+| ¿Se nota el atrape? ¿Y el in extremis distinto? | `IN_EXTREMIS`, `IN_EXTREMIS_BOOST` (`haptics.ts`); recetas en `tactos.ts` (común) |
+
+**En el salón, con manos desnudas no se atrapa**: el salón tiene `hand.grabPointer: false` a
+propósito, y el agarre de stick-rush es ese puntero. Se ve la mano pero no coge. Es decisión
+del salón (no se tocó); si se quiere, es activarlo ahí mirando los otros dieciséis.
+
+Ojo con la columna: los palos cuelgan del aro entre quien juega y el panel (a 55° hay 3–4 con
+13 palos), y su mitad de arriba se ve entre barrotes. Ya pasaba de frente. Si molesta, la regla
+deja ir más allá, nunca más cerca.
+
+## v0.7.2 (2026-09-07): los tests dicen ahora cuánto código ejecutan
 
 - **La suite mide su propia cobertura** (`npm run coverage`, y un paso más en CI). Se mide
   **el dominio** (`src/lib`), que es lo único que se puede probar sin un navegador con WebGL;
@@ -21,7 +82,7 @@
   del visor y el estado de la partida con relojes falsos.
 - El informe HTML queda en `coverage/`, que no se commitea.
 
-## 📍 DÓNDE ESTAMOS (2026-09-06)
+## Dónde estábamos el 2026-09-06 (superado: hoy va por v0.21.0)
 
 **El juego está publicado y montado en el salón de xrcade.** Los tags `v0.2.0` a `v0.5.0`
 existen y están en `origin`; xrcade tiene que pasar a **`v0.6.0`**.
