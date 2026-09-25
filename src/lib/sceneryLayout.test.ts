@@ -7,7 +7,6 @@ import {
   GARLAND_RING_RADIUS,
   SCENERY_CLEARANCE,
   STALL_RING_RADIUS,
-  STALL_SIZE,
   WHEEL_CABIN_DROP,
   WHEEL_CABIN_HEIGHT,
   WHEEL_CENTER,
@@ -17,6 +16,7 @@ import {
   ringSlots,
   type Vec3,
 } from './sceneryLayout'
+import { ALTURAS } from './feriaKit'
 
 /** Hacia dónde encara una pieza girada `rotationY`: su +Z local, en el mundo. */
 function facingDirection(rotationY: number): [number, number] {
@@ -76,19 +76,11 @@ describe('facingRotationY', () => {
 
 describe('recinto', () => {
   it('deja libre el espacio de juego alrededor del jugador', () => {
-    // Lo que más se acerca al centro no es la esquina de la caseta sino la
-    // punta del toldo, que vuela un buen trozo por delante de ella.
-    const stallReach = Math.hypot(
-      STALL_SIZE.width / 2,
-      STALL_SIZE.depth / 2 + STALL_SIZE.awningReach,
-    )
-    expect(STALL_RING_RADIUS - stallReach).toBeGreaterThanOrEqual(
-      SCENERY_CLEARANCE,
-    )
+    // Los puestos se miden con su pieza del kit, en `feriaKit.test.ts`.
     expect(GARLAND_RING_RADIUS).toBeGreaterThanOrEqual(SCENERY_CLEARANCE)
   })
 
-  it('no mete las casetas dentro de la noria', () => {
+  it('no mete los puestos dentro de la noria', () => {
     const [x, , z] = WHEEL_CENTER
     expect(Math.hypot(x, z) - WHEEL_RADIUS).toBeGreaterThan(STALL_RING_RADIUS)
   })
@@ -104,11 +96,11 @@ describe('recinto', () => {
     expect(cabinFloor).toBeGreaterThan(GROUND_Y)
   })
 
-  it('asoma la noria por encima de las casetas', () => {
-    expect(WHEEL_CENTER[1] + WHEEL_RADIUS).toBeGreaterThan(STALL_SIZE.height * 2)
+  it('asoma la noria por encima de los puestos', () => {
+    expect(WHEEL_CENTER[1] + WHEEL_RADIUS).toBeGreaterThan(ALTURAS.puesto * 2)
   })
 
-  it('cuelga las guirnaldas por dentro del anillo de casetas', () => {
+  it('cuelga las guirnaldas por dentro del anillo de puestos', () => {
     expect(GARLAND_RING_RADIUS).toBeLessThan(STALL_RING_RADIUS)
   })
 })

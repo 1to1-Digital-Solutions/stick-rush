@@ -109,7 +109,7 @@ not let it — because inside a session there is no system toast to tell you.
 - [Vitest](https://vitest.dev) (unit) and [Playwright](https://playwright.dev) (end-to-end)
 
 The game **depends on no external service**: no environment variables, no database,
-no third-party requests. Assets (HDRI and textures, all CC0) are served from
+no third-party requests. Assets (HDRI, textures and the fairground models, all CC0) are served from
 `public/`; see [`public/CREDITS.md`](public/CREDITS.md). So are the WebXR controller
 profiles, which used to be fetched from a CDN and are now part of the site — see
 [XR mode](#xr-mode).
@@ -277,6 +277,7 @@ src/
     xrAnchor.ts         Angle maths behind the gaze anchor: deadzone and follow
     stickLayout.ts      Stick layout, shuffled fall order and score token states
     sceneryLayout.ts    Fairground layout: stall ring, light garlands, ferris wheel
+    feriaKit.ts         Where the xrcade kit pieces go: stalls, lamp posts, banners
     shareResult.ts      Result text (pure) and the share sheet / clipboard fallback
     stickSwing.ts       Idle sway of the hanging sticks
     sound.ts            Synthesised game sounds (Web Audio, no files)
@@ -286,6 +287,7 @@ e2e/                    Playwright tests, and the WebXR emulator they install
 docs/                   README screenshots and the mounting contract
 public/
   hdri/, textures/      CC0 assets served locally (see public/CREDITS.md)
+  models/kit/           Stall, lamp post and banner from the shared xrcade kit (CC0)
   webxr-profiles/       Controller profiles, served by the game instead of a CDN
 scripts/                The assets copier (stick-rush-assets) and the profile sync
 godot/                  Desktop Godot port (frozen, see godot/README.md)
@@ -336,7 +338,7 @@ press. They are served by the game itself instead (`public/webxr-profiles/`): th
 `profile.json` files only — 528 KB — and none of the `.glb` models, which are the
 100 MB of that package and are exactly what is drawn by hand above. Whoever mounts
 the game elsewhere has to serve them too, which is why `npx stick-rush-assets` copies
-them along with the HDRI and the textures.
+them along with the HDRI, the textures and the fairground models.
 
 The `<Canvas>` with `<XR>` is **always mounted**: the desktop menu and HUD are DOM
 overlays on top of the 3D scene. That way, pressing "Entrar en el visor" starts the

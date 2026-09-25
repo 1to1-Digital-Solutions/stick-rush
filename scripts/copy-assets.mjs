@@ -2,8 +2,8 @@
 /**
  * Copia los ficheros estáticos del juego a donde los sirva quien lo monta.
  *
- * El HDRI, las texturas de la madera y los perfiles de mando no viajan en el
- * código: son 3 MB que el navegador pide por HTTP mientras juega. Una
+ * El HDRI, las texturas de la madera, los modelos del recinto y los perfiles de
+ * mando no viajan en el código: son 3 MB que el navegador pide por HTTP mientras juega. Una
  * aplicación que monte Stick Rush tiene que servirlos desde su propio sitio y
  * decirle dónde con la opción `assetsBase` (ver `docs/montar-el-juego.md`).
  *
@@ -23,7 +23,7 @@ const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const source = join(packageRoot, 'public')
 
 /** Lo que necesita el juego. El resto de `public/` es de su propia web. */
-const ASSETS = ['audio', 'hdri', 'manos', 'textures', 'webxr-profiles', 'CREDITS.md']
+const ASSETS = ['audio', 'hdri', 'manos', 'models', 'textures', 'webxr-profiles', 'CREDITS.md']
 
 async function main() {
   const target = process.argv[2]

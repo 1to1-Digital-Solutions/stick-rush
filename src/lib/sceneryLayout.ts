@@ -6,7 +6,7 @@ import { GROUND_Y } from './gameConfig'
  * Hasta aquí el decorado era solo el HDRI: una foto de una plaza de noche
  * envolviendo la escena. De lejos funciona, pero en el visor se delata en
  * cuanto el jugador mueve la cabeza —una foto no tiene paralaje— y la máquina
- * queda plantada en mitad de la nada. Esto añade volumen alrededor: casetas,
+ * queda plantada en mitad de la nada. Esto añade volumen alrededor: puestos,
  * guirnaldas de bombillas y una noria al fondo, con la foto detrás haciendo de
  * cielo y de luz.
  *
@@ -25,24 +25,15 @@ export type Vec3 = [number, number, number]
  */
 export const SCENERY_CLEARANCE = 3
 
-/** Casetas del recinto, repartidas en círculo mirando al jugador. */
+/**
+ * Puestos del recinto, repartidos en círculo mirando al jugador. Cuánto miden
+ * lo dice su pieza del kit (`feriaKit.ts`).
+ */
 export const STALL_COUNT = 6
 export const STALL_RING_RADIUS = 6.4
-/**
- * Ancho, alto y fondo de una caseta, en metros, más el vuelo del toldo por
- * delante de ella. El toldo va aquí y no en el componente porque es la pieza de
- * la caseta que más se acerca al jugador, y por tanto la que manda en el hueco
- * libre que se le deja.
- */
-export const STALL_SIZE = {
-  width: 2.8,
-  height: 2.35,
-  depth: 1.6,
-  awningReach: 0.9,
-} as const
 
 /**
- * Guirnaldas de bombillas: postes en círculo, más cerca que las casetas, con un
+ * Guirnaldas de bombillas: farolas en círculo, más cerca que los puestos, con un
  * tramo colgando entre cada dos. Son lo que convierte un descampado con puestos
  * en un recinto: cierran el espacio por arriba sin tapar el cielo.
  */

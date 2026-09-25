@@ -250,6 +250,19 @@ describe('el paquete que se publica', () => {
     expect(assets.filter((asset) => !packed.includes(asset))).toEqual([])
   })
 
+  it('y ese ejecutable copia todo lo que hay en `public/`', async () => {
+    // La lista de `copy-assets.mjs` se escribe a mano: un directorio nuevo en `public/` que no
+    // se añada ahí funciona en la web del juego y falta en el salón, donde el juego pide un
+    // fichero que nadie copió. Se lee del fuente porque importarlo lo ejecutaría.
+    const fuente = await readFile(join(projectRoot, 'scripts/copy-assets.mjs'), 'utf8')
+    const lista = /const ASSETS = \[([^\]]*)\]/.exec(fuente)
+    expect(lista, 'no encuentro la lista ASSETS en copy-assets.mjs').not.toBeNull()
+    const copiados = [...lista![1].matchAll(/'([^']+)'/g)].map(([, nombre]) => nombre)
+
+    const enPublic = await readdir(join(projectRoot, 'public'))
+    expect(copiados.sort()).toEqual(enPublic.filter((nombre) => !nombre.startsWith('.')).sort())
+  })
+
   it('no lleva los tests, que no le sirven a quien lo monta', () => {
     expect(packed.filter((file) => /\.test\.tsx?$/.test(file))).toEqual([])
   })

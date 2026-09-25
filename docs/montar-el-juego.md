@@ -50,9 +50,9 @@ const nextConfig: NextConfig = {
 
 ## 3. Copiar los ficheros estáticos
 
-El HDRI del escenario, las texturas de la madera y los perfiles de mando de WebXR son 3 MB que el
-navegador pide por HTTP durante la partida: no viajan en el código. Hay que servirlos desde la
-aplicación anfitriona.
+El HDRI del escenario, las texturas de la madera, los modelos del recinto (`models/`) y los
+perfiles de mando de WebXR son 3 MB que el navegador pide por HTTP durante la partida: no viajan
+en el código. Hay que servirlos desde la aplicación anfitriona.
 
 ```bash
 npx stick-rush-assets public/juegos/stick-rush

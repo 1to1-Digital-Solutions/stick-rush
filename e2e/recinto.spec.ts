@@ -3,6 +3,7 @@ import { join } from 'node:path'
 
 import { expect, test, type Page } from '@playwright/test'
 import { openGame, startGame } from './helpers'
+import { PIEZAS as PIEZAS_DEL_KIT } from '../src/lib/feriaKit'
 import { MAX_STICKS } from '../src/lib/gameConfig'
 
 /**
@@ -21,8 +22,8 @@ import { MAX_STICKS } from '../src/lib/gameConfig'
 
 /**
  * Instancias que tiene que dibujar cada familia de piezas del recinto —tablas,
- * postes y bombillas—, tal y como las suma `FAIR_PIECES` en `Fairground.tsx`:
- * 285 piezas entre las tres. Y las 42 figuras del público (`CROWD_COUNT` en
+ * postes y bombillas, que son la noria y las guirnaldas—, tal y como las suma
+ * `FAIR_PIECES` en `Fairground.tsx`: 119 piezas entre las tres. Y las 42 figuras del público (`CROWD_COUNT` en
  * `lib/crowdLayout.ts`), que son una familia aparte.
  *
  * Este es el aviso que drei no da: `<Instances limit={n}>` pinta
@@ -30,11 +31,12 @@ import { MAX_STICKS } from '../src/lib/gameConfig'
  * un error sino como decorado que falta. Al añadir o quitar piezas del recinto
  * hay que traer aquí los números nuevos.
  */
-const FAIR_INSTANCES = { boards: 120, poles: 55, bulbs: 110, figures: 42 }
+const FAIR_INSTANCES = { boards: 12, poles: 27, bulbs: 80, figures: 42 }
 
 /**
  * Familias instanciadas que dibuja la escena entera: las del recinto
- * (`FairPieces`) más las de la máquina (`MachinePieces`).
+ * (`FairPieces`, el público y una por pieza del kit, `FeriaKit`) más las de la
+ * máquina (`MachinePieces`).
  *
  * Es la señal de que ya está todo montado. La máquina cuelga de un `Suspense`
  * propio esperando las texturas de la madera, así que llega bastante después
@@ -63,7 +65,9 @@ function contarFamiliasInstanciadas(): number {
         '¿se han movido FairPieces.tsx o MachinePieces.tsx?',
     )
   }
-  return total
+  // Las piezas del kit no van con `createInstances`: cada una es un `InstancedMesh` suelto, que
+  // llega cuando bajan los modelos. Contarlas hace esperar también a que estén.
+  return total + PIEZAS_DEL_KIT.length
 }
 
 const SCENE_INSTANCED_FAMILIES = contarFamiliasInstanciadas()
@@ -80,12 +84,13 @@ const SAMPLE_TIMEOUT = 45_000
  * Llamadas por fotograma que cuesta la escena **en el menú**, que es el estado con
  * medidas comparables: arranca siempre con los mismos cinco palos colgando.
  *
- * Medidas 30, y este es el sitio donde vive el desglose entero —`ESTADO.md` y
+ * Medidas 33, y este es el sitio donde vive el desglose entero —`ESTADO.md` y
  * `TODO.md` citan el total y remiten aquí, que es el único de los tres que se
  * ejecuta—:
  *
- * - **6 el recinto**: sus tres familias instanciadas, el público (una familia
- *   más, `Crowd.tsx`) y los dos aros de la noria.
+ * - **9 el recinto**: sus tres familias instanciadas, el público (una familia
+ *   más, `Crowd.tsx`), los dos aros de la noria y una por pieza del kit
+ *   (puestos, farolas y banderolas, `FeriaKit.tsx`).
  * - **5 la máquina**: tres familias de tubos (comparten geometría pero no material)
  *   y dos de bombillas.
  * - **15 los cinco palos**, a tres cada uno mientras cuelgan: la cuerda, el palo y
@@ -95,7 +100,7 @@ const SAMPLE_TIMEOUT = 45_000
  *
  * Los palos y sus ganchos van sueltos a propósito —un palo se coge con la mano y una
  * instancia no se puede apuntar ni mover por su cuenta—, así que el total es lo único
- * que se mueve con la partida: 53 con trece palos colgando, y bajando según se
+ * que se mueve con la partida: 56 con trece palos colgando, y bajando según se
  * resuelven. El recinto y la máquina no cambian nunca.
  *
  * Lo que el test comprueba es el total, no el reparto: si la escena cambia de coste,
@@ -104,13 +109,13 @@ const SAMPLE_TIMEOUT = 45_000
  * encarecerse la mitad sin que saltara nada y el desglose se quedaría desfasado en
  * silencio, que es justo lo que no puede pasar con una cuenta que nadie recalcula.
  */
-const MENU_DRAW_CALLS = 30
+const MENU_DRAW_CALLS = 33
 
 /**
  * Cuánto se le deja moverse a la medida antes de exigir que se rehaga el desglose.
  *
  * Da para un palo colgando de más o de menos —tres llamadas cada uno— y poco más:
- * quedarse sin el recinto, o sin la máquina, son cinco de golpe y saltan. Lo gordo
+ * quedarse sin la máquina son cinco de golpe, y sin el recinto nueve: saltan. Lo gordo
  * salta con muchísimo margen: dejar de instanciar devolvería la escena a las ~110 de
  * cuando la máquina iba con cada tubo suelto.
  */
@@ -120,14 +125,14 @@ const MENU_DRAW_CALL_MARGIN = 4
  * Y lo que cuesta **en partida**, con los trece palos colgando: el máximo del juego.
  *
  * Sale del mismo desglose: lo único que cambia entre el menú y la partida son los palos, a
- * tres llamadas cada uno mientras cuelgan. Cinco palos son 30; trece son ocho más, a tres:
- * `30 + 8 × 3 = 54`. Medido sale 53, uno menos, porque en cuanto arranca la cuenta atrás ya
+ * tres llamadas cada uno mientras cuelgan. Cinco palos son 33; trece son ocho más, a tres:
+ * `33 + 8 × 3 = 57`. Medido sale 56, uno menos, porque en cuanto arranca la cuenta atrás ya
  * hay un palo resuelto y baja a dos.
  *
  * **Faltaba medirlo.** El menú se comprobaba desde siempre y la partida no, que es donde de
  * verdad se paga: era el único de los trece juegos sin presupuesto de partida.
  */
-const PARTIDA_DRAW_CALLS = 53
+const PARTIDA_DRAW_CALLS = 56
 
 interface DrawFrame {
   /** Llamadas de dibujo del fotograma. */
@@ -226,7 +231,7 @@ test.describe('Coste de dibujo del recinto', () => {
     await openGame(page)
   })
 
-  test('pinta las 285 piezas del recinto y su público, sin recortes silenciosos', async ({
+  test('pinta las 119 piezas del recinto y su público, sin recortes silenciosos', async ({
     page,
   }) => {
     const frames = await sampleFrames(page)

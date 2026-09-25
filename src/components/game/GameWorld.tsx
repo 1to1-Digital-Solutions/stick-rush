@@ -55,7 +55,7 @@ import { XRWorldHeight } from '../xr/XRWorldHeight'
  *
  * El HDRI (una plaza de pueblo de noche, CC0, servido desde `public/`) envuelve
  * la escena, se proyecta sobre el suelo y le da la luz cálida de las farolas.
- * Delante de esa foto está el recinto de verdad —casetas, guirnaldas y noria,
+ * Delante de esa foto está el recinto de verdad —puestos, guirnaldas y noria,
  * ver `<Fairground>`—, que es lo que da volumen: una foto de fondo no cambia al
  * mover la cabeza, y en el visor eso se nota enseguida.
  *

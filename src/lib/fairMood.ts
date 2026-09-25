@@ -1,7 +1,7 @@
 /**
  * Cómo responde la feria a lo que hace el jugador.
  *
- * Las bombillas de las casetas y las guirnaldas suben de brillo con la racha y,
+ * Las bombillas de las guirnaldas y de la noria suben de brillo con la racha y,
  * a partir de cierta racha, palpitan al ritmo de una fiesta; el público se
  * mece más deprisa y más alto. Todo son funciones puras de la racha y del reloj:
  * la escena las lee cada fotograma sin pasar por React y se pueden probar sin

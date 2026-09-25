@@ -10,12 +10,14 @@ import type { FairMoodState } from './FairMood'
 import { useReducedMotion } from './useReducedMotion'
 
 /**
- * Las tres piezas con las que está construido el recinto de feria: tablas
- * (cajas), postes (cilindros) y bombillas (esferas).
+ * Las tres piezas en código del recinto de feria: tablas (cajas), postes
+ * (cilindros) y bombillas (esferas). Con ellas se hacen la noria y las
+ * bombillas de las guirnaldas; los puestos y las farolas son piezas del kit de
+ * xrcade (`FeriaKit`).
  *
- * Van instanciadas porque el decorado son cientos de trozos y en el visor lo
- * que se paga no es el número de triángulos sino el de llamadas de dibujo: así
- * todo el recinto —casetas, guirnaldas y noria— cabe en tres. Cada pieza se
+ * Van instanciadas porque son más de cien trozos y en el visor lo que se paga
+ * no es el número de triángulos sino el de llamadas de dibujo: así la noria y
+ * las guirnaldas caben en tres. Cada pieza se
  * coloca con su `position`/`rotation`/`scale` normales dentro de los grupos que
  * la contienen, y el color va por instancia.
  *
@@ -33,8 +35,8 @@ const [BulbInstances, BulbInstance] = createInstances()
  *
  * Cada `<Instances>` se dimensiona de antemano y, si las piezas superan su
  * límite, drei deja de pintar las que sobran **sin avisar**. Por eso el tamaño
- * no es un número escrito a mano —que se quedaría viejo al añadir una caseta o
- * un premio— sino la suma de lo que declara cada trozo: ver `FAIR_PIECES` en
+ * no es un número escrito a mano —que se quedaría viejo al añadir una cabina o
+ * un tramo de guirnalda— sino la suma de lo que declara cada trozo: ver `FAIR_PIECES` en
  * `Fairground`.
  */
 export interface PieceCounts {
@@ -46,7 +48,7 @@ export interface PieceCounts {
 /**
  * El decorado no se toca ni se apunta: sin esto, cada movimiento del ratón —y
  * cada fotograma con los mandos del visor apuntando— lanzaría un rayo contra
- * las cientos de piezas del recinto para nada.
+ * las más de cien piezas del recinto para nada.
  *
  * Se exporta porque no todo el decorado son instancias: los aros de la noria
  * son mallas sueltas y tienen que anularlo igual (y son las piezas con más
