@@ -12,18 +12,22 @@
 import { useSyncExternalStore } from 'react'
 
 import {
+  DEFAULT_HAND,
   DEFAULT_LANG,
   DEFAULT_SCENERY,
   DEFAULT_VOLUME_SETTINGS,
   LANG_COOKIE,
   langFromCookies,
   readGrabMode,
+  readHand,
   readPlayHeight,
   readScenery,
   readVolumes,
+  writeHand,
   writeScenery,
   writeVolume,
   type GrabMode,
+  type Hand,
   type Lang,
   type PlayHeight,
   type Scenery,
@@ -244,4 +248,37 @@ export function useGrabMode(): GrabMode {
 /** Lo guardado, o manteniendo si no hay nada o hay basura. */
 function leerAgarre(): GrabMode {
   return readGrabMode(settingsStorage())
+}
+
+/**
+ * Con qué mano se juega, y React se entera cuando cambia.
+ *
+ * Con la misma forma que el escenario, y por lo mismo: los juegos copian este bloque tal cual,
+ * y el juego montado en la cabina está en esta misma página, así que sin el aviso la pala o el
+ * bate no cambiarían de mano hasta recargar.
+ */
+export function useHand(): Hand {
+  return useSyncExternalStore(subscribe, currentHand, () => DEFAULT_HAND)
+}
+
+/**
+ * La mano elegida que el navegador no dejó guardar, o `null` si quedó guardada.
+ *
+ * Con el almacenamiento capado la escritura falla, y la lectura volvería a dar la derecha: el
+ * botón no se encendería y quien es zurdo seguiría con la pala en la mano mala. Aquí vive la
+ * elección mientras dure la visita.
+ */
+let unsavedHand: Hand | null = null
+
+/** Lo elegido en esta visita si no se pudo guardar; si no, lo guardado o la derecha. */
+function currentHand(): Hand {
+  return unsavedHand ?? readHand(settingsStorage())
+}
+
+/** Cambia la mano con la que se juega, en todo el arcade. */
+export function setHand(value: Hand): void {
+  // Si entra en el almacenamiento, manda lo guardado y el respaldo sobra; si no, el respaldo
+  // es lo único que lo recuerda.
+  unsavedHand = writeHand(settingsStorage(), value) ? null : value
+  avisarDelCambio()
 }

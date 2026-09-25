@@ -7,6 +7,7 @@ import {
   DEFAULT_VOLUMES,
   DEFAULT_VOLUME_SETTINGS,
   GRAB_MODE_KEY,
+  HAND_KEY,
   LANG_COOKIE,
   PLAY_HEIGHT_KEY,
   SCENERY_KEY,
@@ -14,11 +15,13 @@ import {
 } from './ajustes'
 import {
   currentLang,
+  setHand,
   setLang,
   setScenery,
   setVolume,
   settingsStorage,
   useGrabMode,
+  useHand,
   useLang,
   usePlayHeight,
   useScenery,
@@ -349,5 +352,71 @@ describe('qué se ve alrededor con el visor', () => {
     }
 
     expect(renderToString(<Escenario />)).toContain('place')
+  })
+})
+
+describe('con qué mano se juega', () => {
+  beforeEach(() => {
+    // Vacía también lo que una prueba de almacenamiento capado dejara recordado en memoria.
+    setHand('right')
+  })
+
+  it('sin nada guardado, la derecha', () => {
+    const { result } = renderHook(() => useHand())
+    expect(result.current).toBe('right')
+  })
+
+  it('se lee la que dejó el salón, que es la única clave', () => {
+    window.localStorage.setItem(HAND_KEY, 'left')
+    const { result } = renderHook(() => useHand())
+    expect(result.current).toBe('left')
+  })
+
+  it('lo que se elige en otra pestaña llega sin recargar', () => {
+    const { result } = renderHook(() => useHand())
+    act(() => {
+      window.localStorage.setItem(HAND_KEY, 'left')
+      window.dispatchEvent(new Event('storage'))
+    })
+    expect(result.current).toBe('left')
+  })
+
+  it('y lo que se elige en el panel del salón, en esta misma página, también', () => {
+    const { result } = renderHook(() => useHand())
+    act(() => {
+      window.localStorage.setItem(HAND_KEY, 'left')
+      window.dispatchEvent(new Event('xrcade:ajustes'))
+    })
+    expect(result.current).toBe('left')
+  })
+
+  it('elegirla aquí escribe la clave del arcade, y la derecha no deja nada', () => {
+    const { result } = renderHook(() => useHand())
+    act(() => setHand('left'))
+    expect(window.localStorage.getItem(HAND_KEY)).toBe('left')
+    expect(result.current).toBe('left')
+
+    act(() => setHand('right'))
+    expect(window.localStorage.getItem(HAND_KEY)).toBeNull()
+    expect(result.current).toBe('right')
+  })
+
+  it('con el almacenamiento lleno, lo elegido dura lo que dure la visita', () => {
+    const { result } = renderHook(() => useHand())
+    const guarda = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('lleno', 'QuotaExceededError')
+    })
+    act(() => setHand('left'))
+    expect(window.localStorage.getItem(HAND_KEY)).toBeNull()
+    expect(result.current).toBe('left')
+    guarda.mockRestore()
+  })
+
+  it('en el servidor se pinta con la derecha, para que la hidratación cuadre', () => {
+    window.localStorage.setItem(HAND_KEY, 'left')
+    function Sonda() {
+      return <span>{useHand()}</span>
+    }
+    expect(renderToString(<Sonda />)).toContain('right')
   })
 })

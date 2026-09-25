@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   DEFAULT_GRAB_MODE,
+  DEFAULT_HAND,
   DEFAULT_LANG,
   DEFAULT_PLAY_HEIGHT,
   DEFAULT_SCENERY,
@@ -9,6 +10,9 @@ import {
   DEFAULT_VOLUME_SETTINGS,
   GRAB_MODES,
   GRAB_MODE_KEY,
+  HANDS,
+  HAND_KEY,
+  HAND_ORDER,
   LANGS,
   LANG_COOKIE,
   PLAY_HEIGHTS,
@@ -18,17 +22,20 @@ import {
   VOLUME_KEYS,
   langFromCookies,
   parseGrabMode,
+  parseHand,
   parseLang,
   parsePlayHeight,
   parseScenery,
   parseVolume,
   readGrabMode,
+  readHand,
   readPlayHeight,
   readScenery,
   readVolumes,
   showsPlace,
   volumeFactor,
   writeGrabMode,
+  writeHand,
   writePlayHeight,
   writeScenery,
   writeVolume,
@@ -364,5 +371,47 @@ describe('qué se ve alrededor con el visor', () => {
       expect(showsPlace(null, 'room')).toBe(true)
       expect(showsPlace(undefined, 'room')).toBe(true)
     })
+  })
+})
+
+describe('con qué mano se juega', () => {
+  it('la clave, los valores y la de partida son los que escribe xrcade', () => {
+    // Escritos a mano, como el resto: es el puente entre repositorios. Los valores son los de
+    // WebXR (`XRHandedness`), que es como se le pide a `@react-three/xr` el mando de esa mano.
+    expect(HAND_KEY).toBe('xrcade:hand')
+    expect(HANDS).toEqual(['right', 'left'])
+    expect(DEFAULT_HAND).toBe('right')
+    // Y se enseñan como se tienen las manos de frente.
+    expect(HAND_ORDER).toEqual(['left', 'right'])
+  })
+
+  it('solo cuenta una mano que exista', () => {
+    expect(parseHand('left')).toBe('left')
+    expect(parseHand('right')).toBe('right')
+    for (const basura of ['zurdo', 'LEFT', 'none', '', null, undefined]) {
+      expect(parseHand(basura)).toBe('right')
+    }
+  })
+
+  it('se lee de donde la deja el salón, y sin nada guardado es la derecha', () => {
+    expect(readHand(almacen({ [HAND_KEY]: 'left' }))).toBe('left')
+    expect(readHand(almacen())).toBe('right')
+  })
+
+  it('se guarda al elegir la izquierda, y se olvida al volver a la derecha', () => {
+    const storage = almacen()
+
+    expect(writeHand(storage, 'left')).toBe(true)
+    expect(storage.getItem(HAND_KEY)).toBe('left')
+
+    expect(writeHand(storage, 'right')).toBe(true)
+    expect(storage.getItem(HAND_KEY)).toBeNull()
+  })
+
+  it('sin almacenamiento, o con uno capado, se juega con la derecha y no revienta', () => {
+    expect(readHand(null)).toBe('right')
+    expect(readHand(almacen({}, true))).toBe('right')
+    expect(writeHand(null, 'left')).toBe(false)
+    expect(writeHand(almacen({}, true), 'left')).toBe(false)
   })
 })

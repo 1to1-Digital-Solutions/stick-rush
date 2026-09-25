@@ -1,4 +1,5 @@
 import { DIFFICULTY_ORDER, MAX_STICKS, type Difficulty } from './gameConfig'
+import { picksSetup, type GameMode } from './gameMode'
 import { REFERENCE_EYE_HEIGHT, isPlausibleEyeHeight } from './hoopHeight'
 import { EYE_HEIGHTS, eyesAt, type PanelPose, type Point } from './panelReading'
 
@@ -244,12 +245,15 @@ export const XR_MENU_EXIT_OFFSET: Vec3 = [0.42, -0.37 + SUBIDA_DE_LA_PISTA, 0]
  */
 export const XR_MENU_SOUND_OFFSET: Vec3 = [-0.42, -0.37, 0]
 /**
- * Fila de ajustes bajo las dificultades: a la izquierda con qué se juega
- * (práctica o desafío) y a la derecha qué se ve alrededor. Van a las dos puntas
- * y no juntos en el centro por lo mismo que los botones de la fila de abajo: en
- * el visor se apunta a pulso y un vecino a pocos centímetros se pulsa por error.
+ * Fila de ajustes, la primera bajo la del aro: a la izquierda a qué se juega
+ * (práctica, niveles o desafío) y a la derecha qué se ve alrededor. **El menú
+ * empieza por el modo**: es lo que decide si hay algo más que preguntar —solo la
+ * práctica pregunta palos y velocidad, que salen debajo— o si ya se le puede dar
+ * a empezar. Van a las dos puntas y no juntos en el centro por lo mismo que los
+ * botones de la fila de abajo: en el visor se apunta a pulso y un vecino a pocos
+ * centímetros se pulsa por error.
  */
-const SETTINGS_ROW_Y = -0.19 + SUBIDA_DE_LA_PISTA
+const SETTINGS_ROW_Y = 0.168 + SUBIDA_DE_LA_PISTA
 /**
  * Interruptor de modo: recorre práctica, niveles y desafío, y enseña lo que
  * cada uno pone en juego (nada, estrellas, corazones).
@@ -278,7 +282,11 @@ export const XR_END_RUN_YAW = Math.atan2(
  * columna a la izquierda, el aro pasa por delante del panel, a la derecha de lo
  * que se mira, así que al pulsar se ve subir o bajar.
  */
-const HOOP_ROW_Y = 0.34 + SUBIDA_DE_LA_PISTA
+//
+// Medio centímetro más arriba de lo que estaba, lo que le queda antes de salirse de la altura
+// cómoda (`xrInteraction.test.ts`): es lo que deja a la fila del modo subir bajo ella sin que
+// el nombre de «Alrededor» —ancho en español— se meta en el botón de la música.
+const HOOP_ROW_Y = 0.345 + SUBIDA_DE_LA_PISTA
 /** Botón de bajar el aro, a la izquierda de su indicador. */
 export const XR_HOOP_DOWN_OFFSET: Vec3 = [-0.13, HOOP_ROW_Y, 0]
 /** Botón de subir el aro, a la derecha de su indicador. */
@@ -361,10 +369,31 @@ export const XR_LEVEL_PICKER_SPACING = 0.047
 /** Separación entre las fichas de dificultad. */
 export const XR_DIFFICULTY_SPACING = 0.17
 
-/** Altura del selector de palos dentro del panel. */
-const STICK_PICKER_Y = 0.19 + SUBIDA_DE_LA_PISTA
-/** Altura del selector de dificultad dentro del panel. */
-const DIFFICULTY_Y = -0.02 + SUBIDA_DE_LA_PISTA
+/**
+ * Altura del selector de palos dentro del panel —y del de niveles, que ocupa su fila—, bajo
+ * la fila del modo: lo que se pregunta sale **después** de elegir a qué se juega, y solo en
+ * práctica (`picksSetup`).
+ *
+ * Las cotas de las cuatro filas van apuradas al milímetro, y no es capricho: el aro no puede
+ * subir más, empezar no puede bajar, y en medio caben justas tres filas con su nombre encima
+ * sin que ningún nombre toque un botón ni ninguna caja pise la de la fila de al lado. Lo vigila
+ * `xrLayout.test.ts` («el menú empieza por el modo») y `menu.legible.test.ts`.
+ *
+ * El nombre de cada fila y sus botones salen de la misma cota. Los palos se pintaban tres
+ * centímetros por debajo de la suya y las fichas de velocidad dos, así que el nombre del modo,
+ * que iba debajo, quedaba tapado por la ficha elegida.
+ */
+export const XR_STICK_ROW_Y = -0.014 + SUBIDA_DE_LA_PISTA
+/** Altura del selector de dificultad dentro del panel: la última pregunta antes de empezar. */
+export const XR_DIFFICULTY_ROW_Y = -0.17 + SUBIDA_DE_LA_PISTA
+/**
+ * Lo alto que es la caja de pulsación de cada ficha de esas dos filas. Declarado aquí y no en
+ * el componente para que el test de disposición compruebe que no se meten en las filas de al
+ * lado: una caja invisible que pisa al vecino es un botón que no responde.
+ */
+export const XR_ROW_HIT_HEIGHT = { sticks: 0.16, difficulty: 0.15 } as const
+const STICK_PICKER_Y = XR_STICK_ROW_Y
+const DIFFICULTY_Y = XR_DIFFICULTY_ROW_Y
 /**
  * Dónde va el botón de empezar dentro del panel.
  *
@@ -441,6 +470,17 @@ export const MENU_LABELS = [
   { text: 'Mode', x: -0.26, y: SETTINGS_ROW_Y },
   { text: 'Around', x: 0.245, y: SETTINGS_ROW_Y },
 ] as const
+
+/**
+ * Los nombres de fila que se enseñan con cada modo. **Solo la práctica pregunta** palos y
+ * velocidad; en Niveles la fila de los palos es la escalera y la velocidad se ve apagada, la
+ * del nivel; el desafío va fijo (`CHALLENGE_SETUP`) y sus filas no se ven, así que tampoco
+ * sus nombres: un rótulo sobre un hueco se lee como una opción que falta.
+ */
+export function menuLabelsFor(mode: GameMode): readonly (typeof MENU_LABELS)[number][] {
+  if (picksSetup(mode) || mode === 'levels') return MENU_LABELS
+  return MENU_LABELS.filter(({ text }) => text !== 'Sticks' && text !== 'Speed')
+}
 
 function offset([x, y, z]: Vec3, dx: number, dy: number): Vec3 {
   return [x + dx, y + dy, z]

@@ -234,6 +234,12 @@ las define, y si no, del sistema.
 - **`localStorage`.** Guarda el récord, la altura del aro, el silencio y si ya se vio el tutorial,
   con claves bajo `stick-rush:`. Si no lo hay (modo privado), el juego funciona igual y no recuerda
   nada.
+- **Los ajustes del salón, del mismo `localStorage`.** El idioma, el volumen, el escenario y la
+  **mano buena** (`xrcade:hand`, `right` o `left`; `right` si no hay nada o hay basura) no son del
+  juego: se eligen en el salón y el juego los lee (`src/lib/ajustes.ts`, `useHand()` en
+  `ajustesCliente.ts`), enterándose de un cambio sin recargar. Aquí se atrapa con cualquiera de
+  las dos manos, así que el menú no pregunta ninguna y no hay clave propia que borrar: la mano
+  del salón solo decide de qué lado sale el mando que enseñan las ayudas visuales.
 - **Un gesto del jugador antes del sonido**, que es de los navegadores. El juego ya lo espera.
 
 ## Publicar una versión nueva

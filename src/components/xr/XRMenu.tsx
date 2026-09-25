@@ -15,6 +15,7 @@ import {
   GAME_MODE_HINTS,
   GAME_MODE_ORDER,
   type GameMode,
+  picksSetup,
 } from '../../lib/gameMode'
 import { useGame } from '../../lib/gameStore'
 import { useLang } from '../../lib/ajustesCliente'
@@ -24,7 +25,7 @@ import { LEVEL_COUNT } from '../../lib/levels'
 import { useExit } from '../../game/exit'
 import { HOOP_ADJUST_RANGE } from '../../lib/hoopHeight'
 import {
-  MENU_LABELS,
+  menuLabelsFor,
   ROW_LABEL_RISE,
   MENU_TEXT,
   XR_DIFFICULTY_SPACING,
@@ -44,6 +45,9 @@ import {
   PISTA_Y,
   XR_MENU_PLAY_HIT,
   XR_MENU_PLAY_OFFSET,
+  XR_DIFFICULTY_ROW_Y,
+  XR_ROW_HIT_HEIGHT,
+  XR_STICK_ROW_Y,
 } from '../../lib/xrLayout'
 import { ControllerModel } from './XRControllerModel'
 import { HandModel } from './XRHandModel'
@@ -93,7 +97,7 @@ function StickPicker() {
   const width = (MAX_STICKS - 1) * STICK_PICKER_SPACING
 
   return (
-    <group position={[0, 0.16, 0]}>
+    <group position={[0, XR_STICK_ROW_Y, 0]}>
       {Array.from({ length: MAX_STICKS }, (_, index) => {
         const count = index + 1
         const on = count <= stickCount
@@ -104,7 +108,7 @@ function StickPicker() {
             position={[index * STICK_PICKER_SPACING - width / 2, 0, 0]}
             onSelect={() => setStickCount(count)}
             disabled={!selectable}
-            hitSize={[STICK_PICKER_SPACING, 0.16, 0.05]}
+            hitSize={[STICK_PICKER_SPACING, XR_ROW_HIT_HEIGHT.sticks, 0.05]}
           >
             {/* Un palo en miniatura: encendido si entra en la selección. */}
             <mesh position={[0, on ? 0.008 : 0, 0]}>
@@ -136,7 +140,7 @@ function LevelPicker() {
   const width = (LEVEL_COUNT - 1) * XR_LEVEL_PICKER_SPACING
 
   return (
-    <group position={[0, 0.16, 0]}>
+    <group position={[0, XR_STICK_ROW_Y, 0]}>
       {Array.from({ length: LEVEL_COUNT }, (_, index) => {
         const level = index + 1
         const locked = level > unlockedLevel
@@ -148,7 +152,7 @@ function LevelPicker() {
             position={[index * XR_LEVEL_PICKER_SPACING - width / 2, 0, selected ? 0.02 : 0]}
             onSelect={() => setLevel(level)}
             disabled={locked}
-            hitSize={[XR_LEVEL_PICKER_SPACING, 0.16, 0.05]}
+            hitSize={[XR_LEVEL_PICKER_SPACING, XR_ROW_HIT_HEIGHT.sticks, 0.05]}
           >
             <mesh position={[0, -0.02, 0]}>
               <boxGeometry args={[0.03, selected ? 0.07 : 0.05, 0.012]} />
@@ -191,7 +195,7 @@ function DifficultyPicker({ locked = false }: { locked?: boolean }) {
   const width = (DIFFICULTY_ORDER.length - 1) * DIFFICULTY_SPACING
 
   return (
-    <group position={[0, -0.04, 0]}>
+    <group position={[0, XR_DIFFICULTY_ROW_Y, 0]}>
       {DIFFICULTY_ORDER.map((level, index) => {
         const selected = level === difficulty
         const color = DIFFICULTY_COLORS[level]
@@ -201,7 +205,7 @@ function DifficultyPicker({ locked = false }: { locked?: boolean }) {
             position={[index * DIFFICULTY_SPACING - width / 2, 0, selected ? 0.022 : 0]}
             onSelect={() => setDifficulty(level)}
             disabled={locked}
-            hitSize={[DIFFICULTY_SPACING * 0.92, 0.15, 0.05]}
+            hitSize={[DIFFICULTY_SPACING * 0.92, XR_ROW_HIT_HEIGHT.difficulty, 0.05]}
           >
             <mesh position={[0, 0, -0.008]}>
               <boxGeometry args={[DIFFICULTY_SPACING * 0.82, 0.13, 0.012]} />
@@ -520,7 +524,7 @@ export function dibujarLosNombres(
   t: (clave: TextKey) => string,
   gameMode: GameMode = 'practice',
 ): void {
-  for (const { text, x, y } of MENU_LABELS) {
+  for (const { text, x, y } of menuLabelsFor(gameMode)) {
     drawText(ctx, t(text), x, y + ROW_LABEL_RISE, {
       size: MENU_TEXT.label,
       color: '#94a3b8',
@@ -581,10 +585,12 @@ export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
       <RowLabels />
       <HoopHeightPicker />
       <TutorialButton />
-      {/* En Niveles los palos y la velocidad los dice el nivel: la fila de
-          palos se cambia por la escalera y las fichas se quedan de muestra. */}
-      {levels ? <LevelPicker /> : <StickPicker />}
-      <DifficultyPicker locked={levels} />
+      {/* **Solo la práctica pregunta** palos y velocidad. En Niveles los dice el
+          nivel: la fila de palos se cambia por la escalera y las fichas se quedan
+          de muestra. El desafío va fijo (`CHALLENGE_SETUP`): se elige el modo y se
+          le da a empezar, sin filas que no cambian nada. */}
+      {levels ? <LevelPicker /> : picksSetup(gameMode) ? <StickPicker /> : null}
+      {(levels || picksSetup(gameMode)) && <DifficultyPicker locked={levels} />}
       <ModeToggle />
       {gameMode === 'practice' && <EndlessToggle />}
       <SceneryPicker passthroughAvailable={mode === 'immersive-ar'} />

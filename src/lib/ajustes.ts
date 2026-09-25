@@ -385,3 +385,69 @@ export function writeGrabMode(storage: Storage | null, value: GrabMode): boolean
     return false
   }
 }
+
+/**
+ * Con qué mano se juega: la que lanza, golpea y apunta.
+ *
+ * **El problema.** Cada juego que la necesitaba la preguntaba en su menú —la pala en la mesa,
+ * el bate en la jaula—, y quien es zurdo tenía que decirlo en cada cabina, entre el modo y la
+ * dificultad, antes de poder jugar. Es la misma respuesta en todas: nadie cambia de mano buena
+ * al cambiar de juego.
+ *
+ * **Por qué es del arcade y no de cada juego.** Por lo mismo que el escenario: se elige una vez
+ * y vale para los trece, y así el menú de cada juego se queda en lo que es suyo. **Una sola
+ * clave**: el juego que tenía la suya la deja de leer y la borra sin trasladarla, porque dos
+ * sitios que dicen lo mismo acaban diciendo cosas distintas, y trasladarla pisaría lo elegido
+ * aquí con lo que se eligió en una sola cabina.
+ *
+ * Los valores son los nombres de WebXR (`XRHandedness`) y los que ya usan los juegos que tenían
+ * el ajuste: se le pasan tal cual a `@react-three/xr` para pedirle el mando de esa mano, y leer
+ * este en vez del propio cambia de dónde sale el valor, no qué significa.
+ */
+export const HANDS = ['right', 'left'] as const
+export type Hand = (typeof HANDS)[number]
+
+/**
+ * En qué orden se enseñan al elegir: izquierda a la izquierda, como se tienen las manos de
+ * frente. Un selector con la derecha a la izquierda se pulsa al revés sin querer.
+ */
+export const HAND_ORDER: readonly Hand[] = ['left', 'right']
+
+/** Dónde se recuerda. El prefijo es del arcade, no de un juego. */
+export const HAND_KEY = 'xrcade:hand'
+
+/** La derecha, que es la de la mayoría y con la que se construyeron los trece. */
+export const DEFAULT_HAND: Hand = 'right'
+
+/** Interpreta la mano leída del almacenamiento: solo cuenta una que exista. */
+export function parseHand(raw: string | null | undefined): Hand {
+  return (HANDS as readonly string[]).includes(raw ?? '') ? (raw as Hand) : DEFAULT_HAND
+}
+
+/** La mano elegida, leída de un almacenamiento que puede no estar. */
+export function readHand(storage: Pick<Storage, 'getItem'> | null): Hand {
+  if (storage === null) return DEFAULT_HAND
+  try {
+    return parseHand(storage.getItem(HAND_KEY))
+  } catch {
+    // Almacenamiento capado: se juega con la derecha, como se jugaba antes de haber esto.
+    return DEFAULT_HAND
+  }
+}
+
+/**
+ * Guarda la mano, o la olvida cuando vuelve a ser la de partida.
+ *
+ * @returns si quedó guardada. Un `false` no es un error: significa que este navegador no
+ *   guarda nada y la elección vivirá lo que dure la visita.
+ */
+export function writeHand(storage: Storage | null, value: Hand): boolean {
+  if (storage === null) return false
+  try {
+    if (value === DEFAULT_HAND) storage.removeItem(HAND_KEY)
+    else storage.setItem(HAND_KEY, value)
+    return true
+  } catch {
+    return false
+  }
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { problemasDeLaSalida, type PanelBox } from './exitCorner'
 import { MENU_PANEL } from '../components/xr/XRMenu'
+import { ALTO_DE_LINEA } from '../components/xr/canvasPanel'
 import {
   RETAKE_DELTA,
   RETAKE_SECONDS,
@@ -18,7 +19,19 @@ import {
   PISTA_ANCHO,
   PISTA_Y,
   XR_MENU_HIT,
-  XR_MENU_SPOT
+  XR_MENU_SPOT,
+  MENU_LABELS,
+  MENU_TEXT,
+  ROW_LABEL_RISE,
+  XR_DIFFICULTY_ROW_Y,
+  XR_ENDLESS_TOGGLE_OFFSET,
+  XR_MENU_PLAY_HIT,
+  XR_MENU_PLAY_OFFSET,
+  XR_MODE_TOGGLE_OFFSET,
+  XR_ROW_HIT_HEIGHT,
+  XR_SCENERY_PICKER_OFFSET,
+  XR_STICK_ROW_Y,
+  menuLabelsFor,
 } from './xrLayout'
 
 /**
@@ -232,5 +245,58 @@ describe('la salida', () => {
         { width: MENU_PANEL[0], height: MENU_PANEL[1] },
       ),
     ).toEqual([])
+  })
+})
+
+describe('los nombres de las filas, según el modo', () => {
+  const nombres = (mode: Parameters<typeof menuLabelsFor>[0]) => menuLabelsFor(mode).map(({ text }) => text)
+
+  it('la práctica y los niveles nombran todas sus filas', () => {
+    expect(menuLabelsFor('practice')).toEqual(MENU_LABELS)
+    expect(menuLabelsFor('levels')).toEqual(MENU_LABELS)
+  })
+
+  it('el desafío no nombra filas que no enseña: va fijo y se le da a empezar', () => {
+    expect(nombres('challenge')).toEqual(['Hoop', 'Mode', 'Around'])
+  })
+})
+
+describe('el menú empieza por el modo', () => {
+  /** Las filas de arriba abajo, con lo que ocupa en alto la caja más alta de cada una. */
+  const filas = [
+    {
+      nombre: 'modo',
+      y: XR_MODE_TOGGLE_OFFSET[1],
+      alto: Math.max(XR_MENU_HIT.mode[1], XR_MENU_HIT.endless[1], XR_MENU_HIT.scenery[1]),
+    },
+    { nombre: 'palos', y: XR_STICK_ROW_Y, alto: XR_ROW_HIT_HEIGHT.sticks },
+    { nombre: 'velocidad', y: XR_DIFFICULTY_ROW_Y, alto: XR_ROW_HIT_HEIGHT.difficulty },
+    { nombre: 'empezar', y: XR_MENU_PLAY_OFFSET[1], alto: XR_MENU_PLAY_HIT[1] },
+  ]
+
+  it('el modo va el primero bajo el aro, y lo que pregunta la práctica, debajo', () => {
+    expect(XR_ENDLESS_TOGGLE_OFFSET[1]).toBe(XR_MODE_TOGGLE_OFFSET[1])
+    expect(XR_SCENERY_PICKER_OFFSET[1]).toBe(XR_MODE_TOGGLE_OFFSET[1])
+    expect(filas.map(({ nombre }) => nombre)).toEqual(
+      [...filas].sort((a, b) => b.y - a.y).map(({ nombre }) => nombre),
+    )
+  })
+
+  it('ninguna caja de una fila se mete en la de debajo', () => {
+    for (let i = 1; i < filas.length; i++) {
+      const arriba = filas[i - 1]
+      const abajo = filas[i]
+      expect(arriba.y - arriba.alto / 2, `${arriba.nombre} pisa ${abajo.nombre}`).toBeGreaterThan(
+        abajo.y + abajo.alto / 2,
+      )
+    }
+  })
+
+  it('el nombre de los palos no se mete en la fila del modo', () => {
+    // Las cajas de la fila del modo son botones de verdad; lo que hay entre las filas de
+    // abajo son rótulos que no se pulsan, y eso lo mide `menu.legible.test.ts`.
+    // El renglón mide más que la letra: se mide con su alto de línea, como lo apunta el lienzo.
+    const techoDelNombre = XR_STICK_ROW_Y + ROW_LABEL_RISE + MENU_TEXT.label / ALTO_DE_LINEA / 2
+    expect(techoDelNombre).toBeLessThan(filas[0].y - filas[0].alto / 2)
   })
 })

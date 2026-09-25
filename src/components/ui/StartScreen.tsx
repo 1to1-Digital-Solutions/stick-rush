@@ -13,6 +13,7 @@ import {
   GAME_MODE_HINTS,
   GAME_MODE_LABELS,
   GAME_MODE_ORDER,
+  picksSetup,
   startingLives,
 } from '../../lib/gameMode'
 import { useGame } from '../../lib/gameStore'
@@ -206,9 +207,11 @@ export function StartScreen() {
     setGameMode,
     startGame,
   } = useGame()
-  // En Niveles los palos y la velocidad los dice el nivel: sus selectores se
-  // cambian por la escalera.
+  // **Solo la práctica pregunta** palos y velocidad. En Niveles los dice el nivel —sus
+  // selectores se cambian por la escalera— y el desafío va fijo (`CHALLENGE_SETUP`): se elige
+  // el modo y se le da a Jugar. Las filas no se enseñan ni apagadas.
   const levels = gameMode === 'levels'
+  const pregunta = picksSetup(gameMode)
   return (
     <main className="absolute inset-0 z-20 flex w-full items-center justify-center overflow-y-auto bg-[var(--color-background)] px-6 py-12">
       {/* Gradiente radial sutil de fondo */}
@@ -274,7 +277,7 @@ export function StartScreen() {
         {gameMode === 'practice' && <EndlessToggle />}
 
         {/* Selector de número de palos */}
-        {!levels && (
+        {pregunta && (
         <section className="flex w-full flex-col gap-3" aria-labelledby="sticks-label">
           <h2
             id="sticks-label"
@@ -306,7 +309,7 @@ export function StartScreen() {
         )}
 
         {/* Selector de dificultad */}
-        {!levels && (
+        {pregunta && (
         <section
           className="flex w-full flex-col gap-3"
           aria-labelledby="difficulty-label"
