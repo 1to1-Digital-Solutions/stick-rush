@@ -28,8 +28,11 @@ import {
 async function alturaDeUnPalo(page: import('@playwright/test').Page) {
   const encontrado = await page.waitForFunction(
     () => {
-      const sticks = Object.values(window.__stickRushSticks ?? {})
-      return sticks.find((stick) => stick.catchable) ?? null
+      // El más alto de los que se pueden coger, que es uno que sigue colgando: el turno de
+      // caída sale de una semilla nueva en cada partida, y el primero de la lista puede ser
+      // justo el que ya está cayendo.
+      const sticks = Object.values(window.__stickRushSticks ?? {}).filter((stick) => stick.catchable)
+      return sticks.length === 0 ? null : sticks.reduce((alto, stick) => (stick.y > alto.y ? stick : alto))
     },
     undefined,
     { timeout: 15_000 },

@@ -110,7 +110,7 @@ export function StickMachine() {
   const {
     activeStickCount: stickCount,
     activeDifficulty: difficulty,
-    stickSeed: runId,
+    stickSeed,
     gameState,
     prompt,
     hoopHeight,
@@ -197,12 +197,12 @@ export function StickMachine() {
     [hoopHeight],
   )
 
-  // Anclajes y retardos escalonados. Se recalculan en cada partida (runId),
+  // Anclajes y retardos escalonados. Se recalculan en cada tanda (su semilla),
   // cuando cambia el número de palos y cuando el aro cambia de altura —lo que
   // solo pasa en el menú, con los palos colgando quietos.
   const sticks = useMemo(
-    () => buildStickLayout(stickCount, runId, hoopHeight),
-    [stickCount, runId, hoopHeight],
+    () => buildStickLayout(stickCount, stickSeed, hoopHeight),
+    [stickCount, stickSeed, hoopHeight],
   )
 
   // Postes de los extremos, arriostrados hacia fuera como los de un escenario.

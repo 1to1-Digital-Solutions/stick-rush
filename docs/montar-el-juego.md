@@ -114,6 +114,39 @@ Lo que la escena **no** hace, y por qué:
 botón de salir de su menú— sin decidir a dónde. Un anfitrión que no tenga a dónde devolverle
 puede pasar el cierre de su propia sesión, que es lo que hace la web del juego.
 
+#### El reto con semilla y el aviso de fin de partida
+
+Dos props más, las dos opcionales: sin ellas, el juego arranca en el menú y sortea como siempre.
+Los tipos `Reto` y `Resultado` están en `src/lib/semilla.ts`, que es el mismo fichero en todos
+los juegos del salón.
+
+| Prop | Qué es |
+| --- | --- |
+| `reto` | `{ semilla }`: jugar un reto concreto del salón (el reto del día, «reta mi puntuación»). |
+| `onTerminar` | `({ modo, puntos, reto }) => void`: el aviso de que ha acabado una partida con puntuación. |
+
+**Con `reto`**, la escena entra **directamente en una partida del desafío** (`challenge`), que
+es el modo del récord de la cabina (`stick-rush:best-points:challenge`), con su cuenta atrás y
+**sin lección**, aunque no se haya visto nunca. El desafío va siempre fijo —**Medio y los trece
+palos** (`CHALLENGE_SETUP` en `lib/gameMode.ts`)— porque los
+puntos escalan con la dificultad y con los palos: con los dos a elegir, dos récords del desafío
+no serían la misma partida. **Todo el azar de la partida sale de la semilla**: el turno en que
+cae cada palo y lo que titubea antes de soltarse (`buildStickLayout`, `lib/stickLayout.ts`), con
+la semilla de la tanda `semillaDe(semilla, tanda)`. Misma semilla, mismos palos cayendo en el
+mismo orden y al mismo tiempo; lo que cambia de una persona a otra es solo cuándo los coge. El
+reto se lee al montar: para otro, se vuelve a montar la escena. Sin `reto`, cada partida estrena
+una semilla al azar.
+
+**`onTerminar`** se llama **una vez** al acabar cada partida, en cualquier modo, con `modo` tal
+como lo llama el juego (`practice`, `levels`, `challenge`; la práctica sin fin es `practice`),
+`puntos` los de esa partida aunque no sean récord, y `reto: true` solo si era la partida del
+`reto`. Se llama desde el mismo sitio que guarda el récord, que el juego sigue guardando en
+`localStorage`. **Dejar la partida a medias no la cuenta** (la pregunta de dejarla, o salir con
+`onExit`). La práctica sin fin sí: su final es que quien juega diga basta, y trae resumen. Tras
+el reto la pantalla final es la de siempre, y jugar otra vez ya no es el reto.
+
+`<StickRush>` y `mountStickRush` aceptan las mismas dos opciones.
+
 ### Como aplicación, con su propio Canvas
 
 Para una página que sea el juego y nada más. Abre su propia sesión, así que **no** se puede
@@ -161,7 +194,7 @@ Toda la superficie pública es esa:
 
 | Nombre                         | Qué es                                                                                |
 | ------------------------------ | ------------------------------------------------------------------------------------- |
-| `StickRushScene`               | El juego como **escena**, dentro del Canvas y la sesión de otro. Props: `assetsBase`, `onExit`. |
+| `StickRushScene`               | El juego como **escena**, dentro del Canvas y la sesión de otro. Props: `assetsBase`, `anchor`, `onExit`, `reto`, `onTerminar`. |
 | `StickRush`                    | El juego como aplicación, con su propio Canvas y su propia sesión.                    |
 | `mountStickRush(elemento, …)`  | Lo mismo sobre un elemento del DOM. Devuelve `{ unmount() }`, que además cierra la sesión. |
 | `assetsBase`                   | De dónde cuelgan los ficheros del paso 3. Por defecto, la raíz del sitio.              |

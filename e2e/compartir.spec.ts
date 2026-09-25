@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
+import { DIFFICULTY_LABELS } from '@/lib/gameConfig'
+import { CHALLENGE_SETUP } from '@/lib/gameMode'
 import { openGame, startGame, waitForGameOver } from './helpers'
 
 /**
@@ -120,20 +122,18 @@ test.describe('Compartir el resultado', () => {
   }) => {
     await installShareSheet(page)
     await openGame(page)
-    // Imposible y sin atrapar nada: las tres vidas se gastan en unos segundos,
+    // Sin atrapar nada: las tres vidas se gastan con los tres primeros palos,
     // que es el final que hay que poder contar.
-    await startGame(page, {
-      sticks: 5,
-      difficulty: 'Impossible',
-      mode: 'Challenge',
-    })
+    await startGame(page, { sticks: CHALLENGE_SETUP.stickCount, mode: 'Challenge' })
     await waitForGameOver(page)
 
     await shareButton(page).click()
     await waitForShareAttempts(page, 1)
 
     const [shared] = await sharedPayloads(page)
-    expect(shared.text).toContain('Stick Rush — Challenge on Impossible')
+    expect(shared.text).toContain(
+      `Stick Rush — Challenge on ${DIFFICULTY_LABELS[CHALLENGE_SETUP.difficulty]}`,
+    )
     expect(shared.text).toContain('0 of 3 lives')
   })
 

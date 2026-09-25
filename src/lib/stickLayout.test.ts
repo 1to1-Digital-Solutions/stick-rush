@@ -3,30 +3,8 @@ import { MACHINE_RADIUS, MAX_STICKS, MIN_STICKS } from './gameConfig'
 import {
   buildStickLayout,
   fallOrder,
-  seededRandom,
   stickStatuses,
 } from './stickLayout'
-
-describe('seededRandom', () => {
-  it('devuelve siempre un valor en [0, 1)', () => {
-    for (let i = 0; i < 50; i++) {
-      for (let run = 0; run < 5; run++) {
-        const value = seededRandom(i, run)
-        expect(value).toBeGreaterThanOrEqual(0)
-        expect(value).toBeLessThan(1)
-      }
-    }
-  })
-
-  it('es determinista: la misma semilla da el mismo valor', () => {
-    expect(seededRandom(3, 7)).toBe(seededRandom(3, 7))
-  })
-
-  it('cambia con el palo y con la partida', () => {
-    expect(seededRandom(3, 7)).not.toBe(seededRandom(4, 7))
-    expect(seededRandom(3, 7)).not.toBe(seededRandom(3, 8))
-  })
-})
 
 describe('buildStickLayout', () => {
   it('crea un palo por cada unidad pedida', () => {
@@ -137,6 +115,14 @@ describe('buildStickLayout', () => {
 
   it('es puro: dos llamadas iguales dan el mismo reparto', () => {
     expect(buildStickLayout(8, 3)).toEqual(buildStickLayout(8, 3))
+  })
+
+  it('con una semilla de 32 bits, como la del reto, sigue siendo la misma tanda', () => {
+    // Las semillas del salón son enteros sin signo enormes; la tanda no puede depender de
+    // nada más que de ella.
+    const semilla = 4_000_000_123
+    expect(buildStickLayout(MAX_STICKS, semilla)).toEqual(buildStickLayout(MAX_STICKS, semilla))
+    expect(fallOrder(MAX_STICKS, semilla)).not.toEqual(fallOrder(MAX_STICKS, semilla + 1))
   })
 
   it('varía la secuencia entre partidas con los mismos palos', () => {

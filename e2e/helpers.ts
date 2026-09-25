@@ -41,9 +41,10 @@ export function modeButton(page: Page, mode: ModeName) {
 /**
  * Configura la partida en el menú y la arranca.
  *
- * En Niveles no se eligen palos ni dificultad —los dice el nivel—, así que ahí
- * `sticks` es lo que se espera ver en el marcador y no lo que se pulsa. Sin
- * fin, el marcador no dice «de N»: los palos no se acaban.
+ * Solo la práctica pregunta palos y dificultad: en Niveles los dice el nivel y
+ * el desafío va fijo (`CHALLENGE_SETUP`), así que ahí `sticks` es lo que se
+ * espera ver en el marcador y no lo que se pulsa. Sin fin, el marcador no dice
+ * «de N»: los palos no se acaban.
  */
 export async function startGame(
   page: Page,
@@ -55,7 +56,7 @@ export async function startGame(
   }: { sticks: number; difficulty?: string; mode?: ModeName; endless?: boolean },
 ) {
   if (mode) await modeButton(page, mode).click()
-  if (mode !== 'Levels') {
+  if (mode === undefined || mode === 'Practice') {
     await page.getByRole('button', { name: String(sticks), exact: true }).click()
     if (difficulty) {
       await page.getByRole('button', { name: difficulty, exact: true }).click()

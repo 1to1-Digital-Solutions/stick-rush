@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test'
 
-import { ASSETS_BASE, buscarEnLaEscena, enterHostVR, openHost } from './support/host'
+import {
+  ASSETS_BASE,
+  buscarEnLaEscena,
+  enterHostBooth,
+  enterHostVR,
+  openHost,
+  partidasTerminadas,
+} from './support/host'
 import { installXREmulator, placeHand, useBareHands } from './support/xr'
 
 /**
@@ -81,5 +88,32 @@ test('con las manos desnudas, la mano articulada sale del juego y no de la raíz
 
   // Al soltar los mandos, el guante se va.
   await expect.poll(() => buscarEnLaEscena(page, 'guante-right')).toBeNull()
+  expect(errors).toEqual([])
+})
+
+test('con un reto, la escena montada dentro de la sesión entra jugando y avisa al acabar', async ({
+  page,
+}) => {
+  // Como en el salón: se entra en la sesión y después se elige cabina. La escena nace dentro de
+  // una sesión abierta, y eso no puede tomarse como «se entró al visor con una partida de
+  // escritorio a medias», que la descartaba y dejaba el reto en el menú.
+  // Una partida entera en tiempo real: con WebGL por software la caída se alarga.
+  test.setTimeout(150_000)
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+
+  await installXREmulator(page)
+  await openHost(page, { aLaCarta: true, reto: 20260925 })
+  await enterHostVR(page)
+  await enterHostBooth(page)
+
+  // Sin tocar nada: la cuenta atrás corre sola, los palos caen y ninguno se coge. Con tres
+  // vidas, el tercero que toca el suelo acaba el desafío, y se avisa una vez, como reto.
+  await expect
+    .poll(() => partidasTerminadas(page), {
+      timeout: 75_000,
+      message: 'la escena no avisó del final del reto',
+    })
+    .toEqual([{ modo: 'challenge', puntos: 0, reto: true }])
   expect(errors).toEqual([])
 })

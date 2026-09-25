@@ -33,8 +33,10 @@ export function useShareResult(): {
   const {
     points,
     score,
-    stickCount,
-    difficulty,
+    // Lo que se jugó, no lo que hay elegido en el menú: el desafío va fijo y en Niveles lo
+    // dice el nivel, así que lo elegido para practicar no es lo que se cuenta.
+    activeStickCount: stickCount,
+    activeDifficulty: difficulty,
     gameMode,
     lives,
     bestPoints,

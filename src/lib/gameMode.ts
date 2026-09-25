@@ -11,21 +11,19 @@
  *   y la partida acaba al quedarse sin ellas —aunque queden palos colgando— o al
  *   resolverlos todos, que es superar el reto. Es el modo heroico.
  *
- * **Vidas y no rondas que suben de dificultad.** La dificultad ya la elige el
- * jugador y es la palanca con la que escala la puntuación (ver `scoring.ts`); si
- * el desafío la fuera subiendo por su cuenta, elegirla en el menú pasaría a no
- * significar nada y dos partidas de "Experto" no serían la misma cosa. Con
- * vidas, el modo cambia solo **cómo termina** la partida y la dificultad sigue
- * queriendo decir exactamente lo que decía.
+ * **Vidas y no rondas que suben de dificultad.** El desafío se juega siempre con
+ * lo mismo (`CHALLENGE_SETUP`): es la partida del récord de la cabina y del reto
+ * del día, y una partida que se endureciera por su cuenta dejaría de ser la misma
+ * para todos. Las vidas cambian solo **cómo termina**.
  *
- * **Tres vidas fijas**, ni escaladas con el número de palos ni con la
- * dificultad: el trato tiene que entenderse antes de empezar —tres fallos y
- * fuera— y graduarlo es justo para lo que ya están las otras dos opciones. Con
- * 13 palos en Imposible, tres vidas es el reto; con 5 en Fácil, un trámite.
+ * **Tres vidas fijas**: el trato tiene que entenderse antes de empezar —tres
+ * fallos y fuera—. Con el aro lleno a velocidad media, eso es el reto.
  *
  * Todo son funciones puras sobre contadores: el estado vive en `gameStore` y la
  * interfaz solo lo pinta, igual que con la puntuación.
  */
+
+import { type Difficulty, MAX_STICKS } from './gameConfig'
 
 export type GameMode = 'practice' | 'levels' | 'challenge'
 
@@ -48,6 +46,34 @@ export const GAME_MODE_HINTS = {
 
 /** Vidas con las que arranca un desafío. */
 export const CHALLENGE_LIVES = 3
+
+/**
+ * Con qué se juega el desafío: siempre lo mismo, **Medio y los trece palos**.
+ *
+ * **Un reto tiene que exigir.** Con Fácil y cinco palos, tres vidas para cinco palos que tardan
+ * seis segundos en caer era un trámite, y todas las partidas acababan en la misma puntuación.
+ * Con el aro lleno a velocidad media caen varios a la vez por todo el arco, hay que girarse a
+ * buscarlos, y la racha —que es lo que más multiplica— se gana o se pierde de verdad.
+ *
+ * **Fijo porque su récord es el de la cabina** (`stick-rush:best-points:challenge`, en el
+ * manifiesto del salón) y los puntos escalan con la dificultad y con los palos: con los dos a
+ * elegir, dos récords del desafío no se podían comparar, y el reto del día —la misma partida
+ * para todos— no sería la misma partida. Y porque el desafío se juega **dándole a Jugar**: lo
+ * que se pregunta es de la práctica, que es donde se calienta.
+ */
+export const CHALLENGE_SETUP: { readonly difficulty: Difficulty; readonly stickCount: number } = {
+  difficulty: 'medium',
+  stickCount: MAX_STICKS,
+}
+
+/**
+ * Si el modo pregunta cuántos palos y a qué velocidad. **Solo la práctica**: en Niveles lo dice
+ * el nivel y en el desafío va fijo (`CHALLENGE_SETUP`), así que sus menús se quedan en elegir
+ * el modo y darle a Jugar.
+ */
+export function picksSetup(mode: GameMode): boolean {
+  return mode === 'practice'
+}
 
 /**
  * Cómo ha acabado una partida.

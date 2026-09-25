@@ -31,7 +31,12 @@ export function XRSessionController() {
   // Recordar que hubo sesión es imprescindible: en escritorio `mode` es null
   // siempre, y sin esta guarda cualquier partida iniciada con el ratón se
   // cancelaría sola nada más empezar.
-  const immersive = useRef(false)
+  //
+  // Se parte de lo que haya al montar: montado ya dentro de una sesión —lo que hace el salón al
+  // elegir cabina— no hay partida de escritorio que descartar, y la que haya es la del reto del
+  // salón, que arranca jugando (ver `OpcionesDelSalon`). Partiendo de `false`, la tomaba por una
+  // de escritorio a medias y devolvía el reto al menú.
+  const immersive = useRef(mode != null)
 
   useEffect(() => {
     // El juego necesita saber si hay gafas puestas para decidir a quién le

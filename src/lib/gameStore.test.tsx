@@ -1,7 +1,9 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MACHINE_HEIGHT, MAX_STICKS, MIN_STICKS } from './gameConfig'
-import { COUNTDOWN_SECONDS, useGame, useGameStoreValue } from './gameStore'
+import { COUNTDOWN_SECONDS, useGame, useGameStoreValue, type OpcionesDelSalon } from './gameStore'
+import { CHALLENGE_SETUP } from './gameMode'
+import { buildStickLayout } from './stickLayout'
 import { HIGH_SCORE_KEYS } from './highScore'
 import { HOOP_ADJUST_RANGE, HOOP_ADJUST_STEP } from './hoopHeight'
 import { OWN_SCENERY_KEY } from './sceneryPreference'
@@ -608,10 +610,10 @@ describe('práctica y desafío', () => {
 
   it('resolver todos los palos con vidas es superar el reto', () => {
     const { result } = renderHook(() => useGameStoreValue())
-    startChallenge(result, 5)
+    startChallenge(result, CHALLENGE_SETUP.stickCount)
 
     act(() => result.current.missStick())
-    for (let i = 0; i < 4; i++) act(() => result.current.catchStick(0.5))
+    for (let i = 1; i < CHALLENGE_SETUP.stickCount; i++) act(() => result.current.catchStick(0.5))
 
     expect(result.current.outcome).toBe('cleared')
     expect(result.current.gameState).toBe('finished')
@@ -702,6 +704,167 @@ describe('práctica y desafío', () => {
     act(() => result.current.resetGame())
     act(() => result.current.setGameMode('practice'))
     expect(result.current.bestPoints).toBe(practiceRecord)
+  })
+})
+
+describe('el desafío va preconfigurado', () => {
+  it('juega siempre con lo que fija el modo, elija lo que se elija en práctica', () => {
+    // Su récord es el de la cabina: con la dificultad y los palos a elegir, dos récords del
+    // desafío no serían la misma partida.
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setDifficulty('impossible'))
+    act(() => result.current.setStickCount(MAX_STICKS))
+    act(() => result.current.setGameMode('challenge'))
+
+    expect(result.current.activeDifficulty).toBe(CHALLENGE_SETUP.difficulty)
+    expect(result.current.activeStickCount).toBe(CHALLENGE_SETUP.stickCount)
+
+    // Y lo elegido sigue ahí para cuando se vuelva a la práctica.
+    act(() => result.current.setGameMode('practice'))
+    expect(result.current.activeDifficulty).toBe('impossible')
+    expect(result.current.activeStickCount).toBe(MAX_STICKS)
+  })
+})
+
+describe('el reto del salón', () => {
+  const RETO = { semilla: 20260925 }
+
+  function conReto(opciones: OpcionesDelSalon) {
+    return renderHook((props: OpcionesDelSalon) => useGameStoreValue(props), {
+      initialProps: opciones,
+    })
+  }
+
+  it('sin opciones, nada cambia: menú, práctica y sin reto', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    expect(result.current.gameState).toBe('menu')
+    expect(result.current.gameMode).toBe('practice')
+    expect(result.current.enReto).toBe(false)
+  })
+
+  it('con reto se entra contando, en el desafío y con lo que fija el modo', () => {
+    const { result } = conReto({ reto: RETO })
+    expect(result.current.gameState).toBe('countdown')
+    expect(result.current.gameMode).toBe('challenge')
+    expect(result.current.enReto).toBe(true)
+    expect(result.current.activeDifficulty).toBe(CHALLENGE_SETUP.difficulty)
+    expect(result.current.activeStickCount).toBe(CHALLENGE_SETUP.stickCount)
+    expect(result.current.lives).toBe(3)
+    runOutCountdown()
+    expect(result.current.gameState).toBe('playing')
+  })
+
+  it('sin lección, aunque se juegue con las gafas y no se haya visto nunca', () => {
+    const { result } = conReto({ reto: RETO })
+    act(() => result.current.setImmersive(true))
+    runOutCountdown()
+    expect(result.current.teaching).toBe(false)
+    expect(result.current.tutorialStep).toBeNull()
+  })
+
+  it('la misma semilla reparte los mismos palos, y otra semilla no', () => {
+    const uno = conReto({ reto: RETO }).result.current
+    const otro = conReto({ reto: RETO }).result.current
+    const distinto = conReto({ reto: { semilla: RETO.semilla + 1 } }).result.current
+
+    expect(uno.stickSeed).toBe(otro.stickSeed)
+    const reparto = (seed: number) =>
+      buildStickLayout(CHALLENGE_SETUP.stickCount, seed).map(({ delay }) => delay)
+    expect(reparto(uno.stickSeed)).toEqual(reparto(otro.stickSeed))
+    expect(reparto(distinto.stickSeed)).not.toEqual(reparto(uno.stickSeed))
+  })
+
+  it('sin reto, cada partida estrena semilla', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    startPlaying(result)
+    const primera = result.current.stickSeed
+    act(() => result.current.resetGame())
+    startPlaying(result)
+    expect(result.current.stickSeed).not.toBe(primera)
+  })
+
+  it('al acabar el reto avisa una vez, con sus puntos y como reto', () => {
+    const onTerminar = vi.fn()
+    const { result, rerender } = conReto({ reto: RETO, onTerminar })
+    runOutCountdown()
+    act(() => result.current.catchStick(0.5))
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+
+    expect(result.current.gameState).toBe('finished')
+    // Volver a pintar la pantalla final —con otro aviso, además— no la cuenta otra vez.
+    const otroAviso = vi.fn()
+    rerender({ reto: RETO, onTerminar: otroAviso })
+    rerender({ reto: RETO, onTerminar: otroAviso })
+
+    expect(onTerminar).toHaveBeenCalledTimes(1)
+    expect(onTerminar).toHaveBeenCalledWith({
+      modo: 'challenge',
+      puntos: result.current.points,
+      reto: true,
+    })
+    expect(result.current.points).toBeGreaterThan(0)
+    expect(otroAviso).not.toHaveBeenCalled()
+  })
+
+  it('un palo que se resuelve con la partida ya acabada no la cuenta otra vez', () => {
+    // Dos palos pueden resolverse en el mismo lote que agota la última vida: la pantalla final
+    // se vuelve a calcular con más puntos, pero la partida es la misma.
+    const onTerminar = vi.fn()
+    const { result } = conReto({ reto: RETO, onTerminar })
+    runOutCountdown()
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+    act(() => result.current.catchStick(0.5))
+
+    expect(result.current.gameState).toBe('finished')
+    expect(onTerminar).toHaveBeenCalledTimes(1)
+  })
+
+  it('otra partida tras el reto ya no es el reto, aunque sea el mismo modo', () => {
+    const onTerminar = vi.fn()
+    const { result } = conReto({ reto: RETO, onTerminar })
+    const semillaDelReto = result.current.stickSeed
+    runOutCountdown()
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+
+    startPlaying(result)
+    expect(result.current.enReto).toBe(false)
+    expect(result.current.stickSeed).not.toBe(semillaDelReto)
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+
+    expect(onTerminar).toHaveBeenCalledTimes(2)
+    expect(onTerminar).toHaveBeenLastCalledWith({ modo: 'challenge', puntos: 0, reto: false })
+  })
+
+  it('avisa de cualquier partida con puntuación, no solo del desafío', () => {
+    const onTerminar = vi.fn()
+    const { result } = conReto({ onTerminar })
+    playRound(result, 5, 5)
+    expect(onTerminar).toHaveBeenCalledWith({
+      modo: 'practice',
+      puntos: result.current.points,
+      reto: false,
+    })
+  })
+
+  it('dejarla a medias no es acabarla: no avisa', () => {
+    const onTerminar = vi.fn()
+    const { result } = conReto({ reto: RETO, onTerminar })
+    runOutCountdown()
+    act(() => result.current.catchStick(0.5))
+    act(() => result.current.askToQuit())
+    act(() => result.current.resetGame())
+
+    expect(result.current.gameState).toBe('menu')
+    expect(result.current.enReto).toBe(false)
+    expect(onTerminar).not.toHaveBeenCalled()
+  })
+
+  it('sin aviso que dar, acabar sigue guardando el récord como siempre', () => {
+    const { result } = conReto({ reto: RETO })
+    runOutCountdown()
+    act(() => result.current.catchStick(0.5))
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+    expect(localStorage.getItem(HIGH_SCORE_KEYS.challenge)).toBe(String(result.current.points))
   })
 })
 

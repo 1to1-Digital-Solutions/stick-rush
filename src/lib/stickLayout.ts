@@ -1,8 +1,9 @@
 import { MACHINE_HEIGHT, machinePoint } from './gameConfig'
+import { azarDesde, semillaDe } from './semilla'
 
 /** Posición y momento de salida de un palo dentro de una partida. */
 export interface StickLayout {
-  /** Clave estable por partida: fuerza el remontaje al empezar otra. */
+  /** Clave estable por tanda: fuerza el remontaje al empezar otra. */
   key: string
   /** Punto del aro del que cuelga. */
   anchor: [number, number, number]
@@ -13,29 +14,35 @@ export interface StickLayout {
 }
 
 /**
- * Pseudo-aleatorio determinista en [0, 1) a partir de dos enteros (índice
- * y partida). Evita Math.random() en render (impuro) manteniendo el jitter
- * estable durante el ciclo de vida de cada palo.
+ * De qué sale cada sorteo de una tanda, para derivarlo de la semilla con `semillaDe`.
+ *
+ * Cada cosa que se sortea lleva su propio hilo: el turno de caída, el titubeo de cada palo antes
+ * de soltarse y su vaivén. Así, añadir un sorteo nuevo no cambia los que ya había, y el vaivén
+ * —que es solo de adorno— no se lleva números que el reparto necesita.
  */
-export function seededRandom(a: number, b: number): number {
-  const x = Math.sin(a * 374761393 + b * 668265263) * 43758.5453
-  return x - Math.floor(x)
-}
+const HILO = { orden: 1, retardo: 2, vaiven: 3 } as const
 
 /**
  * Turno de caída de cada palo, barajado.
  *
  * Devuelve las posiciones del aro en el orden en que se sueltan: `order[0]` es
- * el palo que cae primero. Fisher-Yates sembrado con `runId`, así que la
- * secuencia es distinta en cada partida pero estable dentro de ella.
+ * el palo que cae primero. Fisher-Yates sembrado con la semilla de la tanda, así
+ * que la secuencia es distinta en cada partida pero estable dentro de ella, y la
+ * misma para todos los que juegan un mismo reto (`semilla.ts`).
  */
-export function fallOrder(stickCount: number, runId: number): number[] {
+export function fallOrder(stickCount: number, seed: number): number[] {
   const order = Array.from({ length: Math.max(stickCount, 0) }, (_, i) => i)
+  const azar = azarDesde(semillaDe(seed, HILO.orden))
   for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(seededRandom(i, runId) * (i + 1))
+    const j = Math.floor(azar() * (i + 1))
     ;[order[i], order[j]] = [order[j], order[i]]
   }
   return order
+}
+
+/** Un número en [0, 1) propio de un palo y de lo que se sortea de él. */
+function delPalo(seed: number, hilo: number, index: number): number {
+  return azarDesde(semillaDe(seed, hilo, index))()
 }
 
 /**
@@ -49,10 +56,10 @@ export function fallOrder(stickCount: number, runId: number): number[] {
  */
 export function buildStickLayout(
   stickCount: number,
-  runId: number,
+  seed: number,
   hoopHeight: number = MACHINE_HEIGHT,
 ): StickLayout[] {
-  const order = fallOrder(stickCount, runId)
+  const order = fallOrder(stickCount, seed)
   const turnOf: number[] = []
   order.forEach((stickIndex, turn) => {
     turnOf[stickIndex] = turn
@@ -61,21 +68,14 @@ export function buildStickLayout(
   return Array.from({ length: stickCount }, (_, index) => {
     const t = stickCount === 1 ? 0.5 : (index + 1) / (stickCount + 1)
     return {
-      key: `${runId}-${index}`,
+      key: `${seed}-${index}`,
       anchor: machinePoint(t, hoopHeight),
       // Un turno por palo, más un jitter para que no suene a metrónomo.
-      delay: turnOf[index] * (1 + seededRandom(index, runId) * 0.5),
-      swingPhase: seededRandom(index + SWING_PHASE_SEED, runId),
+      delay: turnOf[index] * (1 + delPalo(seed, HILO.retardo, index) * 0.5),
+      swingPhase: delPalo(seed, HILO.vaiven, index),
     }
   })
 }
-
-/**
- * Desplazamiento de la semilla del vaivén. Sin él, la fase del balanceo saldría
- * del mismo valor que el jitter del retardo y el palo que más tarda en caer
- * sería siempre el que más adelantado va meciéndose.
- */
-const SWING_PHASE_SEED = 977
 
 /** Cómo ha acabado (o no) cada palo, para pintar el marcador. */
 export type StickStatus = 'caught' | 'missed' | 'pending'

@@ -4,6 +4,7 @@ import { GameProvider } from '../components/GameProvider'
 import { GameWorld } from '../components/game/GameWorld'
 import { setAssetsBase } from '../lib/assets'
 import type { HostAnchor } from '../lib/hostAnchor'
+import type { Resultado, Reto } from '../lib/semilla'
 import { ExitProvider } from './exit'
 
 export interface StickRushSceneProps {
@@ -29,6 +30,20 @@ export interface StickRushSceneProps {
    * inmersiva; qué significa volver lo decide quien monta.
    */
   onExit: () => void
+  /**
+   * Jugar un reto concreto del salón: el reto del día, o el código de «reta mi puntuación».
+   *
+   * Con él la escena entra **directamente en una partida del desafío** —el modo del récord de
+   * la cabina—, con Medio y trece palos (`CHALLENGE_SETUP`) y sin lección, y el turno y el
+   * titubeo de cada palo salen de la semilla: misma semilla, mismos palos cayendo en el mismo
+   * orden y al mismo tiempo. Se lee al montar: para otro reto, se vuelve a montar.
+   */
+  reto?: Reto
+  /**
+   * Se llama **una vez** al acabar cada partida con puntuación, en cualquier modo, con sus
+   * puntos aunque no sean récord. Dejar la partida a medias o salir no la acaba.
+   */
+  onTerminar?: (resultado: Resultado) => void
 }
 
 /**
@@ -45,14 +60,14 @@ export interface StickRushSceneProps {
  *
  * El contrato completo, en `docs/montar-el-juego.md`.
  */
-export function StickRushScene({ assetsBase, anchor, onExit }: StickRushSceneProps) {
+export function StickRushScene({ assetsBase, anchor, onExit, reto, onTerminar }: StickRushSceneProps) {
   // Durante el render y no en un efecto: la escena pide el HDRI y las texturas
   // en cuanto se monta, es decir, antes de que corra ningún efecto. Escribir la
   // misma base dos veces no cambia nada, así que repetir el render es inocuo.
   if (assetsBase !== undefined) setAssetsBase(assetsBase)
 
   return (
-    <GameProvider>
+    <GameProvider reto={reto} onTerminar={onTerminar}>
       <ExitProvider onExit={onExit}>
         <GameWorld anchor={anchor} />
       </ExitProvider>

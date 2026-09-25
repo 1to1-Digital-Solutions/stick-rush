@@ -16,6 +16,7 @@ import {
   MIN_STICKS,
 } from './gameConfig'
 import {
+  CHALLENGE_SETUP,
   type GameMode,
   type RunOutcome,
   remainingLives,
@@ -52,6 +53,7 @@ import {
 } from './hoopHeight'
 import { forgetOwnScenery, sceneryModeOf, sceneryOf } from './sceneryPreference'
 import { gameStorage } from './storage'
+import { semillaAlAzar, semillaDe, type Resultado, type Reto } from './semilla'
 import { stickPoints } from './scoring'
 import {
   PLAZO_DEL_PASO,
@@ -82,6 +84,27 @@ export type SceneryMode = 'scene' | 'passthrough'
 /** Segundos de cuenta atrás entre pulsar "Jugar" y el primer palo. */
 export const COUNTDOWN_SECONDS = 3
 
+/**
+ * El modo que se juega con el `reto` del salón: el del récord de la cabina
+ * (`stick-rush:best-points:challenge`), con lo que ese modo fija (`CHALLENGE_SETUP`).
+ */
+const MODO_DEL_RETO: GameMode = 'challenge'
+
+/**
+ * Lo que el salón le pasa al store a través de la escena (ver `StickRushScene`).
+ *
+ * Todo opcional: sin nada, el juego arranca en el menú y sortea como en su propia web.
+ */
+export interface OpcionesDelSalon {
+  /**
+   * Jugar este reto: se entra **directamente** en una partida del desafío, sin lección, con los
+   * palos que caen y su turno sacados de la semilla. Se lee al montar; otro reto es otro montaje.
+   */
+  reto?: Reto
+  /** Se llama una vez al acabar cada partida con puntuación (no al dejarla a medias). */
+  onTerminar?: (resultado: Resultado) => void
+}
+
 export interface GameStore {
   /** Número de palos elegido (5–13). */
   stickCount: number
@@ -109,10 +132,16 @@ export interface GameStore {
   /** Palos que cuelgan de la máquina en esta tanda: los elegidos, o los del nivel. */
   activeStickCount: number
   /**
-   * Semilla del reparto de palos. Es `runId` salvo en la partida sin fin, donde
-   * cambia con cada tanda para que la máquina se recargue con palos nuevos.
+   * Semilla del reparto de palos de la tanda en curso: sale de la de la partida y del número
+   * de tanda (`semillaDe`), así que en la partida sin fin cada recarga trae palos nuevos y en
+   * el reto todos los que lo juegan ven caer los mismos palos en el mismo orden.
    */
   stickSeed: number
+  /**
+   * Lo que se juega ahora es el `reto` que pasó el salón. Deja de serlo en cuanto se empieza
+   * otra partida o se vuelve al menú.
+   */
+  enReto: boolean
   /** Tanda en curso de la partida sin fin, empezando en 0; siempre 0 si no. */
   wave: number
   /** Palos atrapados y resueltos de la TANDA en curso; en sin fin, no de la partida. */
@@ -312,13 +341,22 @@ function clampStickCount(count: number): number {
   return Math.min(MAX_STICKS, Math.max(MIN_STICKS, Math.round(count)))
 }
 
-export function useGameStoreValue(): GameStore {
+export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): GameStore {
   const [stickCount, setStickCountState] = useState(MIN_STICKS)
   const [difficulty, setDifficulty] = useState<Difficulty>('easy')
   // Se entra en práctica: es el juego de siempre y quien acaba de llegar no
   // tiene por qué estrenarse con vidas que aún no sabe cómo se pierden. El
-  // desafío está a un toque, en el mismo sitio.
-  const [gameMode, setGameModeState] = useState<GameMode>('practice')
+  // desafío está a un toque, en el mismo sitio. Con el reto del salón, en cambio,
+  // el modo ya está elegido: el del récord de la cabina.
+  const [gameMode, setGameModeState] = useState<GameMode>(() =>
+    reto != null ? MODO_DEL_RETO : 'practice',
+  )
+  // El reto se mira una sola vez, al montar: es lo que decide con qué se arranca.
+  const [enReto, setEnReto] = useState(() => reto != null)
+  // De dónde sale el reparto de la partida en marcha. La del reto si se juega el reto; si no,
+  // una nueva en cada partida (`startGame`), que sigue siendo distinta cada vez. En el menú da
+  // igual cuál: los palos cuelgan quietos.
+  const [semilla, setSemilla] = useState(() => reto?.semilla ?? 0)
   const [endless, setEndless] = useState(false)
   // `null` es «el más alto desbloqueado»: así el menú enseña el nivel que toca
   // sin leer el almacenamiento en el primer render, que no está en el servidor.
@@ -347,7 +385,9 @@ export function useGameStoreValue(): GameStore {
   // La marca a batir se congela al empezar: en cuanto la partida termina y se
   // guarda, `bestPoints` ya incluye lo recién hecho y no serviría para saber si
   // se ha superado nada.
-  const [recordToBeat, setRecordToBeat] = useState(0)
+  const [recordToBeat, setRecordToBeat] = useState(() =>
+    reto != null ? getBestPoints(MODO_DEL_RETO) : 0,
+  )
   // El progreso de Niveles y la racha sin fin tampoco son estado de React: viven
   // en el navegador y se leen suscritos, como el récord.
   const unlockedLevel = useSyncExternalStore(
@@ -375,7 +415,9 @@ export function useGameStoreValue(): GameStore {
   // partida —contando, jugando y terminada— se derivan de la cuenta atrás y de
   // los palos resueltos, así no hay fuentes de verdad que sincronizar ni
   // efectos que cambien de fase provocando renders en cascada.
-  const [running, setRunning] = useState(false)
+  //
+  // Con reto se entra jugando: el salón ya ha elegido juego y modo por quien juega.
+  const [running, setRunning] = useState(() => reto != null)
   // El escenario tampoco es estado de React, y además no es del juego: es el
   // escenario del arcade (`xrcade:scenery`), traducido a `scene`/`passthrough` en
   // el borde (`sceneryPreference.ts`). Se cambia desde el panel del salón y desde
@@ -400,7 +442,7 @@ export function useGameStoreValue(): GameStore {
   const sfxVolume = volumeFactor(volumes.sfx)
   const music = volumes.ambience > 0
   const ambienceVolume = volumeFactor(volumes.ambience)
-  const [countdown, setCountdown] = useState(0)
+  const [countdown, setCountdown] = useState(() => (reto != null ? COUNTDOWN_SECONDS : 0))
   const [prompt, setPrompt] = useState<'quit' | null>(null)
   const [runId, setRunId] = useState(0)
   // La corrección de la altura del aro sale de lo guardado en visitas
@@ -432,10 +474,14 @@ export function useGameStoreValue(): GameStore {
   const selectedLevel = clampLevel(Math.min(level ?? unlockedLevel, unlockedLevel))
   const activeLevel = running ? levelAtStart : selectedLevel
   const currentLevel = levelSpec(activeLevel)
-  const activeDifficulty = levels ? currentLevel.difficulty : difficulty
-  const activeStickCount = levels ? currentLevel.stickCount : stickCount
-  // Sin fin, cada tanda reparte palos nuevos: la semilla cambia con la tanda.
-  const stickSeed = endlessRun ? runId * 1000 + wave : runId
+  // Lo elegido solo cuenta en práctica: en Niveles lo dice el nivel, y el desafío va fijo
+  // (`CHALLENGE_SETUP`) para que su récord —el de la cabina— sea siempre la misma partida.
+  const setup = levels ? currentLevel : gameMode === 'challenge' ? CHALLENGE_SETUP : { difficulty, stickCount }
+  const activeDifficulty = setup.difficulty
+  const activeStickCount = setup.stickCount
+  // Cada tanda, su semilla: sin fin, cada recarga reparte palos nuevos; en el resto de modos
+  // solo hay la tanda 0.
+  const stickSeed = semillaDe(semilla, wave)
   const waveScore = score - waveStart.score
   const waveResolved = resolved - waveStart.resolved
 
@@ -547,12 +593,26 @@ export function useGameStoreValue(): GameStore {
   // solo hace algo si mejora lo que había, así que repetirlo no cambia nada. Se
   // guarda al final y no palo a palo para que durante la partida el récord siga
   // siendo la marca a batir.
+  //
+  // Y aquí mismo se le cuenta al salón, una vez por partida y aunque no sea récord. Este efecto
+  // se rehace con cada render de la pantalla final (y dos veces en desarrollo): la partida de la
+  // que ya se avisó se apunta para no contarla dos veces. El aviso se lee del último render y no
+  // entra en las dependencias: un anfitrión que pasa una función nueva en cada render no tiene
+  // por qué rehacer nada.
+  const avisada = useRef(-1)
+  const avisar = useRef(onTerminar)
+  useEffect(() => {
+    avisar.current = onTerminar
+  }, [onTerminar])
   useEffect(() => {
     if (gameState !== 'finished') return
     if (levelResult) saveLevelResult(activeLevel, levelResult.stars)
     else if (endlessRun) saveBestEndlessStreak(bestStreak)
     else saveBestPoints(gameMode, points)
-  }, [gameState, gameMode, points, bestStreak, endlessRun, levelResult, activeLevel])
+    if (avisada.current === runId) return
+    avisada.current = runId
+    avisar.current?.({ modo: gameMode, puntos: points, reto: enReto })
+  }, [gameState, gameMode, points, bestStreak, endlessRun, levelResult, activeLevel, runId, enReto])
 
   // La marca de este modo: puntos, o la racha en la partida sin fin. En Niveles
   // no hay marca que batir: hay estrellas.
@@ -646,6 +706,10 @@ export function useGameStoreValue(): GameStore {
       const visto = leerTutorialVisto()
       setTutorialSeen(visto)
       clearRun()
+      // Lo que viene es otra partida: ya no es el reto del salón aunque se juegue en el mismo
+      // modo, y estrena semilla.
+      setEnReto(false)
+      setSemilla(semillaAlAzar())
       setRecordToBeat(
         gameMode === 'practice' && endless ? getBestEndlessStreak() : getBestPoints(gameMode),
       )
@@ -695,6 +759,7 @@ export function useGameStoreValue(): GameStore {
     // menú con el panel puesto se la encuentra otra vez al empezar.
     setTeaching(false)
     setTutorialSkipped(0)
+    setEnReto(false)
     setRunning(false)
   }, [clearRun])
 
@@ -715,6 +780,7 @@ export function useGameStoreValue(): GameStore {
       activeDifficulty,
       activeStickCount,
       stickSeed,
+      enReto,
       wave,
       waveScore,
       waveResolved,
@@ -777,6 +843,7 @@ export function useGameStoreValue(): GameStore {
       activeDifficulty,
       activeStickCount,
       stickSeed,
+      enReto,
       wave,
       waveScore,
       waveResolved,

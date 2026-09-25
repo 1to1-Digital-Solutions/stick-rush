@@ -11,7 +11,10 @@ const PAGE_PATH = '/anfitrion-de-prueba'
 const BUNDLE_PATH = '/anfitrion-de-prueba.js'
 const PUBLIC_DIR = path.join(process.cwd(), 'public')
 
-const HTML = `<!doctype html>
+/** El HTML del anfitrión. */
+function html({ aLaCarta = false, reto }: HostOptions): string {
+  const cabina = (aLaCarta ? ` data-cabina="a-la-carta"` : '') + (reto == null ? '' : ` data-reto="${reto}"`)
+  return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -21,11 +24,23 @@ const HTML = `<!doctype html>
     </style>
   </head>
   <body>
-    <div id="juego" data-assets-base="${ASSETS_BASE}"></div>
+    <div id="juego" data-assets-base="${ASSETS_BASE}"${cabina}></div>
     <script src="${BUNDLE_PATH}"></script>
   </body>
 </html>
 `
+}
+
+export interface HostOptions {
+  /**
+   * Montar la escena solo cuando se pida (`enterHostBooth`), **como en el salón**: allí se
+   * elige cabina con el visor ya puesto, así que la escena nace dentro de una sesión abierta.
+   * Por defecto se monta con la página, que es lo que le vale al resto de la suite.
+   */
+  aLaCarta?: boolean
+  /** La semilla del reto que el salón le pasa a la escena (`reto`), si se quiere uno. */
+  reto?: number
+}
 
 export interface TestHost {
   /** Las rutas que la página ha pedido, en orden. */
@@ -40,7 +55,7 @@ export interface TestHost {
  * este juego: lo suyo cuelga de `/juegos/stick-rush/`. Algo que lo pidiera de la raíz
  * funcionaría en la web propia y faltaría justo donde se juega.
  */
-export async function openHost(page: Page): Promise<TestHost> {
+export async function openHost(page: Page, opciones: HostOptions = {}): Promise<TestHost> {
   const csp = (await page.request.get('/')).headers()['content-security-policy']
   expect(csp, 'el servidor no devolvió política de seguridad').toBeTruthy()
 
@@ -52,7 +67,7 @@ export async function openHost(page: Page): Promise<TestHost> {
       return route.fulfill({
         contentType: 'text/html; charset=utf-8',
         headers: { 'content-security-policy': csp },
-        body: HTML,
+        body: html(opciones),
       })
     }
     if (pathname === BUNDLE_PATH) {
@@ -102,6 +117,16 @@ export async function enterHostVR(page: Page): Promise<void> {
   await expect
     .poll(() => page.evaluate(() => window.__xrTest.hasSession()))
     .toBe(true)
+}
+
+/** Elige la cabina: monta la escena dentro de la sesión ya abierta (con `aLaCarta`). */
+export async function enterHostBooth(page: Page): Promise<void> {
+  await page.evaluate(() => window.__stickRushHost.entrarEnLaCabina())
+}
+
+/** Lo que la escena ha contado al anfitrión al acabar cada partida. */
+export function partidasTerminadas(page: Page) {
+  return page.evaluate(() => window.__stickRushHost.terminadas)
 }
 
 /** Un objeto de la escena, por nombre, visto desde fuera del Canvas. */

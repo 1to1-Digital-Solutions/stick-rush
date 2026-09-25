@@ -5,6 +5,7 @@ import { GameProvider } from './GameProvider'
 import { COUNTDOWN_SECONDS, useGame } from '../lib/gameStore'
 import { formatoDeCifra } from '../lib/textos'
 import { useShareResult } from './useShareResult'
+import { CHALLENGE_SETUP } from '../lib/gameMode'
 
 /**
  * El cableado entre la partida y el texto que sale del dispositivo.
@@ -66,6 +67,26 @@ function playRound(
 }
 
 describe('compartir la partida recién jugada', () => {
+  it('cuenta lo que se jugó, no lo elegido para practicar', async () => {
+    // El desafío va fijo: la dificultad y los palos del menú de práctica no son los suyos.
+    const { result } = renderShare()
+    act(() => result.current.game.setDifficulty('impossible'))
+    act(() => result.current.game.setGameMode('challenge'))
+    act(() => result.current.game.startGame())
+    for (let second = 0; second < COUNTDOWN_SECONDS; second++) {
+      act(() => void vi.advanceTimersByTime(1000))
+    }
+    for (let i = 0; i < 3; i++) act(() => result.current.game.missStick())
+
+    await act(async () => {
+      await result.current.share.share()
+    })
+
+    const text = shared[0].text ?? ''
+    expect(text).toContain('Challenge on Medium')
+    expect(text).toContain(`of ${CHALLENGE_SETUP.stickCount} sticks`)
+  })
+
   it('manda la puntuación conseguida y el enlace al juego', async () => {
     const { result } = renderShare()
     playRound(result.current, 5, 3)

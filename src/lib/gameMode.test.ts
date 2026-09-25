@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { MAX_STICKS } from './gameConfig'
 import {
   CHALLENGE_LIVES,
+  CHALLENGE_SETUP,
   GAME_MODE_LABELS,
   GAME_MODE_ORDER,
+  picksSetup,
   remainingLives,
   runOutcome,
   startingLives,
@@ -103,5 +106,17 @@ describe('presentación de los modos', () => {
     for (const mode of GAME_MODE_ORDER) {
       expect(GAME_MODE_LABELS[mode]).toBeTruthy()
     }
+  })
+})
+
+describe('qué pregunta cada modo', () => {
+  it('solo la práctica pregunta palos y velocidad', () => {
+    expect(GAME_MODE_ORDER.filter(picksSetup)).toEqual(['practice'])
+  })
+
+  it('el desafío va con el aro lleno a velocidad media: un reto tiene que exigir', () => {
+    // Es la partida del récord de la cabina y del reto del día: cambiarla invalida los récords
+    // guardados y las medallas del manifiesto.
+    expect(CHALLENGE_SETUP).toEqual({ difficulty: 'medium', stickCount: MAX_STICKS })
   })
 })
