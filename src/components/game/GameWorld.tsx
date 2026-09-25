@@ -25,6 +25,7 @@ import { XRMenu } from '../xr/XRMenu'
 import { XRPlayerHeight } from '../xr/XRPlayerHeight'
 import { XRSessionController } from '../xr/XRSessionController'
 import { XRTutorial } from '../xr/XRTutorial'
+import { Ayudas } from './Ayudas'
 import { Calentar } from './Calentar'
 import { Backdrop } from './Backdrop'
 import { Fairground } from './Fairground'
@@ -275,6 +276,11 @@ export function GameWorld({ hasDomUi = false, anchor }: GameWorldProps) {
           <Suspense fallback={null}>
             <StickMachine />
           </Suspense>
+
+          {/* Las ayudas visuales: dónde ponerse, el palo que cae y con qué se coge. Junto a la
+              máquina, porque su guion está escrito respecto del centro del aro, y fuera de lo
+              que se remonta con cada partida: se montan una vez y se apagan solas. */}
+          <Ayudas />
 
           {/* El decorado cambia con la cortina cerrada, para que el salto entre
               la plaza y la habitación del jugador no se vea. */}
