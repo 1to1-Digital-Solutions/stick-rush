@@ -1,0 +1,29 @@
+{
+  "id": "stick-rush",
+  "repo": "..",
+  "sfx": {
+    "module": "godot/render/sonido.ts",
+    "factory": "createStickRushAudio",
+    "play": "play",
+    "sounds": {
+      "catch-1": { "args": [{ "name": "catch", "streak": 1 }] },
+      "catch-2": { "args": [{ "name": "catch", "streak": 2 }] },
+      "catch-3": { "args": [{ "name": "catch", "streak": 3 }] },
+      "catch-4": { "args": [{ "name": "catch", "streak": 4 }] },
+      "catch-5": { "args": [{ "name": "catch", "streak": 5 }] },
+      "catch-6": { "args": [{ "name": "catch", "streak": 6 }] },
+      "catch-7": { "args": [{ "name": "catch", "streak": 7 }] },
+      "catch-8": { "args": [{ "name": "catch", "streak": 8 }] },
+      "miss": { "args": [{ "name": "miss" }] },
+      "countdown-3": { "args": [{ "name": "countdown", "secondsLeft": 3 }] },
+      "countdown-2": { "args": [{ "name": "countdown", "secondsLeft": 2 }] },
+      "countdown-1": { "args": [{ "name": "countdown", "secondsLeft": 1 }] },
+      "go": { "args": [{ "name": "go" }] },
+      "over-win": { "args": [{ "name": "over", "outcome": "win" }] },
+      "over-loss": { "args": [{ "name": "over", "outcome": "loss" }] },
+      "over-close": { "args": [{ "name": "over", "outcome": "close" }] },
+      "record": { "args": [{ "name": "record" }] }
+    }
+  },
+  "music": { "feria": "public/audio/feria.mp3" }
+}

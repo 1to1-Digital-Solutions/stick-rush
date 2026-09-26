@@ -1,5 +1,13 @@
-# Caché del editor de Godot (se regenera al abrir el proyecto).
-.godot/
-# Plantillas de export y builds.
-export/
-*.tmp
+# Lo genera el build del kit (`xrcade/godot-kit/build.mjs`) a partir de `scene/` y de los
+# tests de `src/lib`: la escena, y con `--tests` el paquete de tests, su runner y su escena.
+/games/stick-rush/main.js
+/games/stick-rush/tests/domain_tests.js
+/games/stick-rush/tests/run_domain_tests.js
+/games/stick-rush/tests/domain_tests.tscn
+# Tipos de la API de Godot y de los recursos del proyecto: los genera el motor
+# con GodotJS (`--generate-types`), que deja además un `node_modules/` vacío.
+/typings/
+/gen/
+/node_modules/
+# Caché del editor.
+/.godot/

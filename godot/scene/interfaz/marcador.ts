@@ -1,0 +1,232 @@
+/**
+ * El marcador de Stick Rush en Godot: el del visor de la web (`XRHud.tsx`), por debajo del aro
+ * (`XR_HUD_POSITION`) para no cruzarse con los palos que caen.
+ *
+ * Lo mismo que la web y en el mismo sitio: **una ficha por palo** —verde, grande y levantada el
+ * atrapado; roja, pequeña y hundida el perdido; gris el que sigue en juego (`stickStatuses`)—, **la
+ * racha** en rombos encima (hasta cinco), **la barra de puntos** que se llena hacia lo máximo posible
+ * de esa partida con **la marca del récord** sobre el carril (`scoreRatio`; sin fin, la racha contra la
+ * mejor racha), y debajo **las vidas** del desafío o, al acabar un nivel, **sus estrellas**. Al acabar,
+ * el panel crece y lleva **repetir** y **volver al menú**.
+ *
+ * **Aquí sí hay letra**, y es la única diferencia a propósito: la web no escribe en el visor porque la
+ * fuente de drei no pasa su política de seguridad, así que el final solo lo cuenta con fichas y
+ * barras. En el motor la letra es de casa, y el panel del final crece por arriba para decir cómo ha
+ * acabado y los puntos, con las mismas frases que la pantalla de fin de la web (`HUD.tsx`). Compartir
+ * no está: en el visor no hay portapapeles.
+ */
+import { Node3D, Vector3, type MeshInstance3D } from 'godot'
+
+import { triangulosDeArco } from '@kit/lib/ui/iconos'
+import { Boton } from '@kit/runtime/ui/boton'
+import { figura, pintar } from '@kit/runtime/ui/malla'
+import { Panel } from '@kit/runtime/ui/panel'
+import type { Punteria } from '@kit/runtime/ui/punteria'
+import { ORDEN } from '@kit/runtime/ui/texto3d'
+
+import type { Lang } from '@/lib/ajustes'
+import { LIFE_COLOR, MAX_STICKS } from '@/lib/gameConfig'
+import { CHALLENGE_LIVES } from '@/lib/gameMode'
+import type { Stars } from '@/lib/levels'
+import type { StickStatus } from '@/lib/stickLayout'
+import { formatoDeCifra } from '@/lib/textos'
+import { XR_HOME_ICON } from '@/lib/xrIcons'
+import { XR_HUD_PANEL } from '@/lib/xrLayout'
+
+import { iconoDeCasa, iconoDeCorazon, iconoDeEstrella, iconoDeRepetir, huecosDeForma, rectangulo } from './iconos'
+import { COLORES } from './menu'
+
+/** Las fichas de los palos (`TOKEN_SPACING`, `TOKEN_RADIUS`, `TOKEN_STYLE` de `XRHud.tsx`). */
+const TOKEN_SPACING = 0.07
+const TOKEN_RADIUS = 0.026
+const TOKEN_STYLE: Record<StickStatus, { color: string; escala: number; alto: number }> = {
+  caught: { color: '#22c55e', escala: 1.15, alto: 0.012 },
+  missed: { color: '#dc2626', escala: 0.7, alto: -0.012 },
+  pending: { color: '#475569', escala: 0.9, alto: 0 },
+}
+/** Vidas (`LIFE_SPACING`, `LIFE_SIZE`, `LIFE_ROW_Y`, `LIFE_SPENT_COLOR`). */
+const LIFE_SPACING = 0.05
+const LIFE_SIZE = 0.019
+const LIFE_ROW_Y = -0.105
+const LIFE_SPENT_COLOR = '#3f4a5a'
+/** Los botones del final (`BUTTON_SPACING`, `BUTTON_HIT`, `BUTTONS_WIDTH`). */
+const BUTTON_SPACING = 0.16
+const BUTTON_HIT = { width: 0.15, height: 0.11 } as const
+const BUTTONS_WIDTH = BUTTON_SPACING * 2 + BUTTON_HIT.width
+
+/** Lo que crece el panel del final por arriba para la letra: cómo ha acabado y los puntos. */
+export const SUBIDA_DEL_FINAL = 0.12
+/** A qué tamaño se escribe cada cosa del final. */
+export const LETRA_DEL_MARCADOR = { titulo: 0.03, puntos: 0.05 } as const
+
+/** Lo que enseña el marcador. */
+export interface EstadoDelMarcador {
+  lang: Lang
+  terminada: boolean
+  fichas: readonly StickStatus[]
+  racha: number
+  /** Lo lleno de la barra y dónde va la marca del récord, de 0 a 1 (0: sin marca). */
+  lleno: number
+  marca: number
+  record: boolean
+  vidas: number | null
+  /** Las estrellas del nivel acabado, o `null`. */
+  estrellas: Stars | null
+  /** Al acabar: cómo ha acabado, ya traducido, y los puntos. */
+  titulo: string
+  puntos: number
+}
+
+export interface AccionesDelMarcador {
+  repetir(): void
+  volverAlMenu(): void
+}
+
+export class Marcador {
+  readonly nodo: Node3D
+  readonly panel: Panel
+  readonly repetir: Boton
+  readonly menu: Boton
+  private readonly contenido: Node3D
+  private readonly fichas: MeshInstance3D[] = []
+  private readonly rombos: MeshInstance3D[] = []
+  private readonly carril: MeshInstance3D
+  private readonly relleno: MeshInstance3D
+  private readonly marca: MeshInstance3D
+  private readonly corazones: MeshInstance3D[] = []
+  private readonly estrellas: MeshInstance3D[] = []
+  private ancho = 0
+  private alto = 0
+
+  constructor(acciones: AccionesDelMarcador, punteria: Punteria) {
+    // Opaco: translúcido, en Godot se transparenta mucho más que en la web (lienzo a 0,72).
+    this.panel = new Panel({ ancho: 1, alto: 1, fondo: COLORES.panel, opacidad: 1 })
+    // Fuera, el sitio de la web; dentro, el panel centrado en su fondo, que es como lo mide el
+    // instrumento: al acabar crece por arriba y su centro sube.
+    this.nodo = new Node3D()
+    this.nodo.set_name('Marcador')
+    this.nodo.add_child(this.panel.nodo)
+    this.contenido = this.panel.nodo
+    for (let i = 0; i < MAX_STICKS; i++) {
+      const ficha = figura(triangulosDeArco(0, TOKEN_RADIUS, 0, Math.PI * 2, 20), TOKEN_STYLE.pending.color)
+      this.contenido.add_child(ficha)
+      this.fichas.push(ficha)
+    }
+    for (let i = 0; i < 5; i++) {
+      const rombo = figura(
+        [[0, -0.0085], [0.0085, 0], [0, 0.0085], [0, -0.0085], [0, 0.0085], [-0.0085, 0]],
+        COLORES.estrella,
+      )
+      this.contenido.add_child(rombo)
+      this.rombos.push(rombo)
+    }
+    this.carril = rectangulo(1, 0.012, COLORES.ficha, 0, 0, ORDEN.placa)
+    this.relleno = rectangulo(1, 0.012, '#22c55e')
+    this.marca = rectangulo(0.005, 1, COLORES.estrella, 0, 0, ORDEN.texto)
+    this.contenido.add_child(this.carril)
+    this.contenido.add_child(this.relleno)
+    this.contenido.add_child(this.marca)
+    for (let i = 0; i < CHALLENGE_LIVES; i++) {
+      const corazon = iconoDeCorazon(LIFE_SIZE, LIFE_COLOR)
+      this.contenido.add_child(corazon)
+      this.corazones.push(corazon)
+    }
+    for (let i = 0; i < 3; i++) {
+      const estrella = iconoDeEstrella(0.02, COLORES.estrella)
+      this.contenido.add_child(estrella)
+      this.estrellas.push(estrella)
+    }
+
+    this.repetir = this.panel.boton(new Boton({ id: 'again', caja: { x: -BUTTON_SPACING, y: 0, ...BUTTON_HIT }, color: COLORES.jugar, alPulsar: () => acciones.repetir() }))
+    this.repetir.dibujo(iconoDeRepetir(0.026, '#ffffff'), '#ffffff')
+    this.menu = this.panel.boton(new Boton({ id: 'home', caja: { x: BUTTON_SPACING, y: 0, ...BUTTON_HIT }, color: COLORES.neutro, alPulsar: () => acciones.volverAlMenu() }))
+    this.menu.dibujo(iconoDeCasa(0.028, '#ffffff'), '#ffffff')
+    const puerta = huecosDeForma(XR_HOME_ICON, 0.028, COLORES.neutro)
+    if (puerta != null) this.menu.dibujo(puerta, COLORES.neutro)
+    punteria.anadir(this.repetir, this.menu)
+  }
+
+  /** Lo que mide el panel ahora. */
+  get medida(): { width: number; height: number } {
+    return { width: this.ancho, height: this.alto }
+  }
+
+  /** Pinta un estado: el panel a su medida, cada ficha, la barra, las vidas y, al acabar, la letra. */
+  pintar(estado: EstadoDelMarcador): void {
+    const n = estado.fichas.length
+    const ancho = Math.max(n - 1, 0) * TOKEN_SPACING
+    const terminada = estado.terminada
+    const conFila = estado.vidas != null || estado.estrellas != null
+    this.ancho = Math.max(ancho + 0.2, terminada ? BUTTONS_WIDTH + 0.06 : 0)
+    // El panel de la web, y al acabar lo que crece por arriba para la letra.
+    const altoDeLaWeb = (terminada ? XR_HUD_PANEL.finished : XR_HUD_PANEL.run) + (conFila ? XR_HUD_PANEL.livesRow : 0)
+    this.alto = altoDeLaWeb + (terminada ? SUBIDA_DEL_FINAL : 0)
+    const centro = terminada ? SUBIDA_DEL_FINAL / 2 : 0
+    this.panel.nodo.position = new Vector3(0, centro, 0)
+    this.panel.fondo!.scale = new Vector3(this.ancho, this.alto, 1)
+    // Las cotas del contenido son las de la web (su grupo a 0,1 al acabar y a 0,04 jugando), desde
+    // el sitio del marcador: dentro del panel, menos lo que ha subido su centro.
+    const y0 = (terminada ? 0.1 : 0.04) - centro
+
+    this.fichas.forEach((ficha, i) => {
+      const estadoDelPalo = estado.fichas[i]
+      ficha.visible = estadoDelPalo != null
+      if (estadoDelPalo == null) return
+      const estilo = TOKEN_STYLE[estadoDelPalo]
+      ficha.position = new Vector3(i * TOKEN_SPACING - ancho / 2, y0 + estilo.alto, 0.004)
+      ficha.scale = new Vector3(estilo.escala, estilo.escala, 1)
+      pintar(ficha, estilo.color)
+    })
+    const rombos = Math.min(estado.racha, 5)
+    this.rombos.forEach((rombo, i) => {
+      rombo.visible = rombos >= 2 && i < rombos
+      rombo.position = new Vector3((i - (rombos - 1) / 2) * 0.026, y0 + 0.06, 0.004)
+    })
+    const carril = Math.max(ancho, 0.28)
+    const yBarra = y0 - 0.055
+    this.carril.scale = new Vector3(carril, 1, 1)
+    this.carril.position = new Vector3(0, yBarra, 0.004)
+    const lleno = Math.max(carril * estado.lleno, 0.001)
+    this.relleno.scale = new Vector3(lleno, 1, 1)
+    this.relleno.position = new Vector3((lleno - carril) / 2, yBarra, 0.006)
+    pintar(this.relleno, estado.record ? COLORES.estrella : '#22c55e')
+    this.marca.visible = estado.marca > 0
+    this.marca.scale = new Vector3(1, estado.record ? 0.034 : 0.024, 1)
+    this.marca.position = new Vector3(carril * (estado.marca - 0.5), yBarra, 0.008)
+
+    const vidas = estado.vidas
+    this.corazones.forEach((corazon, i) => {
+      corazon.visible = vidas != null
+      const gastada = vidas != null && i >= vidas
+      const k = gastada ? 0.62 : 1
+      corazon.scale = new Vector3(k, k, 1)
+      corazon.position = new Vector3(i * LIFE_SPACING - ((CHALLENGE_LIVES - 1) * LIFE_SPACING) / 2, y0 + LIFE_ROW_Y, 0.004)
+      pintar(corazon, gastada ? LIFE_SPENT_COLOR : LIFE_COLOR)
+    })
+    this.estrellas.forEach((estrella, i) => {
+      estrella.visible = estado.estrellas != null
+      const ganada = estado.estrellas != null && i < estado.estrellas
+      const k = ganada ? 1 : 0.7
+      estrella.scale = new Vector3(k, k, 1)
+      estrella.position = new Vector3((i - 1) * 0.045, y0 + LIFE_ROW_Y, 0.004)
+      pintar(estrella, ganada ? COLORES.estrella : COLORES.estrellaGastada)
+    })
+
+    // Al acabar: repetir y volver al menú, en su fila de la web (0,12 por debajo de su cota).
+    this.repetir.nodo.visible = terminada
+    this.menu.nodo.visible = terminada
+    this.repetir.nodo.position = new Vector3(-BUTTON_SPACING, -0.12 - centro, 0.02)
+    this.menu.nodo.position = new Vector3(BUTTON_SPACING, -0.12 - centro, 0.02)
+
+    const { panel } = this
+    panel.borrarTextos()
+    if (!terminada) return
+    const arriba = this.alto / 2
+    panel.escribir(estado.titulo, 0, arriba - 0.04, { alto: LETRA_DEL_MARCADOR.titulo, color: COLORES.claro, anchoMax: this.ancho - 0.04 })
+    panel.escribir(formatoDeCifra(estado.puntos, estado.lang), 0, arriba - 0.09, {
+      alto: LETRA_DEL_MARCADOR.puntos,
+      color: estado.record ? COLORES.estrella : COLORES.claro,
+      anchoMax: this.ancho - 0.06,
+    })
+  }
+}

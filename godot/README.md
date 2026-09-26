@@ -1,59 +1,186 @@
-# Stick Rush — versión Godot (desktop, objetivo Steam)
+# Stick Rush en Godot
 
-Port **desde cero** del juego web (que sigue siendo la versión para navegadores). El código web
-es la especificación funcional: `src/lib/gameConfig.ts` ↔ `scripts/game_config.gd`,
-`src/components/game/Stick.tsx` ↔ `scripts/stick.gd`, `StickMachine.tsx` + `gameStore.ts` ↔
-`scripts/main.gd`.
+El mismo juego para el hub nativo de xrcade (Steam), con **la lógica de `src/lib` sin
+reescribir**: la ejecuta GodotJS dentro del motor. Aquí solo hay escena, entrada e interfaz, sobre
+el kit común de `xrcade/godot-kit/`. (Sustituye al prototipo en GDScript que había en esta carpeta,
+escrito desde cero sobre el diseño antiguo de la máquina.)
 
-> ⚠️ **Desincronizado con el web desde 2026-07-31.** El web rediseñó la máquina: aro
-> **horizontal** alrededor del jugador, a escala humana (metros), con estética de feria y palos
-> amarillos. Esta versión mantiene el arco **vertical** anterior y sus unidades. Antes de
-> retomar Godot hay que decidir si se replica el rediseño o si las dos versiones divergen a
-> propósito.
+**Estado: se juega entero, en plano y con visor simulado; con visor de verdad no se ha probado.**
+Los palos cuelgan del aro donde los pone `buildStickLayout` con la semilla de la tanda, esperan su
+turno meciéndose (`hangingSwing`), se sueltan y caen **desde el reposo, acelerando**, con la
+aceleración que hace que cada dificultad dure lo mismo que en la web (`fallAcceleration`,
+`hoopFallSpeed`); la física de Godot no se usa. Se cogen **colgando o cayendo, hasta que tocan el
+suelo** (`canCatchStick`), y cuánto llevaban cayendo en tiempo decide el bonus de reflejos
+(`stickFallProgress`, `scoring.ts`). Lo que en la web hace cada `Stick.tsx` fotograma a fotograma es
+`scene/juego/tanda.ts`, y la partida es el `gameStore.ts` de la web sin React
+(`scene/juego/partida.ts`): práctica (tanda o sin fin, que recarga la máquina con otra semilla), los
+quince niveles con sus estrellas y el desafío con tres vidas; récord, racha sin fin, estrellas,
+altura del aro y tutorial visto con el guardado del kit.
 
-> ⚠️ **Escrito sin ejecutar Godot en esta máquina** (no está instalado). Al abrirlo por primera
-> vez, revisa la consola del editor: si algo chirría, serán detalles de API, no de diseño.
+Se empieza en el **menú del visor de la web** (`XRMenu.tsx`, con las cotas de `lib/xrLayout.ts` sin
+tocar una): el aro (bajar, la regla, subir) con volver a ver el tutorial, el modo con lo que pone en
+juego, tanda o sin fin, la plaza o tu habitación, los trece palos en miniatura o la escalera de
+niveles, las cinco fichas de velocidad, jugar y **salir en la esquina de abajo a la derecha**. Sin
+letra en los botones, como en la web; en letra, los nombres de las filas y la explicación del modo.
+Jugando, **el marcador de la web** (`XRHud.tsx`): una ficha por palo, la racha, la barra de puntos
+con la marca del récord, las vidas o las estrellas; volver al menú (que **pregunta antes**) y
+terminar la partida sin fin; la cuenta atrás con sus tres anillos; y al acabar, repetir y volver.
 
-## Abrir y jugar
+**La máquina** es la de `StickMachine.tsx`: el aro a rayas, la celosía con su aro de arriba,
+montantes y diagonales, las bombillas y los postes arriostrados, con las piezas en mallas múltiples,
+y se rehace si el aro cambia de altura (solo en el menú). **Los palos**, de madera pintada con el
+relieve y la rugosidad de la web; al atraparlos se ponen verdes, crecen y se desvanecen con su onda;
+el que se escapa se queda en el suelo, teñido de rojo. Alrededor, **la feria**: la plaza de noche del
+HDRI de la web de fondo y de reflejos, **las piezas del kit de assets** (`public/models/kit/`: seis
+puestos, ocho farolas y sus banderolas, donde las pone `feriaKit.ts`, con el color en los vértices),
+las guirnaldas de bombillas, **el público** de `crowdLayout.ts` (42 siluetas en una malla múltiple
+que se mece en el shader) y la noria girando. Las bombillas y el público se animan con la racha
+(`fairMood.ts`). **Tu habitación** (`xrcade:scenery`) oculta la feria y deja la máquina, solo con
+realidad aumentada en el visor.
 
-1. Instala **Godot 4.3+** (https://godotengine.org/download — la estándar, no la .NET).
-2. `Importar` → selecciona `godot/project.godot` → abrir → ▶ (F5).
-3. Menú: nº de palos (5–13) + dificultad (Fácil→Imposible) → **Jugar**. Clic izquierdo sobre un
-   palo (colgando o cayendo) para atraparlo; si toca el suelo, perdido. Al resolverse todos,
-   resultado y repetir/menú.
+En plano se coge **con el ratón**, un clic sobre el palo al apretar, como en la web; la cámara es la
+de `GameCanvas.tsx` y los paneles cuelgan de ella.
 
-## Estructura
+Con visor usa **la gramática XR del kit** (`@kit/runtime/xr/jugador`): la máquina se planta donde la
+presta el salón, baja a los ojos de quien juega sentado y **gira por pasos con el stick de la mano
+libre**. **Los palos se cogen con la mano**: al apretar el gatillo lateral de cualquiera de los dos
+mandos, el palo que queda en la esfera de agarre del puño —la de la web, 9 cm
+(`CONTROLLER_GRAB_RADIUS`)—; el rayo es solo para el menú. De pie, el aro se planta medio metro por
+encima de los ojos medidos en el menú (`XRPlayerHeight.tsx`, `hoopHeight.ts`); sentado a los ojos, el
+mundo baja y el aro se queda en su cota. Vibra con la receta de la web (`pulsosDelAtrape`: el
+agarre de `tactos.ts`, más fuerte in extremis) en la mano que coge. **Las ayudas** del guion de la
+web (`guionDeAyudas.ts`): las huellas, el palo fantasma cayendo y el mando de verdad a su lado con el
+agarre latiendo; y **el tutorial** de la web —coger un palo, y otro de los de los lados—, que se
+aprende jugando, con su plazo por paso, y enciende el botón en **el mando de verdad de las dos
+manos**.
 
-- `project.godot` — configuración (Godot 4.3, Forward+, 1280×720).
-- `scenes/main.tscn` — escena raíz mínima: un `Node3D` con `main.gd` (todo lo demás se
-  construye por código, para que el proyecto sea revisable sin abrir el editor).
-- `scripts/game_config.gd` — constantes espejo del web (velocidades, paleta, geometría, arco).
-- `scripts/stick.gd` — el palo: cuelga → cae tras su retardo escalonado → atrapado (flash) o
-  perdido (suelo). Señales `caught`/`resolved`.
-- `scripts/main.gd` — mundo (cámara/luces/suelo), máquina (arco por segmentos + soportes),
-  partida (spawn por el arco con jitter, marcador, fin) y UI (menú/HUD/resultado).
+Suena con los efectos de la web renderizados de su `sound.ts` (`render/sonido.ts` le abre el
+contexto): la nota del atrape que sube con la racha (ocho ficheros), el palo perdido, los tres
+segundos de la cuenta atrás, la salida, el final (ganar, perder o terminar) y el récord, con la regla
+de `useGameSound.ts` (`juego/sonido.ts`); y la música de la feria con su fundido. El idioma y los
+volúmenes son los del salón, del guardado.
 
-## Mecánica (idéntica al web)
+**El reto del salón** (`semilla.ts`): con `-- --reto=<semilla>`, o si el autoload `XRcade` lleva
+`challenge_seed`, se entra directo en **el desafío** (el modo del récord de la cabina), sin menú ni
+tutorial, con el reparto y el turno de los palos sacados de la semilla. Al acabar cada partida se
+imprime `STICK-RUSH-RESULTADO {modo, puntos, reto}` y se llama a `report_result(json)` del salón.
 
-- Palos repartidos por el arco en `t=(i+1)/(n+1)`; retardo del palo `i` = `i·(1+rand·0.5)` s.
-- Velocidad por dificultad: 0.8 / 1.5 / 2.5 / 4.0 / 7.0 unidades/s.
-- Se puede atrapar colgando o cayendo; perdido al llegar a `GROUND_Y` (−2).
-- Puntuación = atrapados; la partida cierra cuando todos los palos se resuelven.
+Por qué existe y qué se midió: `xrcade/docs/salir-en-steam.md`, sección 4.
 
-## Export a desktop (camino a Steam)
+## Lo que se movió en la web
 
-1. Editor → `Proyecto → Exportar…` → añade presets **Windows Desktop**, **macOS** y
-   **Linux** (descarga las *export templates* cuando el editor lo pida).
-2. Exporta un build por plataforma y pruébalo fuera del editor.
-3. Steam: alta en **Steam Direct** (100 $ por app, recuperables a 1.000 $ de ventas; reparto
-   70/30), crear la app en Steamworks, subir builds con `steamcmd`/SteamPipe.
-4. Integración Steam API (logros, overlay) más adelante: GDExtension **GodotSteam**
-   (https://godotsteam.com) es el estándar de facto.
-5. Futuro Steam VR: Godot 4 trae **OpenXR** integrado; la escena 3D actual es reutilizable
-   (cámara XR + controladores en lugar del ratón, mismo `try_catch()` de los palos).
+`highScore.ts` escuchaba el evento `storage` del navegador (`window`), así que el kit no dejaba
+cargarlo en el motor. Lo que no toca el navegador —las claves, leer, escribir, guardar si mejora y la
+racha sin fin— pasó a **`src/lib/marcas.ts`**, y `highScore.ts` lo reexporta tal cual y se queda con
+la suscripción entre pestañas: la web importa lo mismo que antes, con sus gates en verde (tipos,
+lint, cobertura al 100 % y los e2e). La escena importa `marcas.ts`.
 
-## Pendiente (siguientes iteraciones)
+## Qué hay
 
-- Sonido (atrapar/perder/fin) y música; vibración de los palos al colgar.
-- Pantalla de pausa; guardar la mejor puntuación (`user://`).
-- Icono propio y nombre de paquete por plataforma en los presets de export.
+| Ruta | Qué es |
+|---|---|
+| `scene/main.ts` | La escena: la feria, la máquina, los palos, las tres formas de cogerlos (mano, ratón, jugador automático), la altura de los ojos, el sonido, lo que se siente, el reto y las capturas |
+| `scene/juego/partida.ts` | La partida: el `gameStore.ts` de la web sin React (lo elegido, las fases, los contadores, las tandas sin fin, la lección y su plazo, lo que se guarda y lo que se le cuenta al salón) |
+| `scene/juego/tanda.ts` | Los palos de una tanda: lo que hace cada `Stick.tsx`, sin pintar |
+| `scene/juego/alcance.ts` | Qué palo coge la mano (la esfera del puño) o el ratón (el rayo) |
+| `scene/juego/sonido.ts` | Qué suena y cuándo (`useGameSound.ts`) |
+| `scene/juego/agarre.ts` | Lo que el kit pide del `agarre.ts` común, que Stick Rush no tiene |
+| `scene/mundo/` | La máquina (`maquina.ts`), los palos pintados (`palos.ts`), la feria, la plaza y tu habitación (`feria.ts`), las ayudas (`ayudas.ts`) y las piezas sueltas |
+| `scene/interfaz/` | El menú, el marcador, volver, terminar, el aviso, la cuenta atrás, el tutorial, los iconos de `xrIcons.ts` y dónde va cada panel con visor y en plano |
+| `scene/tipos/navegador.d.ts` | Los tipos de WebXR que nombra `haptics.ts` y el kit no declara |
+| `scene/**/*.motor.test.ts` | La partida contra el store de la web, la tanda contra `Stick.tsx` y el sonido contra `useGameSound.ts`, el mundo (y que lo del paquete es lo de la web byte a byte), y los paneles medidos con el instrumento de la web en los dos idiomas y pulsados con el ratón: corren con los tests de dominio |
+| `render/sonido.ts` | El motor de sonido de la web tal como lo pide el render de efectos del kit (no viaja al motor) |
+| `godot-kit.json` | Para el kit: el id, el repo (`..`), los efectos (con la nota del atrape y la cuenta atrás en sus escalones) y la música |
+| `games/stick-rush/` | Lo que va en el `.pck`; `tests/` se queda fuera al exportar |
+| `games/stick-rush/{sfx,music,feria,texturas,hdri,mandos}/` | Los efectos renderizados (`npm run godot:sfx`), la música, las piezas del kit, la madera, la plaza y los mandos de Quest (`npm run godot:mandos`), con `CREDITS.md`. Se versionan. La plaza va comprimida para la GPU (BC6H y ASTC, 0,5 MB cada una en vez de 4) y la madera, sin pérdida y con sus mipmaps |
+| `games/stick-rush/tests/partida_auto.*` | La partida automática entera (práctica, Difícil, nueve palos, uno que se escapa adrede): palos, puntos, récord, lo que suena, la máquina y la feria, y lo que se le cuenta al salón; el reto con la semilla del salón, que entra jugando, da el mismo reparto dos veces y se cuenta como reto |
+| `games/stick-rush/tests/menu_raton.*` | La escena de verdad con clics del ratón: velocidad, palos y aro, jugar, que un clic en un palo en la cuenta atrás no lo coge y jugando sí, que un clic al aire no coge nada, Escape, dejar la partida, el modo que pasa y salir |
+| `games/stick-rush/tests/xr_mando.*` | Dos partidas con visor simulado cogiendo con las dos manos: diestro sentado en el salón y zurdo de pie. La mano de cada atrape y su pulso, la altura del mundo y del aro, el anclaje, el giro, el tutorial con el mando en las manos y las ayudas |
+| `tests/run.sh` | Todo lo del motor de una vez (`npm run godot:test`) |
+
+**Qué tests entran en el motor** lo decide el kit por el grafo de imports: 26 de los 41 ficheros de
+`src/lib`, más los del kit y los del port: **616 tests**. `npm run godot:build -- --list-tests` dice
+por qué no entran los otros 15 (los que usan `vi`, los que tocan `window` o leen el disco).
+
+## Cómo se usa
+
+Hace falta el editor de Godot 4.7.1 **compilado con GodotJS** (`xrcade/scripts/godotjs/`), en
+`$GODOT`, y el repo de xrcade al lado (`../xrcade`). Desde esta carpeta:
+
+```sh
+(cd .. && GODOT=$GODOT npm run godot:test)     # todo lo del motor, de una vez
+(cd .. && npm run godot:build -- --tests)      # escena y tests → games/stick-rush/
+$GODOT --headless --editor --generate-types --path .   # typings/ para comprobar tipos
+../node_modules/.bin/tsc -p tsconfig.json
+$GODOT --headless --path . --import
+
+# Los efectos, del sound.ts de la web (Chromium), y los mandos, de public/webxr-profiles/
+(cd .. && npm run godot:sfx)
+(cd .. && npm run godot:mandos)
+
+# Una partida automática: imprime STICK-RUSH-RESULT con lo que ha pasado y el coste por fotograma
+$GODOT --headless --xr-mode off --fixed-fps 72 --path . -- --autoplay
+
+# El reto con una semilla
+$GODOT --xr-mode off --path . -- --reto=4242
+
+# Jugar en plano con el ratón (clic en un palo para cogerlo, Escape para preguntar o salir);
+# `--lang=es|en`, `--tutorial` y `--ayudas` los enseñan en plano, `--habitacion` enseña tu habitación
+$GODOT --xr-mode off --path .
+
+# Capturas en plano: el menú, a mitad de partida, el final, el tutorial y las ayudas (desde un lado)
+$GODOT --xr-mode off --resolution 1280x720 --path . -- --shot-menu=/tmp/menu.png --lang=es
+$GODOT --xr-mode off --resolution 1280x720 --fixed-fps 60 --path . -- --autoplay --shot=/tmp/partida.png
+$GODOT --xr-mode off --resolution 1280x720 --fixed-fps 60 --path . -- --autoplay --shot-menu=/tmp/final.png
+$GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --shot-tutorial=/tmp/tutorial.png --lang=es
+$GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --shot-ayudas=/tmp/ayudas.png
+
+# Lo que se vería con el visor, sin visor: la cabeza de mentira hace de cámara y el jugador
+# automático coge con las manos. `--menu` se queda en el menú, `--mirar=<grados>` gira la cabeza a
+# la izquierda (la columna está a 55°) y `--bajar=<grados>` baja la vista (el marcador)
+$GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --visor-simulado --menu --mirar=55 --shot-menu=/tmp/columna.png
+$GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --visor-simulado --bajar=25 --shot=/tmp/visor.png
+
+# El .pck para el hub (ejecuta antes el build)
+GODOT=$GODOT ../../xrcade/scripts/pack-game.sh "$PWD" stick-rush
+```
+
+Stick Rush está en el catálogo del hub de visor (`targets.godot` en
+`xrcade/registry/games/stick-rush.json`): `npm run godot:test` de xrcade lo empaqueta desde aquí y
+comprueba que el hub lo monta, le cede la pantalla y vuelve al salón.
+
+## Lo que se sabe y lo que falta
+
+- **Coste por fotograma** (escena entera: la partida, la tanda, los palos pintados, la feria, las
+  ayudas, el sonido y la interfaz), partidas automáticas a 72 fps en macOS (M5 Pro, sin ventana):
+  **~145–160 µs de media jugando** en plano (~320 µs de pico) y **~255 µs** con visor simulado (suma
+  la gramática XR, las ayudas, el tutorial y los mandos en las manos). El marcador y el menú solo se
+  reescriben cuando cambian, y los palos solo tocan el motor si se han movido.
+- **Diferencias con la web, a propósito**: los paneles son opacos (translúcidos, en Godot se
+  transparentan mucho más) y no dan sombra; en plano los paneles cuelgan de la cámara (en la web los
+  sustituye el DOM); el menú no lleva los interruptores de sonido y música (son los volúmenes del
+  salón) ni el final el de compartir (en el visor no hay portapapeles); **el final lleva letra** —cómo
+  ha acabado y los puntos, con las frases de `HUD.tsx`—, que la web del visor no puede escribir; la
+  interfaz se queda donde se plantó el mundo en vez de seguir la mirada (`XRGazeAnchor`); las huellas
+  van dos milímetros por encima del suelo, porque Godot no tiene `polygonOffset` para lo translúcido;
+  y la plaza del HDRI va de fondo, sin proyectarla sobre el suelo (`ground` de drei).
+- **No está**: el guante y la mano articulada dibujados (`ManosDelJugador.tsx`; con mandos se ve el
+  mando de verdad solo durante el tutorial), coger con la mano desnuda (Stick Rush no tiene
+  `pellizco.ts`, y el salón también lo tiene apagado), la cortina al cambiar de escenario
+  (`SceneryFade`), el precalentado de shaders (`Calentar`) y `prefers-reduced-motion` (Godot no lo
+  da: los palos se mecen y el público baila siempre). La luz se ha llevado de las intensidades de
+  three a las de Godot con una escala por luz (`ENERGIA_POR_UNIDAD` de `feria.ts`), puesta a ojo sobre
+  las capturas del port: falta compararla lado a lado con la web.
+- **Lo que solo puede decir el visor**, además de lo de `salir-en-steam.md` 4.2 y 4.3:
+  1. **Coger con la mano**: que la esfera de agarre de 9 cm en el `grip` de OpenXR caiga donde se
+     cierra la mano, y que apretar el gatillo lateral sobre un palo que cae lo coja como en la web.
+  2. **La altura del aro**: medio metro sobre los ojos medidos en el menú, de pie; sentado a los
+     ojos, en su cota con el mundo bajado. Que los palos crucen el alcance del brazo en los dos.
+  3. **Lo que se siente**: el agarre en la mano que coge, y el in extremis más fuerte.
+  4. **La columna a la izquierda** (55°, 1,5 m, ×1,35) con los palos cruzando por delante, y el
+     marcador bajo el aro: que se leen con la letra del motor.
+  5. **El tutorial** por encima del marcador y el mando de verdad en las dos manos, y **las ayudas**:
+     las huellas, el palo fantasma y el mando junto a él.
+  6. **La plaza del HDRI de fondo sin proyectar** sobre el suelo, la luz de la feria y el público
+     meciéndose en el shader a 72 fps en el Frame.
+  7. **Sentado**: que el giro de 30° con el stick de la mano libre deje ver la máquina entera.
