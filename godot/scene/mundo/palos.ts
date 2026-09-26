@@ -40,7 +40,7 @@ import {
 
 import type { Palo, Tanda } from '../juego/tanda'
 import { TUBE_RADIUS } from './maquina'
-import { cilindro, malla, mallaDeAro, mate, opacidad, translucido } from './piezas'
+import { cilindro, malla, mallaDeToro, mate, opacidad, translucido } from '@kit/runtime/escena/piezas'
 
 /** Donde viajan en el paquete los mapas de la madera (`public/textures/` de la web). */
 export const DIR_DE_LAS_TEXTURAS = 'res://games/stick-rush/texturas'
@@ -107,13 +107,13 @@ export class PalosPintados {
       const material = madera()
       const cuerpo = cilindro(STICK_RADIUS, STICK_RADIUS, STICK_LENGTH, material, new Vector3(0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0), 16)
       const materialDeLaOnda = translucido(STICK_CAUGHT_COLOR, 0, 2)
-      const onda = malla(mallaDeAro(0.05, 0.006, 24, 6), materialDeLaOnda, new Vector3(0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0))
+      const onda = malla(mallaDeToro(0.05, 0.006, 24, 6), materialDeLaOnda, new Vector3(0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0))
       onda.visible = false
       grupo.add_child(hilo)
       grupo.add_child(cuerpo)
       grupo.add_child(onda)
       // El gancho, una anilla sujeta al aro: va con el palo y no se mece con él.
-      const gancho = malla(mallaDeAro(0.022, 0.006, 16, 8), materialDelGancho)
+      const gancho = malla(mallaDeToro(0.022, 0.006, 16, 8), materialDelGancho)
       grupo.visible = false
       gancho.visible = false
       this.nodo.add_child(grupo)

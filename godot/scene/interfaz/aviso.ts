@@ -21,6 +21,7 @@ import { Boton } from '@kit/runtime/ui/boton'
 import { figura, pintar } from '@kit/runtime/ui/malla'
 import { Panel } from '@kit/runtime/ui/panel'
 import type { Punteria } from '@kit/runtime/ui/punteria'
+import { ORDEN } from '@kit/runtime/ui/texto3d'
 
 import type { Lang } from '@/lib/ajustes'
 import { LIFE_COLOR } from '@/lib/gameConfig'
@@ -51,19 +52,14 @@ function botonSuelto(id: string, sitio: Vec3, giro: number, color: string, alPul
 
 /** La placa de la web (0,12 × 0,1), más pequeña que la zona sensible: lo que se ve del botón. */
 function placa(color: string): MeshInstance3D {
-  return figura(
-    [[-0.06, -0.05], [0.06, -0.05], [0.06, 0.05], [-0.06, -0.05], [0.06, 0.05], [-0.06, 0.05]],
-    color,
-    1,
-    -1,
-  )
+  return figura([[-0.06, -0.05], [0.06, -0.05], [0.06, 0.05], [-0.06, -0.05], [0.06, 0.05], [-0.06, 0.05]], color)
 }
 
 export class BotonDeVolver {
   readonly boton: Boton
   constructor(alPulsar: () => void, punteria: Punteria) {
     this.boton = botonSuelto('quit', XR_QUIT_POSITION, XR_QUIT_YAW, COLORES.neutro, alPulsar)
-    this.boton.dibujo(placa(COLORES.neutro), COLORES.neutro)
+    this.boton.dibujo(placa(COLORES.neutro), COLORES.neutro, 1, { prioridad: ORDEN.placa })
     this.boton.dibujo(iconoDeCasa(0.028, '#ffffff'), '#ffffff')
     const puerta = huecosDeForma(XR_HOME_ICON, 0.028, COLORES.neutro)
     if (puerta != null) this.boton.dibujo(puerta, COLORES.neutro)
@@ -79,7 +75,7 @@ export class BotonDeTerminar {
   readonly boton: Boton
   constructor(alPulsar: () => void, punteria: Punteria) {
     this.boton = botonSuelto('end-run', XR_END_RUN_POSITION, XR_END_RUN_YAW, COLORES.jugar, alPulsar)
-    this.boton.dibujo(placa(COLORES.jugar), COLORES.jugar)
+    this.boton.dibujo(placa(COLORES.jugar), COLORES.jugar, 1, { prioridad: ORDEN.placa })
     this.boton.dibujo(iconoDeVisto(0.028, '#ffffff'), '#ffffff')
     punteria.anadir(this.boton)
   }

@@ -2,8 +2,9 @@
   "id": "stick-rush",
   "repo": "..",
   "sfx": {
-    "module": "godot/render/sonido.ts",
-    "factory": "createStickRushAudio",
+    "module": "src/lib/sound.ts",
+    "factory": "createSoundEngine",
+    "context": true,
     "play": "play",
     "sounds": {
       "catch-1": { "args": [{ "name": "catch", "streak": 1 }] },

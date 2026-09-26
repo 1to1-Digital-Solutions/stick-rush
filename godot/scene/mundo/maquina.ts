@@ -12,7 +12,10 @@
  *
  * Los palos no son de aquí: cuelgan de la máquina pero son de la partida (`mundo/palos.ts`).
  */
-import { Node3D, Transform3D, Basis, Vector3, type MultiMeshInstance3D } from 'godot'
+import { Basis, Color, Node3D, Transform3D, Vector3, type MultiMeshInstance3D, type SphereMesh } from 'godot'
+
+import { esfera } from '@kit/runtime/escena/formas'
+import { barraEntre, cilindro, encendido, mallaDeCilindro, mate, multimalla } from '@kit/runtime/escena/piezas'
 
 import {
   GROUND_Y,
@@ -23,7 +26,13 @@ import {
   machinePoint,
 } from '@/lib/gameConfig'
 
-import { barraEntre, cilindro, colorDe, encendido, mallaDeCilindro, mallaDeEsfera, mate, multimalla } from './piezas'
+/** Una esfera de `radio` con `lados` × `anillos` (`sphereGeometry`), para repartir por una malla múltiple. */
+function bola(radio: number, lados: number, anillos: number): SphereMesh {
+  const mesh = esfera(lados, anillos)
+  mesh.radius = radio
+  mesh.height = radio * 2
+  return mesh
+}
 
 /** Tramos del aro principal, a rayas alternas (`ARC_SEGMENTS`). */
 export const ARC_SEGMENTS = 24
@@ -61,7 +70,7 @@ export class Maquina {
   private readonly marco = mate('#ffffff', { rugosidad: 0.35, metal: 0.7 })
   private readonly celosia = mate('#ffffff', { rugosidad: 0.4, metal: 0.6 })
   private readonly casquillo = mate('#3b3630', { rugosidad: 0.6, metal: 0.5 })
-  private readonly bombilla = encendido(MACHINE_BULB_COLOR, 1.8)
+  private readonly bombilla = encendido(MACHINE_BULB_COLOR, 1.8, { sinLuz: true })
   private readonly pieDelPoste = mate(MACHINE_FRAME_COLOR, { rugosidad: 0.4, metal: 0.7 })
   private readonly pieDelTirante = mate(MACHINE_TRUSS_COLOR, { rugosidad: 0.45, metal: 0.6 })
 
@@ -97,7 +106,7 @@ export class Maquina {
       const desde = punto(i / ARC_SEGMENTS, alto)
       const hasta = punto((i + 1) / ARC_SEGMENTS, alto)
       rayas.push(barraEntre(desde, hasta, TUBE_RADIUS))
-      colores.push(colorDe(MACHINE_STRIPE_COLORS[i % MACHINE_STRIPE_COLORS.length]))
+      colores.push(Color.html(MACHINE_STRIPE_COLORS[i % MACHINE_STRIPE_COLORS.length]))
       celosia.push(barraEntre(punto(i / ARC_SEGMENTS, alto, TRUSS_RISE), punto((i + 1) / ARC_SEGMENTS, alto, TRUSS_RISE), 0.02))
     }
     // Montantes y diagonales en zigzag.
@@ -136,10 +145,10 @@ export class Maquina {
 
     const familias: MultiMeshInstance3D[] = [
       multimalla(tubo, this.mate, rayas, colores),
-      multimalla(tubo, this.marco, postes, postes.map(() => colorDe(MACHINE_FRAME_COLOR))),
-      multimalla(tubo, this.celosia, celosia, celosia.map(() => colorDe(MACHINE_TRUSS_COLOR))),
+      multimalla(tubo, this.marco, postes, postes.map(() => Color.html(MACHINE_FRAME_COLOR))),
+      multimalla(tubo, this.celosia, celosia, celosia.map(() => Color.html(MACHINE_TRUSS_COLOR))),
       multimalla(mallaDeCilindro(0.012, 0.015, 0.038, 8), this.casquillo, casquillos),
-      multimalla(mallaDeEsfera(0.024, 14, 14), this.bombilla, bombillas),
+      multimalla(bola(0.024, 14, 14), this.bombilla, bombillas),
     ]
     for (const familia of familias) partes.add_child(familia)
     this._piezas = { matte: rayas.length, frame: postes.length, truss: celosia.length, bulbs: bombillas.length }

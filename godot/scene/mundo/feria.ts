@@ -45,14 +45,15 @@ import {
   Texture2D,
   Transform3D,
   Vector3,
-  Viewport,
   WorldEnvironment,
-  XRInterface,
-  XRServer,
+  type SphereMesh,
   type StandardMaterial3D,
 } from 'godot'
 
-import { readScenery, showsPlace, writeScenery, type Scenery } from '@/lib/ajustes'
+import { colorDeFondo } from '@kit/runtime/escena/entorno'
+import { esfera } from '@kit/runtime/escena/formas'
+import { barraEntre, mallaDeToro, mallaDeCilindro, malla, mate, multimalla, sinSombra } from '@kit/runtime/escena/piezas'
+
 import { crowdSpots } from '@/lib/crowdLayout'
 import { bulbGlow, bulbPulse, crowdBob, crowdTempo } from '@/lib/fairMood'
 import { PIEZAS, colocaciones, escalaPara, type Pieza } from '@/lib/feriaKit'
@@ -81,9 +82,14 @@ import {
   garlandBulbs,
   ringSlots,
 } from '@/lib/sceneryLayout'
-import { gameStorage } from '@/lib/storage'
 
-import { barraEntre, colorDe, mallaDeAro, mallaDeCilindro, mallaDeEsfera, malla, mate, multimalla, sinSombra } from './piezas'
+/** Una esfera de `radio` con `lados` × `anillos` (`sphereGeometry`), para repartir por una malla múltiple. */
+function bola(radio: number, lados: number, anillos: number): SphereMesh {
+  const mesh = esfera(lados, anillos)
+  mesh.radius = radio
+  mesh.height = radio * 2
+  return mesh
+}
 
 /** Donde viajan en el paquete las piezas del kit (`public/models/kit/` de la web). */
 export const DIR_DE_LA_FERIA = 'res://games/stick-rush/feria'
@@ -169,11 +175,6 @@ function mallaDe(nodo: Node): MeshInstance3D | null {
   return null
 }
 
-/** Un color de la web en el espacio lineal, que es en el que Godot lee el del fondo. */
-function lineal(hex: string): Color {
-  return Color.html(hex).srgb_to_linear()
-}
-
 export class Feria {
   /** Lo que se oculta en tu habitación: el recinto entero. */
   readonly recinto = new Node3D()
@@ -212,7 +213,7 @@ export class Feria {
       // Sin el HDRI, el fondo de noche de la web mientras carga (`Backdrop`).
       this.cielo = null
       this.entorno.background_mode = Environment.BGMode.BG_COLOR
-      this.entorno.background_color = lineal(BACKDROP_COLOR)
+      this.entorno.background_color = colorDeFondo(BACKDROP_COLOR)
       this.entorno.ambient_light_source = Environment.AmbientSource.AMBIENT_SOURCE_COLOR
       this.entorno.ambient_light_color = Color.html('#ffffff')
       this.entorno.ambient_light_energy = LUCES.ambiente
@@ -302,7 +303,7 @@ export class Feria {
     })
     const material = mate(MACHINE_BULB_COLOR)
     material.shading_mode = BaseMaterial3D.ShadingMode.SHADING_MODE_UNSHADED
-    const bombilla = mallaDeEsfera(1, 8, 6)
+    const bombilla = esfera(8, 6)
     const guirnaldas = multimalla(bombilla, material, transformaciones)
     guirnaldas.set_name('Guirnaldas')
     this.recinto.add_child(guirnaldas)
@@ -327,7 +328,7 @@ export class Feria {
     cuerpo.height = 1.05 + 0.4
     cuerpo.radial_segments = 8
     cuerpo.rings = 3
-    const cabeza = mallaDeEsfera(0.13, 8, 6)
+    const cabeza = bola(0.13, 8, 6)
     const silueta = new ArrayMesh()
     // Cada parte en su sitio (`translate` de la web): la cápsula centrada a 0,725, la cabeza a 1,58.
     for (const [parte, alto] of [[cuerpo, 0.725], [cabeza, 1.58]] as const) {
@@ -351,7 +352,7 @@ export class Feria {
       const [x, y, z] = s.position
       const base = new Basis(Vector3.UP, s.rotationY).scaled(new Vector3(1, s.height, 1))
       multi.set_instance_transform(i, new Transform3D(base, new Vector3(x, y, z)))
-      multi.set_instance_color(i, colorDe(CROWD_SHADES[s.shade % CROWD_SHADES.length]))
+      multi.set_instance_color(i, Color.html(CROWD_SHADES[s.shade % CROWD_SHADES.length]))
       multi.set_instance_custom_data(i, new Color(s.phase, s.height, 0, 0))
     })
     const material = new ShaderMaterial()
@@ -390,7 +391,7 @@ export class Feria {
     this.rueda.set_name('Rueda')
     noria.add_child(this.rueda)
     for (const lado of [-1, 1]) {
-      const aro = malla(mallaDeAro(WHEEL_RADIUS, RIM_TUBE, 48, 6), llanta, new Vector3(0, 0, (lado * RIM_GAP) / 2))
+      const aro = malla(mallaDeToro(WHEEL_RADIUS, RIM_TUBE, 48, 6), llanta, new Vector3(0, 0, (lado * RIM_GAP) / 2))
       aro.rotation = new Vector3(Math.PI / 2, 0, 0)
       this.rueda.add_child(aro)
     }
@@ -425,7 +426,7 @@ export class Feria {
     }
     this.rueda.add_child(multimalla(poste, hierro, radios))
     // Las bombillas de la noria son de la misma familia que las de las guirnaldas: el mismo material.
-    this.rueda.add_child(multimalla(mallaDeEsfera(1, 8, 6), this.bombillas, bombillas))
+    this.rueda.add_child(multimalla(esfera(8, 6), this.bombillas, bombillas))
   }
 
   /** Cuántas de cada cosa, para quien quiera contarlas. */
@@ -458,81 +459,6 @@ export class Feria {
     this.recinto.visible = si
     // En la habitación no hay fondo: uno opaco la taparía. El HDRI sigue dando los reflejos.
     this.entorno.background_mode = si && this.cielo != null ? Environment.BGMode.BG_SKY : Environment.BGMode.BG_COLOR
-    this.entorno.background_color = si ? lineal(BACKDROP_COLOR) : new Color(0, 0, 0, 0)
-  }
-}
-
-/** Lo que hace falta del visor para enseñar la habitación: si puede, y ponerla o quitarla. */
-export interface VistaDeLaHabitacion {
-  hayPassthrough(): boolean
-  transparente(si: boolean): void
-}
-
-/**
- * La del visor de verdad: el modo de mezcla de OpenXR y el fondo transparente del viewport. Sin
- * OpenXR en marcha (en plano, en los tests) no hay habitación.
- */
-export function vistaDelVisor(viewport: Viewport): VistaDeLaHabitacion {
-  const xr = () => {
-    const i = XRServer.find_interface('OpenXR')
-    return i != null && i.is_initialized() ? i : null
-  }
-  return {
-    hayPassthrough() {
-      const i = xr()
-      if (i == null) return false
-      const modos = i.get_supported_environment_blend_modes()
-      for (let k = 0; k < modos.size(); k++) {
-        if (Number(modos.get(k)) === XRInterface.EnvironmentBlendMode.XR_ENV_BLEND_MODE_ALPHA_BLEND) return true
-      }
-      return false
-    },
-    transparente(si) {
-      const i = xr()
-      if (i != null) {
-        i.environment_blend_mode = si ? XRInterface.EnvironmentBlendMode.XR_ENV_BLEND_MODE_ALPHA_BLEND : XRInterface.EnvironmentBlendMode.XR_ENV_BLEND_MODE_OPAQUE
-      }
-      viewport.transparent_bg = si
-    },
-  }
-}
-
-/**
- * El escenario: qué pidió el salón, si hay con qué enseñarlo y qué se ve. Lee la preferencia a cada
- * fotograma, como la web se suscribe a ella: un cambio del salón o del menú se ve en el siguiente.
- */
-export class Escenario {
-  private visto: boolean | null = null
-
-  constructor(
-    private readonly feria: Feria,
-    private readonly vista: VistaDeLaHabitacion,
-    /** Un escenario puesto desde fuera (`-- --habitacion`), sin tocar el guardado de nadie. */
-    private readonly forzado: Scenery | null = null,
-  ) {}
-
-  get elegido(): Scenery {
-    return this.forzado ?? readScenery(gameStorage())
-  }
-
-  get hayHabitacion(): boolean {
-    return this.vista.hayPassthrough()
-  }
-
-  /** Si se ve la plaza: la regla de la web con la realidad aumentada del visor. */
-  get enLaPlaza(): boolean {
-    return showsPlace(this.hayHabitacion ? 'immersive-ar' : null, this.elegido)
-  }
-
-  elegir(escenario: Scenery): void {
-    writeScenery(gameStorage(), escenario)
-  }
-
-  actualizar(): void {
-    const plaza = this.enLaPlaza
-    if (plaza === this.visto) return
-    this.visto = plaza
-    this.feria.enLaPlaza(plaza)
-    this.vista.transparente(!plaza)
+    this.entorno.background_color = si ? colorDeFondo(BACKDROP_COLOR) : new Color(0, 0, 0, 0)
   }
 }

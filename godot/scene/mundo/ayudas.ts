@@ -35,7 +35,7 @@ import {
 } from '@/lib/guionDeAyudas'
 import { TUTORIAL_BUTTONS } from '@/lib/tutorial'
 
-import { cilindro, malla, mallaPlana, opacidad, sinSombra, translucido } from './piezas'
+import { cilindro, malla, mallaPlana, opacidad, sinSombra, translucido } from '@kit/runtime/escena/piezas'
 
 /** Lo transparente que llega a ponerse cada ayuda encendida del todo (`OPACIDAD` de `Ayudas.tsx`). */
 export const OPACIDAD_DE_LA_AYUDA = { suelo: 0.75, palo: 0.6 } as const

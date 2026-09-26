@@ -35,22 +35,21 @@ import {
   Key,
   MouseButton,
   Node3D,
-  OS,
   Time,
   Transform3D,
   Vector2,
   Vector3,
-  XRHandTracker,
   XRServer,
   print,
 } from 'godot'
 
-import { ACCION, TRACKER_DE_LA_MANO, estaAgarrando, type Mano } from '@kit/lib/xr/manos'
-import { gameStorage, usarRaiz } from '@kit/motor/almacen-godot'
+import { ACCION, estaAgarrando, type Mano } from '@kit/lib/xr/manos'
+import { aislarElGuardado, argumento, hayBandera } from '@kit/runtime/argumentos'
+import { Escenario, vistaDelVisor } from '@kit/runtime/escena/escenario'
 import { Music, Sfx } from '@kit/runtime/sfx'
 import { MandoDeVerdad } from '@kit/runtime/ui/mando'
 import { XRPlayer } from '@kit/runtime/xr/jugador'
-import { simularMandos, type Simulacion } from '@kit/runtime/xr/simulado'
+import { simularMandos, verConLaCabezaSimulada, type Simulacion } from '@kit/runtime/xr/simulado'
 
 import { DIFFICULTY_SPEEDS, PLAYER_OFFSET_Z, STICK_MISS_Y, type Difficulty } from '@/lib/gameConfig'
 import type { GameMode } from '@/lib/gameMode'
@@ -61,18 +60,18 @@ import { MUSIC_VOLUME } from '@/lib/music'
 import { MUSIC_FADE_MS, fadeVolume } from '@/lib/musicFade'
 import { semillaAlAzar, type Resultado } from '@/lib/semilla'
 import { fallOrder } from '@/lib/stickLayout'
+import { gameStorage } from '@/lib/storage'
 import { followRatio } from '@/lib/xrAnchor'
 import * as xrLayout from '@/lib/xrLayout'
 
 import { niveles } from './interfaz/ajustes'
 import { InterfazDelJuego } from './interfaz/interfaz'
-import { agarreManteniendo } from './juego/agarre'
 import { paloEnElRayo, paloEnLaMano } from './juego/alcance'
 import { Partida, type FaseDeLaPartida } from './juego/partida'
 import { SOUNDS, sonidosDesde, type Pistas } from './juego/sonido'
 import { Tanda, claveDeLaTanda, cuerpoDelPalo, type Palo } from './juego/tanda'
 import { AyudasDelJuego } from './mundo/ayudas'
-import { Escenario, Feria, vistaDelVisor } from './mundo/feria'
+import { Feria } from './mundo/feria'
 import { Maquina } from './mundo/maquina'
 import { PalosPintados } from './mundo/palos'
 
@@ -81,6 +80,8 @@ const MUSIC_PATH = 'res://games/stick-rush/music/feria.mp3'
 /** Los modelos de los mandos, copiados de `public/webxr-profiles/` (`npm run godot:mandos`). */
 const DIR_DE_LOS_MANDOS = 'res://games/stick-rush/mandos'
 const MANOS: readonly Mano[] = ['left', 'right']
+/** Cada cuántos fotogramas se vuelve a preguntar al visor si da realidad aumentada (medio segundo). */
+const RELEER_EL_VISOR = 36
 
 /**
  * La cámara de la web en plano (`GameCanvas.tsx`): elevada y por detrás del jugador, porque a la
@@ -191,46 +192,41 @@ export default class StickRush extends Node3D {
   private resultados: Resultado[] = []
 
   _ready(): void {
-    const args = OS.get_cmdline_user_args()
     this.harnessMenu = this.has_meta('harness_menu')
     this.harness = this.has_meta('harness') || this.harnessMenu
-    // Una escena de test guarda aparte y empieza de cero: si no, la marca del jugador automático
-    // acabaría como récord de quien tenga el juego.
-    if (this.harness) {
-      usarRaiz('user://pruebas-de-la-escena/')
-      gameStorage()?.clear()
-    }
-    const autoplay = args.has('--autoplay') || (this.harness && !this.harnessMenu)
-    let lang: string | null = null
+    // Una escena de test o una captura guarda aparte y empieza de cero: si no, la marca del jugador
+    // automático acabaría como récord de quien tenga el juego.
+    aislarElGuardado(this.harness)
+    const autoplay = hayBandera('autoplay') || (this.harness && !this.harnessMenu)
+    const lang = argumento('lang')
     let reto: number | null = null
-    // Un PackedStringArray no es iterable en JS: se recorre por índice.
-    for (let i = 0; i < args.size(); i++) {
-      const arg = args.get(i)
-      if (arg.startsWith('--shot=')) this.shotPath = arg.slice('--shot='.length)
-      if (arg.startsWith('--shot-menu=')) this.shotMenuPath = arg.slice('--shot-menu='.length)
-      if (arg.startsWith('--shot-ayudas=')) this.shotAyudasPath = arg.slice('--shot-ayudas='.length)
-      if (arg.startsWith('--shot-tutorial=')) this.shotTutorialPath = arg.slice('--shot-tutorial='.length)
-      if (arg.startsWith('--lang=')) lang = arg.slice('--lang='.length)
-      if (arg.startsWith('--semilla=')) this.semillaFija = Number(arg.slice('--semilla='.length)) >>> 0
-      if (arg.startsWith('--reto=')) reto = Number(arg.slice('--reto='.length)) >>> 0
-      if (arg.startsWith('--mirar=')) this.mirar = (Number(arg.slice('--mirar='.length)) * Math.PI) / 180
-      if (arg.startsWith('--bajar=')) this.bajar = (Number(arg.slice('--bajar='.length)) * Math.PI) / 180
-    }
+    this.shotPath = argumento('shot')
+    this.shotMenuPath = argumento('shot-menu')
+    this.shotAyudasPath = argumento('shot-ayudas')
+    this.shotTutorialPath = argumento('shot-tutorial')
+    const semilla = argumento('semilla')
+    if (semilla) this.semillaFija = Number(semilla) >>> 0
+    const linea = argumento('reto')
+    if (linea) reto = Number(linea) >>> 0
+    const mirar = argumento('mirar')
+    if (mirar) this.mirar = (Number(mirar) * Math.PI) / 180
+    const bajar = argumento('bajar')
+    if (bajar) this.bajar = (Number(bajar) * Math.PI) / 180
     if (this.has_meta('semilla')) this.semillaFija = Number(this.get_meta('semilla')) >>> 0
     if (this.has_meta('reto')) reto = Number(this.get_meta('reto')) >>> 0
     // En el hub nativo, la semilla del reto la lleva su autoload como metadato (`challenge_seed`).
     const salon = this.get_node_or_null('/root/XRcade')
     if (salon != null && salon.has_meta('challenge_seed')) reto = Number(salon.get_meta('challenge_seed')) >>> 0
     if (autoplay && this.semillaFija == null) this.semillaFija = SEMILLA_DEL_BOT
-    this.ayudasEnPlano = args.has('--ayudas') || this.shotAyudasPath != null || this.has_meta('ayudas')
+    this.ayudasEnPlano = hayBandera('ayudas') || this.shotAyudasPath != null || this.has_meta('ayudas')
 
     // El visor simulado: el de la escena de test, o `-- --visor-simulado` para mirar en plano lo que
     // se ve con el visor (la cámara es la cabeza de mentira).
-    const simulado = (this.harness && this.has_meta('xr_simulado')) || args.has('--visor-simulado')
+    const simulado = (this.harness && this.has_meta('xr_simulado')) || hayBandera('visor-simulado')
     this.driver = simulado ? 'xr' : autoplay ? 'bot' : this.startXr() ? 'xr' : 'mouse'
     this.escena = this
     if (this.driver === 'xr') this.buildXrPlayer(simulado)
-    this.buildWorld(args.has('--habitacion'))
+    this.buildWorld(hayBandera('habitacion'))
     this.buildSound()
 
     this.partida = new Partida({
@@ -250,7 +246,7 @@ export default class StickRush extends Node3D {
         punteros: this.player?.punteros() ?? [],
         visor: this.driver === 'xr',
         lang,
-        tutorial: args.has('--tutorial') || this.shotTutorialPath != null,
+        tutorial: hayBandera('tutorial') || this.shotTutorialPath != null,
         manos: this.mandosEnLaMano,
         ojos: () => {
           const player = this.player
@@ -266,7 +262,7 @@ export default class StickRush extends Node3D {
     // Con `--menu` se queda en el menú, para mirarlo con el visor simulado.
     // Con visor simulado espera un poco en el menú, que es donde se mide la altura de los ojos para
     // el aro (`XRPlayerHeight.tsx`).
-    if ((this.driver === 'bot' || this.sim != null || this.shotTutorialPath != null) && reto == null && !args.has('--menu')) {
+    if ((this.driver === 'bot' || this.sim != null || this.shotTutorialPath != null) && reto == null && !hayBandera('menu')) {
       this.arranqueDelBot = this.sim != null ? FOTOGRAMAS_EN_EL_MENU : 0
     }
     this.arrancarElBot()
@@ -305,10 +301,11 @@ export default class StickRush extends Node3D {
     }
     // Stick Rush no tiene `uiHeight.ts`: la altura vive en su `xrLayout.ts`, con las mismas funciones
     // que el kit pide (`startTracking`, `trackHeight`, `worldRise`). Ni `agarre.ts` ni `pellizco.ts`:
-    // aquí nada se lleva en la mano, los palos se cogen al apretar (`juego/agarre.ts`).
-    this.player = new XRPlayer(this, { comunes: { uiHeight: xrLayout, hostAnchor, agarre: agarreManteniendo } })
+    // aquí nada se lleva en la mano, los palos se cogen al apretar, y sin `agarre` el kit sujeta
+    // mientras se aprieta (`AGARRE_MANTENIENDO`).
+    this.player = new XRPlayer(this, { comunes: { uiHeight: xrLayout, hostAnchor } })
     // Sin visor de verdad, la cabeza de mentira hace de cámara: lo que se captura es lo que se vería.
-    if (simulado && !this.get_viewport()!.use_xr) this.player.camara.current = true
+    if (simulado) verConLaCabezaSimulada(this.player.camara)
     this.escena = this.player.mundo
     for (const mano of MANOS) {
       // B/Y y el botón de menú hacen lo que Escape en plano. Jugar y elegir se hacen apuntando.
@@ -340,12 +337,11 @@ export default class StickRush extends Node3D {
     this.maquinaYSuyo.position = new Vector3(0, 0, -PLAYER_OFFSET_Z)
     this.escena.add_child(this.maquinaYSuyo)
     this.feria = new Feria(this, this.maquinaYSuyo)
-    const vista = vistaDelVisor(this.get_viewport()!)
-    this.escenario = new Escenario(
-      this.feria,
-      habitacion ? { hayPassthrough: () => true, transparente: (si) => vista.transparente(si) } : vista,
-      habitacion ? 'room' : null,
-    )
+    this.escenario = new Escenario({
+      mostrar: (enLaPlaza) => this.feria.enLaPlaza(enLaPlaza),
+      vista: vistaDelVisor(this.get_viewport()!),
+      forzado: habitacion ? 'room' : null,
+    })
     this.escenario.actualizar()
     this.maquina = new Maquina(this.maquinaYSuyo)
     this.palos = new PalosPintados(this.maquinaYSuyo)
@@ -504,8 +500,7 @@ export default class StickRush extends Node3D {
     for (const mano of MANOS) {
       const puno = player.puno[mano]
       if (puno.get_has_tracking_data()) conMando = true
-      const tracker = XRServer.get_tracker(TRACKER_DE_LA_MANO[mano])
-      if (tracker instanceof XRHandTracker && tracker.has_tracking_data) conManos = true
+      if (player.manoDesnuda(mano) != null) conManos = true
       const apretado = estaAgarrando({ valor: puno.get_float(ACCION.agarre), clic: puno.is_button_pressed(ACCION.agarreClic), pellizco: false })
       const flanco = apretado && !this.agarrado[mano]
       this.agarrado[mano] = apretado
@@ -568,6 +563,7 @@ export default class StickRush extends Node3D {
     this.maquina.colocar(p.hoopHeight)
     this.palos.pintar(this.tanda)
     this.feria.actualizar(delta, p.streak)
+    if (this.frames % RELEER_EL_VISOR === 0) this.escenario.releer()
     this.escenario.actualizar()
 
     const dando = this.driver === 'xr' || this.ayudasEnPlano

@@ -45,7 +45,8 @@ Con visor usa **la gramática XR del kit** (`@kit/runtime/xr/jugador`): la máqu
 presta el salón, baja a los ojos de quien juega sentado y **gira por pasos con el stick de la mano
 libre**. **Los palos se cogen con la mano**: al apretar el gatillo lateral de cualquiera de los dos
 mandos, el palo que queda en la esfera de agarre del puño —la de la web, 9 cm
-(`CONTROLLER_GRAB_RADIUS`)—; el rayo es solo para el menú. De pie, el aro se planta medio metro por
+(`CONTROLLER_GRAB_RADIUS`)—; el rayo es solo para el menú. Sin `agarre.ts` en la web, el kit sujeta
+mientras se aprieta, y las manos desnudas se miran con su `manoDesnuda`. De pie, el aro se planta medio metro por
 encima de los ojos medidos en el menú (`XRPlayerHeight.tsx`, `hoopHeight.ts`); sentado a los ojos, el
 mundo baja y el aro se queda en su cota. Vibra con la receta de la web (`pulsosDelAtrape`: el
 agarre de `tactos.ts`, más fuerte in extremis) en la mano que coge. **Las ayudas** del guion de la
@@ -54,8 +55,8 @@ agarre latiendo; y **el tutorial** de la web —coger un palo, y otro de los de 
 aprende jugando, con su plazo por paso, y enciende el botón en **el mando de verdad de las dos
 manos**.
 
-Suena con los efectos de la web renderizados de su `sound.ts` (`render/sonido.ts` le abre el
-contexto): la nota del atrape que sube con la racha (ocho ficheros), el palo perdido, los tres
+Suena con los efectos de la web renderizados de su `sound.ts` tal cual (el render del kit le pasa el
+contexto, `"context": true`): la nota del atrape que sube con la racha (ocho ficheros), el palo perdido, los tres
 segundos de la cuenta atrás, la salida, el final (ganar, perder o terminar) y el récord, con la regla
 de `useGameSound.ts` (`juego/sonido.ts`); y la música de la feria con su fundido. El idioma y los
 volúmenes son los del salón, del guardado.
@@ -84,12 +85,9 @@ lint, cobertura al 100 % y los e2e). La escena importa `marcas.ts`.
 | `scene/juego/tanda.ts` | Los palos de una tanda: lo que hace cada `Stick.tsx`, sin pintar |
 | `scene/juego/alcance.ts` | Qué palo coge la mano (la esfera del puño) o el ratón (el rayo) |
 | `scene/juego/sonido.ts` | Qué suena y cuándo (`useGameSound.ts`) |
-| `scene/juego/agarre.ts` | Lo que el kit pide del `agarre.ts` común, que Stick Rush no tiene |
-| `scene/mundo/` | La máquina (`maquina.ts`), los palos pintados (`palos.ts`), la feria, la plaza y tu habitación (`feria.ts`), las ayudas (`ayudas.ts`) y las piezas sueltas |
+| `scene/mundo/` | La máquina (`maquina.ts`), los palos pintados (`palos.ts`), la feria, la plaza y tu habitación (`feria.ts`) y las ayudas (`ayudas.ts`); las piezas sueltas y el escenario son del kit |
 | `scene/interfaz/` | El menú, el marcador, volver, terminar, el aviso, la cuenta atrás, el tutorial, los iconos de `xrIcons.ts` y dónde va cada panel con visor y en plano |
-| `scene/tipos/navegador.d.ts` | Los tipos de WebXR que nombra `haptics.ts` y el kit no declara |
 | `scene/**/*.motor.test.ts` | La partida contra el store de la web, la tanda contra `Stick.tsx` y el sonido contra `useGameSound.ts`, el mundo (y que lo del paquete es lo de la web byte a byte), y los paneles medidos con el instrumento de la web en los dos idiomas y pulsados con el ratón: corren con los tests de dominio |
-| `render/sonido.ts` | El motor de sonido de la web tal como lo pide el render de efectos del kit (no viaja al motor) |
 | `godot-kit.json` | Para el kit: el id, el repo (`..`), los efectos (con la nota del atrape y la cuenta atrás en sus escalones) y la música |
 | `games/stick-rush/` | Lo que va en el `.pck`; `tests/` se queda fuera al exportar |
 | `games/stick-rush/{sfx,music,feria,texturas,hdri,mandos}/` | Los efectos renderizados (`npm run godot:sfx`), la música, las piezas del kit, la madera, la plaza y los mandos de Quest (`npm run godot:mandos`), con `CREDITS.md`. Se versionan. La plaza va comprimida para la GPU (BC6H y ASTC, 0,5 MB cada una en vez de 4) y la madera, sin pérdida y con sus mipmaps |
@@ -128,6 +126,8 @@ $GODOT --xr-mode off --path . -- --reto=4242
 # `--lang=es|en`, `--tutorial` y `--ayudas` los enseñan en plano, `--habitacion` enseña tu habitación
 $GODOT --xr-mode off --path .
 
+# Con cualquier argumento de usuario (o desde una escena de test) se guarda aparte, en
+# user://pruebas-de-la-escena/ y de cero (`aislarElGuardado` del kit): nada toca el guardado de quien juega.
 # Capturas en plano: el menú, a mitad de partida, el final, el tutorial y las ayudas (desde un lado)
 $GODOT --xr-mode off --resolution 1280x720 --path . -- --shot-menu=/tmp/menu.png --lang=es
 $GODOT --xr-mode off --resolution 1280x720 --fixed-fps 60 --path . -- --autoplay --shot=/tmp/partida.png
@@ -155,9 +155,12 @@ comprueba que el hub lo monta, le cede la pantalla y vuelve al salón.
   ayudas, el sonido y la interfaz), partidas automáticas a 72 fps en macOS (M5 Pro, sin ventana):
   **~145–160 µs de media jugando** en plano (~320 µs de pico) y **~255 µs** con visor simulado (suma
   la gramática XR, las ayudas, el tutorial y los mandos en las manos). El marcador y el menú solo se
-  reescriben cuando cambian, y los palos solo tocan el motor si se han movido.
+  reescriben cuando cambian, y los palos solo tocan el motor si se han movido. Con las piezas y el
+  escenario del kit, ~115 µs jugando en plano y ~170 µs con visor simulado (medido con el mismo
+  guardado antes y después: igual).
 - **Diferencias con la web, a propósito**: los paneles son opacos (translúcidos, en Godot se
-  transparentan mucho más) y no dan sombra; en plano los paneles cuelgan de la cámara (en la web los
+  transparentan mucho más) y no dan sombra, y como en la web nada de la máquina ni de la feria da
+  sombra (las piezas del kit no la dan si no se pide); en plano los paneles cuelgan de la cámara (en la web los
   sustituye el DOM); el menú no lleva los interruptores de sonido y música (son los volúmenes del
   salón) ni el final el de compartir (en el visor no hay portapapeles); **el final lleva letra** —cómo
   ha acabado y los puntos, con las frases de `HUD.tsx`—, que la web del visor no puede escribir; la

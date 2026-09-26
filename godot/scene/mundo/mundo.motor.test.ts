@@ -10,6 +10,7 @@
 import { Color, FileAccess, MeshInstance3D, Node3D, ProjectSettings, StandardMaterial3D, type MultiMeshInstance3D } from 'godot'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { Escenario, type VistaDeLaHabitacion } from '@kit/runtime/escena/escenario'
 import { MandoDeVerdad } from '@kit/runtime/ui/mando'
 
 import { crowdSpots } from '@/lib/crowdLayout'
@@ -21,7 +22,7 @@ import { gameStorage } from '@/lib/storage'
 
 import { Tanda } from '../juego/tanda'
 import { AyudasDelJuego } from './ayudas'
-import { Escenario, Feria, type VistaDeLaHabitacion } from './feria'
+import { Feria } from './feria'
 import { ARC_SEGMENTS, Maquina, TRUSS_POSTS, TUBE_RADIUS } from './maquina'
 import { PalosPintados, rutaDeLaTextura } from './palos'
 
@@ -157,10 +158,11 @@ describe('la feria y tu habitación', () => {
 
   it('sin realidad aumentada se ve la plaza aunque el salón pida la habitación; con ella, la habitación', () => {
     gameStorage()?.setItem('xrcade:scenery', 'room')
-    const escenario = new Escenario(feria, vista)
+    const escenario = new Escenario({ mostrar: (si) => feria.enLaPlaza(si), vista })
     escenario.actualizar()
     expect([feria.recinto.visible, transparente]).toEqual([true, [false]])
     passthrough = true
+    escenario.releer()
     escenario.actualizar()
     expect([feria.recinto.visible, transparente]).toEqual([false, [false, true]])
     escenario.elegir('place')

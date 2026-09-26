@@ -233,7 +233,7 @@ export class MenuDelJuego {
         { x: i * XR_LEVEL_PICKER_SPACING - anchoDeNiveles / 2, y: XR_STICK_ROW_Y, width: XR_LEVEL_PICKER_SPACING, height: XR_ROW_HIT_HEIGHT.sticks },
         () => acciones.elegirNivel(nivel),
       )
-      this.placas.set(id, b.dibujo(rectangulo(0.03, 0.05, COLORES.apagado, 0, -0.02, ORDEN.placa), COLORES.apagado))
+      this.placas.set(id, b.dibujo(rectangulo(0.03, 0.05, COLORES.apagado, 0, -0.02), COLORES.apagado, 1, { prioridad: ORDEN.placa }))
       const suyas: MeshInstance3D[] = []
       for (let s = 0; s < 3; s++) suyas.push(b.dibujo(rectangulo(0.014, 0.008, COLORES.estrellaGastada, 0, 0.03 + s * 0.016), COLORES.estrellaGastada))
       this.estrellasDelNivel.push(suyas)
@@ -284,15 +284,10 @@ export class MenuDelJuego {
     return boton
   }
 
-  /** La placa de la web, más pequeña que su zona sensible, como dibujo del botón. */
+  /** La placa de la web, más pequeña que su zona sensible, como dibujo del botón, debajo de los demás. */
   private placa(boton: Boton, id: string, ancho: number, alto: number, color: string): void {
-    const placa = boton.dibujo(rectangulo(ancho, alto, color, 0, 0, ORDEN.placa), color)
+    const placa = boton.dibujo(rectangulo(ancho, alto, color), color, 1, { prioridad: ORDEN.placa })
     this.placas.set(id, placa)
-  }
-
-  /** Adelanta lo elegido hacia quien mira, como la web (`position` con la `z` de lo elegido). */
-  private adelantar(boton: Boton, cuanto: number): void {
-    boton.nodo.position = new Vector3(boton.caja.x, boton.caja.y, 0.02 + cuanto)
   }
 
   boton(id: string): Boton {
@@ -339,7 +334,8 @@ export class MenuDelJuego {
       b.apagado = sin
       b.colorDelDibujo(this.placas.get(id)!, elegido ? COLORES.azul : COLORES.ficha)
       b.colorDelDibujo(this.iconosDelEscenario.get(id)!, sin ? COLORES.gris : '#ffffff')
-      this.adelantar(b, elegido ? 0.02 : 0)
+      // Lo elegido sale hacia quien mira, como en la web (`position` con la `z` de lo elegido).
+      b.adelanto = elegido ? 0.02 : 0
     }
 
     // Los palos, solo en la práctica.
@@ -365,7 +361,8 @@ export class MenuDelJuego {
       const casilla = this.placas.get(`level:${nivel}`)!
       casilla.scale = new Vector3(1, elegido ? 0.07 / 0.05 : 1, 1)
       b.colorDelDibujo(casilla, elegido ? STICK_COLOR : bloqueado ? COLORES.ficha : COLORES.apagado)
-      this.adelantar(b, elegido ? 0.02 : 0)
+      // Lo elegido sale hacia quien mira, como en la web (`position` con la `z` de lo elegido).
+      b.adelanto = elegido ? 0.02 : 0
       const ganadas = estado.estrellas[i] ?? 0
       this.estrellasDelNivel[i].forEach((estrella, s) => {
         estrella.visible = !bloqueado
@@ -381,7 +378,7 @@ export class MenuDelJuego {
       b.apagado = niveles && !elegido
       b.colorDelDibujo(this.placas.get(`difficulty:${nivel}`)!, elegido ? DIFFICULTY_COLORS[nivel] : COLORES.ficha)
       for (const barra of this.barras.get(nivel)!) b.colorDelDibujo(barra, elegido ? '#ffffff' : DIFFICULTY_COLORS[nivel])
-      this.adelantar(b, elegido ? 0.022 : 0)
+      b.adelanto = elegido ? 0.022 : 0
     }
 
     this.escribir(estado)
