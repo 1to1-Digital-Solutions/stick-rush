@@ -60,9 +60,11 @@ export function streakMultiplier(streak: number): number {
 /**
  * Multiplicador por reflejos.
  *
- * @param fallProgress cuánto ha caído el palo, de 0 (recién soltado) a 1 (a
- *   punto de tocar el suelo). Valores fuera de rango se recortan: un palo
- *   atrapado mientras aún cuelga cuenta como el mejor caso.
+ * @param fallProgress cuánto llevaba cayendo el palo, en fracción de su tiempo
+ *   de caída: de 0 (recién soltado) a 1 (a punto de tocar el suelo). Es tiempo
+ *   y no recorrido porque el palo acelera (ver `stickFallProgress`). Valores
+ *   fuera de rango se recortan: un palo atrapado mientras aún cuelga cuenta
+ *   como el mejor caso.
  */
 export function reflexMultiplier(fallProgress: number): number {
   if (!Number.isFinite(fallProgress)) return 1

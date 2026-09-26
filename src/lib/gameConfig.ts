@@ -1,9 +1,15 @@
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'impossible'
 
 /**
- * Velocidad de caída en metros por segundo. La escena está a escala humana
- * (1 unidad = 1 metro) y un palo recorre ~1.45 m desde que se suelta hasta el
- * suelo, así que en Fácil dura algo menos de 6 s y en Imposible, siete décimas.
+ * Velocidad **media** de caída en metros por segundo. La escena está a escala
+ * humana (1 unidad = 1 metro) y un palo recorre ~1.45 m desde que se suelta
+ * hasta el suelo, así que en Fácil dura algo menos de 6 s y en Imposible, siete
+ * décimas.
+ *
+ * Es media y no constante: el palo cae acelerando (ver `fallAcceleration`). Se
+ * sigue expresando así porque lo que decide la dificultad es cuánto dura la
+ * caída, y eso es recorrido entre velocidad media, igual que cuando caía a
+ * velocidad fija: pasar a gravedad no tocó ningún tiempo.
  *
  * Se recalculan cada vez que cambia la geometría —primero al acercar el aro al
  * jugador, luego al encogerlo un 8 %—, porque el recorrido cambia con ella y si
@@ -179,9 +185,50 @@ export function fallDurationSeconds(difficulty: Difficulty): number {
 }
 
 /**
- * Cuánto ha caído un palo cuyo anclaje está a la cota `y`: 0 recién soltado, 1
- * a punto de tocar el suelo. Es lo que convierte "dónde lo cogí" en el bonus de
- * reflejos de la puntuación (ver `scoring.ts`).
+ * Aceleración con la que cae un palo, en m/s², para que recorra `distance` a la
+ * velocidad media `meanSpeed`.
+ *
+ * El palo se suelta **en reposo** —colgaba de un hilo— y acelera como cae
+ * cualquier cosa: a velocidad fija «flotaba» al principio y llegaba lento abajo,
+ * y el ojo lo notaba. Pero con la gravedad de verdad (9,81) cualquier palo toca
+ * el suelo en medio segundo, más deprisa que hoy en Imposible, y Fácil dejaría
+ * de ser fácil. Por eso cada dificultad es **la misma caída de verdad a cámara
+ * lenta**: se conserva la duración de cada nivel y la aceleración sale de ella
+ * (d = ½·a·T² con T = d/v̄, luego a = 2·v̄²/d). Imposible queda en ~6,4 m/s²,
+ * casi tiempo real; Fácil, en ~0,09.
+ *
+ * Ni se sube el aro ni se da impulso inicial para compensar: el aro lo manda el
+ * alcance del brazo (`hoopHeight.ts`), y un palo que arranca con velocidad
+ * parece empujado, no soltado.
+ */
+export function fallAcceleration(
+  meanSpeed: number,
+  distance: number = STICK_FALL_DISTANCE,
+): number {
+  if (!Number.isFinite(meanSpeed) || !Number.isFinite(distance) || distance <= 0) {
+    return 0
+  }
+  return (2 * meanSpeed * meanSpeed) / distance
+}
+
+/** Cuánto ha bajado un palo `seconds` después de soltarse con esa aceleración. */
+export function fallDrop(seconds: number, acceleration: number): number {
+  if (!(seconds > 0)) return 0
+  return 0.5 * acceleration * seconds * seconds
+}
+
+/**
+ * Cuánto ha caído un palo cuyo anclaje está a la cota `y`, **en tiempo**: 0
+ * recién soltado, 1 a punto de tocar el suelo. Es lo que convierte "cuándo lo
+ * cogí" en el bonus de reflejos de la puntuación (ver `scoring.ts`) y en el
+ * toque in extremis (`haptics.ts`).
+ *
+ * Se mide en tiempo y no en recorrido porque lo que se premia son los reflejos.
+ * Cayendo con aceleración las dos cosas ya no coinciden: a mitad de su tiempo un
+ * palo solo ha bajado un cuarto del recorrido, y medir el sitio regalaría bonus
+ * a quien lo coge arriba solo porque ahí el palo va despacio. Como sale del
+ * reposo, la fracción de tiempo es la raíz de la de recorrido, sea cual sea la
+ * dificultad; no hace falta saber cuál es.
  *
  * `hoopHeight` es la cota desde la que salió ese palo: con el aro acomodado al
  * jugador (ver `hoopHeight.ts`) el recorrido cambia, y medirlo siempre contra la
@@ -197,7 +244,7 @@ export function stickFallProgress(
     return 0
   }
   const fallen = (hoopHeight - y) / distance
-  return Math.min(Math.max(fallen, 0), 1)
+  return Math.sqrt(Math.min(Math.max(fallen, 0), 1))
 }
 
 /**

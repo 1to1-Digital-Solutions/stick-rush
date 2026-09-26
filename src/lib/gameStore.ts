@@ -321,8 +321,8 @@ export interface GameStore {
    */
   finishTutorial: () => void
   /**
-   * Palo atrapado. `fallProgress` (0 recién soltado, 1 a ras de suelo) decide
-   * el bonus por reflejos.
+   * Palo atrapado. `fallProgress` (fracción de su tiempo de caída: 0 recién
+   * soltado, 1 a ras de suelo) decide el bonus por reflejos.
    */
   catchStick: (fallProgress: number) => void
   /**

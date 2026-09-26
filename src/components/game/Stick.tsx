@@ -12,6 +12,8 @@ import {
   STICK_MISS_Y,
   STICK_MISSED_COLOR,
   STICK_RADIUS,
+  fallAcceleration,
+  fallDrop,
   stickFallProgress,
 } from '../../lib/gameConfig'
 import { pulsarAtrape } from '../../lib/haptics'
@@ -57,7 +59,11 @@ export interface StickProps {
    */
   normalMap: Texture
   roughnessMap: Texture
-  /** Velocidad de caída en unidades por segundo (según dificultad). */
+  /**
+   * Velocidad media de caída en unidades por segundo (según dificultad). El
+   * palo no va a esta velocidad: sale del reposo y acelera, y esto fija cuánto
+   * tarda en llegar al suelo (ver `fallAcceleration`).
+   */
   speed: number
   /** Retardo, en segundos, antes de empezar a caer. */
   delay: number
@@ -76,8 +82,9 @@ export interface StickProps {
    */
   paused: boolean
   /**
-   * Atrapado por el jugador (click o mando XR). Recibe cuánto había caído el
-   * palo, de 0 (recién soltado) a 1 (a ras de suelo): cogerlo pronto puntúa más.
+   * Atrapado por el jugador (click o mando XR). Recibe cuánto llevaba cayendo
+   * el palo, en fracción de su tiempo de caída: de 0 (recién soltado) a 1 (a
+   * ras de suelo). Cogerlo pronto puntúa más.
    */
   onCatch: (fallProgress: number) => void
   /** Se le escapó y ha tocado el suelo. */
@@ -122,6 +129,10 @@ export function Stick({
   const [visible, setVisible] = useState(true)
   // Tiempo acumulado desde el inicio (para gestionar el delay escalonado).
   const elapsed = useRef(0)
+  // Segundos que lleva cayendo. La cota se calcula de aquí cada fotograma, no
+  // sumando pasos: así el palo tarda lo mismo en llegar abajo vaya el visor a
+  // 72 o a 120 fotogramas por segundo.
+  const fallTime = useRef(0)
   // Reloj del vaivén. Es aparte del anterior porque corre también con la
   // partida parada: mecerse mientras el jugador elige o cuenta atrás es
   // justamente para lo que está.
@@ -143,6 +154,9 @@ export function Stick({
   const hovering = useRef(false)
 
   const [anchorX, anchorY, anchorZ] = anchor
+  // Con la aceleración de su propio recorrido: el aro se acomoda a quien juega
+  // y la caída tiene que durar lo mismo desde cualquier altura.
+  const acceleration = fallAcceleration(speed, anchorY - STICK_MISS_Y)
 
   // Cuándo se deja coger un palo: ver `canCatchStick`.
   const catchable = canCatchStick(state, paused)
@@ -209,8 +223,8 @@ export function Stick({
       material.emissive.copy(caughtColor)
     }
     releaseCursor()
-    // Dónde estaba el palo al cogerlo decide el bonus por reflejos. Se lee de
-    // la posición viva y no del estado, que aún no se ha vuelto a renderizar, y
+    // Cuándo se cogió el palo decide el bonus por reflejos. Se saca de la
+    // posición viva y no del estado, que aún no se ha vuelto a renderizar, y
     // se mide contra su propio anclaje: el aro se acomoda a quien juega, así que
     // no todos los palos salen de la misma altura.
     const fallProgress = stickFallProgress(groupRef.current?.position.y ?? anchorY, anchorY)
@@ -318,7 +332,8 @@ export function Stick({
     }
 
     if (state === 'falling' && !resolved.current && !paused) {
-      group.position.y -= speed * delta
+      fallTime.current += delta
+      group.position.y = anchorY - fallDrop(fallTime.current, acceleration)
       if (group.position.y <= STICK_MISS_Y) {
         group.position.y = STICK_MISS_Y
         resolved.current = true

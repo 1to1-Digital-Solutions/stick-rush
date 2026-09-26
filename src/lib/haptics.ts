@@ -42,8 +42,10 @@ export interface HapticPulse {
 export const PRESS_PULSE: HapticPulse = { intensity: 0.25, durationMs: 18 }
 
 /**
- * A partir de qué punto de la caída un palo se ha cogido **in extremis**: 0 recién soltado,
- * 1 tocando el suelo (`stickFallProgress`). A CALIBRAR CON EL VISOR.
+ * A partir de qué momento de la caída un palo se ha cogido **in extremis**: 0 recién
+ * soltado, 1 tocando el suelo (`stickFallProgress`, en tiempo). Es el último quinto del
+ * tiempo, que con el palo acelerando es algo más de un tercio del recorrido: el tramo en
+ * que se escapa. A CALIBRAR CON EL VISOR.
  */
 export const IN_EXTREMIS = 0.8
 

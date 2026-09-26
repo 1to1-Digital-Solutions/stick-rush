@@ -178,10 +178,11 @@ export function hoopHeightFor({
 }
 
 /**
- * Velocidad de caída corregida para la altura del aro.
+ * Velocidad media de caída corregida para la altura del aro (de ella sale la
+ * aceleración del palo, ver `fallAcceleration`).
  *
- * Subir el aro alarga el recorrido hasta el suelo, así que a velocidad fija el
- * palo tardaría más en llegar y cada estatura jugaría una dificultad distinta.
+ * Subir el aro alarga el recorrido hasta el suelo, así que con la misma
+ * velocidad media el palo tardaría más en llegar y cada estatura jugaría una dificultad distinta.
  * Se escala con el recorrido para que Fácil dure lo mismo para todo el mundo:
  * acomodar el aro es ergonomía, no una ventaja. Es también lo que mantiene
  * válidos los tiempos que vigila `gameConfig.test.ts`.
