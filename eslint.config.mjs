@@ -17,6 +17,9 @@ const eslintConfig = defineConfig([
     // Bundle generado del emulador WebXR para los tests (no es código fuente).
     "e2e/support/xr-emulator.bundle.js",
     "e2e/support/host.bundle.js",
+    // `godot/` es el proyecto de Godot: su TypeScript se comprueba con su propio
+    // `godot/tsconfig.json` y los `.js` los genera el kit de xrcade (`npm run godot:build`).
+    "godot/**",
   ]),
 ]);
 
