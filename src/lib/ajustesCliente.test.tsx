@@ -10,6 +10,7 @@ import {
   HAND_KEY,
   LANG_COOKIE,
   PLAY_HEIGHT_KEY,
+  PLAY_HEIGHT_OFFSET_KEY,
   SCENERY_KEY,
   VOLUME_KEYS,
 } from './ajustes'
@@ -24,6 +25,7 @@ import {
   useHand,
   useLang,
   usePlayHeight,
+  usePlayHeightOffset,
   useScenery,
   useVolumes,
 } from './ajustesCliente'
@@ -237,6 +239,33 @@ describe('a qué altura se juega', () => {
     })
 
     expect(result.current).toBe('standing')
+  })
+})
+
+describe('la altura fina del salón', () => {
+  it('sin la clave el mundo no se mueve', () => {
+    const { result } = renderHook(() => usePlayHeightOffset())
+
+    expect(result.current).toBe(0)
+  })
+
+  it('con −15 el mundo baja 0,15 m, y llega a la cabina sin recargar', () => {
+    const { result } = renderHook(() => usePlayHeightOffset())
+
+    act(() => {
+      window.localStorage.setItem(PLAY_HEIGHT_OFFSET_KEY, '-15')
+      window.dispatchEvent(new Event('xrcade:ajustes'))
+    })
+
+    expect(result.current).toBeCloseTo(-0.15, 10)
+  })
+
+  it('en el servidor es cero', () => {
+    function Altura() {
+      return <>{usePlayHeightOffset()}</>
+    }
+
+    expect(renderToString(<Altura />)).toBe('0')
   })
 })
 

@@ -20,7 +20,9 @@ import {
   langFromCookies,
   readGrabMode,
   readHand,
+  playHeightOffsetMeters,
   readPlayHeight,
+  readPlayHeightOffset,
   readScenery,
   readVolumes,
   writeHand,
@@ -232,6 +234,22 @@ export function usePlayHeight(): PlayHeight {
 /** Lo guardado, o de pie si no hay nada o hay basura. */
 function leerAltura(): PlayHeight {
   return readPlayHeight(settingsStorage())
+}
+
+/**
+ * La altura fina del salón, **en metros**, y React se entera cuando cambia.
+ *
+ * Como la altura de juego: un valor primitivo leído en cada lectura, y en el servidor, sin
+ * almacenamiento, el cero de partida. Se da en metros porque es lo que suma quien mueve el
+ * mundo; los centímetros son cosa del salón, que es quien los enseña.
+ */
+export function usePlayHeightOffset(): number {
+  return useSyncExternalStore(subscribe, leerAlturaFina, leerAlturaFina)
+}
+
+/** Lo guardado, o cero si no hay nada o hay basura. */
+function leerAlturaFina(): number {
+  return playHeightOffsetMeters(readPlayHeightOffset(settingsStorage()))
 }
 
 /**

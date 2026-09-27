@@ -326,6 +326,56 @@ export function writePlayHeight(storage: Storage | null, value: PlayHeight): boo
 }
 
 /**
+ * Cuánto se sube o se baja el mundo **además** de la altura de juego, en centímetros.
+ *
+ * **El problema.** `standing|eyes` es un interruptor, y lo que queda entre medias es lo que más
+ * se nota con el visor puesto: una silla de oficina y un sofá no ponen los ojos a la misma
+ * altura del brazo, quien mide 1,50 no llega igual que quien mide 1,90 aunque los dos estén de
+ * pie, y la calibración del suelo del visor se va unos centímetros de una sesión a otra.
+ *
+ * **Qué hace.** Se suma a lo que ya haga la altura de juego: sube (positivo) o baja (negativo)
+ * el decorado entero, de pie o sentado. La mano no se mueve, así que el objetivo queda esos
+ * centímetros más arriba o más abajo del brazo. Lo escribe el salón, de cinco en cinco y hasta
+ * treinta a cada lado; el juego solo lo lee.
+ */
+export const PLAY_HEIGHT_OFFSET_KEY = 'xrcade:play-height-offset'
+
+/** Lo más que se sube o se baja, en centímetros, a cada lado del cero. */
+export const MAX_PLAY_HEIGHT_OFFSET = 30
+
+/** Sin tocar: el mundo donde lo pone la altura de juego, como antes de haber esto. */
+export const DEFAULT_PLAY_HEIGHT_OFFSET = 0
+
+/**
+ * Interpreta el ajuste leído del almacenamiento.
+ *
+ * Solo vale un entero dentro del tope. Un decimal, un texto o un número fuera de rango son
+ * almacenamiento manipulado o de otra versión, y caen al cero: un mundo metro y medio por
+ * encima del suelo por un valor roto es mucho peor que uno sin afinar.
+ */
+export function parsePlayHeightOffset(raw: string | null | undefined): number {
+  if (raw == null || !/^-?\d{1,3}$/.test(raw)) return DEFAULT_PLAY_HEIGHT_OFFSET
+  const value = Number(raw)
+  return Math.abs(value) <= MAX_PLAY_HEIGHT_OFFSET ? value : DEFAULT_PLAY_HEIGHT_OFFSET
+}
+
+/** El ajuste, en centímetros, leído de un almacenamiento que puede no estar. */
+export function readPlayHeightOffset(storage: Pick<Storage, 'getItem'> | null): number {
+  if (storage === null) return DEFAULT_PLAY_HEIGHT_OFFSET
+  try {
+    return parsePlayHeightOffset(storage.getItem(PLAY_HEIGHT_OFFSET_KEY))
+  } catch {
+    // Almacenamiento capado: sin afinar, que es como se jugaba antes de haber esto.
+    return DEFAULT_PLAY_HEIGHT_OFFSET
+  }
+}
+
+/** De centímetros a los metros en los que se mueve el decorado. */
+export function playHeightOffsetMeters(cm: number): number {
+  return cm / 100
+}
+
+/**
  * Cómo se sujeta lo que se coge.
  *
  * **El problema.** Nueve de los trece piden **mantener apretado** el gatillo durante todo

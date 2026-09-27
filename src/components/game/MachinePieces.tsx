@@ -3,6 +3,7 @@
 import { type ComponentProps, type ReactNode } from 'react'
 import { createInstances } from '@react-three/drei'
 import { MACHINE_BULB_COLOR } from '../../lib/gameConfig'
+import { useSoltarInstancias } from './soltarInstancias'
 
 /**
  * Las piezas repetidas de la máquina, instanciadas.
@@ -97,27 +98,34 @@ export function MachinePieces({
   limits: MachinePieceCounts
   children: ReactNode
 }) {
+  // Sus matrices y colores se sueltan a mano al salir (`soltarInstancias.ts`).
+  const matte = useSoltarInstancias()
+  const frame = useSoltarInstancias()
+  const truss = useSoltarInstancias()
+  const socket = useSoltarInstancias()
+  const glass = useSoltarInstancias()
+
   return (
-    <MatteInstances limit={limits.matte} frustumCulled={false}>
+    <MatteInstances ref={matte} limit={limits.matte} frustumCulled={false}>
       <cylinderGeometry args={[0.5, 0.5, 1, 10]} />
       <meshStandardMaterial metalness={0.1} roughness={0.55} />
 
-      <FrameInstances limit={limits.frame} frustumCulled={false}>
+      <FrameInstances ref={frame} limit={limits.frame} frustumCulled={false}>
         <cylinderGeometry args={[0.5, 0.5, 1, 10]} />
         <meshStandardMaterial metalness={0.7} roughness={0.35} />
 
-        <TrussInstances limit={limits.truss} frustumCulled={false}>
+        <TrussInstances ref={truss} limit={limits.truss} frustumCulled={false}>
           <cylinderGeometry args={[0.5, 0.5, 1, 10]} />
           <meshStandardMaterial metalness={0.6} roughness={0.4} />
 
           {/* Las bombillas son todas iguales, así que sus medidas van en la geometría y las
               instancias no escalan: el casquillo es un cilindro CÓNICO y un escalado no puede
               reproducir esa conicidad, solo estirarlo. */}
-          <SocketInstances limit={limits.bulbs} frustumCulled={false}>
+          <SocketInstances ref={socket} limit={limits.bulbs} frustumCulled={false}>
             <cylinderGeometry args={[0.012, 0.015, 0.038, 8]} />
             <meshStandardMaterial color="#3b3630" metalness={0.5} roughness={0.6} />
 
-            <GlassInstances limit={limits.bulbs} frustumCulled={false}>
+            <GlassInstances ref={glass} limit={limits.bulbs} frustumCulled={false}>
               <sphereGeometry args={[0.024, 14, 14]} />
               <meshStandardMaterial
                 color={MACHINE_BULB_COLOR}

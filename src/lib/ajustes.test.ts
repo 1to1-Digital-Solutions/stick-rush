@@ -17,6 +17,12 @@ import {
   LANG_COOKIE,
   PLAY_HEIGHTS,
   PLAY_HEIGHT_KEY,
+  PLAY_HEIGHT_OFFSET_KEY,
+  DEFAULT_PLAY_HEIGHT_OFFSET,
+  MAX_PLAY_HEIGHT_OFFSET,
+  parsePlayHeightOffset,
+  playHeightOffsetMeters,
+  readPlayHeightOffset,
   SCENERIES,
   SCENERY_KEY,
   VOLUME_KEYS,
@@ -264,6 +270,44 @@ describe('a qué altura se juega', () => {
   it('dice que no sin sitio donde guardar, y no revienta', () => {
     expect(writePlayHeight(null, 'eyes')).toBe(false)
     expect(writePlayHeight(almacen({}, true), 'eyes')).toBe(false)
+  })
+})
+
+describe('la altura fina del salón', () => {
+  it('la clave y el cero de partida son los que escribe xrcade', () => {
+    // Escritos a mano, como el resto: es el puente entre repositorios.
+    expect(PLAY_HEIGHT_OFFSET_KEY).toBe('xrcade:play-height-offset')
+    expect(DEFAULT_PLAY_HEIGHT_OFFSET).toBe(0)
+    expect(MAX_PLAY_HEIGHT_OFFSET).toBe(30)
+  })
+
+  it('sin la clave el mundo no se mueve', () => {
+    expect(readPlayHeightOffset(almacen())).toBe(0)
+    expect(playHeightOffsetMeters(readPlayHeightOffset(almacen()))).toBe(0)
+  })
+
+  it('con −15 el mundo queda 0,15 m más abajo', () => {
+    const cm = readPlayHeightOffset(almacen({ [PLAY_HEIGHT_OFFSET_KEY]: '-15' }))
+
+    expect(cm).toBe(-15)
+    expect(playHeightOffsetMeters(cm)).toBeCloseTo(-0.15, 10)
+  })
+
+  it('vale de un tope al otro, y hacia arriba también', () => {
+    expect(parsePlayHeightOffset('30')).toBe(30)
+    expect(parsePlayHeightOffset('-30')).toBe(-30)
+    expect(parsePlayHeightOffset('0')).toBe(0)
+  })
+
+  it('lo que no es un entero dentro del tope cae al cero', () => {
+    for (const basura of ['31', '-31', '150', '2.5', 'arriba', '', ' 5', null, undefined]) {
+      expect(parsePlayHeightOffset(basura)).toBe(0)
+    }
+  })
+
+  it('sin sitio donde mirar no se afina, y no revienta', () => {
+    expect(readPlayHeightOffset(null)).toBe(0)
+    expect(readPlayHeightOffset(almacen({}, true))).toBe(0)
   })
 })
 
