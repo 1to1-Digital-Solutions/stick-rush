@@ -196,6 +196,8 @@ export class Feria {
 
   constructor(escena: Node3D, mundo: Node3D) {
     this.entorno = new Environment()
+    // El tono antes que el fondo: `colorDeFondo` lo lee para deshacer el ACES que la web no pone.
+    this.entorno.tonemap_mode = Environment.ToneMapper.TONE_MAPPER_ACES
     const panorama = ResourceLoader.exists(RUTA_DEL_CIELO) ? ResourceLoader.load(RUTA_DEL_CIELO) : null
     if (panorama instanceof Texture2D) {
       const material = new PanoramaSkyMaterial()
@@ -213,12 +215,11 @@ export class Feria {
       // Sin el HDRI, el fondo de noche de la web mientras carga (`Backdrop`).
       this.cielo = null
       this.entorno.background_mode = Environment.BGMode.BG_COLOR
-      this.entorno.background_color = colorDeFondo(BACKDROP_COLOR)
+      this.entorno.background_color = colorDeFondo(BACKDROP_COLOR, this.entorno)
       this.entorno.ambient_light_source = Environment.AmbientSource.AMBIENT_SOURCE_COLOR
       this.entorno.ambient_light_color = Color.html('#ffffff')
       this.entorno.ambient_light_energy = LUCES.ambiente
     }
-    this.entorno.tonemap_mode = Environment.ToneMapper.TONE_MAPPER_ACES
     const world = new WorldEnvironment()
     world.environment = this.entorno
     escena.add_child(world)
@@ -459,6 +460,6 @@ export class Feria {
     this.recinto.visible = si
     // En la habitación no hay fondo: uno opaco la taparía. El HDRI sigue dando los reflejos.
     this.entorno.background_mode = si && this.cielo != null ? Environment.BGMode.BG_SKY : Environment.BGMode.BG_COLOR
-    this.entorno.background_color = si ? colorDeFondo(BACKDROP_COLOR) : new Color(0, 0, 0, 0)
+    this.entorno.background_color = si ? colorDeFondo(BACKDROP_COLOR, this.entorno) : new Color(0, 0, 0, 0)
   }
 }
