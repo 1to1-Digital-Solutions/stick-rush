@@ -5,7 +5,9 @@ import {
   DEFAULT_HAND,
   DEFAULT_LANG,
   DEFAULT_PLAY_HEIGHT,
+  DEFAULT_PLAY_HEIGHT_OFFSET,
   DEFAULT_SCENERY,
+  DEFAULT_TURN_MODE,
   DEFAULT_VOLUMES,
   DEFAULT_VOLUME_SETTINGS,
   GRAB_MODES,
@@ -15,28 +17,31 @@ import {
   HAND_ORDER,
   LANGS,
   LANG_COOKIE,
+  MAX_PLAY_HEIGHT_OFFSET,
   PLAY_HEIGHTS,
   PLAY_HEIGHT_KEY,
   PLAY_HEIGHT_OFFSET_KEY,
-  DEFAULT_PLAY_HEIGHT_OFFSET,
-  MAX_PLAY_HEIGHT_OFFSET,
-  parsePlayHeightOffset,
-  playHeightOffsetMeters,
-  readPlayHeightOffset,
   SCENERIES,
   SCENERY_KEY,
+  TURN_MODES,
+  TURN_MODE_KEY,
   VOLUME_KEYS,
   langFromCookies,
   parseGrabMode,
   parseHand,
   parseLang,
   parsePlayHeight,
+  parsePlayHeightOffset,
   parseScenery,
+  parseTurnMode,
   parseVolume,
+  playHeightOffsetMeters,
   readGrabMode,
   readHand,
   readPlayHeight,
+  readPlayHeightOffset,
   readScenery,
+  readTurnMode,
   readVolumes,
   showsPlace,
   volumeFactor,
@@ -44,11 +49,12 @@ import {
   writeHand,
   writePlayHeight,
   writeScenery,
+  writeTurnMode,
   writeVolume,
 } from './ajustes'
 
 /**
- * El contrato que este juego comparte con xrcade y con los otros once.
+ * El contrato que este juego comparte con xrcade y con los demás juegos del salón.
  *
  * El fichero es una **copia deliberada** —lo explica su cabecera—, así que lo
  * que se prueba aquí no es la lógica por sí sola sino el puente: si una clave
@@ -273,44 +279,6 @@ describe('a qué altura se juega', () => {
   })
 })
 
-describe('la altura fina del salón', () => {
-  it('la clave y el cero de partida son los que escribe xrcade', () => {
-    // Escritos a mano, como el resto: es el puente entre repositorios.
-    expect(PLAY_HEIGHT_OFFSET_KEY).toBe('xrcade:play-height-offset')
-    expect(DEFAULT_PLAY_HEIGHT_OFFSET).toBe(0)
-    expect(MAX_PLAY_HEIGHT_OFFSET).toBe(30)
-  })
-
-  it('sin la clave el mundo no se mueve', () => {
-    expect(readPlayHeightOffset(almacen())).toBe(0)
-    expect(playHeightOffsetMeters(readPlayHeightOffset(almacen()))).toBe(0)
-  })
-
-  it('con −15 el mundo queda 0,15 m más abajo', () => {
-    const cm = readPlayHeightOffset(almacen({ [PLAY_HEIGHT_OFFSET_KEY]: '-15' }))
-
-    expect(cm).toBe(-15)
-    expect(playHeightOffsetMeters(cm)).toBeCloseTo(-0.15, 10)
-  })
-
-  it('vale de un tope al otro, y hacia arriba también', () => {
-    expect(parsePlayHeightOffset('30')).toBe(30)
-    expect(parsePlayHeightOffset('-30')).toBe(-30)
-    expect(parsePlayHeightOffset('0')).toBe(0)
-  })
-
-  it('lo que no es un entero dentro del tope cae al cero', () => {
-    for (const basura of ['31', '-31', '150', '2.5', 'arriba', '', ' 5', null, undefined]) {
-      expect(parsePlayHeightOffset(basura)).toBe(0)
-    }
-  })
-
-  it('sin sitio donde mirar no se afina, y no revienta', () => {
-    expect(readPlayHeightOffset(null)).toBe(0)
-    expect(readPlayHeightOffset(almacen({}, true))).toBe(0)
-  })
-})
-
 describe('cómo se sujeta lo que se coge', () => {
   it('la clave y el agarre de partida son los que escribe xrcade', () => {
     expect(GRAB_MODE_KEY).toBe('xrcade:grab')
@@ -349,6 +317,49 @@ describe('cómo se sujeta lo que se coge', () => {
   it('dice que no sin sitio donde guardar, y no revienta', () => {
     expect(writeGrabMode(null, 'toggle')).toBe(false)
     expect(writeGrabMode(almacen({}, true), 'toggle')).toBe(false)
+  })
+})
+
+describe('cuándo se gira el decorado con el stick', () => {
+  it('la clave y el giro de partida son los que escribirá xrcade', () => {
+    expect(TURN_MODE_KEY).toBe('xrcade:giro')
+    expect(DEFAULT_TURN_MODE).toBe('auto')
+    expect(TURN_MODES).toEqual(['auto', 'stick'])
+  })
+
+  it('solo cuenta un giro que exista', () => {
+    expect(parseTurnMode('stick')).toBe('stick')
+    expect(parseTurnMode('auto')).toBe('auto')
+    for (const basura of ['siempre', '', null, undefined]) {
+      expect(parseTurnMode(basura)).toBe('auto')
+    }
+  })
+
+  it('se lee de donde el arcade lo deja, y sin él es solo sentado', () => {
+    // Un salón anterior al ajuste no escribe nada: eso tiene que seguir siendo un juego que
+    // se puede jugar, no un fallo.
+    expect(readTurnMode(almacen({ [TURN_MODE_KEY]: 'stick' }))).toBe('stick')
+    expect(readTurnMode(almacen())).toBe('auto')
+  })
+
+  it('sin sitio donde mirar se gira solo sentado, y no revienta', () => {
+    expect(readTurnMode(null)).toBe('auto')
+    expect(readTurnMode(almacen({}, true))).toBe('auto')
+  })
+
+  it('se guarda al apartarse del de partida, y se olvida al volver', () => {
+    const storage = almacen()
+
+    expect(writeTurnMode(storage, 'stick')).toBe(true)
+    expect(storage.getItem(TURN_MODE_KEY)).toBe('stick')
+
+    expect(writeTurnMode(storage, 'auto')).toBe(true)
+    expect(storage.getItem(TURN_MODE_KEY)).toBeNull()
+  })
+
+  it('dice que no sin sitio donde guardar, y no revienta', () => {
+    expect(writeTurnMode(null, 'stick')).toBe(false)
+    expect(writeTurnMode(almacen({}, true), 'stick')).toBe(false)
   })
 })
 
@@ -457,5 +468,38 @@ describe('con qué mano se juega', () => {
     expect(readHand(almacen({}, true))).toBe('right')
     expect(writeHand(null, 'left')).toBe(false)
     expect(writeHand(almacen({}, true), 'left')).toBe(false)
+  })
+})
+
+describe('la altura fina del salón', () => {
+  it('la clave y el cero de partida son los que escribe xrcade', () => {
+    // Escritos a mano, como el resto: es el puente entre repositorios.
+    expect(PLAY_HEIGHT_OFFSET_KEY).toBe('xrcade:play-height-offset')
+    expect(DEFAULT_PLAY_HEIGHT_OFFSET).toBe(0)
+    expect(MAX_PLAY_HEIGHT_OFFSET).toBe(30)
+  })
+
+  it('sin la clave el mundo no se mueve', () => {
+    expect(readPlayHeightOffset(almacen())).toBe(0)
+    expect(playHeightOffsetMeters(readPlayHeightOffset(almacen()))).toBe(0)
+  })
+
+  it('con −15 el mundo baja quince centímetros', () => {
+    const cm = readPlayHeightOffset(almacen({ [PLAY_HEIGHT_OFFSET_KEY]: '-15' }))
+
+    expect(cm).toBe(-15)
+    expect(playHeightOffsetMeters(cm)).toBeCloseTo(-0.15, 9)
+    expect(readPlayHeightOffset(almacen({ [PLAY_HEIGHT_OFFSET_KEY]: '30' }))).toBe(30)
+  })
+
+  it('un valor roto o fuera del tope deja el mundo sin afinar', () => {
+    for (const basura of ['31', '-31', '12.5', 'arriba', '', '+5', '1000', null, undefined]) {
+      expect(parsePlayHeightOffset(basura)).toBe(0)
+    }
+  })
+
+  it('sin sitio donde mirar no se afina, y no revienta', () => {
+    expect(readPlayHeightOffset(null)).toBe(0)
+    expect(readPlayHeightOffset(almacen({}, true))).toBe(0)
   })
 })

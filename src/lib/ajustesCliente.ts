@@ -24,6 +24,7 @@ import {
   readPlayHeight,
   readPlayHeightOffset,
   readScenery,
+  readTurnMode,
   readVolumes,
   writeHand,
   writeScenery,
@@ -34,6 +35,7 @@ import {
   type PlayHeight,
   type Scenery,
   type SoundChannel,
+  type TurnMode,
   type Volumes,
 } from './ajustes'
 
@@ -266,6 +268,21 @@ export function useGrabMode(): GrabMode {
 /** Lo guardado, o manteniendo si no hay nada o hay basura. */
 function leerAgarre(): GrabMode {
   return readGrabMode(settingsStorage())
+}
+
+/**
+ * Cuándo se gira el decorado con el stick, y React se entera cuando cambia.
+ *
+ * Como el agarre: se lee del almacenamiento en cada lectura, porque es un valor
+ * primitivo y ahí `useSyncExternalStore` compara bien sin ayuda.
+ */
+export function useTurnMode(): TurnMode {
+  return useSyncExternalStore(subscribe, leerGiro, leerGiro)
+}
+
+/** Lo guardado, o solo sentado si no hay nada o hay basura. */
+function leerGiro(): TurnMode {
+  return readTurnMode(settingsStorage())
 }
 
 /**

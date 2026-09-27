@@ -1,5 +1,9 @@
 /**
- * Los ajustes que **no** son de un juego: idioma, volúmenes, escenario, altura y agarre.
+ * Los ajustes que **no** son de un juego: idioma, volúmenes, escenario, altura, agarre, giro y mano.
+ *
+ * **El mismo fichero en los diecisiete.** Cada juego lee solo lo que usa, pero el contrato es
+ * uno: `organizate/scripts/repos/comunes.py` exige que esta copia sea idéntica en todos, y
+ * `xrcade/src/lib/puente-de-ajustes.test.ts` que diga lo mismo que escribe el salón.
  *
  * **Por qué viven fuera de cada juego.** Quien entra al arcade, elige español y
  * baja el ambiente no quiere volver a decirlo en cada cabina. Antes cada juego
@@ -326,56 +330,6 @@ export function writePlayHeight(storage: Storage | null, value: PlayHeight): boo
 }
 
 /**
- * Cuánto se sube o se baja el mundo **además** de la altura de juego, en centímetros.
- *
- * **El problema.** `standing|eyes` es un interruptor, y lo que queda entre medias es lo que más
- * se nota con el visor puesto: una silla de oficina y un sofá no ponen los ojos a la misma
- * altura del brazo, quien mide 1,50 no llega igual que quien mide 1,90 aunque los dos estén de
- * pie, y la calibración del suelo del visor se va unos centímetros de una sesión a otra.
- *
- * **Qué hace.** Se suma a lo que ya haga la altura de juego: sube (positivo) o baja (negativo)
- * el decorado entero, de pie o sentado. La mano no se mueve, así que el objetivo queda esos
- * centímetros más arriba o más abajo del brazo. Lo escribe el salón, de cinco en cinco y hasta
- * treinta a cada lado; el juego solo lo lee.
- */
-export const PLAY_HEIGHT_OFFSET_KEY = 'xrcade:play-height-offset'
-
-/** Lo más que se sube o se baja, en centímetros, a cada lado del cero. */
-export const MAX_PLAY_HEIGHT_OFFSET = 30
-
-/** Sin tocar: el mundo donde lo pone la altura de juego, como antes de haber esto. */
-export const DEFAULT_PLAY_HEIGHT_OFFSET = 0
-
-/**
- * Interpreta el ajuste leído del almacenamiento.
- *
- * Solo vale un entero dentro del tope. Un decimal, un texto o un número fuera de rango son
- * almacenamiento manipulado o de otra versión, y caen al cero: un mundo metro y medio por
- * encima del suelo por un valor roto es mucho peor que uno sin afinar.
- */
-export function parsePlayHeightOffset(raw: string | null | undefined): number {
-  if (raw == null || !/^-?\d{1,3}$/.test(raw)) return DEFAULT_PLAY_HEIGHT_OFFSET
-  const value = Number(raw)
-  return Math.abs(value) <= MAX_PLAY_HEIGHT_OFFSET ? value : DEFAULT_PLAY_HEIGHT_OFFSET
-}
-
-/** El ajuste, en centímetros, leído de un almacenamiento que puede no estar. */
-export function readPlayHeightOffset(storage: Pick<Storage, 'getItem'> | null): number {
-  if (storage === null) return DEFAULT_PLAY_HEIGHT_OFFSET
-  try {
-    return parsePlayHeightOffset(storage.getItem(PLAY_HEIGHT_OFFSET_KEY))
-  } catch {
-    // Almacenamiento capado: sin afinar, que es como se jugaba antes de haber esto.
-    return DEFAULT_PLAY_HEIGHT_OFFSET
-  }
-}
-
-/** De centímetros a los metros en los que se mueve el decorado. */
-export function playHeightOffsetMeters(cm: number): number {
-  return cm / 100
-}
-
-/**
  * Cómo se sujeta lo que se coge.
  *
  * **El problema.** Nueve de los trece piden **mantener apretado** el gatillo durante todo
@@ -430,6 +384,68 @@ export function writeGrabMode(storage: Storage | null, value: GrabMode): boolean
   try {
     if (value === DEFAULT_GRAB_MODE) storage.removeItem(GRAB_MODE_KEY)
     else storage.setItem(GRAB_MODE_KEY, value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Cuándo se puede girar el decorado con el stick.
+ *
+ * **El problema.** Los juegos dan por hecho que uno se gira con el cuerpo: los platos de skeet
+ * salen de dos casetas, los morteros del arco ocupan el claro, las cabinas de los extremos del
+ * salón están a 75°. Sentado —en una silla fija, en un sofá, en una silla de ruedas— eso es
+ * torcer el cuello o no llegar.
+ *
+ * **Qué hace cada valor.** `auto` gira solo cuando la altura de juego es la de sentado
+ * (`eyes`): quien juega de pie se gira con el cuerpo, y un stick que moviera el mundo sin
+ * querer le revolvería el estómago. `stick` gira siempre, para quien juega de pie pero no se
+ * puede o no se quiere girar. Lo que gira es el decorado, nunca el jugador; cómo, en
+ * `lib/giro.ts`.
+ *
+ * **Tolerante a que no esté.** Un salón anterior a este ajuste no lo escribe, y cualquier cosa
+ * que no sea un valor conocido cae a `auto`: es lo que había antes de existir la opción, más el
+ * giro sentado, que no estorba a nadie que esté de pie.
+ */
+export const TURN_MODES = ['auto', 'stick'] as const
+export type TurnMode = (typeof TURN_MODES)[number]
+
+/** Dónde se recuerda. El prefijo es del arcade, no de un juego. */
+export const TURN_MODE_KEY = 'xrcade:giro'
+
+/** Solo sentado. */
+export const DEFAULT_TURN_MODE: TurnMode = 'auto'
+
+/** Interpreta el giro leído del almacenamiento: solo cuenta uno que exista. */
+export function parseTurnMode(raw: string | null | undefined): TurnMode {
+  return (TURN_MODES as readonly string[]).includes(raw ?? '')
+    ? (raw as TurnMode)
+    : DEFAULT_TURN_MODE
+}
+
+/** El giro elegido, leído de un almacenamiento que puede no estar. */
+export function readTurnMode(storage: Pick<Storage, 'getItem'> | null): TurnMode {
+  if (storage === null) return DEFAULT_TURN_MODE
+  try {
+    return parseTurnMode(storage.getItem(TURN_MODE_KEY))
+  } catch {
+    // Almacenamiento capado: se gira solo sentado, que es lo que no estorba a nadie.
+    return DEFAULT_TURN_MODE
+  }
+}
+
+/**
+ * Guarda el giro, o lo olvida cuando vuelve a ser el de partida.
+ *
+ * @returns si quedó guardado. Un `false` no es un error: significa que este navegador no
+ *   guarda nada y la elección vivirá lo que dure la visita.
+ */
+export function writeTurnMode(storage: Storage | null, value: TurnMode): boolean {
+  if (storage === null) return false
+  try {
+    if (value === DEFAULT_TURN_MODE) storage.removeItem(TURN_MODE_KEY)
+    else storage.setItem(TURN_MODE_KEY, value)
     return true
   } catch {
     return false
@@ -500,4 +516,54 @@ export function writeHand(storage: Storage | null, value: Hand): boolean {
   } catch {
     return false
   }
+}
+
+/**
+ * Cuánto se sube o se baja el mundo **además** de la altura de juego, en centímetros.
+ *
+ * **El problema.** `standing|eyes` es un interruptor: de pie, el mundo donde se dibujó; a la
+ * altura de los ojos, bajado lo que los ojos estén por debajo de la persona de referencia. Entre
+ * medias no hay nada, y una silla de oficina y un sofá no ponen los ojos a la misma altura del
+ * brazo, ni llega igual quien mide 1,50 que quien mide 1,90. El salón deja afinarlo de cinco en
+ * cinco centímetros y este juego solo lo lee: se suma a lo que ya haga la altura de juego y sube
+ * (positivo) o baja (negativo) el decorado entero, con la mano donde está.
+ *
+ * El tope es de un palmo largo a cada lado: más allá ya no es afinar, es la otra altura de
+ * juego, y un mundo treinta centímetros por encima del suelo de verdad se ve flotando.
+ */
+export const PLAY_HEIGHT_OFFSET_KEY = 'xrcade:play-height-offset'
+
+/** Lo más que se sube o se baja, en centímetros, a cada lado del cero. */
+export const MAX_PLAY_HEIGHT_OFFSET = 30
+
+/** Sin tocar: el mundo donde lo pone la altura de juego, como antes de haber esto. */
+export const DEFAULT_PLAY_HEIGHT_OFFSET = 0
+
+/**
+ * Interpreta el ajuste leído del almacenamiento.
+ *
+ * Solo vale un entero dentro del tope. Un decimal, un texto o un número fuera de rango son
+ * almacenamiento manipulado o de otra versión, y caen al cero: un mundo metro y medio por
+ * encima del suelo por un valor roto es mucho peor que uno sin afinar.
+ */
+export function parsePlayHeightOffset(raw: string | null | undefined): number {
+  if (raw == null || !/^-?\d{1,3}$/.test(raw)) return DEFAULT_PLAY_HEIGHT_OFFSET
+  const value = Number(raw)
+  return Math.abs(value) <= MAX_PLAY_HEIGHT_OFFSET ? value : DEFAULT_PLAY_HEIGHT_OFFSET
+}
+
+/** El ajuste, en centímetros, leído de un almacenamiento que puede no estar. */
+export function readPlayHeightOffset(storage: Pick<Storage, 'getItem'> | null): number {
+  if (storage === null) return DEFAULT_PLAY_HEIGHT_OFFSET
+  try {
+    return parsePlayHeightOffset(storage.getItem(PLAY_HEIGHT_OFFSET_KEY))
+  } catch {
+    // Almacenamiento capado: sin afinar, que es como se jugaba antes de haber esto.
+    return DEFAULT_PLAY_HEIGHT_OFFSET
+  }
+}
+
+/** De centímetros a los metros en los que se mueve el decorado. */
+export function playHeightOffsetMeters(cm: number): number {
+  return cm / 100
 }
