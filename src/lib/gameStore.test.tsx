@@ -5,6 +5,7 @@ import { COUNTDOWN_SECONDS, useGame, useGameStoreValue, type OpcionesDelSalon } 
 import { CHALLENGE_SETUP } from './gameMode'
 import { buildStickLayout } from './stickLayout'
 import { HIGH_SCORE_KEYS } from './highScore'
+import { HAZANAS, HAZANAS_KEY } from './hazanas'
 import { HOOP_ADJUST_RANGE, HOOP_ADJUST_STEP } from './hoopHeight'
 import { OWN_SCENERY_KEY } from './sceneryPreference'
 import { PLAZO_DEL_PASO, TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE, type TutorialStepKey } from './tutorial'
@@ -1656,5 +1657,151 @@ describe('la partida a dos', () => {
     act(() => result.current.setPlayers(1))
     startPlaying(result)
     expect(result.current.duel).toBeNull()
+  })
+})
+
+describe('las hazañas', () => {
+  type Store = { current: ReturnType<typeof useGameStoreValue> }
+
+  function conAviso() {
+    const onTerminar = vi.fn()
+    const hook = renderHook(() => useGameStoreValue({ onTerminar }))
+    return { ...hook, onTerminar }
+  }
+
+  /** Lo que se le contó al salón la última vez. */
+  function ultimo(onTerminar: ReturnType<typeof vi.fn>) {
+    return onTerminar.mock.lastCall?.[0] as { hazanas?: readonly string[] } | undefined
+  }
+
+  function bajarElAroDelTodo(store: Store) {
+    for (let i = 0; i < 20; i++) act(() => store.current.adjustHoop(-1))
+  }
+
+  it('los trece de una tanda sin que se escape ninguno: SR_CLEAN_SWEEP, una sola vez', () => {
+    const { result, onTerminar } = conAviso()
+    playRound(result, MAX_STICKS, MAX_STICKS)
+    expect(ultimo(onTerminar)?.hazanas).toEqual([HAZANAS.tandaLimpia])
+    expect(JSON.parse(localStorage.getItem(HAZANAS_KEY)!)).toEqual([HAZANAS.tandaLimpia])
+
+    // La segunda vez ya estaba: el resultado vuelve a ser el de siempre.
+    playRound(result, MAX_STICKS, MAX_STICKS)
+    expect(onTerminar).toHaveBeenCalledTimes(2)
+    expect(ultimo(onTerminar)).not.toHaveProperty('hazanas')
+  })
+
+  it('doce de trece no la dan', () => {
+    const { result, onTerminar } = conAviso()
+    playRound(result, MAX_STICKS, MAX_STICKS - 1)
+    expect(onTerminar).toHaveBeenCalledTimes(1)
+    expect(ultimo(onTerminar)).not.toHaveProperty('hazanas')
+  })
+
+  it('en el desafío, la tanda entera sin perder una vida la da; quedarse sin vidas no', () => {
+    const { result, onTerminar } = conAviso()
+    act(() => result.current.setGameMode('challenge'))
+    startPlaying(result)
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+    expect(result.current.gameState).toBe('finished')
+    expect(ultimo(onTerminar)).not.toHaveProperty('hazanas')
+
+    startPlaying(result)
+    for (let i = 0; i < CHALLENGE_SETUP.stickCount; i++) act(() => result.current.catchStick(0.5))
+    expect(ultimo(onTerminar)?.hazanas).toEqual([HAZANAS.tandaLimpia])
+  })
+
+  it('con el aro al mínimo, una tanda limpia de cinco: SR_LOW_HOOP', () => {
+    const { result, onTerminar } = conAviso()
+    bajarElAroDelTodo(result)
+    expect(result.current.hoopAdjustment).toBe(-HOOP_ADJUST_RANGE)
+    playRound(result, 5, 5)
+    expect(ultimo(onTerminar)?.hazanas).toEqual([HAZANAS.aroAlMinimo])
+  })
+
+  it('con el aro un paso por encima del mínimo no, ni al mínimo con uno escapado', () => {
+    const { result, onTerminar } = conAviso()
+    bajarElAroDelTodo(result)
+    act(() => result.current.adjustHoop(1))
+    playRound(result, 5, 5)
+    expect(ultimo(onTerminar)).not.toHaveProperty('hazanas')
+
+    act(() => result.current.adjustHoop(-1))
+    playRound(result, 5, 4)
+    expect(ultimo(onTerminar)).not.toHaveProperty('hazanas')
+  })
+
+  it('un palo cogido de espaldas: SR_BEHIND_BACK', () => {
+    const { result, onTerminar } = conAviso()
+    act(() => result.current.setStickCount(5))
+    startPlaying(result)
+    act(() => result.current.catchStick(0.5, true))
+    for (let i = 0; i < 4; i++) act(() => result.current.missStick())
+    expect(ultimo(onTerminar)?.hazanas).toEqual([HAZANAS.deEspaldas])
+  })
+
+  it('cogerlos todos de frente no la da', () => {
+    const { result, onTerminar } = conAviso()
+    act(() => result.current.setStickCount(5))
+    startPlaying(result)
+    for (let i = 0; i < 5; i++) act(() => result.current.catchStick(0.5, false))
+    expect(ultimo(onTerminar)).not.toHaveProperty('hazanas')
+  })
+
+  it('sin fin, cuenta cada tanda al recargar, y se da al terminar la partida', () => {
+    const { result, onTerminar } = conAviso()
+    act(() => result.current.setEndless(true))
+    act(() => result.current.setStickCount(MAX_STICKS))
+    startPlaying(result)
+    for (let i = 0; i < MAX_STICKS; i++) act(() => result.current.catchStick(0.5))
+    expect(result.current.wave).toBe(1)
+    // La segunda tanda, a medias: no es tanda, pero la primera ya cuenta.
+    act(() => result.current.catchStick(0.5))
+    act(() => result.current.endRun())
+    expect(ultimo(onTerminar)?.hazanas).toEqual([HAZANAS.tandaLimpia])
+  })
+
+  it('sin fin, la tanda con uno escapado no cuenta', () => {
+    const { result, onTerminar } = conAviso()
+    act(() => result.current.setEndless(true))
+    act(() => result.current.setStickCount(MAX_STICKS))
+    startPlaying(result)
+    act(() => result.current.missStick())
+    for (let i = 1; i < MAX_STICKS; i++) act(() => result.current.catchStick(0.5))
+    expect(result.current.wave).toBe(1)
+    act(() => result.current.endRun())
+    expect(ultimo(onTerminar)).not.toHaveProperty('hazanas')
+  })
+
+  it('dejar la partida a medias pierde lo conseguido en ella', () => {
+    const { result, onTerminar } = conAviso()
+    act(() => result.current.setStickCount(5))
+    startPlaying(result)
+    act(() => result.current.catchStick(0.5, true))
+    act(() => result.current.resetGame())
+    playRound(result, 5, 4)
+    expect(ultimo(onTerminar)).not.toHaveProperty('hazanas')
+    expect(localStorage.getItem(HAZANAS_KEY)).toBeNull()
+  })
+
+  it('a dos, lo del primer turno se cuenta al salón al acabar el segundo', () => {
+    const { result, onTerminar } = conAviso()
+    act(() => result.current.setGameMode('challenge'))
+    act(() => result.current.setPlayers(2))
+    startPlaying(result)
+    for (let i = 0; i < CHALLENGE_SETUP.stickCount; i++) act(() => result.current.catchStick(0.5))
+    expect(onTerminar).not.toHaveBeenCalled()
+
+    startPlaying(result)
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+    expect(onTerminar).toHaveBeenCalledTimes(1)
+    expect(ultimo(onTerminar)).toMatchObject({ modo: 'duel', hazanas: [HAZANAS.tandaLimpia] })
+
+    // La partida siguiente empieza de cero: lo de la anterior no se arrastra.
+    startPlaying(result)
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+    startPlaying(result)
+    act(() => result.current.catchStick(0.5, true))
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+    expect(ultimo(onTerminar)).toMatchObject({ modo: 'duel', hazanas: [HAZANAS.deEspaldas] })
   })
 })

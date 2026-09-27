@@ -2,7 +2,8 @@
  * La partida de Stick Rush en Godot contra las reglas del `gameStore` de la web: las fases y la
  * cuenta atrás, los puntos y la racha, las vidas del desafío, los niveles con sus estrellas, la
  * partida sin fin por tandas, el récord, la altura del aro, la lección que se aprende atrapando y el
- * contrato del reto con el salón (entrar jugando con su semilla y contar cada partida una sola vez).
+ * contrato del reto con el salón (entrar jugando con su semilla y contar cada partida una sola vez),
+ * con las hazañas estrenadas en el resultado, que es lo que va en el JSON de `report_result`.
  *
  * Corre dentro del motor, con los tests de dominio: guarda en el guardado del kit.
  */
@@ -18,6 +19,7 @@ import { stickPoints } from '@/lib/scoring'
 import { semillaDe, type Resultado } from '@/lib/semilla'
 import { gameStorage } from '@/lib/storage'
 import { getDuelTally } from '@/lib/duelTally'
+import { HAZANAS, HAZANAS_KEY, leerHazanas, type ResultadoConHazanas } from '@/lib/hazanas'
 import { PLAZO_DEL_PASO, tutorialSeen } from '@/lib/tutorial'
 
 import { COUNTDOWN_SECONDS, MODO_DEL_RETO, Partida, acotarPalos } from './partida'
@@ -291,5 +293,101 @@ describe('la partida a dos, sin React', () => {
     expect(getDuelTally()).toEqual({ wins: [0, 0], ties: 1 })
     p.resetGame()
     expect(p.duel).toBeNull()
+  })
+})
+
+describe('las hazañas, como en la web', () => {
+  beforeEach(() => gameStorage()?.clear())
+
+  /** Lo que la escena le pasa al salón: el resultado tal cual, en JSON (`contarAlSalon`). */
+  function alSalon(): { json: string[]; partida: (opciones?: ConstructorParameters<typeof Partida>[0]) => Partida } {
+    const json: string[] = []
+    return {
+      json,
+      partida: (opciones = {}) => new Partida({ ...opciones, alTerminar: (r: ResultadoConHazanas) => json.push(JSON.stringify(r)) }),
+    }
+  }
+
+  it('los trece sin escaparse ninguno: SR_CLEAN_SWEEP en el JSON, guardada y solo la primera vez', () => {
+    const { json, partida } = alSalon()
+    const p = partida()
+    p.setStickCount(MAX_STICKS)
+    jugando(p)
+    resolver(p, MAX_STICKS)
+    expect(JSON.parse(json[0])).toEqual({ modo: 'practice', puntos: p.points, reto: false, hazanas: [HAZANAS.tandaLimpia] })
+    expect(leerHazanas()).toEqual([HAZANAS.tandaLimpia])
+    expect(gameStorage()?.getItem(HAZANAS_KEY)).not.toBeNull()
+    jugando(p)
+    resolver(p, MAX_STICKS)
+    expect(JSON.parse(json[1])).not.toHaveProperty('hazanas')
+  })
+
+  it('doce de trece no: el JSON es el de siempre', () => {
+    const { json, partida } = alSalon()
+    const p = partida()
+    p.setStickCount(MAX_STICKS)
+    jugando(p)
+    resolver(p, MAX_STICKS - 1)
+    resolver(p, 1, false)
+    expect(JSON.parse(json[0])).toEqual({ modo: 'practice', puntos: p.points, reto: false })
+  })
+
+  it('con el aro al mínimo, una tanda limpia: SR_LOW_HOOP; un paso por encima, no', () => {
+    const { json, partida } = alSalon()
+    const p = partida()
+    p.adjustHoop(-100)
+    p.adjustHoop(1)
+    jugando(p)
+    resolver(p, MIN_STICKS)
+    expect(JSON.parse(json[0])).not.toHaveProperty('hazanas')
+    p.adjustHoop(-1)
+    expect(p.hoopAdjustment).toBe(-HOOP_ADJUST_RANGE)
+    jugando(p)
+    resolver(p, MIN_STICKS)
+    expect(JSON.parse(json[1]).hazanas).toEqual([HAZANAS.aroAlMinimo])
+  })
+
+  it('un palo de espaldas: SR_BEHIND_BACK; dejar la partida a medias la pierde', () => {
+    const { json, partida } = alSalon()
+    const p = partida()
+    jugando(p)
+    p.catchStick(0.5, true)
+    p.resetGame()
+    jugando(p)
+    resolver(p, MIN_STICKS, false)
+    expect(JSON.parse(json[0])).not.toHaveProperty('hazanas')
+    jugando(p)
+    p.catchStick(0.5, true)
+    resolver(p, MIN_STICKS - 1, false)
+    expect(JSON.parse(json[1]).hazanas).toEqual([HAZANAS.deEspaldas])
+  })
+
+  it('sin fin, la tanda limpia cuenta al recargar y se da al terminar; la que se escapa, no', () => {
+    const { json, partida } = alSalon()
+    const p = partida()
+    p.setEndless(true)
+    p.setStickCount(MAX_STICKS)
+    jugando(p)
+    resolver(p, 1, false)
+    resolver(p, MAX_STICKS - 1)
+    expect(p.wave).toBe(1)
+    resolver(p, MAX_STICKS)
+    expect(p.wave).toBe(2)
+    resolver(p, 1)
+    p.endRun()
+    expect(JSON.parse(json[0]).hazanas).toEqual([HAZANAS.tandaLimpia])
+  })
+
+  it('en el desafío, sin perder una vida; y a dos, lo del primer turno se cuenta al acabar el segundo', () => {
+    const { json, partida } = alSalon()
+    const p = partida()
+    p.setGameMode('challenge')
+    p.setPlayers(2)
+    jugando(p)
+    resolver(p, CHALLENGE_SETUP.stickCount)
+    expect(json).toEqual([])
+    jugando(p)
+    resolver(p, CHALLENGE_LIVES, false)
+    expect(JSON.parse(json[0])).toMatchObject({ modo: 'duel', hazanas: [HAZANAS.tandaLimpia] })
   })
 })

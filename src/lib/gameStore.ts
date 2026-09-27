@@ -65,9 +65,18 @@ import {
   hoopHeightFor,
   saveHoopAdjustment,
 } from './hoopHeight'
+import {
+  SIN_HAZANAS,
+  conHazanas,
+  contarAtrape,
+  contarTanda,
+  estrenarHazanas,
+  type CuentaDeHazanas,
+  type ResultadoConHazanas,
+} from './hazanas'
 import { forgetOwnScenery, sceneryModeOf, sceneryOf } from './sceneryPreference'
 import { gameStorage } from './storage'
-import { semillaAlAzar, semillaDe, type Resultado, type Reto } from './semilla'
+import { semillaAlAzar, semillaDe, type Reto } from './semilla'
 import { stickPoints } from './scoring'
 import {
   PLAZO_DEL_PASO,
@@ -115,8 +124,11 @@ export interface OpcionesDelSalon {
    * palos que caen y su turno sacados de la semilla. Se lee al montar; otro reto es otro montaje.
    */
   reto?: Reto
-  /** Se llama una vez al acabar cada partida con puntuación (no al dejarla a medias). */
-  onTerminar?: (resultado: Resultado) => void
+  /**
+   * Se llama una vez al acabar cada partida con puntuación (no al dejarla a medias), con las
+   * hazañas estrenadas en ella si hay alguna (`hazanas.ts`).
+   */
+  onTerminar?: (resultado: ResultadoConHazanas) => void
 }
 
 export interface GameStore {
@@ -357,9 +369,10 @@ export interface GameStore {
   finishTutorial: () => void
   /**
    * Palo atrapado. `fallProgress` (fracción de su tiempo de caída: 0 recién
-   * soltado, 1 a ras de suelo) decide el bonus por reflejos.
+   * soltado, 1 a ras de suelo) decide el bonus por reflejos. `espaldas`, si se
+   * cogió de espaldas a él (`deEspaldas` de `hazanas.ts`): solo cuenta para su hazaña.
    */
-  catchStick: (fallProgress: number) => void
+  catchStick: (fallProgress: number, espaldas?: boolean) => void
   /**
    * Palo perdido: rompe la racha, cuenta para cerrar la partida y, en desafío,
    * cuesta una vida.
@@ -488,6 +501,9 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
   const [countdown, setCountdown] = useState(() => (reto != null ? COUNTDOWN_SECONDS : 0))
   const [prompt, setPrompt] = useState<'quit' | null>(null)
   const [runId, setRunId] = useState(0)
+  // Las hazañas de la partida en curso (`hazanas.ts`). No se pintan: se cuentan al atrapar y al
+  // resolverse cada tanda, y se le cuentan al salón al acabar. A dos, las de las dos tandas.
+  const hazanas = useRef<CuentaDeHazanas>(SIN_HAZANAS)
   // La corrección de la altura del aro sale de lo guardado en visitas
   // anteriores. En el servidor no hay almacenamiento y vale 0, pero eso no
   // desajusta la hidratación: el aro solo se pinta dentro del Canvas, que se
@@ -619,9 +635,14 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
     /* v8 ignore next */
     if (advancedWave.current === wave) return
     advancedWave.current = wave
+    hazanas.current = contarTanda(hazanas.current, {
+      palos: activeStickCount,
+      atrapados: waveScore,
+      ajusteDelAro: hoopAdjustment,
+    })
     setWaveStart({ score, resolved })
     setWave((value) => value + 1)
-  }, [running, endlessRun, gameState, waveResolved, activeStickCount, wave, score, resolved])
+  }, [running, endlessRun, gameState, waveResolved, waveScore, activeStickCount, wave, score, resolved, hoopAdjustment])
 
   // Cómo acabó el nivel, solo con la partida terminada en Niveles.
   const levelResult = useMemo(() => {
@@ -652,6 +673,16 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
   const duelAhora = duel !== null && gameState === 'finished' ? recordTurn(duel, points) : duel
   useEffect(() => {
     if (gameState !== 'finished') return
+    // La tanda de la partida, si se ha resuelto entera: la que acaba sin vidas no. La partida sin
+    // fin cuenta cada tanda al recargar, y la que se deja a medias al terminarla no es tanda.
+    // Contarla otra vez en el siguiente render no cambia nada.
+    if (!endlessRun && resolved === activeStickCount) {
+      hazanas.current = contarTanda(hazanas.current, {
+        palos: activeStickCount,
+        atrapados: score,
+        ajusteDelAro: hoopAdjustment,
+      })
+    }
     // A dos no hay récord que guardar: una tanda a dos no es la marca de nadie. Lo que cuenta es
     // quién gana, y se apunta al acabar la segunda, una vez por partida; al salón, la partida
     // entera y no cada tanda, con lo mejor que se hizo.
@@ -659,7 +690,12 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
       if (!duelOver(duelAhora) || avisada.current === runId) return
       avisada.current = runId
       saveDuelResult(duelWinner(duelAhora))
-      avisar.current?.({ modo: 'duel', puntos: mejorDelDuelo(duelAhora), reto: false })
+      avisar.current?.(
+        conHazanas(
+          { modo: 'duel', puntos: mejorDelDuelo(duelAhora), reto: false },
+          estrenarHazanas(hazanas.current.logradas),
+        ),
+      )
       return
     }
     if (levelResult) saveLevelResult(activeLevel, levelResult.stars)
@@ -667,8 +703,25 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
     else saveBestPoints(gameMode, points)
     if (avisada.current === runId) return
     avisada.current = runId
-    avisar.current?.({ modo: gameMode, puntos: points, reto: enReto })
-  }, [gameState, gameMode, points, bestStreak, endlessRun, levelResult, activeLevel, runId, enReto, duelAhora])
+    avisar.current?.(
+      conHazanas({ modo: gameMode, puntos: points, reto: enReto }, estrenarHazanas(hazanas.current.logradas)),
+    )
+  }, [
+    gameState,
+    gameMode,
+    points,
+    bestStreak,
+    endlessRun,
+    levelResult,
+    activeLevel,
+    runId,
+    enReto,
+    duelAhora,
+    resolved,
+    activeStickCount,
+    score,
+    hoopAdjustment,
+  ])
 
   // La marca de este modo: puntos, o la racha en la partida sin fin. En Niveles
   // no hay marca que batir: hay estrellas.
@@ -773,6 +826,9 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
           ? createDuel(semillaAlAzar())
           : duelAhora
       setDuel(partida)
+      // Las hazañas empiezan de cero con cada partida, salvo el segundo turno de una a dos: la
+      // partida es de los dos turnos y se le cuenta al salón entera al acabar el segundo.
+      if (partida === null || partida !== duelAhora) hazanas.current = SIN_HAZANAS
       setSemilla(partida?.semilla ?? semillaAlAzar())
       setRecordToBeat(
         gameMode === 'practice' && endless ? getBestEndlessStreak() : getBestPoints(gameMode),
@@ -789,7 +845,8 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
   )
 
   const catchStick = useCallback(
-    (fallProgress: number) => {
+    (fallProgress: number, espaldas = false) => {
+      hazanas.current = contarAtrape(hazanas.current, { espaldas })
       setScore((value) => value + 1)
       setResolved((value) => value + 1)
       // La racha se calcula aquí y no fuera porque los puntos dependen de ella:
@@ -824,8 +881,10 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
     setTeaching(false)
     setTutorialSkipped(0)
     setEnReto(false)
-    // Volver al menú deja la partida a dos: la siguiente empieza de cero.
+    // Volver al menú deja la partida a dos: la siguiente empieza de cero. Lo conseguido en la
+    // partida dejada a medias no se cuenta, como sus puntos.
     setDuel(null)
+    hazanas.current = SIN_HAZANAS
     setRunning(false)
   }, [clearRun])
 

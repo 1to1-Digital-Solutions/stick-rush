@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { Color, Vector3 } from 'three'
 import type { Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, Texture } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
@@ -17,6 +17,7 @@ import {
   stickFallProgress,
 } from '../../lib/gameConfig'
 import { pulsarAtrape } from '../../lib/haptics'
+import { deEspaldas } from '../../lib/hazanas'
 import { publishStick, stickProbeRequested } from '../../lib/sceneProbe'
 import { stickPointerEvents } from '../../lib/punteros'
 import { SWING_RELEASE_DECAY, hangingSwing } from '../../lib/stickSwing'
@@ -32,6 +33,11 @@ import {
  * tirados a la basura.
  */
 const puntoDelPalo = new Vector3()
+
+/** Dónde están los ojos y hacia dónde miran al coger un palo, para su hazaña (`hazanas.ts`). */
+const ojos = new Vector3()
+const mirada = new Vector3()
+const paloCogido = new Vector3()
 
 /**
  * Tipo de puntero que ha disparado el evento, si lo trae. Los eventos de ratón
@@ -84,9 +90,10 @@ export interface StickProps {
   /**
    * Atrapado por el jugador (click o mando XR). Recibe cuánto llevaba cayendo
    * el palo, en fracción de su tiempo de caída: de 0 (recién soltado) a 1 (a
-   * ras de suelo). Cogerlo pronto puntúa más.
+   * ras de suelo). Cogerlo pronto puntúa más. `espaldas`, si se cogió de
+   * espaldas a él: con visor, la cámara es la cabeza.
    */
-  onCatch: (fallProgress: number) => void
+  onCatch: (fallProgress: number, espaldas: boolean) => void
   /** Se le escapó y ha tocado el suelo. */
   onMiss: () => void
 }
@@ -106,6 +113,7 @@ export function Stick({
   onMiss,
 }: StickProps) {
   const groupRef = useRef<Group>(null)
+  const camera = useThree((three) => three.camera)
   const materialRef = useRef<MeshStandardMaterial>(null)
   const meshRef = useRef<Mesh>(null)
   const ringRef = useRef<Mesh>(null)
@@ -228,7 +236,14 @@ export function Stick({
     // se mide contra su propio anclaje: el aro se acomoda a quien juega, así que
     // no todos los palos salen de la misma altura.
     const fallProgress = stickFallProgress(groupRef.current?.position.y ?? anchorY, anchorY)
-    onCatch(fallProgress)
+    // De espaldas o no, con la cámara, que con visor es la cabeza. Sin visor mira siempre a la
+    // máquina, así que en escritorio no sale nunca.
+    camera.getWorldPosition(ojos)
+    camera.getWorldDirection(mirada)
+    const cuerpo = meshRef.current ?? groupRef.current
+    if (cuerpo) cuerpo.getWorldPosition(paloCogido)
+    const espaldas = cuerpo != null && deEspaldas({ cabeza: ojos, mirada, palo: paloCogido })
+    onCatch(fallProgress, espaldas)
     // El toque en el mando va después de contar el palo: la vibración es el
     // adorno y la puntuación es el juego, así que un mando que se porte mal no
     // puede llevarse por delante el acierto. Vibra la mano que lo ha cogido, y

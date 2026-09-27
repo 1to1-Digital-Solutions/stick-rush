@@ -58,7 +58,8 @@ import { headsetEyeHeight, hoopFallSpeed } from '@/lib/hoopHeight'
 import * as hostAnchor from '@/lib/hostAnchor'
 import { MUSIC_VOLUME } from '@/lib/music'
 import { MUSIC_FADE_MS, fadeVolume } from '@/lib/musicFade'
-import { semillaAlAzar, type Resultado } from '@/lib/semilla'
+import { deEspaldas, type ResultadoConHazanas } from '@/lib/hazanas'
+import { semillaAlAzar } from '@/lib/semilla'
 import { duelOver } from '@/lib/duel'
 import { getDuelTally } from '@/lib/duelTally'
 import { fallOrder } from '@/lib/stickLayout'
@@ -159,7 +160,7 @@ export default class StickRush extends Node3D {
   private alturaSeguida: number | null = null
   private alturaDada: number | null = null
   private ayudasEnPlano = false
-  /** Hacia dónde mira la cabeza de mentira: a la izquierda y hacia abajo, en radianes (`--mirar`, `--bajar`). */
+  /** Hacia dónde mira la cabeza de mentira: a la izquierda y hacia abajo, en radianes (`--mirar`, `--bajar`, o el metadato `mirar` de una escena de test). */
   private mirar = 0
   private bajar = 0
 
@@ -196,7 +197,7 @@ export default class StickRush extends Node3D {
   private ayudasVistas = new Set<string>()
   private tutorialVisto = new Set<string>()
   private clicsFallidos = 0
-  private resultados: Resultado[] = []
+  private resultados: ResultadoConHazanas[] = []
   /**
    * La partida a dos (`--a-dos`, o el metadato `a_dos`): el menú sale con el desafío y a dos
    * elegidos y, con el jugador automático, se juegan las dos tandas seguidas, la segunda con la
@@ -231,6 +232,7 @@ export default class StickRush extends Node3D {
     if (mirar) this.mirar = (Number(mirar) * Math.PI) / 180
     const bajar = argumento('bajar')
     if (bajar) this.bajar = (Number(bajar) * Math.PI) / 180
+    if (this.has_meta('mirar')) this.mirar = (Number(this.get_meta('mirar')) * Math.PI) / 180
     if (this.has_meta('semilla')) this.semillaFija = Number(this.get_meta('semilla')) >>> 0
     if (this.has_meta('reto')) reto = Number(this.get_meta('reto')) >>> 0
     // En el hub nativo, la semilla del reto la lleva su autoload como metadato (`challenge_seed`).
@@ -417,8 +419,11 @@ export default class StickRush extends Node3D {
     }
   }
 
-  /** Le cuenta al salón cómo ha acabado una partida (`Resultado` de `semilla.ts`), si hay salón. */
-  private contarAlSalon(resultado: Resultado): void {
+  /**
+   * Le cuenta al salón cómo ha acabado una partida (`Resultado` de `semilla.ts`, con las hazañas
+   * estrenadas en ella si hay alguna: `hazanas.ts`), si hay salón.
+   */
+  private contarAlSalon(resultado: ResultadoConHazanas): void {
     this.resultados.push(resultado)
     print(`STICK-RUSH-RESULTADO ${JSON.stringify(resultado)}`)
     const xrcade = this.get_node_or_null('/root/XRcade')
@@ -539,7 +544,7 @@ export default class StickRush extends Node3D {
       if (pose == null) continue
       const punto = this.maquinaYSuyo.to_local(pose.origin)
       const palo = paloEnLaMano(this.tanda.cogibles(this.partida.paused), [punto.x, punto.y, punto.z])
-      if (palo != null) this.atrapar(palo, mano)
+      if (palo != null) this.atrapar(palo, mano, this.deEspaldasAlPuno(pose.origin))
     }
     // Manos y sin mandos: se enseña el pellizco (`playingBareHanded`).
     this.partida.setBareHanded(conManos && !conMando)
@@ -560,12 +565,24 @@ export default class StickRush extends Node3D {
     this.atrapar(palo, null)
   }
 
+  /**
+   * Si el palo que coge el puño (su posición global) queda a la espalda de la cabeza, para su hazaña
+   * (`deEspaldas` de `hazanas.ts`). Solo con visor: con el ratón la cámara mira siempre a la máquina.
+   */
+  private deEspaldasAlPuno(puno: Vector3): boolean {
+    const camara = this.player?.camara
+    if (camara == null) return false
+    const ojos = camara.global_position
+    const delante = Vector3.SUBTRACT(camara.to_global(new Vector3(0, 0, -1)), ojos)
+    return deEspaldas({ cabeza: ojos, mirada: delante, palo: puno })
+  }
+
   /** Coge un palo: la tanda lo enciende, la partida lo cuenta y vibra la mano que lo cogió. */
-  private atrapar(palo: Palo, mano: Mano | null): void {
+  private atrapar(palo: Palo, mano: Mano | null, espaldas = false): void {
     const progreso = this.tanda!.atrapar(palo.indice, this.partida.paused)
     if (progreso == null) return
     // Primero el punto y luego el adorno, como en la web: la vibración no puede llevarse el acierto.
-    this.partida.catchStick(progreso)
+    this.partida.catchStick(progreso, espaldas)
     this.desdeElAtrape = 0
     if (mano == null || this.player == null) return
     this.atrapesPorMano[mano]++

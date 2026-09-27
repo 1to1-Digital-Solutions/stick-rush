@@ -11,7 +11,9 @@
 ## - con salón, el mundo se planta donde presta el anclaje; sin él, a los pies y de frente;
 ## - el stick de la otra mano gira el mundo 30° sentado, y de pie no;
 ## - la primera vez enseña: los dos pasos del tutorial y el mando de verdad en las dos manos;
-## - las ayudas de la web se ven: las huellas, el palo fantasma y el mando junto a él.
+## - las ayudas de la web se ven: las huellas, el palo fantasma y el mando junto a él;
+## - la hazaña oculta (`hazanas.ts`): de frente no sale, y con la cabeza vuelta del revés —cogiendo
+##   los palos a la espalda— se le cuenta al salón en el JSON de `report_result`, una vez.
 ##
 ## Se lanza con `--fixed-fps 72`, como el jugador automático.
 extends Node
@@ -42,7 +44,17 @@ const CASOS := [
 		"anclaje": null,
 		"gira": false,
 	},
+	{
+		"nombre": "de espaldas a la máquina, en el salón",
+		"ajustes": {"xrcade:hand": "right", "xrcade:play-height": "standing"},
+		"ojos": 1.6,
+		"anclaje": {"position": Vector3.ZERO, "yaw": 0.0},
+		"gira": false,
+		"mirar": 180.0,
+	},
 ]
+## La hazaña de coger un palo de espaldas (`HAZANAS.deEspaldas`).
+const DE_ESPALDAS := "SR_BEHIND_BACK"
 
 var caso := -1
 var game: Node
@@ -87,6 +99,8 @@ func siguiente() -> void:
 	game.set_meta("xr_simulado", true)
 	game.set_meta("ojos", c.ojos)
 	game.set_meta("ajustes", JSON.stringify(c.ajustes))
+	if c.has("mirar"):
+		game.set_meta("mirar", c.mirar)
 	add_child.call_deferred(game)
 
 
@@ -118,6 +132,19 @@ func comprobar(r: Dictionary) -> void:
 
 	if r.outcome != "cleared" or int(r.score) != 8 or int(r.misses) != 1:
 		f.append("la partida acaba «%s» con %d cogidos y %d perdidos" % [r.outcome, r.score, r.misses])
+	# La hazaña de espaldas: solo con la cabeza vuelta, y al salón en el JSON de `report_result`.
+	var resultados: Array = r.resultados
+	var espaldas: bool = c.has("mirar")
+	var toca: Array = [DE_ESPALDAS] if espaldas else []
+	if resultados.size() != 1 or resultados[0].get("hazanas", []) != toca:
+		f.append("al acabar se cuentan las hazañas %s y tocaban %s" % [resultados, toca])
+	if salon != null and (salon.resultados.size() != 1 or salon.resultados[0].get("hazanas", []) != toca):
+		f.append("el salón recibe %s y tocaban las hazañas %s" % [salon.resultados, toca])
+	if espaldas:
+		for fallo in f:
+			fallos.append("%s: %s" % [c.nombre, fallo])
+		print("XR-MANDO caso «%s»: %d de %d, hazañas %s%s" % [c.nombre, r.score, r.sticks, toca, "" if f.is_empty() else " — FAIL"])
+		return
 	# Con las dos manos, cada una los de su lado, y cada atrape vibra en la suya.
 	var por_mano: Dictionary = xr.atrapesPorMano
 	if int(por_mano.left) < 1 or int(por_mano.right) < 1 or int(por_mano.left) + int(por_mano.right) != int(r.score):

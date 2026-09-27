@@ -37,12 +37,21 @@ import {
   type PlayerCount,
 } from '@/lib/duel'
 import { saveDuelResult } from '@/lib/duelTally'
+import {
+  SIN_HAZANAS,
+  conHazanas,
+  contarAtrape,
+  contarTanda,
+  estrenarHazanas,
+  type CuentaDeHazanas,
+  type ResultadoConHazanas,
+} from '@/lib/hazanas'
 import { HOOP_ADJUST_STEP, clampHoopAdjustment, getHoopAdjustment, hoopHeightFor, saveHoopAdjustment } from '@/lib/hoopHeight'
 import { LEVEL_COUNT, clampLevel, levelPassed, levelSpec, levelStars, type Stars } from '@/lib/levels'
 import { getBestEndlessStreak, getBestPoints, saveBestEndlessStreak, saveBestPoints } from '@/lib/marcas'
 import { getStarsList, getUnlockedLevel, saveLevelResult } from '@/lib/progress'
 import { stickPoints } from '@/lib/scoring'
-import { semillaAlAzar, semillaDe, type Resultado, type Reto } from '@/lib/semilla'
+import { semillaAlAzar, semillaDe, type Reto } from '@/lib/semilla'
 import {
   PLAZO_DEL_PASO,
   hitosAtrapando,
@@ -79,8 +88,11 @@ export function acotarPalos(palos: number): number {
 export interface OpcionesDeLaPartida {
   /** Jugar este reto: se entra directamente en una partida del desafío, con los palos de su semilla. */
   reto?: Reto | null
-  /** Se llama una vez al acabar cada partida con puntuación (no al dejarla a medias). */
-  alTerminar?: (resultado: Resultado) => void
+  /**
+   * Se llama una vez al acabar cada partida con puntuación (no al dejarla a medias), con las
+   * hazañas estrenadas en ella si hay alguna (`hazanas.ts`).
+   */
+  alTerminar?: (resultado: ResultadoConHazanas) => void
   /** De dónde sale la semilla de una partida que no es el reto. Por defecto, al azar. */
   semillas?: () => number
 }
@@ -135,7 +147,7 @@ export class Partida {
   private recordToBeat = 0
   private unlockedAtStart = 1
   private levelAtStart = 1
-  private readonly alTerminar: ((resultado: Resultado) => void) | undefined
+  private readonly alTerminar: ((resultado: ResultadoConHazanas) => void) | undefined
   private readonly semillas: () => number
   /** La partida (su `runId`) cuyo final ya se guardó y se contó al salón. */
   private avisada = -1
@@ -145,6 +157,8 @@ export class Partida {
   private advancedWave = -1
   /** La partida a dos con las tandas ya cerradas apuntadas; la recién acabada se deduce (`duel`). */
   private duelo: Duel | null = null
+  /** Las hazañas de la partida en curso; a dos, las de los dos turnos (`hazanas` de la web). */
+  private hazanas: CuentaDeHazanas = SIN_HAZANAS
 
   constructor({ reto = null, alTerminar, semillas = semillaAlAzar }: OpcionesDeLaPartida = {}) {
     this.alTerminar = alTerminar
@@ -379,6 +393,8 @@ export class Partida {
     // A dos, el segundo juega la semilla del primero: los mismos palos en el mismo orden. Con la
     // partida acabada, o sin ninguna, empieza otra con una semilla nueva.
     this.duelo = !juegaADos(this.gameMode, this.players) ? null : ahora == null || duelOver(ahora) ? createDuel(this.semillas() >>> 0) : ahora
+    // Las hazañas empiezan de cero con cada partida, salvo el segundo turno de una a dos.
+    if (this.duelo == null || this.duelo !== ahora) this.hazanas = SIN_HAZANAS
     this.semilla = this.duelo?.semilla ?? this.semillas() >>> 0
     this.recordToBeat = this.endlessRun ? getBestEndlessStreak() : getBestPoints(this.gameMode)
     this.unlockedAtStart = getUnlockedLevel()
@@ -407,8 +423,12 @@ export class Partida {
     this.tutorialSkipped = saltarPaso(this.tutorialSkipped, paso)
   }
 
-  /** Palo atrapado: `fallProgress` (0 recién soltado, 1 a ras de suelo) decide el bonus por reflejos. */
-  catchStick(fallProgress: number): void {
+  /**
+   * Palo atrapado: `fallProgress` (0 recién soltado, 1 a ras de suelo) decide el bonus por reflejos.
+   * `espaldas`, si se cogió de espaldas a él (`deEspaldas` de `hazanas.ts`).
+   */
+  catchStick(fallProgress: number, espaldas = false): void {
+    this.hazanas = contarAtrape(this.hazanas, { espaldas })
     this.score++
     this.resolved++
     this.streak++
@@ -440,8 +460,10 @@ export class Partida {
 
   /** Vuelve al menú sin guardar nada. Dejar la lección a medias no cuenta como haberla visto. */
   resetGame(): void {
-    // Volver al menú deja la partida a dos: la siguiente empieza de cero.
+    // Volver al menú deja la partida a dos: la siguiente empieza de cero. Lo conseguido en la
+    // partida dejada a medias no se cuenta, como sus puntos.
     this.duelo = null
+    this.hazanas = SIN_HAZANAS
     this.prompt = null
     this.clearRun()
     this.cuentaAtras = 0
@@ -489,6 +511,7 @@ export class Partida {
     if (this.running && this.endlessRun && this.gameState === 'playing' && this.waveResolved >= this.activeStickCount) {
       if (this.advancedWave !== this.wave) {
         this.advancedWave = this.wave
+        this.hazanas = contarTanda(this.hazanas, { palos: this.activeStickCount, atrapados: this.waveScore, ajusteDelAro: this.hoopAdjustment })
         this.waveStart = { score: this.score, resolved: this.resolved }
         this.wave++
       }
@@ -497,19 +520,24 @@ export class Partida {
     // el efecto se repite con cada render de la pantalla final sin cambiar nada.
     if (this.gameState !== 'finished' || this.avisada === this.runId) return
     this.avisada = this.runId
+    // La tanda de la partida, si se ha resuelto entera (la que acaba sin vidas no). La partida sin
+    // fin cuenta cada tanda al recargar, y la que se deja a medias al terminarla no es tanda.
+    if (!this.endlessRun && this.resolved === this.activeStickCount) {
+      this.hazanas = contarTanda(this.hazanas, { palos: this.activeStickCount, atrapados: this.score, ajusteDelAro: this.hoopAdjustment })
+    }
     // A dos no hay récord que guardar: una tanda a dos no es la marca de nadie. Al acabar la
     // segunda se apunta quién gana y se le cuenta al salón la partida entera, con lo mejor.
     const duelo = this.duel
     if (duelo != null) {
       if (!duelOver(duelo)) return
       saveDuelResult(duelWinner(duelo))
-      this.alTerminar?.({ modo: 'duel', puntos: mejorDelDuelo(duelo), reto: false })
+      this.alTerminar?.(conHazanas({ modo: 'duel', puntos: mejorDelDuelo(duelo), reto: false }, estrenarHazanas(this.hazanas.logradas)))
       return
     }
     const nivel = this.levelResult
     if (nivel != null) saveLevelResult(this.activeLevel, nivel.stars)
     else if (this.endlessRun) saveBestEndlessStreak(this.bestStreak)
     else saveBestPoints(this.gameMode, this.points)
-    this.alTerminar?.({ modo: this.gameMode, puntos: this.points, reto: this.enReto })
+    this.alTerminar?.(conHazanas({ modo: this.gameMode, puntos: this.points, reto: this.enReto }, estrenarHazanas(this.hazanas.logradas)))
   }
 }
