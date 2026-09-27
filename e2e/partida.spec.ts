@@ -36,7 +36,7 @@ test.describe('Partida', () => {
   }) => {
     await page.getByRole('button', { name: '13', exact: true }).click()
     await page.getByRole('button', { name: 'Easy', exact: true }).click()
-    await page.getByRole('button', { name: 'Play' }).click()
+    await page.getByRole('button', { name: 'Play', exact: true }).click()
 
     // Mientras cuenta, los palos cuelgan quietos: sin esta guarda se podía
     // vaciar el aro entero a clics antes de que empezara a caer nada.
@@ -63,7 +63,7 @@ test.describe('Partida', () => {
     await openGame(page)
     await page.getByRole('button', { name: '13', exact: true }).click()
     await page.getByRole('button', { name: 'Easy', exact: true }).click()
-    await page.getByRole('button', { name: 'Play' }).click()
+    await page.getByRole('button', { name: 'Play', exact: true }).click()
 
     await expect(page.getByRole('timer')).toBeVisible()
     // Por pasos, como llega un ratón de verdad: con un solo salto la escena no
@@ -181,7 +181,7 @@ test.describe('Partida', () => {
     await waitForGameOver(page)
     await page.getByRole('button', { name: 'Back to the menu' }).click()
 
-    await page.getByRole('button', { name: 'Play' }).click()
+    await page.getByRole('button', { name: 'Play', exact: true }).click()
 
     await expect(page.getByRole('status')).toHaveAttribute(
       'aria-label',

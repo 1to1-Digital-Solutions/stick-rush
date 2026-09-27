@@ -28,12 +28,13 @@ import type { Lang } from '@/lib/ajustes'
 import { LIFE_COLOR, MAX_STICKS } from '@/lib/gameConfig'
 import { CHALLENGE_LIVES } from '@/lib/gameMode'
 import type { Stars } from '@/lib/levels'
+import type { Player } from '@/lib/duel'
 import type { StickStatus } from '@/lib/stickLayout'
 import { formatoDeCifra } from '@/lib/textos'
 import { XR_HOME_ICON } from '@/lib/xrIcons'
 import { XR_HUD_PANEL } from '@/lib/xrLayout'
 
-import { iconoDeCasa, iconoDeCorazon, iconoDeEstrella, iconoDeRepetir, huecosDeForma, rectangulo } from './iconos'
+import { iconoDeCasa, iconoDeCorazon, iconoDeEstrella, iconoDeJugadores, iconoDeRepetir, huecosDeForma, rectangulo } from './iconos'
 import { COLORES } from './menu'
 
 /** Las fichas de los palos (`TOKEN_SPACING`, `TOKEN_RADIUS`, `TOKEN_STYLE` de `XRHud.tsx`). */
@@ -75,7 +76,12 @@ export interface EstadoDelMarcador {
   /** Al acabar: cómo ha acabado, ya traducido, y los puntos. */
   titulo: string
   puntos: number
+  /** A dos, quién tiene el mando; solo, `null`. */
+  jugador?: Player | null
 }
+
+/** El icono de quién juega a dos: a la izquierda de las vidas, y lo que crece la ficha de quien juega. */
+const PAREJA = { x: -0.17, lado: 0.011, crece: 1.3 } as const
 
 export interface AccionesDelMarcador {
   repetir(): void
@@ -95,6 +101,9 @@ export class Marcador {
   private readonly marca: MeshInstance3D
   private readonly corazones: MeshInstance3D[] = []
   private readonly estrellas: MeshInstance3D[] = []
+  /** A dos, de quién es la tanda: la mesa y las dos fichas (`XRPlayersIcon` en el marcador de la web). */
+  readonly pareja: Node3D
+  private readonly fichasDeLaPareja: MeshInstance3D[]
   private ancho = 0
   private alto = 0
 
@@ -136,6 +145,14 @@ export class Marcador {
       this.contenido.add_child(estrella)
       this.estrellas.push(estrella)
     }
+
+    this.pareja = new Node3D()
+    this.contenido.add_child(this.pareja)
+    const [mesa, ...fichas] = iconoDeJugadores(PAREJA.lado, COLORES.suave, '#475569', '#475569')
+    this.pareja.add_child(mesa)
+    for (const ficha of fichas) this.pareja.add_child(ficha)
+    this.fichasDeLaPareja = fichas
+    this.pareja.visible = false
 
     this.repetir = this.panel.boton(new Boton({ id: 'again', caja: { x: -BUTTON_SPACING, y: 0, ...BUTTON_HIT }, color: COLORES.jugar, alPulsar: () => acciones.repetir() }))
     this.repetir.dibujo(iconoDeRepetir(0.026, '#ffffff'), '#ffffff')
@@ -210,6 +227,17 @@ export class Marcador {
       estrella.scale = new Vector3(k, k, 1)
       estrella.position = new Vector3((i - 1) * 0.045, y0 + LIFE_ROW_Y, 0.004)
       pintar(estrella, ganada ? COLORES.estrella : COLORES.estrellaGastada)
+    })
+
+    // A dos, de quién es la tanda: la ficha de quien tiene el mando, encendida y crecida.
+    const jugador = estado.jugador ?? null
+    this.pareja.visible = jugador != null
+    this.pareja.position = new Vector3(PAREJA.x, y0 + LIFE_ROW_Y, 0.004)
+    this.fichasDeLaPareja.forEach((ficha, i) => {
+      const suya = i === jugador
+      const k = suya ? PAREJA.crece : 1
+      ficha.scale = new Vector3(k, k, 1)
+      pintar(ficha, suya ? '#22c55e' : '#475569')
     })
 
     // Al acabar: repetir y volver al menú, en su fila de la web (0,12 por debajo de su cota).

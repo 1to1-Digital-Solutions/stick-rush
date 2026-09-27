@@ -46,8 +46,11 @@ import { TUTORIAL_STEPS } from '@/lib/tutorial'
 import {
   CONFIRM_BOXES,
   CONFIRM_TEXT,
+  DUEL_TEXT,
   MENU_TEXT,
   TUTORIAL_TEXT,
+  XR_DUEL_POSITION,
+  XR_DUEL_SIZE,
   XR_CONFIRM_POSITION,
   XR_CONFIRM_SIZE,
   XR_HUD_POSITION,
@@ -61,8 +64,10 @@ import {
 } from '@/lib/xrLayout'
 
 import { COUNTDOWN_SECONDS, Partida } from '../juego/partida'
+import { createDuel, duelSummary, recordTurn } from '@/lib/duel'
+import { getDuelTally } from '@/lib/duelTally'
 import { CLAVE_DEL_IDIOMA, idioma, niveles } from './ajustes'
-import { AvisoDeSalir } from './aviso'
+import { AvisoDeSalir, PanelDelDuelo } from './aviso'
 import { InterfazDelJuego, type EscenaDelJuego } from './interfaz'
 import { LETRA_DEL_MARCADOR, Marcador, type EstadoDelMarcador } from './marcador'
 import { MENU_PANEL, MenuDelJuego, type EstadoDelMenu } from './menu'
@@ -99,6 +104,7 @@ function estadoDelMenu(cambios: Partial<EstadoDelMenu> = {}): EstadoDelMenu {
     ajusteDelAro: 0,
     habitacion: false,
     escenario: 'scene',
+    jugadores: 1,
     ...cambios,
   }
 }
@@ -110,6 +116,7 @@ describe('el menú mide lo que la web', () => {
       elegirDificultad: nada,
       elegirPalos: nada,
       alternarSinFin: nada,
+      alternarJugadores: nada,
       elegirNivel: nada,
       elegirEscenario: nada,
       moverElAro: nada,
@@ -136,8 +143,8 @@ describe('el menú mide lo que la web', () => {
 
   it('se lee en la columna del visor y en escritorio, en cada idioma y modo, sin tamaños fuera de la lista', () => {
     for (const lang of LANGS) {
-      for (const modo of GAME_MODE_ORDER) {
-        menu.pintar(estadoDelMenu({ lang, modo }))
+      for (const [modo, jugadores] of [...GAME_MODE_ORDER.map((m) => [m, 1] as const), ['challenge', 2] as const]) {
+        menu.pintar(estadoDelMenu({ lang, modo, jugadores }))
         const escritos = menu.panel.escritos
         expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(MENU_TEXT)), `${lang} ${modo}`).toEqual([])
         for (const { nombre, pose } of SITIOS) {
@@ -147,6 +154,15 @@ describe('el menú mide lo que la web', () => {
         }
       }
     }
+  })
+
+  it('a dos: la fila de contra quién con su nombre y la explicación de la partida a dos', () => {
+    menu.pintar(estadoDelMenu({ lang: 'es', modo: 'challenge', jugadores: 2 }))
+    const textos = menu.panel.escritos.map((e) => e.texto)
+    expect(textos).toContain('Jugadores')
+    expect(textos.some((t) => t.startsWith('Pasaos el mando'))).toBe(true)
+    menu.pintar(estadoDelMenu({ lang: 'es', modo: 'practice', jugadores: 2 }))
+    expect(menu.panel.escritos.map((e) => e.texto)).not.toContain('Jugadores')
   })
 
   it('ningún rótulo se mete en un botón de la web', () => {
@@ -180,6 +196,10 @@ describe('el menú mide lo que la web', () => {
     expect(DIFFICULTY_ORDER.filter((d) => !menu.boton(`difficulty:${d}`).apagado)).toEqual(['easy'])
     menu.pintar(estadoDelMenu({ modo: 'challenge' }))
     expect([menu.boton('difficulty:easy').nodo.visible, menu.boton('endless').nodo.visible]).toEqual([false, false])
+    // Contra quién, solo en el desafío, en el hueco de sin fin.
+    expect(menu.boton('players').nodo.visible).toBe(true)
+    menu.pintar(estadoDelMenu({ modo: 'practice' }))
+    expect(menu.boton('players').nodo.visible).toBe(false)
     menu.pintar(estadoDelMenu({ ajusteDelAro: 0.2 }))
     expect([menu.boton('hoopUp').apagado, menu.boton('hoopDown').apagado]).toEqual([true, false])
   })
@@ -214,6 +234,28 @@ describe('el aviso, el tutorial y el final miden lo que la web', () => {
       }
     }
     tutorial.vista.nodo.free()
+  })
+
+  it('el final a dos se lee: pasar el mando, ganar y empatar, en los dos idiomas', () => {
+    const duelo = new PanelDelDuelo()
+    const pareja = { wins: [128, 99] as const, ties: 17 }
+    const duelos = {
+      pasa: recordTurn(createDuel(1), 18888),
+      gana: recordTurn(recordTurn(createDuel(1), 18888), 29999),
+      empate: recordTurn(recordTurn(createDuel(1), 20000), 20000),
+    }
+    for (const lang of LANGS) {
+      for (const [nombre, d] of Object.entries(duelos)) {
+        duelo.escribir(duelSummary(d, pareja, lang))
+        const escritos = duelo.panel.escritos
+        const donde = `${lang} ${nombre}`
+        expect(medir(escritos, { width: XR_DUEL_SIZE[0], height: XR_DUEL_SIZE[1] }, xrPanelViews(XR_DUEL_POSITION)), donde).toEqual([])
+        expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(DUEL_TEXT)), donde).toEqual([])
+      }
+    }
+    duelo.escribir(duelSummary(duelos.pasa, pareja, 'es'))
+    expect(duelo.panel.escritos.map((e) => e.texto)).toEqual(['Jugador 1: 18.888 puntos', 'Pásale el mando a Jugador 2.'])
+    duelo.nodo.free()
   })
 
   it('la letra del final se lee, en los dos idiomas y con lo más largo que puede decir', () => {
@@ -328,6 +370,32 @@ describe('la interfaz con el ratón', () => {
     expect(partida.gameMode).toBe('challenge')
     clic('play')
     expect([partida.activeDifficulty, partida.activeStickCount, partida.lives]).toEqual(['medium', MAX_STICKS, 3])
+  })
+
+  it('a dos: el desafío con los mismos palos para los dos, el aviso entre tandas y quién gana', () => {
+    clic('mode')
+    clic('mode')
+    clic('players')
+    expect(partida.players).toBe(2)
+    clic('play')
+    expect(partida.player).toBe(0)
+    const semilla = partida.stickSeed
+    partida.tick(COUNTDOWN_SECONDS)
+    for (let i = 0; i < MAX_STICKS; i++) partida.catchStick(0.5)
+    interfaz.actualizar(0.016)
+    expect(partida.gameState).toBe('finished')
+    // El aviso de pasar el mando, delante; el marcador, con su botón de jugar, debajo.
+    expect(interfaz.duelo.nodo.visible).toBe(true)
+    expect(interfaz.duelo.panel.escritos.map((e) => e.texto)).toContain('Pass the controller to Player 2.')
+    clic('again')
+    expect([partida.player, partida.stickSeed]).toEqual([1, semilla])
+    expect(interfaz.duelo.nodo.visible).toBe(false)
+    partida.tick(COUNTDOWN_SECONDS)
+    for (let i = 0; i < 3; i++) partida.missStick()
+    interfaz.actualizar(0.016)
+    expect(interfaz.duelo.panel.escritos[0].texto).toBe('Player 1 wins')
+    expect(getDuelTally()).toEqual({ wins: [1, 0], ties: 0 })
+    expect(partida.bestPoints).toBe(0)
   })
 
   it('la flecha de la esquina sale; Escape en el menú, también', () => {

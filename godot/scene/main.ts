@@ -59,6 +59,8 @@ import * as hostAnchor from '@/lib/hostAnchor'
 import { MUSIC_VOLUME } from '@/lib/music'
 import { MUSIC_FADE_MS, fadeVolume } from '@/lib/musicFade'
 import { semillaAlAzar, type Resultado } from '@/lib/semilla'
+import { duelOver } from '@/lib/duel'
+import { getDuelTally } from '@/lib/duelTally'
 import { fallOrder } from '@/lib/stickLayout'
 import { gameStorage } from '@/lib/storage'
 import { followRatio } from '@/lib/xrAnchor'
@@ -107,6 +109,11 @@ const PARTIDA_DEL_BOT: { modo: GameMode; dificultad: Difficulty; palos: number }
  */
 const CAIDA_DEL_BOT = 0.5
 const TURNO_QUE_FALLA = 2
+/**
+ * A dos (`--a-dos`), el turno que deja escapar además el segundo jugador automático: con los mismos
+ * palos, uno menos atrapado es menos puntos, y así la partida no sale empatada.
+ */
+const TURNO_QUE_FALLA_EL_SEGUNDO = 6
 
 /** Lo que espera el informe del jugador automático tras el final, en segundos. */
 const ESPERA_DEL_INFORME = 0.5
@@ -190,6 +197,16 @@ export default class StickRush extends Node3D {
   private tutorialVisto = new Set<string>()
   private clicsFallidos = 0
   private resultados: Resultado[] = []
+  /**
+   * La partida a dos (`--a-dos`, o el metadato `a_dos`): el menú sale con el desafío y a dos
+   * elegidos y, con el jugador automático, se juegan las dos tandas seguidas, la segunda con la
+   * semilla de la primera (`tests/partida_auto.gd`).
+   */
+  private aDos = false
+  /** La semilla del reparto con que empezó cada tanda, para comprobar que a dos es la misma. */
+  private semillasDeLasTandas: number[] = []
+  /** La captura del final de la partida a dos (`--shot-duelo=<ruta>`). */
+  private shotDueloPath: string | null = null
 
   _ready(): void {
     this.harnessMenu = this.has_meta('harness_menu')
@@ -202,6 +219,8 @@ export default class StickRush extends Node3D {
     let reto: number | null = null
     this.shotPath = argumento('shot')
     this.shotMenuPath = argumento('shot-menu')
+    this.shotDueloPath = argumento('shot-duelo')
+    this.aDos = hayBandera('a-dos') || this.has_meta('a_dos')
     this.shotAyudasPath = argumento('shot-ayudas')
     this.shotTutorialPath = argumento('shot-tutorial')
     const semilla = argumento('semilla')
@@ -235,6 +254,11 @@ export default class StickRush extends Node3D {
       semillas: () => this.semillaFija ?? semillaAlAzar(),
     })
     this.partida.setImmersive(this.driver === 'xr')
+    // A dos, el menú sale con el desafío y a dos elegidos, como los dejaría quien los pulsa.
+    if (this.aDos) {
+      this.partida.setGameMode('challenge')
+      this.partida.setPlayers(2)
+    }
     // Se empieza comparando con el menú, como la web: el reto, que entra contando, suena su 3.
     this.pistas = { score: 0, missed: 0, countdown: 0, gameState: 'menu', streak: 0, isRecord: false, levelPassed: null, lives: null }
     this.interfaz = new InterfazDelJuego(
@@ -274,10 +298,14 @@ export default class StickRush extends Node3D {
     if (this.arranqueDelBot == null || this.arranqueDelBot > 0) return
     this.arranqueDelBot = null
     const p = this.partida
-    p.setGameMode(PARTIDA_DEL_BOT.modo)
-    p.setDifficulty(PARTIDA_DEL_BOT.dificultad)
-    p.setStickCount(PARTIDA_DEL_BOT.palos)
+    // A dos juega el desafío que ya dejó elegido `--a-dos`; si no, siempre la misma práctica.
+    if (!this.aDos) {
+      p.setGameMode(PARTIDA_DEL_BOT.modo)
+      p.setDifficulty(PARTIDA_DEL_BOT.dificultad)
+      p.setStickCount(PARTIDA_DEL_BOT.palos)
+    }
     p.startGame(this.shotTutorialPath != null ? { tutorial: true } : undefined)
+    this.semillasDeLasTandas.push(p.stickSeed)
   }
 
   /** El mismo arranque que el hub: si no hay runtime de OpenXR, sigue en plano. */
@@ -381,7 +409,9 @@ export default class StickRush extends Node3D {
       countdown: p.countdown,
       gameState: p.gameState,
       streak: p.streak,
-      isRecord: p.isRecord,
+      // Encima del cierre suena lo que se celebra: el récord, o el final de una partida a dos.
+      isRecord: p.celebra,
+      acabaElDuelo: p.duel != null && duelOver(p.duel),
       levelPassed: p.levelResult?.passed ?? null,
       lives: p.lives,
     }
@@ -614,10 +644,22 @@ export default class StickRush extends Node3D {
       this.shotMenuPath = null
       return
     }
-    // El informe espera medio segundo tras el final: los pulsos del último atrape van en cola.
+    const duelo = p.duel
+    if (this.shotDueloPath != null && p.gameState === 'finished' && duelo != null && duelOver(duelo) && ++this.framesDelMenu > 20) {
+      guardar(this.shotDueloPath, { duelo })
+      this.shotDueloPath = null
+      return
+    }
+    // El informe espera medio segundo tras el final: los pulsos del último atrape van en cola. A dos,
+    // acabada la primera tanda, el segundo le da a jugar (con `--shot-menu` se queda en el aviso).
     if ((this.driver === 'bot' || this.sim != null) && p.gameState === 'finished' && this.shotPath == null && this.shotMenuPath == null) {
       this.desdeElFinal += delta
-      if (this.desdeElFinal > ESPERA_DEL_INFORME) this.reportAndQuit()
+      if (this.desdeElFinal <= ESPERA_DEL_INFORME) return
+      if (duelo != null && !duelOver(duelo)) {
+        this.desdeElFinal = 0
+        p.startGame()
+        this.semillasDeLasTandas.push(p.stickSeed)
+      } else if (this.shotDueloPath == null) this.reportAndQuit()
     }
   }
 
@@ -635,10 +677,12 @@ export default class StickRush extends Node3D {
     const tanda = this.tanda
     const p = this.partida
     if (tanda == null || p.gameState !== 'playing') return null
-    const queFalla = fallOrder(tanda.palos.length, p.stickSeed)[TURNO_QUE_FALLA]
+    const orden = fallOrder(tanda.palos.length, p.stickSeed)
+    // A dos, el segundo deja escapar uno más (`TURNO_QUE_FALLA_EL_SEGUNDO`).
+    const fallan = [orden[TURNO_QUE_FALLA], ...(p.player === 1 ? [orden[TURNO_QUE_FALLA_EL_SEGUNDO]] : [])]
     return (
       tanda.cogibles(p.paused).find((palo) => {
-        if (palo.estado !== 'falling' || palo.indice === queFalla) return false
+        if (palo.estado !== 'falling' || fallan.includes(palo.indice)) return false
         const recorrido = palo.layout.anchor[1] - STICK_MISS_Y
         const bajado = palo.layout.anchor[1] - palo.y
         return recorrido > 0 && Math.sqrt(Math.min(1, bajado / recorrido)) >= CAIDA_DEL_BOT
@@ -810,6 +854,11 @@ export default class StickRush extends Node3D {
       music: { playing: this.music.playing, volume: Number(this.music.volume.toFixed(3)) },
       levels: niveles(),
       resultados: this.resultados,
+      // La partida a dos, si se jugaba: los puntos de cada uno, la semilla con que empezó cada tanda
+      // y lo que lleva la pareja.
+      duelo: p.duel,
+      semillas: this.semillasDeLasTandas,
+      pareja: getDuelTally(),
       maquina: this.maquina.piezas,
       feria: this.feria.recuento,
       palos: (this.tanda?.palos ?? []).map((pl) => pl.estado),

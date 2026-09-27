@@ -14,11 +14,29 @@
  * de los palos resueltos; las vidas, de los perdidos; el paso del tutorial, de los atrapados y de lo
  * saltado. Lo que no se deriva es lo que la web guarda en estado, con los mismos nombres.
  *
+ * **La partida a dos también**, como en la web (`lib/duel.ts`): en el desafío, a dos, cada partida es
+ * la tanda de uno, con la semilla del primero para el segundo; la tanda recién acabada se deduce de
+ * los puntos y se apunta al empezar la siguiente; al acabar la segunda se apunta a la pareja
+ * (`duelTally.ts`) y se le cuenta al salón una vez, sin tocar el récord.
+ *
  * No toca el motor (ni `godot` ni nodos), así que se prueba entera en `partida.motor.test.ts` sin
  * montar la escena.
  */
 import { MAX_STICKS, MIN_STICKS, type Difficulty } from '@/lib/gameConfig'
 import { CHALLENGE_SETUP, remainingLives, runOutcome, type GameMode, type RunOutcome } from '@/lib/gameMode'
+import {
+  controllerHolder,
+  createDuel,
+  duelOver,
+  duelWinner,
+  juegaADos,
+  mejorDelDuelo,
+  recordTurn,
+  type Duel,
+  type Player,
+  type PlayerCount,
+} from '@/lib/duel'
+import { saveDuelResult } from '@/lib/duelTally'
 import { HOOP_ADJUST_STEP, clampHoopAdjustment, getHoopAdjustment, hoopHeightFor, saveHoopAdjustment } from '@/lib/hoopHeight'
 import { LEVEL_COUNT, clampLevel, levelPassed, levelSpec, levelStars, type Stars } from '@/lib/levels'
 import { getBestEndlessStreak, getBestPoints, saveBestEndlessStreak, saveBestPoints } from '@/lib/marcas'
@@ -75,6 +93,8 @@ export class Partida {
   endless = false
   /** Nivel elegido en Niveles, o `null` = el más alto desbloqueado. */
   level: number | null = null
+  /** Solo, o a dos pasándose el mando: solo cuenta en el desafío (`juegaADos`). */
+  players: PlayerCount = 1
 
   // La partida en curso.
   running = false
@@ -123,6 +143,8 @@ export class Partida {
   private anotada = false
   /** De qué tanda se pasó ya en la partida sin fin: dos pasadas por la misma no suman dos. */
   private advancedWave = -1
+  /** La partida a dos con las tandas ya cerradas apuntadas; la recién acabada se deduce (`duel`). */
+  private duelo: Duel | null = null
 
   constructor({ reto = null, alTerminar, semillas = semillaAlAzar }: OpcionesDeLaPartida = {}) {
     this.alTerminar = alTerminar
@@ -247,7 +269,27 @@ export class Partida {
    */
   get isRecord(): boolean {
     const hecho = this.endlessRun ? this.bestStreak : this.points
-    return this.gameState === 'finished' && !this.levels && hecho > this.recordToBeat && this.bestPoints === hecho
+    return this.gameState === 'finished' && !this.levels && this.duelo == null && hecho > this.recordToBeat && this.bestPoints === hecho
+  }
+
+  /**
+   * La partida a dos, con la tanda recién acabada ya apuntada, o `null` si se juega solo: el aviso
+   * de pasar el mando y el de quién ha ganado salen de aquí (`duelAhora` de la web).
+   */
+  get duel(): Duel | null {
+    return this.duelo != null && this.gameState === 'finished' ? recordTurn(this.duelo, this.points) : this.duelo
+  }
+
+  /** Quién tiene el mando en la partida a dos, o `null` si se juega solo. */
+  get player(): Player | null {
+    const duelo = this.duel
+    return duelo == null ? null : controllerHolder(duelo)
+  }
+
+  /** Si el final suena a ganar encima del cierre: un récord, o el final de una partida a dos. */
+  get celebra(): boolean {
+    const duelo = this.duel
+    return this.isRecord || (duelo != null && duelOver(duelo))
   }
 
   /** La altura del aro para quien juega: la del visor más la corrección, con sus topes. */
@@ -272,6 +314,11 @@ export class Partida {
 
   setEndless(sinFin: boolean): void {
     this.endless = sinFin
+  }
+
+  /** Solo, o a dos pasándose el mando. Se lee al empezar cada partida. */
+  setPlayers(cuantos: PlayerCount): void {
+    this.players = cuantos
   }
 
   /** El modo es de la partida entera: con el resumen en pantalla, cambiarlo copiaría los puntos a otro récord. */
@@ -320,13 +367,19 @@ export class Partida {
    * sin haberla visto—, y `tutorial` fuerza la decisión (el botón de volver a verla).
    */
   startGame(opciones?: { tutorial?: boolean }): void {
+    // La partida a dos con la tanda que acaba de terminar: antes de vaciar los contadores, que es de
+    // donde sale.
+    const ahora = this.duel
     this.prompt = null
     // Se relee: la lección que se termina atrapando queda anotada sin pasar por aquí.
     const visto = leerTutorialVisto()
     this.tutorialSeen = visto
     this.clearRun()
     this.enReto = false
-    this.semilla = this.semillas() >>> 0
+    // A dos, el segundo juega la semilla del primero: los mismos palos en el mismo orden. Con la
+    // partida acabada, o sin ninguna, empieza otra con una semilla nueva.
+    this.duelo = !juegaADos(this.gameMode, this.players) ? null : ahora == null || duelOver(ahora) ? createDuel(this.semillas() >>> 0) : ahora
+    this.semilla = this.duelo?.semilla ?? this.semillas() >>> 0
     this.recordToBeat = this.endlessRun ? getBestEndlessStreak() : getBestPoints(this.gameMode)
     this.unlockedAtStart = getUnlockedLevel()
     this.levelAtStart = this.selectedLevel
@@ -387,6 +440,8 @@ export class Partida {
 
   /** Vuelve al menú sin guardar nada. Dejar la lección a medias no cuenta como haberla visto. */
   resetGame(): void {
+    // Volver al menú deja la partida a dos: la siguiente empieza de cero.
+    this.duelo = null
     this.prompt = null
     this.clearRun()
     this.cuentaAtras = 0
@@ -442,6 +497,15 @@ export class Partida {
     // el efecto se repite con cada render de la pantalla final sin cambiar nada.
     if (this.gameState !== 'finished' || this.avisada === this.runId) return
     this.avisada = this.runId
+    // A dos no hay récord que guardar: una tanda a dos no es la marca de nadie. Al acabar la
+    // segunda se apunta quién gana y se le cuenta al salón la partida entera, con lo mejor.
+    const duelo = this.duel
+    if (duelo != null) {
+      if (!duelOver(duelo)) return
+      saveDuelResult(duelWinner(duelo))
+      this.alTerminar?.({ modo: 'duel', puntos: mejorDelDuelo(duelo), reto: false })
+      return
+    }
     const nivel = this.levelResult
     if (nivel != null) saveLevelResult(this.activeLevel, nivel.stars)
     else if (this.endlessRun) saveBestEndlessStreak(this.bestStreak)

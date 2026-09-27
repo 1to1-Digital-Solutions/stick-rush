@@ -82,7 +82,7 @@ test.describe('Modo Niveles', () => {
     await expect(section).toContainText('Level 1: 5 sticks on Easy.')
     await expect(section.getByRole('button', { name: 'Level 4, locked' })).toBeDisabled()
 
-    await page.getByRole('button', { name: 'Play' }).click()
+    await page.getByRole('button', { name: 'Play', exact: true }).click()
     await expect(page.getByRole('status')).toHaveAttribute('aria-label', /Caught 0 of 5$/)
     // Sin tocar nada los cinco palos se estrellan: cero estrellas.
     await waitForGameOver(page, 90_000)

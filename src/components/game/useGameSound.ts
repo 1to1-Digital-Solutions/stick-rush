@@ -23,7 +23,8 @@ export function useGameSound() {
     streak,
     muted,
     sfxVolume,
-    isRecord,
+    celebra,
+    duel,
     levelResult,
     lives,
   } = useGame()
@@ -122,12 +123,15 @@ export function useGameSound() {
     // llegaba sin avisar, y con el visor puesto el marcador está donde uno no
     // siempre está mirando.
     if (gameState === 'finished' && before.gameState !== 'finished') {
-      engine.play({ name: 'over', outcome: roundOutcome(levelResult, lives) })
+      // El final de una partida a dos suena a ganar: la gana alguien de los que están delante, o
+      // empatan, y se celebra aunque el segundo se haya quedado sin vidas.
+      const acabaElDuelo = duel != null && duel.points[1] != null
+      engine.play({ name: 'over', outcome: acabaElDuelo ? 'win' : roundOutcome(levelResult, lives) })
       // El récord va por encima del cierre y no en su lugar: batir la marca
       // puede pasar ganando o terminando sin más, y hay que oír las dos cosas.
-      if (isRecord) engine.play({ name: 'record' })
+      if (celebra) engine.play({ name: 'record' })
     }
-  }, [score, missed, countdown, gameState, streak, isRecord, levelResult, lives])
+  }, [score, missed, countdown, gameState, streak, celebra, duel, levelResult, lives])
 }
 
 /**

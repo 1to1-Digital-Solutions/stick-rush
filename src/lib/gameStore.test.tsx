@@ -1538,3 +1538,123 @@ describe('dejar la partida', () => {
     expect(hook.result.current.prompt).toBeNull()
   })
 })
+
+describe('la partida a dos', () => {
+  type Store = { current: ReturnType<typeof useGameStoreValue> }
+
+  /** Una tanda del desafío entera: atrapa `atrapa` palos y pierde el resto, hasta que se acaba. */
+  function unaTanda(store: Store, atrapa: number) {
+    startPlaying(store)
+    for (let i = 0; i < CHALLENGE_SETUP.stickCount && store.current.gameState === 'playing'; i++) {
+      act(() => {
+        if (i < atrapa) store.current.catchStick(0.5)
+        else store.current.missStick()
+      })
+    }
+  }
+
+  function aDos(onTerminar?: OpcionesDelSalon['onTerminar']) {
+    const hook = renderHook(() => useGameStoreValue({ onTerminar }))
+    act(() => hook.result.current.setGameMode('challenge'))
+    act(() => hook.result.current.setPlayers(2))
+    return hook
+  }
+
+  it('solo, el desafío es el de siempre: sin partida a dos', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setGameMode('challenge'))
+    expect(result.current.players).toBe(1)
+    startPlaying(result)
+    expect(result.current.duel).toBeNull()
+    expect(result.current.player).toBeNull()
+  })
+
+  it('a dos fuera del desafío no cuenta: se juega solo', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.setPlayers(2))
+    startPlaying(result)
+    expect(result.current.duel).toBeNull()
+  })
+
+  it('empieza el primero, y al acabar su tanda le pasa el mando al segundo', () => {
+    const { result } = aDos()
+    startPlaying(result)
+    expect(result.current.player).toBe(0)
+
+    for (let i = 0; i < CHALLENGE_SETUP.stickCount; i++) act(() => result.current.catchStick(0.5))
+    const primero = result.current.points
+    expect(result.current.gameState).toBe('finished')
+    // Su tanda ya está apuntada, y el mando es del segundo.
+    expect(result.current.duel?.points).toEqual([primero, null])
+    expect(result.current.player).toBe(1)
+    expect(result.current.celebra).toBe(false)
+  })
+
+  it('los dos juegan la misma tanda: la misma semilla, los mismos palos', () => {
+    const { result } = aDos()
+    unaTanda(result, 0)
+    const semilla = result.current.stickSeed
+    const palos = buildStickLayout(CHALLENGE_SETUP.stickCount, semilla)
+
+    startPlaying(result)
+    expect(result.current.stickSeed).toBe(semilla)
+    expect(buildStickLayout(CHALLENGE_SETUP.stickCount, result.current.stickSeed)).toEqual(palos)
+    expect(result.current.player).toBe(1)
+  })
+
+  it('gana quien más saca, se apunta a la pareja, suena a ganar y no toca el récord', () => {
+    const onTerminar = vi.fn()
+    const { result, rerender } = aDos(onTerminar)
+    unaTanda(result, 5)
+    const primero = result.current.points
+    unaTanda(result, 1)
+    const segundo = result.current.points
+
+    expect(primero).toBeGreaterThan(segundo)
+    expect(result.current.duel?.points).toEqual([primero, segundo])
+    expect(result.current.duelTally).toEqual({ wins: [1, 0], ties: 0 })
+    expect(result.current.celebra).toBe(true)
+    expect(result.current.isRecord).toBe(false)
+    expect(localStorage.getItem(HIGH_SCORE_KEYS.challenge)).toBeNull()
+    // Al salón, la partida entera y una sola vez, aunque se vuelva a pintar.
+    rerender()
+    expect(onTerminar).toHaveBeenCalledTimes(1)
+    expect(onTerminar).toHaveBeenCalledWith({ modo: 'duel', puntos: primero, reto: false })
+  })
+
+  it('con los mismos puntos es empate', () => {
+    const { result } = aDos()
+    unaTanda(result, 0)
+    unaTanda(result, 0)
+    expect(result.current.duel?.points).toEqual([0, 0])
+    expect(result.current.duelTally).toEqual({ wins: [0, 0], ties: 1 })
+  })
+
+  it('otra vez tras una partida acabada empieza otra, con otra semilla', () => {
+    const { result } = aDos()
+    unaTanda(result, 0)
+    const semilla = result.current.stickSeed
+    unaTanda(result, 0)
+    startPlaying(result)
+    expect(result.current.duel?.points).toEqual([null, null])
+    expect(result.current.stickSeed).not.toBe(semilla)
+    expect(result.current.player).toBe(0)
+  })
+
+  it('volver al menú deja la partida: la siguiente empieza de cero', () => {
+    const { result } = aDos()
+    unaTanda(result, 0)
+    act(() => result.current.resetGame())
+    expect(result.current.duel).toBeNull()
+    startPlaying(result)
+    expect(result.current.duel?.points).toEqual([null, null])
+  })
+
+  it('cambiar a jugar solo a media partida la deja', () => {
+    const { result } = aDos()
+    unaTanda(result, 0)
+    act(() => result.current.setPlayers(1))
+    startPlaying(result)
+    expect(result.current.duel).toBeNull()
+  })
+})

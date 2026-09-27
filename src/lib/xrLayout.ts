@@ -1,4 +1,5 @@
 import { DIFFICULTY_ORDER, MAX_STICKS, type Difficulty } from './gameConfig'
+import { eligeJugadores } from './duel'
 import { picksSetup, type GameMode } from './gameMode'
 import { REFERENCE_EYE_HEIGHT, isPlausibleEyeHeight } from './hoopHeight'
 import { EYE_HEIGHTS, eyesAt, type PanelPose, type Point } from './panelReading'
@@ -200,6 +201,17 @@ export const XR_CONFIRM_POSITION: Vec3 = [0, 1.4, -0.89]
 export const XR_CONFIRM_SIZE: [number, number] = [0.78, 0.38]
 
 /**
+ * El final de una tanda a dos —el aviso de pasar el mando, o quién gana—: **en el sitio del aviso
+ * de salir**, delante y a la vista, encima del marcador del final. Con la partida acabada no se
+ * pregunta nada, así que los dos nunca coinciden; y el marcador, con sus botones de jugar y de
+ * volver al menú, sigue debajo, donde se pulsa.
+ */
+export const XR_DUEL_POSITION: Vec3 = XR_CONFIRM_POSITION
+export const XR_DUEL_SIZE: [number, number] = [0.9, 0.26]
+/** A qué tamaño se escribe, en metros de alto de letra (`duelo.legible.test.ts`). */
+export const DUEL_TEXT = { title: 0.045, body: 0.034 } as const
+
+/**
  * A qué tamaño se escribe el aviso, en metros de alto de letra (`salida.legible.test.ts`).
  */
 export const CONFIRM_TEXT = { title: 0.05, body: 0.034, button: 0.034 } as const
@@ -264,6 +276,12 @@ export const XR_MODE_TOGGLE_OFFSET: Vec3 = [-0.26, SETTINGS_ROW_Y, 0]
  * entre los otros dos porque sus cajas de pulsación no llegan a tocarse.
  */
 export const XR_ENDLESS_TOGGLE_OFFSET: Vec3 = [0, SETTINGS_ROW_Y, 0]
+/**
+ * Contra quién —solo, o a dos pasándose el mando—, **en el mismo hueco** y solo en el desafío:
+ * sin fin es de la práctica y contra quién del desafío (`duel.ts`), así que nunca se ven los dos, y
+ * comparten la caja de pulsación (`XR_MENU_HIT.endless`).
+ */
+export const XR_PLAYERS_TOGGLE_OFFSET: Vec3 = XR_ENDLESS_TOGGLE_OFFSET
 /** Selector de escenario o passthrough. */
 export const XR_SCENERY_PICKER_OFFSET: Vec3 = [0.245, SETTINGS_ROW_Y, 0]
 /**
@@ -468,6 +486,7 @@ export const MENU_LABELS = [
   { text: 'Sticks', x: 0, y: STICK_PICKER_Y },
   { text: 'Speed', x: 0, y: DIFFICULTY_Y },
   { text: 'Mode', x: -0.26, y: SETTINGS_ROW_Y },
+  { text: 'Players', x: 0, y: SETTINGS_ROW_Y },
   { text: 'Around', x: 0.245, y: SETTINGS_ROW_Y },
 ] as const
 
@@ -478,8 +497,10 @@ export const MENU_LABELS = [
  * sus nombres: un rótulo sobre un hueco se lee como una opción que falta.
  */
 export function menuLabelsFor(mode: GameMode): readonly (typeof MENU_LABELS)[number][] {
-  if (picksSetup(mode) || mode === 'levels') return MENU_LABELS
-  return MENU_LABELS.filter(({ text }) => text !== 'Sticks' && text !== 'Speed')
+  // Contra quién solo se pregunta en el desafío, en el hueco del centro de la fila de ajustes.
+  const conSuFila = MENU_LABELS.filter(({ text }) => text !== 'Players' || eligeJugadores(mode))
+  if (picksSetup(mode) || mode === 'levels') return conSuFila
+  return conSuFila.filter(({ text }) => text !== 'Sticks' && text !== 'Speed')
 }
 
 function offset([x, y, z]: Vec3, dx: number, dy: number): Vec3 {

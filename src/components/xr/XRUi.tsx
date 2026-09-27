@@ -605,3 +605,61 @@ export function XRRepeatIcon({
     </group>
   )
 }
+
+/** Una ficha del icono de jugadores: su color y lo que crece. */
+export interface Chip {
+  color: string
+  /** Lo que crece la ficha: la de quien tiene el mando va más grande. */
+  scale?: number
+}
+
+/**
+ * Quién juega: una ficha de este lado de la mesa, y otra enfrente si hay alguien más.
+ *
+ * Es el icono de contra quién de los hermanos (`XRPlayersIcon` de tower-tumble): la mesa entre las
+ * dos fichas y la de enfrente arriba, que es donde está quien juega contra ti. En el menú dice
+ * **cuántos juegan**: una ficha o dos; en el marcador, **de quién es la tanda**: la misma pareja,
+ * con la de quien tiene el mando encendida y crecida —color y tamaño a la vez, para que el color no
+ * sea la única señal (WCAG 1.4.1)—.
+ */
+export function XRPlayersIcon({
+  size,
+  table,
+  near,
+  far,
+  position,
+}: {
+  /** Medida de una ficha, en metros. */
+  size: number
+  /** Color de la línea que hace de mesa entre las dos. */
+  table: string
+  /** La ficha de este lado: el jugador 1. */
+  near: Chip
+  /** La de enfrente, el jugador 2, o `null` cuando se juega solo. */
+  far: Chip | null
+  position?: [number, number, number]
+}) {
+  const gap = size * 1.6
+
+  return (
+    <group position={position}>
+      {/* La mesa entre las dos: sin ella, dos cuadrados sueltos no se leen como dos personas
+          enfrentadas. */}
+      <mesh>
+        <boxGeometry args={[size * 2.6, size * 0.3, 0.005]} />
+        <meshStandardMaterial color={table} emissive={table} emissiveIntensity={0.3} />
+      </mesh>
+      {[
+        { chip: near, y: -gap },
+        { chip: far, y: gap },
+      ].map(({ chip, y }) =>
+        chip == null ? null : (
+          <mesh key={y} position={[0, y, 0.002]} scale={[chip.scale ?? 1, chip.scale ?? 1, 1]}>
+            <boxGeometry args={[size * 1.2, size * 1.2, 0.006]} />
+            <meshStandardMaterial color={chip.color} emissive={chip.color} emissiveIntensity={0.4} />
+          </mesh>
+        ),
+      )}
+    </group>
+  )
+}

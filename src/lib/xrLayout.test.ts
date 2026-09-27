@@ -32,6 +32,9 @@ import {
   XR_SCENERY_PICKER_OFFSET,
   XR_STICK_ROW_Y,
   menuLabelsFor,
+  XR_PLAYERS_TOGGLE_OFFSET,
+  XR_DUEL_POSITION,
+  XR_CONFIRM_POSITION,
 } from './xrLayout'
 
 /**
@@ -251,13 +254,18 @@ describe('la salida', () => {
 describe('los nombres de las filas, según el modo', () => {
   const nombres = (mode: Parameters<typeof menuLabelsFor>[0]) => menuLabelsFor(mode).map(({ text }) => text)
 
-  it('la práctica y los niveles nombran todas sus filas', () => {
-    expect(menuLabelsFor('practice')).toEqual(MENU_LABELS)
-    expect(menuLabelsFor('levels')).toEqual(MENU_LABELS)
+  it('la práctica y los niveles nombran todas sus filas, sin la de contra quién', () => {
+    expect(menuLabelsFor('practice')).toEqual(MENU_LABELS.filter(({ text }) => text !== 'Players'))
+    expect(menuLabelsFor('levels')).toEqual(MENU_LABELS.filter(({ text }) => text !== 'Players'))
   })
 
-  it('el desafío no nombra filas que no enseña: va fijo y se le da a empezar', () => {
-    expect(nombres('challenge')).toEqual(['Hoop', 'Mode', 'Around'])
+  it('el desafío no nombra filas que no enseña: va fijo, pregunta contra quién y se le da a empezar', () => {
+    expect(nombres('challenge')).toEqual(['Hoop', 'Mode', 'Players', 'Around'])
+  })
+
+  it('contra quién va en el hueco de sin fin, que el desafío no enseña, y el aviso a dos donde el de salir', () => {
+    expect(XR_PLAYERS_TOGGLE_OFFSET).toEqual(XR_ENDLESS_TOGGLE_OFFSET)
+    expect(XR_DUEL_POSITION).toEqual(XR_CONFIRM_POSITION)
   })
 })
 

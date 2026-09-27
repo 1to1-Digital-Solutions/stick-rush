@@ -58,6 +58,23 @@ const ES = {
   'The sticks you picked, and that is it.': 'Los palos elegidos y se acaba.',
   'It reloads until you say stop.': 'Se recarga hasta que tú digas.',
 
+  // A dos
+  'On your own': 'Solo',
+  'Two players': 'A dos',
+  Players: 'Jugadores',
+  'Who you play against': 'Contra quién juegas',
+  'Your three lives against your record.': 'Tus tres vidas contra tu récord.',
+  'Pass the controller: same sticks, most points wins.':
+    'Pasaos el mando: mismos palos, gana quien más saque.',
+  'Player 1': 'Jugador 1',
+  'Player 2': 'Jugador 2',
+  '{player}: {points} points': '{player}: {points} puntos',
+  'Pass the controller to {player}.': 'Pásale el mando a {player}.',
+  '{player}, your turn': '{player}, te toca',
+  '{player} wins': 'Gana {player}',
+  "It's a tie": 'Empate',
+  'Duels won: {one}–{two} · tied: {ties}': 'Ganadas: {one}–{two} · empates: {ties}',
+
   // Dificultades
   Easy: 'Fácil',
   Hard: 'Difícil',
@@ -155,6 +172,19 @@ export function texto(lang: Lang, key: TextKey): string {
  */
 export function traductor(lang: Lang) {
   return (key: TextKey) => texto(lang, key)
+}
+
+/**
+ * Rellena los huecos de una frase.
+ *
+ * Las frases con hueco llevan `{algo}` y no se parten en trozos para concatenarlos: el orden de
+ * las palabras cambia de un idioma a otro, y concatenar obliga al español a fingir la sintaxis
+ * inglesa.
+ */
+export function formatea(plantilla: string, valores: Record<string, string | number>): string {
+  return plantilla.replace(/\{(\w+)\}/g, (hueco, nombre: string) =>
+    nombre in valores ? String(valores[nombre]) : hueco,
+  )
 }
 
 /**

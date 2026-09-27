@@ -79,7 +79,7 @@ test.describe('Menú de inicio', () => {
     await expect(
       page.getByText('Catch the sticks before they hit the ground.'),
     ).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Play' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible()
   })
 
   test('ofrece de 5 a 13 palos, con 5 preseleccionado', async ({ page }) => {
@@ -171,7 +171,7 @@ test.describe('Menú de inicio', () => {
 
     await page.reload()
     await openGame(page)
-    await page.getByRole('button', { name: 'Play' }).click()
+    await page.getByRole('button', { name: 'Play', exact: true }).click()
     await expect(page.getByRole('status')).toBeVisible()
 
     expect(external).toEqual([])
@@ -179,7 +179,7 @@ test.describe('Menú de inicio', () => {
 
   test('la ruta /game abre la misma escena', async ({ page }) => {
     await openGame(page, '/game')
-    await expect(page.getByRole('button', { name: 'Play' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible()
   })
 
   test('se puede recorrer y jugar solo con el teclado', async ({ page }) => {
@@ -187,7 +187,7 @@ test.describe('Menú de inicio', () => {
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: '6', exact: true })).toBeFocused()
 
-    await page.getByRole('button', { name: 'Play' }).focus()
+    await page.getByRole('button', { name: 'Play', exact: true }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('status')).toBeVisible()
   })

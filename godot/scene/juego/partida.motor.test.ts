@@ -17,6 +17,7 @@ import { getUnlockedLevel } from '@/lib/progress'
 import { stickPoints } from '@/lib/scoring'
 import { semillaDe, type Resultado } from '@/lib/semilla'
 import { gameStorage } from '@/lib/storage'
+import { getDuelTally } from '@/lib/duelTally'
 import { PLAZO_DEL_PASO, tutorialSeen } from '@/lib/tutorial'
 
 import { COUNTDOWN_SECONDS, MODO_DEL_RETO, Partida, acotarPalos } from './partida'
@@ -222,5 +223,73 @@ describe('la partida de la web, sin React', () => {
     expect(contados).toEqual([{ modo: 'challenge', puntos: 0, reto: true }])
     p.startGame()
     expect([p.enReto, p.semilla]).toEqual([false, 1])
+  })
+})
+
+describe('la partida a dos, sin React', () => {
+  beforeEach(() => gameStorage()?.clear())
+
+  /** Una partida a dos en el desafío, con las semillas que se pidan una detrás de otra. */
+  function aDos(semillas: number[], alTerminar?: (r: Resultado) => void): Partida {
+    let i = 0
+    const p = new Partida({ semillas: () => semillas[i++ % semillas.length], alTerminar })
+    p.setGameMode('challenge')
+    p.setPlayers(2)
+    return p
+  }
+
+  it('solo, o fuera del desafío, no hay partida a dos', () => {
+    const p = new Partida()
+    p.setGameMode('challenge')
+    jugando(p)
+    expect([p.duel, p.player]).toEqual([null, null])
+    const q = new Partida()
+    q.setPlayers(2)
+    jugando(q)
+    expect(q.duel).toBeNull()
+  })
+
+  it('los dos juegan la misma semilla, y al acabar el primero el mando es del segundo', () => {
+    const p = aDos([111, 222, 333])
+    jugando(p)
+    expect([p.player, p.semilla, p.stickSeed]).toEqual([0, 111, semillaDe(111, 0)])
+    resolver(p, 5)
+    resolver(p, CHALLENGE_LIVES, false)
+    expect(p.gameState).toBe('finished')
+    expect(p.duel?.points).toEqual([p.points, null])
+    expect([p.player, p.celebra, p.isRecord]).toEqual([1, false, false])
+    jugando(p)
+    expect([p.player, p.semilla]).toEqual([1, 111])
+  })
+
+  it('gana quien más saca, se apunta a la pareja, se celebra, al salón una vez y sin récord', () => {
+    const contados: Resultado[] = []
+    const p = aDos([111, 222], (r) => contados.push(r))
+    jugando(p)
+    resolver(p, 5)
+    resolver(p, CHALLENGE_LIVES, false)
+    const primero = p.points
+    jugando(p)
+    resolver(p, 1)
+    resolver(p, CHALLENGE_LIVES, false)
+    p.tick(1)
+    expect(p.duel?.points).toEqual([primero, p.points])
+    expect([p.celebra, p.isRecord, getBestPoints('challenge')]).toEqual([true, false, 0])
+    expect(getDuelTally()).toEqual({ wins: [1, 0], ties: 0 })
+    expect(contados).toEqual([{ modo: 'duel', puntos: primero, reto: false }])
+    // Otra vez: una partida nueva, con otra semilla.
+    jugando(p)
+    expect([p.player, p.semilla, p.duel?.points]).toEqual([0, 222, [null, null]])
+  })
+
+  it('con los mismos puntos es empate; volver al menú deja la partida', () => {
+    const p = aDos([7])
+    jugando(p)
+    resolver(p, CHALLENGE_LIVES, false)
+    jugando(p)
+    resolver(p, CHALLENGE_LIVES, false)
+    expect(getDuelTally()).toEqual({ wins: [0, 0], ties: 1 })
+    p.resetGame()
+    expect(p.duel).toBeNull()
   })
 })

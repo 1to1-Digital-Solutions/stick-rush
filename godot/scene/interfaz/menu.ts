@@ -8,7 +8,9 @@
  *   volver a ver el tutorial en la esquina de la izquierda;
  * - **el modo primero**, que decide si hay algo más que preguntar: con los corazones apagados en la
  *   práctica, encendidos en el desafío y las estrellas en los niveles; la tanda o sin fin, solo en la
- *   práctica; y qué se ve alrededor, la plaza o tu habitación (apagada sin realidad aumentada);
+ *   práctica; **contra quién, solo en el desafío**, en el mismo hueco —una ficha sola o dos
+ *   enfrentadas, el icono de los hermanos—; y qué se ve alrededor, la plaza o tu habitación (apagada
+ *   sin realidad aumentada);
  * - **solo la práctica pregunta** cuántos palos —trece palos en miniatura, encendidos hasta el
  *   elegido— y a qué velocidad —cinco fichas con barras que crecen, del verde al rojo—; en los
  *   niveles, la fila de los palos es la escalera, con sus estrellas, y la velocidad se ve apagada;
@@ -45,6 +47,7 @@ import {
   type Difficulty,
 } from '@/lib/gameConfig'
 import { CHALLENGE_LIVES, GAME_MODE_HINTS, picksSetup, type GameMode } from '@/lib/gameMode'
+import { PLAYER_COUNT_HINTS, eligeJugadores, juegaADos, type PlayerCount } from '@/lib/duel'
 import { HOOP_ADJUST_RANGE } from '@/lib/hoopHeight'
 import { LEVEL_COUNT, type Stars } from '@/lib/levels'
 import { traductor } from '@/lib/textos'
@@ -75,6 +78,7 @@ import {
   iconoDeEstrella,
   iconoDeFlecha,
   iconoDeHabitacion,
+  iconoDeJugadores,
   rectangulo,
   triangulosDelAroSinFin,
 } from './iconos'
@@ -124,6 +128,8 @@ export interface EstadoDelMenu {
   habitacion: boolean
   /** Lo que se ve alrededor. */
   escenario: 'scene' | 'passthrough'
+  /** Cuántos juegan: solo cuenta en el desafío (`juegaADos`). */
+  jugadores: PlayerCount
 }
 
 export interface AccionesDelMenu {
@@ -131,6 +137,8 @@ export interface AccionesDelMenu {
   elegirDificultad(dificultad: Difficulty): void
   elegirPalos(palos: number): void
   alternarSinFin(): void
+  /** Solo, o a dos pasándose el mando. */
+  alternarJugadores(): void
   elegirNivel(nivel: number): void
   elegirEscenario(escenario: 'scene' | 'passthrough'): void
   /** +1 sube el aro un paso; −1 lo baja. */
@@ -159,6 +167,8 @@ export class MenuDelJuego {
   private readonly aroMedio: MeshInstance3D
   private readonly marcaDelAro: MeshInstance3D
   private readonly iconosDelEscenario = new Map<string, MeshInstance3D>()
+  /** El icono de contra quién: la mesa, la ficha de este lado y la de enfrente (solo a dos). */
+  private readonly pareja: MeshInstance3D[]
 
   constructor(acciones: AccionesDelMenu, punteria: Punteria) {
     this.panel = new Panel({ ancho: MENU_PANEL[0], alto: MENU_PANEL[1], fondo: COLORES.panel, opacidad: 1 })
@@ -200,6 +210,14 @@ export class MenuDelJuego {
     this.placa(sinFin, 'endless', 0.13, 0.1, COLORES.ficha)
     this.aroEntero = sinFin.dibujo(figura(triangulosDelAroSinFin(true), '#ffffff'), '#ffffff')
     this.aroMedio = sinFin.dibujo(figura(triangulosDelAroSinFin(false), COLORES.gris), COLORES.gris)
+
+    // Contra quién, solo en el desafío: en el hueco de sin fin, con su misma caja.
+    const jugadores = this.anadir('players', caja(XR_MENU_SPOT.endless, XR_MENU_HIT.endless), () => acciones.alternarJugadores())
+    this.placa(jugadores, 'players', 0.13, 0.1, COLORES.ficha)
+    this.pareja = iconoDeJugadores(0.016, '#ffffff', '#ffffff', '#ffffff').map((pieza) => {
+      jugadores.dibujo(pieza, '#ffffff')
+      return pieza
+    })
 
     // La plaza o tu habitación.
     for (const [i, escenario] of (['scene', 'passthrough'] as const).entries()) {
@@ -324,6 +342,16 @@ export class MenuDelJuego {
     this.aroEntero.visible = estado.sinFin
     this.aroMedio.visible = !estado.sinFin
 
+    // Contra quién: a dos, la placa se enciende además de salir la segunda ficha.
+    const jugadores = this.boton('players')
+    const aDos = estado.jugadores === 2
+    jugadores.nodo.visible = eligeJugadores(estado.modo)
+    jugadores.colorDelDibujo(this.placas.get('players')!, aDos ? COLORES.jugar : COLORES.ficha)
+    this.pareja.forEach((pieza, i) => {
+      jugadores.colorDelDibujo(pieza, aDos ? '#ffffff' : COLORES.suave)
+      if (i === 2) pieza.visible = aDos
+    })
+
     // Alrededor.
     for (const escenario of ['scene', 'passthrough'] as const) {
       const id = `scenery:${escenario}`
@@ -392,7 +420,9 @@ export class MenuDelJuego {
     for (const { text, x, y } of menuLabelsFor(estado.modo)) {
       panel.escribir(t(text), x, y + ROW_LABEL_RISE, { alto: MENU_TEXT.label, color: COLORES.suave, anchoMax: 0.3 })
     }
-    panel.parrafo(t(GAME_MODE_HINTS[estado.modo]), 0, PISTA_Y, {
+    // A dos, la explicación es la de la partida a dos: el modo ya lo dice su interruptor.
+    const pista = juegaADos(estado.modo, estado.jugadores) ? PLAYER_COUNT_HINTS[2] : GAME_MODE_HINTS[estado.modo]
+    panel.parrafo(t(pista), 0, PISTA_Y, {
       alto: MENU_TEXT.hint,
       color: COLORES.suave,
       anchoMax: PISTA_ANCHO,

@@ -63,7 +63,7 @@ export async function startGame(
     }
     if (endless) await page.getByRole('button', { name: /^Endless/ }).click()
   }
-  await page.getByRole('button', { name: 'Play' }).click()
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
 
   await expect(page.getByRole('status')).toHaveAttribute(
     'aria-label',

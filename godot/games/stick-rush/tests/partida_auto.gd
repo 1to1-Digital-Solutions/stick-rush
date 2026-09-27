@@ -8,6 +8,11 @@
 ## jugando el desafío con los palos sacados de ella, la misma semilla da el mismo reparto, y la
 ## partida jugada se le cuenta al salón como reto.
 ##
+## Y **la partida a dos** (`duel.ts`): el desafío a dos, las dos tandas seguidas por el jugador
+## automático, la segunda con la semilla de la primera; el segundo deja escapar un palo más, así que
+## gana el primero; se apunta a la pareja sin tocar el récord, al salón se le cuenta una vez, y el
+## final suena a ganar.
+##
 ## Se lanza con `--fixed-fps 72`, como el jugador automático.
 extends Node
 
@@ -41,10 +46,12 @@ func _ready() -> void:
 	montar()
 
 
-func montar(meta_de_menu := false) -> void:
+func montar(meta_de_menu := false, a_dos := false) -> void:
 	frames = 0
 	game = (load(MAIN) as PackedScene).instantiate()
 	game.set_meta("harness_menu" if meta_de_menu else "harness", true)
+	if a_dos:
+		game.set_meta("a_dos", true)
 	game.set_meta("sfx_bus", "Mudo")
 	add_child(game)
 
@@ -77,9 +84,22 @@ func _process(_delta: float) -> void:
 		"reto-jugado":
 			if game.has_meta("result"):
 				comprobar_el_reto(JSON.parse_string(game.get_meta("result")))
-				terminar()
+				game.queue_free()
+				# Sin salón que preste semilla: la partida a dos es una partida normal.
+				get_tree().root.remove_child(salon)
+				salon.free()
+				salon = null
+				fase = "a-dos"
+				montar(false, true)
 			elif frames > MAX_FRAMES:
 				fallos.append("el reto no ha acabado en %d fotogramas (fase %s)" % [MAX_FRAMES, game.fase()])
+				terminar()
+		"a-dos":
+			if game.has_meta("result"):
+				comprobar_a_dos(JSON.parse_string(game.get_meta("result")))
+				terminar()
+			elif frames > MAX_FRAMES * 2:
+				fallos.append("la partida a dos no ha acabado en %d fotogramas (fase %s)" % [MAX_FRAMES * 2, game.fase()])
 				terminar()
 
 
@@ -185,6 +205,34 @@ func comprobar_el_reto(r: Dictionary) -> void:
 	if int(r.semilla) != SEMILLA:
 		fallos.append("el reto se ha jugado con la semilla %d" % r.semilla)
 	print("PARTIDA-AUTO reto %d de %d, %d puntos, %d µs de media jugando" % [r.score, r.sticks, r.points, r.usecJugandoAvg])
+
+
+func comprobar_a_dos(r: Dictionary) -> void:
+	var duelo = r.duelo
+	if duelo == null or duelo.points[0] == null or duelo.points[1] == null:
+		fallos.append("la partida a dos no ha acabado: %s" % [duelo])
+		return
+	var uno := int(duelo.points[0])
+	var dos := int(duelo.points[1])
+	if uno <= dos:
+		fallos.append("el segundo deja escapar un palo más y aun así saca %d contra %d" % [dos, uno])
+	var semillas: Array = r.semillas
+	if semillas.size() != 2 or int(semillas[0]) != int(semillas[1]):
+		fallos.append("las dos tandas no empiezan con la misma semilla: %s" % [semillas])
+	var pareja: Dictionary = r.pareja
+	if int(pareja.wins[0]) != 1 or int(pareja.wins[1]) != 0 or int(pareja.ties) != 0:
+		fallos.append("a la pareja se le apunta %s" % [pareja])
+	if int(r.best) != 0 or r.record:
+		fallos.append("una tanda a dos ha tocado el récord del desafío: %d" % r.best)
+	var resultados: Array = r.resultados
+	if resultados.size() != 1 or resultados[0].modo != "duel" or resultados[0].reto or int(resultados[0].puntos) != uno:
+		fallos.append("al salón se le cuenta la partida a dos como %s" % [resultados])
+	var pedidos: Dictionary = r.sfx.requested
+	if cuenta(pedidos, "countdown-3") != 2 or cuenta(pedidos, "go") != 2:
+		fallos.append("dos tandas son dos cuentas atrás: %s" % [pedidos])
+	if cuenta(pedidos, "over-win") != 2 or cuenta(pedidos, "record") != 1:
+		fallos.append("el final de la partida a dos no suena a ganar una vez: %s" % [pedidos])
+	print("PARTIDA-AUTO a dos %d contra %d, pareja %s" % [uno, dos, pareja])
 
 
 func terminar() -> void:

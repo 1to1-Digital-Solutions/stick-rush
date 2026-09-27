@@ -32,6 +32,20 @@ import {
   subscribeBestEndlessStreak,
   subscribeBestPoints,
 } from './highScore'
+import {
+  controllerHolder,
+  createDuel,
+  duelOver,
+  duelWinner,
+  juegaADos,
+  mejorDelDuelo,
+  recordTurn,
+  type Duel,
+  type Player,
+  type PlayerCount,
+} from './duel'
+import { saveDuelResult, type DuelTally } from './duelTally'
+import { useDuelTally } from './useDuelTally'
 import { LEVEL_COUNT, clampLevel, levelPassed, levelSpec, levelStars, type Stars } from './levels'
 import {
   getServerStarsList,
@@ -117,6 +131,25 @@ export interface GameStore {
    * cargar otra, hasta que el jugador termina. El récord es la mejor racha.
    */
   endless: boolean
+  /**
+   * Cuántos juegan: solo, o dos por turnos con el mismo mando. Solo cuenta en el desafío
+   * (`juegaADos`), que es la misma partida para todos.
+   */
+  players: PlayerCount
+  /**
+   * La partida a dos en marcha, con la tanda recién acabada ya apuntada, o `null` si se juega
+   * solo. Con ella, el final de una tanda es el aviso de pasar el mando o el de quién ha ganado.
+   */
+  duel: Duel | null
+  /** Quién tiene el mando en la partida a dos, o `null` si se juega solo. */
+  player: Player | null
+  /** Las partidas a dos que lleva ganadas cada uno de la pareja que esté delante. */
+  duelTally: DuelTally
+  /**
+   * Si el final suena a ganar encima del cierre: un récord batido, o el final de una partida a
+   * dos, que siempre la gana alguien de los que están delante —o empatan— y se celebra.
+   */
+  celebra: boolean
   /** Nivel elegido en Niveles, o `null` = el más alto desbloqueado. */
   level: number | null
   /** El nivel que se juega: el elegido, o el más alto desbloqueado. */
@@ -271,6 +304,8 @@ export interface GameStore {
    */
   setGameMode: (mode: GameMode) => void
   setEndless: (endless: boolean) => void
+  /** Solo, o a dos pasándose el mando. Se lee al empezar cada partida. */
+  setPlayers: (players: PlayerCount) => void
   /** Elige nivel entre los desbloqueados; lo que no lo está se recorta. */
   setLevel: (level: number) => void
   /** Termina la partida sin fin a voluntad: es su única salida con resumen. */
@@ -358,6 +393,14 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
   // igual cuál: los palos cuelgan quietos.
   const [semilla, setSemilla] = useState(() => reto?.semilla ?? 0)
   const [endless, setEndless] = useState(false)
+  const [players, setPlayers] = useState<PlayerCount>(1)
+  /**
+   * La partida a dos con las tandas **ya cerradas** apuntadas. La que se acaba de jugar no se
+   * apunta al acabar —sería escribir estado desde un efecto—: se deduce de la partida terminada
+   * (`duelAhora`) y se apunta al empezar la siguiente.
+   */
+  const [duel, setDuel] = useState<Duel | null>(null)
+  const duelTally = useDuelTally()
   // `null` es «el más alto desbloqueado»: así el menú enseña el nivel que toca
   // sin leer el almacenamiento en el primer render, que no está en el servidor.
   const [level, setLevelState] = useState<number | null>(null)
@@ -604,15 +647,28 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
   useEffect(() => {
     avisar.current = onTerminar
   }, [onTerminar])
+  // La partida a dos con la tanda que acaba de terminar ya apuntada: el aviso de pasar el mando y
+  // el de quién ha ganado salen de aquí.
+  const duelAhora = duel !== null && gameState === 'finished' ? recordTurn(duel, points) : duel
   useEffect(() => {
     if (gameState !== 'finished') return
+    // A dos no hay récord que guardar: una tanda a dos no es la marca de nadie. Lo que cuenta es
+    // quién gana, y se apunta al acabar la segunda, una vez por partida; al salón, la partida
+    // entera y no cada tanda, con lo mejor que se hizo.
+    if (duelAhora !== null) {
+      if (!duelOver(duelAhora) || avisada.current === runId) return
+      avisada.current = runId
+      saveDuelResult(duelWinner(duelAhora))
+      avisar.current?.({ modo: 'duel', puntos: mejorDelDuelo(duelAhora), reto: false })
+      return
+    }
     if (levelResult) saveLevelResult(activeLevel, levelResult.stars)
     else if (endlessRun) saveBestEndlessStreak(bestStreak)
     else saveBestPoints(gameMode, points)
     if (avisada.current === runId) return
     avisada.current = runId
     avisar.current?.({ modo: gameMode, puntos: points, reto: enReto })
-  }, [gameState, gameMode, points, bestStreak, endlessRun, levelResult, activeLevel, runId, enReto])
+  }, [gameState, gameMode, points, bestStreak, endlessRun, levelResult, activeLevel, runId, enReto, duelAhora])
 
   // La marca de este modo: puntos, o la racha en la partida sin fin. En Niveles
   // no hay marca que batir: hay estrellas.
@@ -629,6 +685,7 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
   const isRecord =
     gameState === 'finished' &&
     !levels &&
+    duelAhora === null &&
     scoreForRecord > recordToBeat &&
     bestForMode === scoreForRecord
   const hoopHeight = hoopHeightFor({
@@ -707,9 +764,16 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
       setTutorialSeen(visto)
       clearRun()
       // Lo que viene es otra partida: ya no es el reto del salón aunque se juegue en el mismo
-      // modo, y estrena semilla.
+      // modo, y estrena semilla. A dos, el segundo juega **la semilla del primero**: los mismos
+      // palos en el mismo orden. Con la partida acabada, o sin ninguna, empieza otra.
       setEnReto(false)
-      setSemilla(semillaAlAzar())
+      const partida = !juegaADos(gameMode, players)
+        ? null
+        : duelAhora === null || duelOver(duelAhora)
+          ? createDuel(semillaAlAzar())
+          : duelAhora
+      setDuel(partida)
+      setSemilla(partida?.semilla ?? semillaAlAzar())
       setRecordToBeat(
         gameMode === 'practice' && endless ? getBestEndlessStreak() : getBestPoints(gameMode),
       )
@@ -721,7 +785,7 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
       setCountdown(COUNTDOWN_SECONDS)
       setRunning(true)
     },
-    [clearRun, gameMode, endless, selectedLevel, immersive],
+    [clearRun, gameMode, players, duelAhora, endless, selectedLevel, immersive],
   )
 
   const catchStick = useCallback(
@@ -760,6 +824,8 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
     setTeaching(false)
     setTutorialSkipped(0)
     setEnReto(false)
+    // Volver al menú deja la partida a dos: la siguiente empieza de cero.
+    setDuel(null)
     setRunning(false)
   }, [clearRun])
 
@@ -772,6 +838,11 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
       difficulty,
       gameMode,
       endless,
+      players,
+      duel: duelAhora,
+      player: duelAhora === null ? null : controllerHolder(duelAhora),
+      duelTally,
+      celebra: isRecord || (duelAhora !== null && duelOver(duelAhora)),
       level,
       activeLevel,
       unlockedLevel,
@@ -814,6 +885,7 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
       setDifficulty,
       setGameMode,
       setEndless,
+      setPlayers,
       setLevel,
       endRun,
       adjustHoop,
@@ -835,6 +907,9 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
       difficulty,
       gameMode,
       endless,
+      players,
+      duelAhora,
+      duelTally,
       level,
       activeLevel,
       unlockedLevel,

@@ -27,6 +27,8 @@ import type { MandoEnLaMano } from '@kit/runtime/ui/tutorial'
 
 import type { Lang, Scenery } from '@/lib/ajustes'
 import { GAME_MODE_ORDER, startingLives } from '@/lib/gameMode'
+import { duelSummary } from '@/lib/duel'
+import { getDuelTally } from '@/lib/duelTally'
 import { scoreRatio } from '@/lib/scoring'
 import { sceneryModeOf, sceneryOf } from '@/lib/sceneryPreference'
 import { stickStatuses } from '@/lib/stickLayout'
@@ -34,6 +36,7 @@ import { traductor } from '@/lib/textos'
 import {
   XR_CONFIRM_POSITION,
   XR_COUNTDOWN_POSITION,
+  XR_DUEL_POSITION,
   XR_HUD_POSITION,
   XR_TUTORIAL_POSITION,
   menuPoseFor,
@@ -42,7 +45,7 @@ import {
 
 import type { Partida } from '../juego/partida'
 import { alCambiarElIdioma, idioma } from './ajustes'
-import { AvisoDeSalir, BotonDeTerminar, BotonDeVolver, CuentaAtras } from './aviso'
+import { AvisoDeSalir, BotonDeTerminar, BotonDeVolver, CuentaAtras, PanelDelDuelo } from './aviso'
 import { Marcador, SUBIDA_DEL_FINAL, type EstadoDelMarcador } from './marcador'
 import { MenuDelJuego, type EstadoDelMenu } from './menu'
 import { TutorialDelJuego } from './tutorial'
@@ -103,6 +106,8 @@ export const SITIOS_EN_PLANO = {
   volver: { posicion: [-0.95, 0.48, -1.4], escala: 1 },
   terminar: { posicion: [0.95, 0.12, -1.4], escala: 1 },
   aviso: { posicion: [0, 0, -1.2], escala: 1 },
+  // A dos, encima del final: el aviso de pasar el mando o quién gana.
+  duelo: { posicion: [0, 0.4, -1.3], escala: 0.8 },
   cuenta: { posicion: [0, 0.18, -1.4], escala: 1 },
   tutorial: { posicion: [0.8, -0.1, -1.6], escala: 0.8 },
 } as const satisfies Record<string, SitioEnPlano>
@@ -117,6 +122,7 @@ export class InterfazDelJuego {
   readonly volver: BotonDeVolver
   readonly terminar: BotonDeTerminar
   readonly aviso: AvisoDeSalir
+  readonly duelo: PanelDelDuelo
   readonly cuenta: CuentaAtras
   readonly tutorial: TutorialDelJuego
   private readonly visor: boolean
@@ -129,6 +135,7 @@ export class InterfazDelJuego {
   private pintadoMenu = ''
   private pintadoMarcador = ''
   private pintadoAviso = ''
+  private pintadoDuelo = ''
   private colocadoEnPlano = ''
 
   constructor(
@@ -156,6 +163,7 @@ export class InterfazDelJuego {
         elegirDificultad: (d) => p.setDifficulty(d),
         elegirPalos: (n) => p.setStickCount(n),
         alternarSinFin: () => p.setEndless(!p.endless),
+        alternarJugadores: () => p.setPlayers(p.players === 2 ? 1 : 2),
         elegirNivel: (n) => p.setLevel(n),
         elegirEscenario: (modo) => this.escenario?.elegir(sceneryOf(modo)),
         moverElAro: (pasos) => p.adjustHoop(pasos),
@@ -174,6 +182,8 @@ export class InterfazDelJuego {
     this.raiz.add_child(this.terminar.nodo)
     this.aviso = new AvisoDeSalir({ dejar: () => p.resetGame(), seguir: () => p.keepPlaying() }, this.punteria)
     this.raiz.add_child(this.aviso.nodo)
+    this.duelo = new PanelDelDuelo()
+    this.raiz.add_child(this.duelo.nodo)
     this.cuenta = new CuentaAtras()
     this.raiz.add_child(this.cuenta.nodo)
     this.tutorial = new TutorialDelJuego({ siguiente: () => p.nextTutorialStep(), saltar: () => p.finishTutorial() }, this.punteria, opciones.manos)
@@ -186,6 +196,7 @@ export class InterfazDelJuego {
       this.menu.nodo.scale = new Vector3(pose.scale, pose.scale, pose.scale)
       this.marcador.nodo.position = new Vector3(...XR_HUD_POSITION)
       this.aviso.nodo.position = new Vector3(...XR_CONFIRM_POSITION)
+      this.duelo.nodo.position = new Vector3(...XR_DUEL_POSITION)
       this.cuenta.nodo.position = new Vector3(...XR_COUNTDOWN_POSITION)
       // Delante del marcador: el fondo opaco del tutorial lo tapa donde se cruzan, como en la web.
       this.tutorial.vista.nodo.position = new Vector3(XR_TUTORIAL_POSITION[0], XR_TUTORIAL_POSITION[1], XR_TUTORIAL_POSITION[2] + 0.03)
@@ -196,6 +207,7 @@ export class InterfazDelJuego {
       this.pintadoMenu = ''
       this.pintadoMarcador = ''
       this.pintadoAviso = ''
+      this.pintadoDuelo = ''
     })
     this.actualizar(0)
   }
@@ -242,6 +254,7 @@ export class InterfazDelJuego {
       ajusteDelAro: p.hoopAdjustment,
       habitacion: this.escenario?.hayHabitacion ?? false,
       escenario: sceneryModeOf(this.escenario?.elegido ?? 'place'),
+      jugadores: p.players,
     }
   }
 
@@ -277,6 +290,8 @@ export class InterfazDelJuego {
       estrellas: terminada && nivel != null ? nivel.stars : null,
       titulo,
       puntos: p.points,
+      // Jugando, de quién es la tanda; al acabar lo dice el aviso de pasar el mando, encima.
+      jugador: terminada ? null : p.player,
     }
   }
 
@@ -326,6 +341,17 @@ export class InterfazDelJuego {
       this.aviso.escribir(lang)
       this.pintadoAviso = lang
     }
+    // A dos, al acabar cada tanda: el aviso de pasar el mando o quién gana.
+    const duelo = fase === 'finished' ? p.duel : null
+    this.duelo.nodo.visible = duelo != null
+    if (duelo != null) {
+      const dicho = duelSummary(duelo, getDuelTally(), lang)
+      const clave = JSON.stringify(dicho)
+      if (clave !== this.pintadoDuelo) {
+        this.duelo.escribir(dicho)
+        this.pintadoDuelo = clave
+      }
+    } else this.pintadoDuelo = ''
     this.cuenta.mostrar(fase === 'countdown' ? p.countdown : 0, delta)
 
     const enseña = (this.visor || this.tutorialEnPlano) && fase === 'playing'
@@ -352,6 +378,7 @@ export class InterfazDelJuego {
     colgar(this.volver.nodo, SITIOS_EN_PLANO.volver)
     colgar(this.terminar.nodo, SITIOS_EN_PLANO.terminar)
     colgar(this.aviso.nodo, SITIOS_EN_PLANO.aviso)
+    colgar(this.duelo.nodo, SITIOS_EN_PLANO.duelo)
     colgar(this.cuenta.nodo, SITIOS_EN_PLANO.cuenta)
     colgar(this.tutorial.vista.nodo, SITIOS_EN_PLANO.tutorial)
   }

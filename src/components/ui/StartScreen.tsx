@@ -16,12 +16,13 @@ import {
   picksSetup,
   startingLives,
 } from '../../lib/gameMode'
+import { PLAYER_COUNTS, PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS, eligeJugadores, juegaADos } from '../../lib/duel'
 import { useGame } from '../../lib/gameStore'
 import { LEVEL_COUNT, levelSpec } from '../../lib/levels'
 import { HeartIcon, InfinityIcon, StarIcon } from './icons'
 import { XRWrapper } from '../xr/XRWrapper'
 import { useLang } from '../../lib/ajustesCliente'
-import { formatoDeCifra, traductor } from '../../lib/textos'
+import { formatea, formatoDeCifra, traductor } from '../../lib/textos'
 
 const STICK_OPTIONS = Array.from(
   { length: MAX_STICKS - MIN_STICKS + 1 },
@@ -39,7 +40,21 @@ const STICK_OPTIONS = Array.from(
 function BestScore() {
   const lang = useLang()
   const t = traductor(lang)
-  const { bestPoints, gameMode, endless } = useGame()
+  const { bestPoints, gameMode, endless, players, duelTally } = useGame()
+  // A dos no se juega contra el récord de nadie: lo que se enseña es lo que lleva la pareja.
+  if (juegaADos(gameMode, players)) {
+    const partidas = duelTally.wins[0] + duelTally.wins[1] + duelTally.ties
+    if (partidas === 0) return null
+    return (
+      <p className="mt-2 inline-flex items-center gap-2 self-center rounded-full border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 px-4 py-1.5 text-sm text-white/70">
+        {formatea(t('Duels won: {one}–{two} · tied: {ties}'), {
+          one: duelTally.wins[0],
+          two: duelTally.wins[1],
+          ties: duelTally.ties,
+        })}
+      </p>
+    )
+  }
   if (bestPoints <= 0 || gameMode === 'levels') return null
   // Sin fin no mide puntos —crecen sin tope— sino la racha más larga.
   const sinFin = gameMode === 'practice' && endless
@@ -172,6 +187,50 @@ function EndlessToggle() {
   )
 }
 /**
+ * Contra quién, solo en el desafío: solo, o a dos pasándose el mando, con los mismos palos para
+ * cada uno (`duel.ts`). El desafío es la misma partida para todos, y por eso el único donde dos
+ * tandas se pueden comparar.
+ */
+function PlayersPicker() {
+  const t = traductor(useLang())
+  const { players, setPlayers } = useGame()
+
+  return (
+    <section className="flex w-full flex-col gap-3" aria-labelledby="players-label">
+      <h2
+        id="players-label"
+        className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
+      >
+        {t('Who you play against')}
+      </h2>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {PLAYER_COUNTS.map((count) => {
+          const selected = count === players
+          return (
+            <button
+              key={count}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => setPlayers(count)}
+              className={`flex min-h-11 flex-col items-center gap-1 rounded-xl border px-4 py-3 text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] ${
+                selected
+                  ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/15'
+                  : 'border-white/10 bg-[var(--color-muted)] hover:border-white/30'
+              }`}
+            >
+              <span className={`text-base font-semibold ${selected ? 'text-white' : 'text-white/80'}`}>
+                {t(PLAYER_COUNT_LABELS[count])}
+              </span>
+              <span className="text-xs leading-snug text-white/50">{t(PLAYER_COUNT_HINTS[count])}</span>
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+/**
  * Lo que cada modo pone en juego, dibujado: corazones en desafío, infinito en
  * práctica. Es lo que deja entender la elección sin leerse la línea de ayuda.
  */
@@ -275,6 +334,7 @@ export function StartScreen() {
 
         {levels && <LevelPicker />}
         {gameMode === 'practice' && <EndlessToggle />}
+        {eligeJugadores(gameMode) && <PlayersPicker />}
 
         {/* Selector de número de palos */}
         {pregunta && (

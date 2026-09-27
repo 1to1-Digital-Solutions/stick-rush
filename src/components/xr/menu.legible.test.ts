@@ -23,6 +23,7 @@ import {
   worstReadingDistance,
 } from '../../lib/panelReading'
 import { traductor } from '../../lib/textos'
+import { PLAYER_COUNT_HINTS } from '../../lib/duel'
 
 /**
  * Los rótulos del panel del menú, medidos en vez de mirados.
@@ -110,16 +111,37 @@ describe('los nombres de las filas del menú se leen', () => {
   })
 })
 
-/** Todo lo que puede escribir el panel: cada modo, en los dos idiomas. */
+/** Todo lo que puede escribir el panel: cada modo, y el desafío a dos, en los dos idiomas. */
 function todosLosMomentos(): { donde: string; escritos: Escrito[] }[] {
   return IDIOMAS.flatMap((lang) =>
-    GAME_MODE_ORDER.map((gameMode) => {
+    [...GAME_MODE_ORDER, 'a dos' as const].map((momento) => {
+      const gameMode = momento === 'a dos' ? 'challenge' : momento
       const { ctx, escritos } = lienzoQueApunta()
-      dibujarLosNombres(ctx, traductor(lang), gameMode)
-      return { donde: `${lang} ${gameMode}`, escritos }
+      dibujarLosNombres(ctx, traductor(lang), gameMode, momento === 'a dos' ? 2 : 1)
+      return { donde: `${lang} ${momento}`, escritos }
     }),
   )
 }
+
+describe('a dos, el menú dice lo que toca', () => {
+  it('nombra la fila de contra quién y explica la partida a dos, en los dos idiomas', () => {
+    for (const lang of IDIOMAS) {
+      const t = traductor(lang)
+      const { ctx, escritos } = lienzoQueApunta()
+      dibujarLosNombres(ctx, t, 'challenge', 2)
+      const textos = escritos.map((e) => e.texto)
+      expect(textos, lang).toContain(t('Players'))
+      const frase = t(PLAYER_COUNT_HINTS[2])
+      expect(escritos.some((e) => frase.startsWith(e.texto.trim())), lang).toBe(true)
+    }
+  })
+
+  it('y solo en el desafío: en la práctica, a dos no cuenta', () => {
+    const { ctx, escritos } = lienzoQueApunta()
+    dibujarLosNombres(ctx, traductor('en'), 'practice', 2)
+    expect(escritos.map((e) => e.texto)).not.toContain('Players')
+  })
+})
 
 /**
  * Que cada letra se lea de un vistazo **desde donde se juega**, tal como la apunta el lienzo: el

@@ -48,7 +48,13 @@ export interface Pistas {
   countdown: number
   gameState: FaseDeLaPartida
   streak: number
+  /**
+   * Si el final suena a ganar encima del cierre: el récord batido, o el final de una partida a dos
+   * (`celebra` de la partida).
+   */
   isRecord: boolean
+  /** Si lo que acaba es la segunda tanda de una partida a dos: el cierre suena a ganar. */
+  acabaElDuelo?: boolean
   /** Si el nivel acabado se superó, o `null` fuera de los niveles. */
   levelPassed: boolean | null
   lives: number | null
@@ -71,7 +77,9 @@ export function sonidosDesde(antes: Pistas, ahora: Pistas): Sonido[] {
   }
   if (ahora.gameState === 'playing' && antes.gameState === 'countdown') suenan.push('go')
   if (ahora.gameState === 'finished' && antes.gameState !== 'finished') {
-    suenan.push(`over-${finalQueSuena(ahora.levelPassed, ahora.lives)}` as Sonido)
+    // El final de una partida a dos suena a ganar: la gana alguien de los que están delante, o
+    // empatan, aunque el segundo se haya quedado sin vidas.
+    suenan.push(`over-${ahora.acabaElDuelo === true ? 'win' : finalQueSuena(ahora.levelPassed, ahora.lives)}` as Sonido)
     // El récord va por encima del cierre y no en su lugar.
     if (ahora.isRecord) suenan.push('record')
   }

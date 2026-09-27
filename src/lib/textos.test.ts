@@ -3,7 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { GAME_MODE_HINTS, GAME_MODE_LABELS } from './gameMode'
 import { DIFFICULTY_LABELS } from './gameConfig'
-import { TEXT_KEYS, formatoDeCifra, texto, traductor } from './textos'
+import { TEXT_KEYS, formatea, formatoDeCifra, texto, traductor } from './textos'
+import { PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS, PLAYER_LABELS } from './duel'
 
 /**
  * El diccionario del juego.
@@ -14,6 +15,13 @@ import { TEXT_KEYS, formatoDeCifra, texto, traductor } from './textos'
  * etiquetas que vienen de los mapas de configuración estén en el diccionario.
  * Ese último es el que se rompe solo: se añade una dificultad y nadie se acuerda.
  */
+describe('los huecos de una frase', () => {
+  it('se rellenan con lo que se da, y lo que no se da se queda como estaba', () => {
+    expect(formatea('{player} wins', { player: 'Player 1' })).toBe('Player 1 wins')
+    expect(formatea('{player}: {points}', { player: 'P' })).toBe('P: {points}')
+  })
+})
+
 describe('el diccionario', () => {
   it('en inglés devuelve la propia clave', () => {
     expect(texto('en', 'Back to the menu')).toBe('Back to the menu')
@@ -32,6 +40,9 @@ describe('el diccionario', () => {
       ...Object.values(GAME_MODE_LABELS),
       ...Object.values(GAME_MODE_HINTS),
       ...Object.values(DIFFICULTY_LABELS),
+      ...Object.values(PLAYER_COUNT_LABELS),
+      ...Object.values(PLAYER_COUNT_HINTS),
+      ...PLAYER_LABELS,
     ]
     const sinTraducir = etiquetas.filter((e) => texto('es', e) === e)
     expect(sinTraducir).toEqual([])

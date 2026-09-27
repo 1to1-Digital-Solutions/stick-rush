@@ -18,6 +18,7 @@ import {
   picksSetup,
 } from '../../lib/gameMode'
 import { useGame } from '../../lib/gameStore'
+import { PLAYER_COUNT_HINTS, eligeJugadores, juegaADos, type PlayerCount } from '../../lib/duel'
 import { useLang } from '../../lib/ajustesCliente'
 import { traductor, type TextKey } from '../../lib/textos'
 import { CanvasPanel, drawParagraph, drawText } from './canvasPanel'
@@ -30,6 +31,8 @@ import {
   MENU_TEXT,
   XR_DIFFICULTY_SPACING,
   XR_ENDLESS_TOGGLE_OFFSET,
+  XR_MENU_HIT,
+  XR_PLAYERS_TOGGLE_OFFSET,
   XR_HOOP_DOWN_OFFSET,
   XR_HOOP_GAUGE_OFFSET,
   XR_HOOP_UP_OFFSET,
@@ -61,6 +64,7 @@ import {
   XRPanel,
   XRPassthroughIcon,
   XRPlayIcon,
+  XRPlayersIcon,
   XRPressable,
   XRSceneIcon,
   XRStarsRow,
@@ -312,6 +316,42 @@ function EndlessToggle() {
   )
 }
 /**
+ * Contra quién, solo en el desafío: una ficha sola o dos enfrentadas —el icono de los hermanos—,
+ * y cada pulsación pasa a la otra, como el interruptor de sin fin en cuyo hueco va. Encendido a
+ * dos, la placa se enciende además de cambiar el dibujo: nunca solo el color.
+ */
+function PlayersToggle() {
+  const { players, setPlayers } = useGame()
+  const aDos = players === 2
+  const tinta = aDos ? '#ffffff' : '#94a3b8'
+
+  return (
+    <XRPressable
+      position={XR_PLAYERS_TOGGLE_OFFSET}
+      onSelect={() => setPlayers(aDos ? 1 : 2)}
+      hitSize={XR_MENU_HIT.endless}
+    >
+      <mesh position={[0, 0, -0.008]}>
+        <boxGeometry args={[0.13, 0.1, 0.014]} />
+        <meshStandardMaterial
+          color={aDos ? '#15803d' : '#1c2634'}
+          emissive="#22c55e"
+          emissiveIntensity={aDos ? 0.45 : 0.05}
+          roughness={0.5}
+        />
+      </mesh>
+      <XRPlayersIcon
+        position={[0, 0, 0.008]}
+        size={0.016}
+        table={tinta}
+        near={{ color: tinta }}
+        far={aDos ? { color: tinta } : null}
+      />
+    </XRPressable>
+  )
+}
+
+/**
  * Escenario o habitación real, sin salir de la sesión.
  *
  * En una sesión `immersive-ar` los dos modos son la misma sesión pintada de dos
@@ -523,6 +563,7 @@ export function dibujarLosNombres(
   ctx: CanvasRenderingContext2D,
   t: (clave: TextKey) => string,
   gameMode: GameMode = 'practice',
+  players: PlayerCount = 1,
 ): void {
   for (const { text, x, y } of menuLabelsFor(gameMode)) {
     drawText(ctx, t(text), x, y + ROW_LABEL_RISE, {
@@ -535,7 +576,9 @@ export function dibujarLosNombres(
   // Qué es el modo elegido. Los modos eran **solo nombres** en el panel —«Práctica»,
   // «Desafío»— y lo que los distingue solo lo contaba la pantalla de la web, que con las
   // gafas puestas no se ve.
-  drawParagraph(ctx, t(GAME_MODE_HINTS[gameMode]), 0, PISTA_Y, {
+  // A dos, la explicación es la de la partida a dos: el modo ya lo dice su interruptor.
+  const pista = juegaADos(gameMode, players) ? PLAYER_COUNT_HINTS[2] : GAME_MODE_HINTS[gameMode]
+  drawParagraph(ctx, t(pista), 0, PISTA_Y, {
     size: MENU_TEXT.hint,
     color: '#94a3b8',
     maxWidth: PISTA_ANCHO,
@@ -545,11 +588,11 @@ export function dibujarLosNombres(
 
 function RowLabels() {
   const t = traductor(useLang())
-  const { gameMode } = useGame()
+  const { gameMode, players } = useGame()
 
   const escribir = useCallback(
-    (ctx: CanvasRenderingContext2D) => dibujarLosNombres(ctx, t, gameMode),
-    [t, gameMode],
+    (ctx: CanvasRenderingContext2D) => dibujarLosNombres(ctx, t, gameMode, players),
+    [t, gameMode, players],
   )
 
   return (
@@ -593,6 +636,7 @@ export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
       {(levels || picksSetup(gameMode)) && <DifficultyPicker locked={levels} />}
       <ModeToggle />
       {gameMode === 'practice' && <EndlessToggle />}
+      {eligeJugadores(gameMode) && <PlayersToggle />}
       <SceneryPicker passthroughAvailable={mode === 'immersive-ar'} />
       {/* Empezar. La primera vez la partida se abre con el tutorial —con las
           gafas puestas no hay forma de saber que los palos se agarran, ni con

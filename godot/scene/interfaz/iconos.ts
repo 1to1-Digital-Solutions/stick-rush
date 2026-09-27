@@ -7,7 +7,7 @@
  * Todo sale plano y sin luz, con la `figura` del kit (`@kit/runtime/ui/malla`), así que se enciende
  * y se apaga con el botón que lo lleva.
  */
-import { Geometry2D, PackedVector2Array, Vector2, type MeshInstance3D } from 'godot'
+import { Geometry2D, PackedVector2Array, Vector2, Vector3, type MeshInstance3D } from 'godot'
 
 import { desplazar, triangulosDeArco, triangulosDeTrazo } from '@kit/lib/ui/iconos'
 import type { Punto2 } from '@kit/lib/ui/salida'
@@ -156,4 +156,22 @@ export function rectangulo(ancho: number, alto: number, color: string, x = 0, y 
     1,
     prioridad,
   )
+}
+
+/**
+ * El icono de contra quién (`XRPlayersIcon` de `XRUi.tsx`): la mesa entre las dos fichas, la de
+ * este lado (el jugador 1) abajo y la de enfrente (el 2) arriba, o ninguna si se juega solo. Es el
+ * de los hermanos (tower-tumble lo dibuja igual en su port). Devuelve una malla por pieza: la mesa y
+ * cada ficha, centrada en su sitio, para que la de quien tiene el mando pueda crecer sin moverse.
+ */
+export function iconoDeJugadores(lado: number, mesa: string, cerca: string, lejos: string | null): MeshInstance3D[] {
+  const hueco = lado * 1.6
+  const piezas = [rectangulo(lado * 2.6, lado * 0.3, mesa)]
+  for (const [color, y] of [[cerca, -hueco], [lejos, hueco]] as const) {
+    if (color == null) continue
+    const ficha = rectangulo(lado * 1.2, lado * 1.2, color)
+    ficha.position = new Vector3(0, y, 0)
+    piezas.push(ficha)
+  }
+  return piezas
 }

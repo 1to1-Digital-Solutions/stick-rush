@@ -46,7 +46,7 @@ test.describe('Modo de juego', () => {
     // El desafío va fijo: de la práctica a Jugar, sin palos ni velocidad que elegir.
     await expect(page.getByRole('region', { name: 'Number of sticks' })).toBeHidden()
     await expect(page.getByRole('region', { name: 'Difficulty' })).toBeHidden()
-    await expect(page.getByRole('button', { name: 'Play' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible()
 
     await expect(modeButton(page, 'Challenge')).toHaveAttribute(
       'aria-pressed',

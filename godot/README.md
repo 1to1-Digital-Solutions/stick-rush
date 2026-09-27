@@ -66,6 +66,15 @@ volúmenes son los del salón, del guardado.
 tutorial, con el reparto y el turno de los palos sacados de la semilla. Al acabar cada partida se
 imprime `STICK-RUSH-RESULTADO {modo, puntos, reto}` y se llama a `report_result(json)` del salón.
 
+**La partida a dos**, como en la web (`lib/duel.ts`): en el desafío, el botón de **contra quién**
+—en el hueco de sin fin, con una ficha sola o dos enfrentadas, el icono de los hermanos— elige solo
+o a dos pasándose el mando. A dos, cada uno juega su tanda **con la misma semilla** (los mismos palos
+en el mismo orden); al acabar la primera sale delante **el aviso de pasar el mando** y el botón de
+repetir empieza la tanda del otro; al acabar la segunda, quién gana —o el empate—, los puntos de los
+dos y lo que lleva la pareja (`duelTally.ts`, guardado aparte), con el final que suena a ganar. El
+récord del desafío no se toca, y al salón se le cuenta la partida entera una vez (`{modo: 'duel'}`).
+Jugando, el marcador dice de quién es la tanda con la pareja de fichas.
+
 Por qué existe y qué se midió: `xrcade/docs/salir-en-steam.md`, sección 4.
 
 ## Lo que se movió en la web
@@ -81,24 +90,24 @@ lint, cobertura al 100 % y los e2e). La escena importa `marcas.ts`.
 | Ruta | Qué es |
 |---|---|
 | `scene/main.ts` | La escena: la feria, la máquina, los palos, las tres formas de cogerlos (mano, ratón, jugador automático), la altura de los ojos, el sonido, lo que se siente, el reto y las capturas |
-| `scene/juego/partida.ts` | La partida: el `gameStore.ts` de la web sin React (lo elegido, las fases, los contadores, las tandas sin fin, la lección y su plazo, lo que se guarda y lo que se le cuenta al salón) |
+| `scene/juego/partida.ts` | La partida: el `gameStore.ts` de la web sin React (lo elegido, las fases, los contadores, las tandas sin fin, la partida a dos, la lección y su plazo, lo que se guarda y lo que se le cuenta al salón) |
 | `scene/juego/tanda.ts` | Los palos de una tanda: lo que hace cada `Stick.tsx`, sin pintar |
 | `scene/juego/alcance.ts` | Qué palo coge la mano (la esfera del puño) o el ratón (el rayo) |
 | `scene/juego/sonido.ts` | Qué suena y cuándo (`useGameSound.ts`) |
 | `scene/mundo/` | La máquina (`maquina.ts`), los palos pintados (`palos.ts`), la feria, la plaza y tu habitación (`feria.ts`) y las ayudas (`ayudas.ts`); las piezas sueltas y el escenario son del kit |
-| `scene/interfaz/` | El menú, el marcador, volver, terminar, el aviso, la cuenta atrás, el tutorial, los iconos de `xrIcons.ts` y dónde va cada panel con visor y en plano |
+| `scene/interfaz/` | El menú, el marcador, volver, terminar, el aviso, el final de cada tanda a dos (`PanelDelDuelo`), la cuenta atrás, el tutorial, los iconos de `xrIcons.ts` y el de contra quién, y dónde va cada panel con visor y en plano |
 | `scene/**/*.motor.test.ts` | La partida contra el store de la web, la tanda contra `Stick.tsx` y el sonido contra `useGameSound.ts`, el mundo (y que lo del paquete es lo de la web byte a byte), y los paneles medidos con el instrumento de la web en los dos idiomas y pulsados con el ratón: corren con los tests de dominio |
 | `godot-kit.json` | Para el kit: el id, el repo (`..`), los efectos (con la nota del atrape y la cuenta atrás en sus escalones) y la música |
 | `games/stick-rush/` | Lo que va en el `.pck`; `tests/` se queda fuera al exportar |
 | `games/stick-rush/{sfx,music,feria,texturas,hdri,mandos}/` | Los efectos renderizados (`npm run godot:sfx`), la música, las piezas del kit, la madera, la plaza y los mandos de Quest (`npm run godot:mandos`), con `CREDITS.md`. Se versionan. La plaza va comprimida para la GPU (BC6H y ASTC, 0,5 MB cada una en vez de 4) y la madera, sin pérdida y con sus mipmaps |
-| `games/stick-rush/tests/partida_auto.*` | La partida automática entera (práctica, Difícil, nueve palos, uno que se escapa adrede): palos, puntos, récord, lo que suena, la máquina y la feria, y lo que se le cuenta al salón; el reto con la semilla del salón, que entra jugando, da el mismo reparto dos veces y se cuenta como reto |
+| `games/stick-rush/tests/partida_auto.*` | La partida automática entera (práctica, Difícil, nueve palos, uno que se escapa adrede): palos, puntos, récord, lo que suena, la máquina y la feria, y lo que se le cuenta al salón; el reto con la semilla del salón, que entra jugando, da el mismo reparto dos veces y se cuenta como reto; y la partida a dos entera (`--a-dos`): las dos tandas con la misma semilla, gana el primero (el segundo deja escapar uno más), se apunta a la pareja sin tocar el récord, al salón una vez y suena a ganar |
 | `games/stick-rush/tests/menu_raton.*` | La escena de verdad con clics del ratón: velocidad, palos y aro, jugar, que un clic en un palo en la cuenta atrás no lo coge y jugando sí, que un clic al aire no coge nada, Escape, dejar la partida, el modo que pasa y salir |
 | `games/stick-rush/tests/xr_mando.*` | Dos partidas con visor simulado cogiendo con las dos manos: diestro sentado en el salón y zurdo de pie. La mano de cada atrape y su pulso, la altura del mundo y del aro, el anclaje, el giro, el tutorial con el mando en las manos y las ayudas |
 | `tests/run.sh` | Todo lo del motor de una vez (`npm run godot:test`) |
 
-**Qué tests entran en el motor** lo decide el kit por el grafo de imports: 26 de los 41 ficheros de
-`src/lib`, más los del kit y los del port: **616 tests**. `npm run godot:build -- --list-tests` dice
-por qué no entran los otros 15 (los que usan `vi`, los que tocan `window` o leen el disco).
+**Qué tests entran en el motor** lo decide el kit por el grafo de imports: 27 de los 43 ficheros de
+`src/lib`, más los del kit y los del port: **682 tests**. `npm run godot:build -- --list-tests` dice
+por qué no entran los otros 16 (los que usan `vi`, los que tocan `window` o leen el disco).
 
 ## Cómo se usa
 
@@ -134,6 +143,11 @@ $GODOT --xr-mode off --resolution 1280x720 --fixed-fps 60 --path . -- --autoplay
 $GODOT --xr-mode off --resolution 1280x720 --fixed-fps 60 --path . -- --autoplay --shot-menu=/tmp/final.png
 $GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --shot-tutorial=/tmp/tutorial.png --lang=es
 $GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --shot-ayudas=/tmp/ayudas.png
+# A dos (`--a-dos`: el desafío y a dos elegidos): el menú, el aviso de pasar el mando tras la primera
+# tanda del jugador automático, y quién gana al acabar la segunda
+$GODOT --xr-mode off --resolution 1280x720 --path . -- --a-dos --shot-menu=/tmp/a-dos.png --lang=es
+$GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --autoplay --a-dos --shot-menu=/tmp/pasa.png
+$GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --autoplay --a-dos --shot-duelo=/tmp/gana.png
 
 # Lo que se vería con el visor, sin visor: la cabeza de mentira hace de cámara y el jugador
 # automático coge con las manos. `--menu` se queda en el menú, `--mirar=<grados>` gira la cabeza a

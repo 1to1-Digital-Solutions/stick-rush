@@ -188,6 +188,8 @@ describe('qué suena, con la regla de `useGameSound.ts`', () => {
   it('el final: ganar, perder o terminar, con el récord por encima', () => {
     const jugando = { ...menu, gameState: 'playing' as const }
     expect(sonidosDesde(jugando, { ...jugando, gameState: 'finished', isRecord: true })).toEqual(['over-close', 'record'])
+    // El final de una partida a dos suena a ganar, con el remate encima, aunque se acabe sin vidas.
+    expect(sonidosDesde(jugando, { ...jugando, gameState: 'finished', lives: 0, isRecord: true, acabaElDuelo: true })).toEqual(['over-win', 'record'])
     expect(finalQueSuena(true, null)).toBe('win')
     expect(finalQueSuena(false, null)).toBe('loss')
     expect(finalQueSuena(null, 2)).toBe('win')

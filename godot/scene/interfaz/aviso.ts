@@ -13,6 +13,7 @@
  *   más grande: es la respuesta que no pierde nada.
  * - **La cuenta atrás, sin cifras** como en la web: un anillo por segundo que se apaga, y el que está
  *   a punto de caer late.
+ * - **A dos, el final de cada tanda** (`PanelDelDuelo`): el aviso de pasar el mando o quién gana.
  */
 import { Node3D, Vector3, type MeshInstance3D } from 'godot'
 
@@ -27,10 +28,13 @@ import type { Lang } from '@/lib/ajustes'
 import { LIFE_COLOR } from '@/lib/gameConfig'
 import { traductor } from '@/lib/textos'
 import { XR_HOME_ICON } from '@/lib/xrIcons'
+import type { DuelSummary } from '@/lib/duel'
 import {
   CONFIRM_BOXES,
   CONFIRM_TEXT,
+  DUEL_TEXT,
   XR_CONFIRM_SIZE,
+  XR_DUEL_SIZE,
   XR_END_RUN_POSITION,
   XR_END_RUN_YAW,
   XR_QUIT_POSITION,
@@ -121,6 +125,44 @@ export class AvisoDeSalir {
       anchoMax: this.seguir.caja.width - 0.03,
       en: this.seguir,
     })
+  }
+}
+
+/**
+ * El final de una tanda a dos: **el aviso de pasar el mando** o, con las dos jugadas, quién gana, los
+ * puntos de los dos y lo que lleva la pareja. El `XRDuelPanel` de la web, en el sitio del aviso de
+ * salir (`XR_DUEL_POSITION`), con los renglones de su `dibujarElDuelo`; los botones del marcador
+ * siguen debajo, y el de jugar empieza la tanda del otro.
+ */
+export class PanelDelDuelo {
+  readonly panel: Panel
+  readonly nodo: Node3D
+
+  constructor() {
+    this.panel = new Panel({ ancho: XR_DUEL_SIZE[0], alto: XR_DUEL_SIZE[1], fondo: COLORES.panel, opacidad: 1 })
+    this.nodo = this.panel.nodo
+    this.nodo.visible = false
+  }
+
+  /** Lo escribe: las frases vienen ya dichas (`duelSummary`). */
+  escribir(dicho: DuelSummary): void {
+    const { panel } = this
+    const ancho = XR_DUEL_SIZE[0] - 0.04
+    panel.borrarTextos()
+    panel.escribir(dicho.title, 0, 0.08, { alto: DUEL_TEXT.title, color: dicho.winner != null ? COLORES.estrella : '#ffffff', anchoMax: ancho })
+    if (dicho.pass != null) {
+      panel.escribir(dicho.pass, 0, 0.015, { alto: DUEL_TEXT.body, color: '#4ade80', anchoMax: ancho })
+      return
+    }
+    // Un renglón por jugador: juntos en uno no caben a la letra del panel.
+    dicho.lines.forEach((linea, i) => {
+      panel.escribir(linea.text, 0, 0.025 - i * 0.045, {
+        alto: DUEL_TEXT.body,
+        color: linea.player === dicho.winner ? COLORES.estrella : COLORES.claro,
+        anchoMax: ancho,
+      })
+    })
+    if (dicho.tally != null) panel.escribir(dicho.tally, 0, -0.08, { alto: DUEL_TEXT.body, color: COLORES.suave, anchoMax: ancho })
   }
 }
 

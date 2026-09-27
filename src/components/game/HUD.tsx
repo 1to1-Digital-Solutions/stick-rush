@@ -8,7 +8,8 @@ import { FRASES, FRASES_CON_LAS_MANOS } from '../../lib/tutorial'
 import { type ShareStatus, useShareResult } from '../useShareResult'
 import { HeartIcon, ShareIcon, StarIcon } from '../ui/icons'
 import { useLang } from '../../lib/ajustesCliente'
-import { formatoDeCifra, traductor } from '../../lib/textos'
+import { formatoDeCifra, formatea, traductor } from '../../lib/textos'
+import { PLAYER_LABELS, duelSummary } from '../../lib/duel'
 /**
  * Vidas que quedan, una por corazón: llenos los que conservas, de contorno los
  * gastados. Solo en desafío; en práctica no hay nada que perder y una fila de
@@ -82,6 +83,78 @@ function ShareResultButton() {
   )
 }
 
+/**
+ * El final de una tanda de la partida a dos.
+ *
+ * Después de la primera, **el aviso de pasar el mando**: lo que ha sacado quien acaba de jugar y a
+ * quién le toca, con el botón de empezar dicho para quien lo va a pulsar. Después de la segunda,
+ * quién gana —o el empate—, los puntos de los dos y lo que lleva la pareja. El récord no sale: una
+ * tanda a dos no es la marca de nadie (`lib/duel.ts`).
+ */
+function DuelOver() {
+  const lang = useLang()
+  const t = traductor(lang)
+  const { duel, duelTally, startGame, resetGame } = useGame()
+  // Solo se pinta en la partida a dos; el tipo no lo sabe.
+  if (duel == null) return null
+  const dicho = duelSummary(duel, duelTally, lang)
+
+  return (
+    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="duel-over-title"
+        className="animate-fade-slide-up flex w-full max-w-sm flex-col items-center gap-6 rounded-2xl border border-white/10 bg-[var(--color-muted)] p-8 text-center shadow-2xl"
+      >
+        <h2
+          id="duel-over-title"
+          className={`text-glow-primary text-3xl tracking-wide ${
+            dicho.winner != null ? 'text-[var(--color-accent)]' : 'text-[var(--color-primary)]'
+          }`}
+        >
+          {dicho.title}
+        </h2>
+        {dicho.pass != null ? (
+          <p className="text-lg font-semibold text-white">{dicho.pass}</p>
+        ) : (
+          <ul className="flex flex-col gap-1 text-base">
+            {dicho.lines.map((line) => (
+              <li
+                key={line.player}
+                className={
+                  line.player === dicho.winner ? 'font-bold text-[var(--color-accent)]' : 'text-white/60'
+                }
+              >
+                {line.text}
+              </li>
+            ))}
+          </ul>
+        )}
+        {dicho.tally != null && <p className="text-sm text-white/50">{dicho.tally}</p>}
+        <div className="flex w-full flex-col items-center gap-2">
+          <button
+            type="button"
+            onClick={() => startGame()}
+            className="cta-gradient w-full rounded-xl px-6 py-3 text-base font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          >
+            {dicho.next == null
+              ? t('Play')
+              : formatea(t('{player}, your turn'), { player: t(PLAYER_LABELS[dicho.next]) })}
+          </button>
+          <button
+            type="button"
+            onClick={resetGame}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/10 px-6 py-2 text-sm font-semibold uppercase tracking-wide text-white/80 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+          >
+            {t('Back to the menu')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function HUD() {
   // El idioma se pide una vez y se pasa entero: las palabras se traducen y las cifras
   // se agrupan a la manera del idioma, y con una cosa por un lado y otra por otro el
@@ -113,6 +186,8 @@ export function HUD() {
     nextTutorialStep,
     resetGame,
     endRun,
+    duel,
+    player,
   } = useGame()
   const frasesDelTutorial = bareHanded ? FRASES_CON_LAS_MANOS : FRASES
 
@@ -185,6 +260,14 @@ export function HUD() {
         <span className="rounded-md border border-white/10 bg-[var(--color-muted)]/80 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white/60 backdrop-blur">
           {levels ? `Level ${activeLevel} · ` : ''}{DIFFICULTY_LABELS[difficulty]}
         </span>
+
+        {/* A dos, de quién es la tanda: con dos personas turnándose, el marcador tiene que
+            decirlo, o el segundo no sabe si ya le toca. */}
+        {player != null && (
+          <span className="rounded-md border border-[var(--color-primary)]/50 bg-[var(--color-primary)]/15 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur">
+            {t(PLAYER_LABELS[player])}
+          </span>
+        )}
       </div>
 
       {/* Sin fin no se acaba sola: este botón es su única salida con resumen. */}
@@ -255,8 +338,11 @@ export function HUD() {
         </div>
       )}
 
+      {/* A dos, el final de cada tanda es el aviso de pasar el mando o quién ha ganado. */}
+      {gameState === 'finished' && duel != null && <DuelOver />}
+
       {/* Pantalla de fin de partida */}
-      {gameState === 'finished' && (
+      {gameState === 'finished' && duel == null && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm">
           <div
             role="dialog"

@@ -23,7 +23,11 @@ import {
   XR_CONFIRM_SIZE,
   XR_QUIT_POSITION,
   XR_QUIT_YAW,
+  DUEL_TEXT,
+  XR_DUEL_POSITION,
+  XR_DUEL_SIZE,
 } from '../../lib/xrLayout'
+import { duelSummary, type DuelSummary } from '../../lib/duel'
 import {
   PANEL_COLOR,
   XRCheckIcon,
@@ -31,6 +35,7 @@ import {
   XRHeartIcon,
   XRHomeIcon,
   XRPanel,
+  XRPlayersIcon,
   XRPressable,
   XRRepeatIcon,
   XRShareIcon,
@@ -296,6 +301,7 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
     gameState,
     startGame,
     resetGame,
+    player,
   } = useGame()
   const sinFin = gameMode === 'practice' && endless
   // Fuera de sesión inmersiva manda el HUD en DOM, y en el menú manda XRMenu.
@@ -366,6 +372,18 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
           width={Math.max(width, 0.28)}
         />
         {showLives && <Lives lives={lives} total={totalLives} y={LIFE_ROW_Y} />}
+        {/* A dos, de quién es la tanda: la pareja de fichas con la de quien tiene el mando
+            encendida y crecida (la de este lado, el jugador 1; la de enfrente, el 2), a la
+            izquierda de las vidas. Al acabar lo dice el aviso de pasar el mando, encima. */}
+        {player != null && !finished && (
+          <XRPlayersIcon
+            position={[-0.17, LIFE_ROW_Y, 0.004]}
+            size={0.011}
+            table="#94a3b8"
+            near={player === 0 ? { color: '#22c55e', scale: 1.3 } : { color: '#475569' }}
+            far={player === 1 ? { color: '#22c55e', scale: 1.3 } : { color: '#475569' }}
+          />
+        )}
         {showStars && (
           <XRStarsRow stars={levelResult.stars} position={[0, LIFE_ROW_Y, 0]} size={0.02} />
         )}
@@ -563,6 +581,69 @@ export function XRQuitConfirm() {
           draw={escribir}
           fallbackColor={PANEL_COLOR}
         />
+      </group>
+    </group>
+  )
+}
+
+/**
+ * Lo que se escribe al acabar una tanda de la partida a dos: de quién era y a quién le pasa el
+ * mando o, con las dos jugadas, quién gana, los puntos de los dos y lo que lleva la pareja.
+ *
+ * Aparte del componente para poder **medirlo** en los dos idiomas (`duelo.legible.test.ts`): el
+ * español es más largo y es donde el texto se sale. Las frases vienen ya dichas (`duelSummary`).
+ */
+export function dibujarElDuelo(ctx: CanvasRenderingContext2D, dicho: DuelSummary): void {
+  const ancho = XR_DUEL_SIZE[0] - 0.04
+  drawText(ctx, dicho.title, 0, 0.08, {
+    size: DUEL_TEXT.title,
+    color: dicho.winner != null ? '#fbbf24' : '#ffffff',
+    weight: '700',
+    maxWidth: ancho,
+  })
+  if (dicho.pass != null) {
+    drawText(ctx, dicho.pass, 0, 0.015, { size: DUEL_TEXT.body, color: '#4ade80', weight: '700', maxWidth: ancho })
+    return
+  }
+  // Un renglón por jugador: juntos en uno no caben a la letra del panel.
+  dicho.lines.forEach((linea, i) => {
+    drawText(ctx, linea.text, 0, 0.025 - i * 0.045, {
+      size: DUEL_TEXT.body,
+      color: linea.player === dicho.winner ? '#fbbf24' : '#e2e8f0',
+      maxWidth: ancho,
+    })
+  })
+  if (dicho.tally != null) {
+    drawText(ctx, dicho.tally, 0, -0.08, { size: DUEL_TEXT.body, color: '#94a3b8', maxWidth: ancho })
+  }
+}
+
+/**
+ * El final de una tanda a dos, dentro del visor: **el aviso de pasar el mando** o quién ha ganado.
+ *
+ * Con letra y no con fichas como el marcador: «pásale el mando al jugador 2» no se puede decir con
+ * una silueta. Va delante, en el sitio del aviso de salir (`XR_DUEL_POSITION`), y los botones del
+ * marcador siguen debajo: el de jugar empieza la tanda del otro, o una partida nueva.
+ */
+export function XRDuelPanel({ hasDomUi = false }: { hasDomUi?: boolean }) {
+  const mode = useXR((state) => state.mode)
+  const { gameState, duel, duelTally } = useGame()
+  const lang = useLang()
+
+  const escribir = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      if (duel != null) dibujarElDuelo(ctx, duelSummary(duel, duelTally, lang))
+    },
+    [duel, duelTally, lang],
+  )
+
+  if ((hasDomUi && mode == null) || gameState !== 'finished' || duel == null) return null
+
+  return (
+    <group position={XR_DUEL_POSITION}>
+      <XRPanel width={XR_DUEL_SIZE[0]} height={XR_DUEL_SIZE[1]} color={PANEL_COLOR} />
+      <group position={[0, 0, 0.01]}>
+        <CanvasPanel width={XR_DUEL_SIZE[0]} height={XR_DUEL_SIZE[1]} draw={escribir} fallbackColor={PANEL_COLOR} />
       </group>
     </group>
   )
