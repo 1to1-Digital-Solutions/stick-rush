@@ -20,7 +20,9 @@ o los criterios de aceptación que debía cumplir.
      condiciones de carrera, manejo de errores ausente.
    - **Regresiones**: ¿rompe algo existente? ¿Cambia contratos/APIs sin querer?
    - **Seguridad**: secretos hardcodeados, entrada sin validar, permisos/CORS/RLS de más,
-     inyección, dependencias dudosas. (Sigue `.claude/rules/security.md`.)
+     inyección, dependencias dudosas. (Sigue `.claude/rules/security.md`.) Un secreto, un
+     `.env` con valores reales o credenciales en el diff (o en el historial de la rama) son
+     SIEMPRE **Bloqueante** → veredicto "rechazar" hasta eliminarlos; nunca los rebajes.
    - **Diseño y coherencia**: respeta la arquitectura y el estilo del repo; sin duplicar lógica.
    - **Tests**: ¿hay cobertura donde aporta (lógica de negocio, parsing, edge cases)?
 3. **Verifica de verdad** si puedes: ejecuta typecheck/lint/build/tests del proyecto y reporta el
