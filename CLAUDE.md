@@ -19,6 +19,5 @@ qué se decidió cada cosa— vive en **`docs/historial.md`** y **solo se lee si
   base de datos, despliegue, etc.)
 - Commits manuales: no commitear sin que se pida.
 
-> Base instalada con la suite de Organízate. Las reglas comunes viven en `.claude/rules/` y los
-> agentes reutilizables en `.claude/agents/`. La provenance de lo instalado está en
-> `.organizate/install-state.json`.
+> Base instalada con la suite de Organízate. Las reglas comunes viven en `.claude/rules/`. La provenance de lo
+> instalado está en `.organizate/install-state.json`.
