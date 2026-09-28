@@ -5,6 +5,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { openGame, startGame } from './helpers'
 import { PIEZAS as PIEZAS_DEL_KIT } from '../src/lib/feriaKit'
 import { MAX_STICKS } from '../src/lib/gameConfig'
+import { drawCallBudget } from './support/presupuesto'
 
 /**
  * Lo que cuesta pintar el recinto de feria, medido sobre la escena de verdad.
@@ -109,17 +110,17 @@ const SAMPLE_TIMEOUT = 45_000
  * encarecerse la mitad sin que saltara nada y el desglose se quedaría desfasado en
  * silencio, que es justo lo que no puede pasar con una cuenta que nadie recalcula.
  */
-const MENU_DRAW_CALLS = 33
+const MENU = drawCallBudget('menu')
 
-/**
- * Cuánto se le deja moverse a la medida antes de exigir que se rehaga el desglose.
+/*
+ * Cuánto se le deja moverse a la medida antes de exigir que se rehaga el desglose (el `margin`
+ * de las dos fases en el manifiesto).
  *
  * Da para un palo colgando de más o de menos —tres llamadas cada uno— y poco más:
  * quedarse sin la máquina son cinco de golpe, y sin el recinto nueve: saltan. Lo gordo
  * salta con muchísimo margen: dejar de instanciar devolvería la escena a las ~110 de
  * cuando la máquina iba con cada tubo suelto.
  */
-const MENU_DRAW_CALL_MARGIN = 4
 
 /**
  * Y lo que cuesta **en partida**, con los trece palos colgando: el máximo del juego.
@@ -132,7 +133,7 @@ const MENU_DRAW_CALL_MARGIN = 4
  * **Faltaba medirlo.** El menú se comprobaba desde siempre y la partida no, que es donde de
  * verdad se paga: era el único de los trece juegos sin presupuesto de partida.
  */
-const PARTIDA_DRAW_CALLS = 56
+const PARTIDA = drawCallBudget('partida')
 
 interface DrawFrame {
   /** Llamadas de dibujo del fotograma. */
@@ -263,11 +264,9 @@ test.describe('Coste de dibujo del recinto', () => {
       .sort((a, b) => a - b)
     const median = calls[Math.floor(calls.length / 2)]
 
-    const medido = `llamadas por fotograma en partida (el desglose dice ${PARTIDA_DRAW_CALLS})`
-    expect(median, medido).toBeGreaterThanOrEqual(
-      PARTIDA_DRAW_CALLS - MENU_DRAW_CALL_MARGIN,
-    )
-    expect(median, medido).toBeLessThanOrEqual(PARTIDA_DRAW_CALLS + MENU_DRAW_CALL_MARGIN)
+    const medido = `llamadas por fotograma en partida (el desglose dice ${PARTIDA.measured})`
+    expect(median, medido).toBeGreaterThanOrEqual(PARTIDA.min)
+    expect(median, medido).toBeLessThanOrEqual(PARTIDA.max)
   })
 
   test('el menú cuesta las llamadas de dibujo que dice el desglose', async ({
@@ -281,12 +280,8 @@ test.describe('Coste de dibujo del recinto', () => {
     const median = calls[Math.floor(calls.length / 2)]
 
     const measured =
-      `llamadas por fotograma en el menú (el desglose dice ${MENU_DRAW_CALLS})`
-    expect(median, measured).toBeGreaterThanOrEqual(
-      MENU_DRAW_CALLS - MENU_DRAW_CALL_MARGIN,
-    )
-    expect(median, measured).toBeLessThanOrEqual(
-      MENU_DRAW_CALLS + MENU_DRAW_CALL_MARGIN,
-    )
+      `llamadas por fotograma en el menú (el desglose dice ${MENU.measured})`
+    expect(median, measured).toBeGreaterThanOrEqual(MENU.min)
+    expect(median, measured).toBeLessThanOrEqual(MENU.max)
   })
 })

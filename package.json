@@ -29,6 +29,28 @@
   "sideEffects": [
     "*.css"
   ],
+  "xrcade": {
+    "capabilities": [
+      "lang",
+      "volumes",
+      "scenery",
+      "playHeight",
+      "playHeightOffset",
+      "hand"
+    ],
+    "budget": {
+      "drawCalls": {
+        "menu": {
+          "measured": 33,
+          "margin": 4
+        },
+        "partida": {
+          "measured": 56,
+          "margin": 4
+        }
+      }
+    }
+  },
   "scripts": {
     "dev": "next dev",
     "dev:https": "next dev --experimental-https",
@@ -56,6 +78,9 @@
     "react-dom": "^19.2.0",
     "three": "^0.185.1"
   },
+  "overrides": {
+    "three": "$three"
+  },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@pmndrs/pointer-events": "6.6.30",
@@ -71,12 +96,14 @@
     "@types/three": "^0.185.4",
     "@vitest/coverage-v8": "^3.2.7",
     "@webxr-input-profiles/assets": "^1.0.20",
+    "esbuild": "^0.28.2",
     "eslint": "^9",
-    "eslint-config-next": "^16.3.3",
+    "eslint-config-next": "16.3.6",
+    "iwer": "~2.4.0",
     "jsdom": "^30.0.1",
-    "next": "^16.3.3",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "next": "16.3.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "tailwindcss": "^4",
     "three": "^0.185.1",
     "typescript": "^5",
