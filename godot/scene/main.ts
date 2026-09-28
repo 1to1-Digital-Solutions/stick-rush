@@ -67,7 +67,7 @@ import { gameStorage } from '@/lib/storage'
 import { followRatio } from '@/lib/xrAnchor'
 import * as xrLayout from '@/lib/xrLayout'
 
-import { niveles } from './interfaz/ajustes'
+import { niveles } from '@kit/runtime/ajustes'
 import { InterfazDelJuego } from './interfaz/interfaz'
 import { paloEnElRayo, paloEnLaMano } from './juego/alcance'
 import { Partida, type FaseDeLaPartida } from './juego/partida'

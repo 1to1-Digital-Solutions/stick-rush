@@ -66,7 +66,7 @@ import {
 import { COUNTDOWN_SECONDS, Partida } from '../juego/partida'
 import { createDuel, duelSummary, recordTurn } from '@/lib/duel'
 import { getDuelTally } from '@/lib/duelTally'
-import { CLAVE_DEL_IDIOMA, idioma, niveles } from './ajustes'
+import { CLAVE_DEL_IDIOMA, idioma, niveles } from '@kit/runtime/ajustes'
 import { AvisoDeSalir, PanelDelDuelo } from './aviso'
 import { InterfazDelJuego, type EscenaDelJuego } from './interfaz'
 import { LETRA_DEL_MARCADOR, Marcador, type EstadoDelMarcador } from './marcador'

@@ -44,7 +44,7 @@ import {
 } from '@/lib/xrLayout'
 
 import type { Partida } from '../juego/partida'
-import { alCambiarElIdioma, idioma } from './ajustes'
+import { alCambiarElIdioma, idioma } from '@kit/runtime/ajustes'
 import { AvisoDeSalir, BotonDeTerminar, BotonDeVolver, CuentaAtras, PanelDelDuelo } from './aviso'
 import { Marcador, SUBIDA_DEL_FINAL, type EstadoDelMarcador } from './marcador'
 import { MenuDelJuego, type EstadoDelMenu } from './menu'
