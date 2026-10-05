@@ -118,6 +118,13 @@
 
 ## Desde Organízate
 
+- [x] Falta el presupuesto de dibujo de la partida: solo se mide el menú <!-- org:3bc3bd0b-15f3-4416-8a09-6d7aa301adc6 -->
+- [x] Se arranca demasiado pegado a la máquina <!-- org:49030563-d70f-4650-b04f-22941bc94d94 -->
+- [x] Un objeto invisible corta el rayo delante del menú de ajustes <!-- org:6f2a1dc6-0b76-4e39-8ee2-53442ec652e8 -->
+- [x] El texto del tutorial del visor no lo mide ningún test de legibilidad <!-- org:563cd8d0-560f-4d22-815c-1c9fe101d046 -->
+- [x] Los palos de stick-rush caen a velocidad constante, sin gravedad: es el único proyectil del catálogo que no acelera <!-- org:0ac97882-f7e8-4a92-9bbc-a67288c274d0 -->
+- [x] Un pasito atrás, la máquina más alta, y ver las manos en VR <!-- org:bc6f9766-a6e7-41da-84f7-a0f385ed196d -->
+- [x] El tutorial del visor de stick-rush es el único que no usa la plantilla común y está a medias <!-- org:1d4faf20-0615-40b7-a691-cb93691ce079 -->
 - [x] El CI solo escucha main: añadir develop, como los juegos hermanos <!-- org:cf3d8072-71ab-45fa-9017-88d04f3de989 -->
 - [x] Montado en el salón se queda sin interfaz <!-- org:d0d32840-e52f-4062-80bd-42f32e93e9bb -->
 - [x] Recortar ESTADO.md: 1.184 líneas y un «dónde estamos» del 6 de agosto <!-- org:4d7f4e1c-7b9c-468e-9714-078977e00e02 -->
@@ -180,7 +187,7 @@
   abajo**: subir las filas no cabía —la del aro ya está a 14 cm de los ojos contra un techo
   cómodo de 15, y lo dice un test que ya existía—.
 
-- [ ] [alta] El tutorial: que enseñe el mando y se avance haciendo
+- [ ] [alta] El tutorial: que enseñe el mando y se avance haciendo <!-- org:d04f415f-03ca-4a5f-b546-0f397efb7043 -->
   **El único de los trece que se queda con el suyo, y a propósito.** Ya tiene botón de saltar
   y su panel no es un lienzo dentro de la escena sino una capa de DOM por encima, así que la
   plantilla de los otros doce no le vale: habría que rehacer el panel entero, no copiarlo.
