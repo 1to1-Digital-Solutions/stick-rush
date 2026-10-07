@@ -16,7 +16,10 @@ type Hand = 'left' | 'right'
 type Point = { x: number; y: number; z: number }
 
 const device = new XRDevice(metaQuest3)
-device.installRuntime()
+// `forceInstall` porque Chromium ya trae un `navigator.xr` propio —sin ningún
+// visor detrás— y sin esto IWER se aparta y deja el suyo: el menú preguntaría
+// por el visor, le dirían que no hay, y no habría por dónde entrar.
+device.installRuntime({ forceInstall: true })
 
 const controllerOf = (hand: Hand) => {
   const controller = device.controllers[hand]
