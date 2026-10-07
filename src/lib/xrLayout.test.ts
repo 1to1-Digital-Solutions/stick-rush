@@ -32,10 +32,16 @@ import {
   XR_SCENERY_PICKER_OFFSET,
   XR_STICK_ROW_Y,
   menuLabelsFor,
+  menuLabelText,
   XR_PLAYERS_TOGGLE_OFFSET,
   XR_DUEL_POSITION,
   XR_CONFIRM_POSITION,
+  XR_HUD_PANEL,
+  XR_HUD_POSITION,
+  XR_HUD_WITH_SIGN,
+  xrHudLayout,
 } from './xrLayout'
+import { MIN_EYE_HEIGHT } from './hoopHeight'
 
 /**
  * Del panel del menú solo se puede comprobar sin visor lo que es aritmética:
@@ -306,5 +312,62 @@ describe('el menú empieza por el modo', () => {
     // El renglón mide más que la letra: se mide con su alto de línea, como lo apunta el lienzo.
     const techoDelNombre = XR_STICK_ROW_Y + ROW_LABEL_RISE + MENU_TEXT.label / ALTO_DE_LINEA / 2
     expect(techoDelNombre).toBeLessThan(filas[0].y - filas[0].alto / 2)
+  })
+})
+
+describe('el reparto del marcador', () => {
+  it('sin cartel es el de siempre: centrado, con su fila de vidas o estrellas y más alto al acabar', () => {
+    expect(xrHudLayout({ finished: false, row: false, sign: false })).toEqual({ height: XR_HUD_PANEL.run, centre: 0, content: 0.04 })
+    expect(xrHudLayout({ finished: false, row: true, sign: false }).height).toBeCloseTo(XR_HUD_PANEL.run + XR_HUD_PANEL.livesRow)
+    expect(xrHudLayout({ finished: true, row: false, sign: false })).toEqual({ height: XR_HUD_PANEL.finished, centre: 0, content: 0.1 })
+    expect(xrHudLayout({ finished: true, row: true, sign: false }).height).toBeCloseTo(XR_HUD_PANEL.finished + XR_HUD_PANEL.livesRow)
+  })
+
+  it('con el cartel encima encoge a lo que lleva, y las fichas no se mueven al acabar', () => {
+    const jugando = xrHudLayout({ finished: false, row: false, sign: true })
+    const acabada = xrHudLayout({ finished: true, row: false, sign: true })
+
+    expect(jugando.height).toBeLessThan(XR_HUD_PANEL.run)
+    expect(acabada.height).toBeLessThan(XR_HUD_PANEL.finished)
+    expect(acabada.content).toBe(jugando.content)
+    // Su borde de arriba es el mismo jugando que acabada: el cartel de encima no se toca.
+    expect(acabada.centre + acabada.height / 2).toBeCloseTo(jugando.centre + jugando.height / 2)
+    expect(xrHudLayout({ finished: false, row: true, sign: true })).toEqual(jugando)
+  })
+
+  it('el panel envuelve lo que lleva: las fichas y la racha, y al acabar los botones', () => {
+    // Las fichas (3 cm de radio, crecidas) y los rombos de la racha, 6 cm por encima.
+    const fichas = XR_HUD_WITH_SIGN.content
+    for (const reparto of [XR_HUD_WITH_SIGN.run, XR_HUD_WITH_SIGN.finished]) {
+      expect(reparto.centre + reparto.height / 2).toBeGreaterThan(fichas + 0.06 + 0.012)
+      expect(reparto.centre - reparto.height / 2).toBeLessThan(fichas - 0.045)
+    }
+    // Los botones del final van 12 cm por debajo del marcador y su caja mide 11 de alto.
+    expect(XR_HUD_WITH_SIGN.finished.centre - XR_HUD_WITH_SIGN.finished.height / 2).toBeLessThan(-0.12 - 0.055)
+    // Y entre las fichas y los botones no se pisan.
+    expect(fichas - 0.045).toBeGreaterThan(-0.12 + 0.055)
+  })
+
+  it('y no baja más que el de siempre: con el jugador más bajo sigue por encima del suelo', () => {
+    const acabada = xrHudLayout({ finished: true, row: false, sign: true })
+    const elDeSiempre = xrHudLayout({ finished: true, row: true, sign: false })
+    const suelo = (reparto: typeof acabada) => XR_HUD_POSITION[1] + reparto.centre - reparto.height / 2 + xrUiRise(MIN_EYE_HEIGHT)
+
+    expect(suelo(acabada)).toBeGreaterThan(suelo(elDeSiempre))
+    expect(suelo(acabada)).toBeGreaterThan(0)
+  })
+})
+
+describe('el rótulo de la fila del modo', () => {
+  it('dice cuál hay elegido, no «Modo»: el que cuenta para medalla se llama por su nombre', () => {
+    expect(menuLabelText('Mode', 'challenge')).toBe('Challenge')
+    expect(menuLabelText('Mode', 'practice')).toBe('Practice')
+    expect(menuLabelText('Mode', 'levels')).toBe('Levels')
+  })
+
+  it('los demás rótulos dicen lo que son, se juegue a lo que se juegue', () => {
+    for (const { text } of MENU_LABELS) {
+      if (text !== 'Mode') expect(menuLabelText(text, 'challenge')).toBe(text)
+    }
   })
 })

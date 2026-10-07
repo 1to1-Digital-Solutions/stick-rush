@@ -22,8 +22,14 @@
  */
 
 import type { Lang } from './ajustes'
+import { OBJETIVO_ES, type Traducir } from './objetivo'
 
 const ES = {
+  // El cartel del objetivo, común a todos los juegos del salón. Lo primero, para que lo que el
+  // juego ya decía por su cuenta no choque.
+  ...OBJETIVO_ES,
+  'Catch {sticks} sticks. Drop three and out': 'Atrapa {sticks} palos. Tres al suelo y fuera',
+
   // Lo que dice la pestaña y lo que se lee al compartir el enlace
   'Catch the sticks falling from the machine before they hit the ground. Play in the browser or in mixed reality (VR/AR).':
     'Atrapa los palos que caen de la máquina antes de que toquen el suelo. Juega en el navegador o en realidad mixta (VR/AR).',
@@ -47,12 +53,12 @@ const ES = {
   // Modos
   Practice: 'Práctica',
   Levels: 'Niveles',
-  Challenge: 'Desafío',
-  'Every stick drops and missing costs nothing.': 'Caen todos los palos y fallar no cuesta nada.',
-  'One level at a time: the one you clear stays unlocked.':
-    'Un nivel cada vez: el que superas queda desbloqueado.',
-  'Three lives: every stick that gets away costs one.':
-    'Tres vidas: cada palo que se escapa cuesta una.',
+  Challenge: 'Reto',
+  // Cada modo dice lo primero si cuenta para medalla. Cortas a propósito: en el panel del visor
+  // caben dos renglones de unas 27 letras, y un tercero se sale (`menu.legible.test.ts`).
+  'No medal. Every stick drops, missing costs nothing.': 'Sin medalla. Caen todos y fallar no cuesta nada.',
+  'No medal. One level at a time, each unlocks the next.': 'Sin medalla. Cada nivel superado abre el siguiente.',
+  'Counts for a medal. Three lives, one per stick lost.': 'Cuenta para medalla. Tres vidas, una por palo perdido.',
   Set: 'Tanda',
   Endless: 'Sin fin',
   'The sticks you picked, and that is it.': 'Los palos elegidos y se acaba.',
@@ -110,6 +116,7 @@ const ES = {
   Share: 'Compartir',
 
   // Resumen
+  'Play again': 'Otra',
   'Game over!': '¡Partida terminada!',
   'Challenge cleared!': '¡Reto superado!',
   'You are out of lives': 'Te has quedado sin vidas',
@@ -175,6 +182,20 @@ export function traductor(lang: Lang) {
 }
 
 /**
+ * El traductor que pide el cartel del objetivo (`objetivo.ts`): acepta cualquier frase y rellena
+ * sus huecos.
+ *
+ * Lo que no está en el diccionario sale tal cual: la unidad del récord llega del salón ya en el
+ * idioma de quien juega, y una cifra suelta no se traduce.
+ */
+export function traductorSuave(lang: Lang): Traducir {
+  return (frase, valores) => {
+    const dicho = lang === 'es' && Object.prototype.hasOwnProperty.call(ES, frase) ? ES[frase as TextKey] : frase
+    return valores === undefined ? dicho : formatea(dicho, valores)
+  }
+}
+
+/**
  * Rellena los huecos de una frase.
  *
  * Las frases con hueco llevan `{algo}` y no se parten en trozos para concatenarlos: el orden de
@@ -196,18 +217,23 @@ export function formatea(plantilla: string, valores: Record<string, string | num
  * pelado, sin separadores. Y la puntuación es lo primero que se mira. Aquí solo hay
  * aritmética y concatenación, que valen igual en todos los motores.
  *
- * Lo único que cambia con el idioma es el separador: punto en español, coma en inglés. Una
- * cifra que no es un número —un récord editado a mano en el almacenamiento— se cuenta como
- * cero, que es mejor que enseñar «NaN» a quien está jugando.
+ * Con el idioma cambian el separador y desde cuántas cifras se agrupa, que es la regla de la RAE
+ * y de CLDR y la misma del cartel de objetivo (`ESCRITURA`, en `objetivo.ts`) y de la cabina del
+ * salón: el inglés, con coma desde las cuatro cifras («2,100»); el español, con punto y **desde
+ * las cinco** («2100», «12.400»). Así el marcador y el cartel de al lado escriben igual la misma
+ * marca. Una cifra que no es un número —un récord editado a mano en el almacenamiento— se cuenta
+ * como cero, que es mejor que enseñar «NaN» a quien está jugando.
  */
 export function formatoDeCifra(n: number, lang: Lang): string {
   if (!Number.isFinite(n)) return '0'
 
-  const separator = lang === 'es' ? '.' : ','
+  const { separator, from } = lang === 'es' ? { separator: '.', from: 5 } : { separator: ',', from: 4 }
   const rounded = Math.round(n)
   let rest = String(Math.abs(rounded))
   let thousands = ''
-  while (rest.length > 3) {
+  // Se decide una vez, con la cifra entera: o se agrupa toda o no se agrupa.
+  const grouped = rest.length >= from
+  while (grouped && rest.length > 3) {
     thousands = `${separator}${rest.slice(-3)}${thousands}`
     rest = rest.slice(0, -3)
   }

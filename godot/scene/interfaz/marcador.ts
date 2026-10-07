@@ -9,6 +9,11 @@
  * mejor racha), y debajo **las vidas** del desafío o, al acabar un nivel, **sus estrellas**. Al acabar,
  * el panel crece y lleva **repetir** y **volver al menú**.
  *
+ * **En la partida que cuenta para medalla calla lo que ya dice el cartel de encima**
+ * (`interfaz/cartel.ts`), como en la web: sin barra, sin vidas y sin la letra del final, que el
+ * cartel dice con lo que faltó; quedan las fichas, la racha y, al acabar, los botones
+ * (`xrHudLayout`).
+ *
  * **Aquí sí hay letra**, y es la única diferencia a propósito: la web no escribe en el visor porque la
  * fuente de drei no pasa su política de seguridad, así que el final solo lo cuenta con fichas y
  * barras. En el motor la letra es de casa, y el panel del final crece por arriba para decir cómo ha
@@ -32,7 +37,7 @@ import type { Player } from '@/lib/duel'
 import type { StickStatus } from '@/lib/stickLayout'
 import { formatoDeCifra } from '@/lib/textos'
 import { XR_HOME_ICON } from '@/lib/xrIcons'
-import { XR_HUD_PANEL } from '@/lib/xrLayout'
+import { xrHudLayout } from '@/lib/xrLayout'
 
 import { iconoDeCasa, iconoDeCorazon, iconoDeEstrella, iconoDeJugadores, iconoDeRepetir, huecosDeForma, rectangulo } from './iconos'
 import { COLORES } from './menu'
@@ -78,6 +83,8 @@ export interface EstadoDelMarcador {
   puntos: number
   /** A dos, quién tiene el mando; solo, `null`. */
   jugador?: Player | null
+  /** El cartel de encima ya dice los puntos y las vidas: aquí no se repiten. */
+  enElCartel?: boolean
 }
 
 /** El icono de quién juega a dos: a la izquierda de las vidas, y lo que crece la ficha de quien juega. */
@@ -173,17 +180,21 @@ export class Marcador {
     const n = estado.fichas.length
     const ancho = Math.max(n - 1, 0) * TOKEN_SPACING
     const terminada = estado.terminada
-    const conFila = estado.vidas != null || estado.estrellas != null
+    const enElCartel = estado.enElCartel === true
+    const vidas = enElCartel ? null : estado.vidas
+    const conFila = vidas != null || estado.estrellas != null
     this.ancho = Math.max(ancho + 0.2, terminada ? BUTTONS_WIDTH + 0.06 : 0)
-    // El panel de la web, y al acabar lo que crece por arriba para la letra.
-    const altoDeLaWeb = (terminada ? XR_HUD_PANEL.finished : XR_HUD_PANEL.run) + (conFila ? XR_HUD_PANEL.livesRow : 0)
-    this.alto = altoDeLaWeb + (terminada ? SUBIDA_DEL_FINAL : 0)
-    const centro = terminada ? SUBIDA_DEL_FINAL / 2 : 0
+    // El panel de la web, y al acabar lo que crece por arriba para la letra. Con el cartel encima
+    // no crece: arriba está el cartel, que es quien dice cómo ha acabado.
+    const reparto = xrHudLayout({ finished: terminada, row: conFila, sign: enElCartel })
+    const subida = terminada && !enElCartel ? SUBIDA_DEL_FINAL : 0
+    this.alto = reparto.height + subida
+    const centro = reparto.centre + subida / 2
     this.panel.nodo.position = new Vector3(0, centro, 0)
     this.panel.fondo!.scale = new Vector3(this.ancho, this.alto, 1)
     // Las cotas del contenido son las de la web (su grupo a 0,1 al acabar y a 0,04 jugando), desde
     // el sitio del marcador: dentro del panel, menos lo que ha subido su centro.
-    const y0 = (terminada ? 0.1 : 0.04) - centro
+    const y0 = reparto.content - centro
 
     this.fichas.forEach((ficha, i) => {
       const estadoDelPalo = estado.fichas[i]
@@ -201,17 +212,18 @@ export class Marcador {
     })
     const carril = Math.max(ancho, 0.28)
     const yBarra = y0 - 0.055
+    this.carril.visible = !enElCartel
+    this.relleno.visible = !enElCartel
     this.carril.scale = new Vector3(carril, 1, 1)
     this.carril.position = new Vector3(0, yBarra, 0.004)
     const lleno = Math.max(carril * estado.lleno, 0.001)
     this.relleno.scale = new Vector3(lleno, 1, 1)
     this.relleno.position = new Vector3((lleno - carril) / 2, yBarra, 0.006)
     pintar(this.relleno, estado.record ? COLORES.estrella : '#22c55e')
-    this.marca.visible = estado.marca > 0
+    this.marca.visible = estado.marca > 0 && !enElCartel
     this.marca.scale = new Vector3(1, estado.record ? 0.034 : 0.024, 1)
     this.marca.position = new Vector3(carril * (estado.marca - 0.5), yBarra, 0.008)
 
-    const vidas = estado.vidas
     this.corazones.forEach((corazon, i) => {
       corazon.visible = vidas != null
       const gastada = vidas != null && i >= vidas
@@ -248,7 +260,7 @@ export class Marcador {
 
     const { panel } = this
     panel.borrarTextos()
-    if (!terminada) return
+    if (!terminada || enElCartel) return
     const arriba = this.alto / 2
     panel.escribir(estado.titulo, 0, arriba - 0.04, { alto: LETRA_DEL_MARCADOR.titulo, color: COLORES.claro, anchoMax: this.ancho - 0.04 })
     panel.escribir(formatoDeCifra(estado.puntos, estado.lang), 0, arriba - 0.09, {

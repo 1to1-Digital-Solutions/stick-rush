@@ -7,7 +7,10 @@ export interface ScreenPoint {
 }
 
 /**
- * Abre el juego y espera a que la escena 3D esté montada y pintando.
+ * Abre el juego, espera a que la escena 3D esté montada y pintando y deja elegida **la
+ * práctica**, que es lo que juegan casi todos estos tests: ahí se eligen los palos y la
+ * velocidad. El menú abre en el reto —lo comprueba `modo.spec.ts`—; quien quiera lo que hay al
+ * abrir pasa `mode: null`.
  *
  * El Canvas se carga con `lazy()` y solo en el navegador (ver `GameScene`), así
  * que al llegar al HTML todavía no existe. Además, R3F no dimensiona el canvas
@@ -15,7 +18,11 @@ export interface ScreenPoint {
  * en segundo plano: esperar a que tenga tamaño es lo que distingue "cargando"
  * de "listo".
  */
-export async function openGame(page: Page, path = '/') {
+export async function openGame(
+  page: Page,
+  path = '/',
+  { mode = 'Practice' }: { mode?: ModeName | null } = {},
+) {
   await page.goto(path)
   await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
 
@@ -26,11 +33,12 @@ export async function openGame(page: Page, path = '/') {
       timeout: 30_000,
     })
     .toBeGreaterThan(0)
+  if (mode != null) await modeButton(page, mode).click()
 }
 
 /**
  * Botón de un modo en el menú. Su nombre accesible arrastra la línea de ayuda
- * ("Challenge Three lives: …"), así que se busca por cómo empieza.
+ * ("Challenge Counts for a medal. Three lives…"), así que se busca por cómo empieza.
  */
 export type ModeName = 'Practice' | 'Levels' | 'Challenge'
 
@@ -55,7 +63,8 @@ export async function startGame(
     endless = false,
   }: { sticks: number; difficulty?: string; mode?: ModeName; endless?: boolean },
 ) {
-  if (mode) await modeButton(page, mode).click()
+  // Sin modo dicho se juega la práctica: el menú abre en el reto, que va fijo.
+  await modeButton(page, mode ?? 'Practice').click()
   if (mode === undefined || mode === 'Practice') {
     await page.getByRole('button', { name: String(sticks), exact: true }).click()
     if (difficulty) {

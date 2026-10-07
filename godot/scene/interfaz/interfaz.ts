@@ -1,7 +1,8 @@
 /**
  * La interfaz de Stick Rush en Godot, entera: el menú, el marcador, la cuenta atrás, volver al menú
- * y su aviso, terminar la partida sin fin y el tutorial, y la puntería que los hace pulsables. Lo que
- * en la web montan `XRMenu`, `XRHud`, `XRCountdown` y `XRTutorial` dentro de `XRGazeAnchor`.
+ * y su aviso, terminar la partida sin fin y el tutorial, el cartel del objetivo, y la puntería que
+ * los hace pulsables. Lo que en la web montan `XRMenu`, `XRHud`, `CartelDeLaMaquina`, `XRCountdown` y
+ * `XRTutorial` dentro de `XRGazeAnchor`.
  *
  * **Con el visor, en las cotas de la web** (`lib/xrLayout.ts`): el menú en la columna de la izquierda
  * —a metro y medio, 55° y agrandado (`XR_MENU_POSE`)—, el marcador por debajo del aro, volver al menú
@@ -26,6 +27,8 @@ import { PunteroDeRaton } from '@kit/runtime/ui/raton'
 import type { MandoEnLaMano } from '@kit/runtime/ui/tutorial'
 
 import type { Lang, Scenery } from '@/lib/ajustes'
+import { sitioDelCartel } from '@/lib/cartelDeLaMaquina'
+import type { Medalla } from '@/lib/objetivo'
 import { GAME_MODE_ORDER, startingLives } from '@/lib/gameMode'
 import { duelSummary } from '@/lib/duel'
 import { getDuelTally } from '@/lib/duelTally'
@@ -46,6 +49,7 @@ import {
 import type { Partida } from '../juego/partida'
 import { alCambiarElIdioma, idioma } from '@kit/runtime/ajustes'
 import { AvisoDeSalir, BotonDeTerminar, BotonDeVolver, CuentaAtras, PanelDelDuelo } from './aviso'
+import { CARTEL, Cartel } from './cartel'
 import { Marcador, SUBIDA_DEL_FINAL, type EstadoDelMarcador } from './marcador'
 import { MenuDelJuego, type EstadoDelMenu } from './menu'
 import { TutorialDelJuego } from './tutorial'
@@ -97,7 +101,8 @@ export interface SitioEnPlano {
  * Los paneles en plano, con la cámara de la web (52° de campo): el menú a la izquierda, dejando ver
  * la máquina; jugando, el marcador arriba a la derecha (donde la web tiene los puntos) y volver arriba
  * a la izquierda, fuera del aro; la pregunta y el final, en medio; la cuenta atrás, encima de la
- * máquina; el tutorial (`--tutorial`), a la derecha.
+ * máquina; el tutorial (`--tutorial`), a la derecha; el cartel del objetivo, arriba en medio, por
+ * encima de la máquina (al acabar baja con el panel del final, justo encima de él).
  */
 export const SITIOS_EN_PLANO = {
   menu: { posicion: [-0.55, 0, -1.25], escala: 1 },
@@ -109,6 +114,9 @@ export const SITIOS_EN_PLANO = {
   // A dos, encima del final: el aviso de pasar el mando o quién gana.
   duelo: { posicion: [0, 0.4, -1.3], escala: 0.8 },
   cuenta: { posicion: [0, 0.18, -1.4], escala: 1 },
+  // El cartel mide a esa distancia lo que mide a la de dibujo: los mismos grados que con el visor.
+  cartel: { posicion: [0, 0.56, -1.4], escala: 1.4 / CARTEL.distancia },
+  cartelDelFinal: { posicion: [0, 0.13, -1.3], escala: 1.3 / CARTEL.distancia },
   tutorial: { posicion: [0.8, -0.1, -1.6], escala: 0.8 },
 } as const satisfies Record<string, SitioEnPlano>
 
@@ -119,6 +127,10 @@ export class InterfazDelJuego {
   readonly raiz: Node3D
   readonly menu: MenuDelJuego
   readonly marcador: Marcador
+  /** El cartel del objetivo, encima del marcador. */
+  readonly cartel: Cartel
+  /** El listón de medalla cruzado en el último fotograma, para que la escena lo haga sonar y sentir. */
+  listonCruzado: Medalla | null = null
   readonly volver: BotonDeVolver
   readonly terminar: BotonDeTerminar
   readonly aviso: AvisoDeSalir
@@ -176,6 +188,8 @@ export class InterfazDelJuego {
     this.raiz.add_child(this.menu.nodo)
     this.marcador = new Marcador({ repetir: () => p.startGame(), volverAlMenu: () => p.resetGame() }, this.punteria)
     this.raiz.add_child(this.marcador.nodo)
+    this.cartel = new Cartel()
+    this.raiz.add_child(this.cartel.nodo)
     this.volver = new BotonDeVolver(() => p.askToQuit(), this.punteria)
     this.raiz.add_child(this.volver.nodo)
     this.terminar = new BotonDeTerminar(() => p.endRun(), this.punteria)
@@ -195,6 +209,7 @@ export class InterfazDelJuego {
       this.menu.nodo.rotation = new Vector3(0, pose.yaw, 0)
       this.menu.nodo.scale = new Vector3(pose.scale, pose.scale, pose.scale)
       this.marcador.nodo.position = new Vector3(...XR_HUD_POSITION)
+      this.cartel.colocar(sitioDelCartel())
       this.aviso.nodo.position = new Vector3(...XR_CONFIRM_POSITION)
       this.duelo.nodo.position = new Vector3(...XR_DUEL_POSITION)
       this.cuenta.nodo.position = new Vector3(...XR_COUNTDOWN_POSITION)
@@ -292,6 +307,8 @@ export class InterfazDelJuego {
       puntos: p.points,
       // Jugando, de quién es la tanda; al acabar lo dice el aviso de pasar el mando, encima.
       jugador: terminada ? null : p.player,
+      // Con el cartel del objetivo encima, los puntos y las vidas se leen allí.
+      enElCartel: p.faseDelCartel != null,
     }
   }
 
@@ -332,6 +349,9 @@ export class InterfazDelJuego {
         this.pintadoMarcador = clave
       }
     } else this.pintadoMarcador = ''
+
+    // El cartel del objetivo: lo que toca decir y, al cruzar un listón, su celebración.
+    this.listonCruzado = this.cartel.actualizar(p.cartel(lang), p.medalla, lang, delta)
 
     const enPartida = fase === 'playing' || fase === 'countdown'
     this.volver.nodo.visible = enPartida
@@ -380,6 +400,10 @@ export class InterfazDelJuego {
     colgar(this.aviso.nodo, SITIOS_EN_PLANO.aviso)
     colgar(this.duelo.nodo, SITIOS_EN_PLANO.duelo)
     colgar(this.cuenta.nodo, SITIOS_EN_PLANO.cuenta)
+    // El cartel lleva su propia escala (crece y vuelve al celebrar un listón): se cuelga y se le dice.
+    const cartel = terminada ? SITIOS_EN_PLANO.cartelDelFinal : SITIOS_EN_PLANO.cartel
+    colgar(this.cartel.nodo, { ...cartel, escala: 1 })
+    this.cartel.escalar(cartel.escala)
     colgar(this.tutorial.vista.nodo, SITIOS_EN_PLANO.tutorial)
   }
 

@@ -52,7 +52,8 @@ test.describe('Sonido', () => {
     // Crear el contexto sin un gesto previo lo deja suspendido para siempre:
     // el juego se quedaría mudo el resto de la sesión.
     await installAudioSpy(page)
-    await openGame(page)
+    // Sin elegir modo: ese clic ya sería tocar algo.
+    await openGame(page, '/', { mode: null })
 
     expect((await readSpy(page)).contexts).toBe(0)
   })

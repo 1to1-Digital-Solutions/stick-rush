@@ -185,9 +185,12 @@ export function HUD() {
     finishTutorial,
     nextTutorialStep,
     resetGame,
+    startGame,
     endRun,
     duel,
     player,
+    cartel,
+    faseDelCartel,
   } = useGame()
   const frasesDelTutorial = bareHanded ? FRASES_CON_LAS_MANOS : FRASES
 
@@ -269,6 +272,18 @@ export function HUD() {
           </span>
         )}
       </div>
+
+      {/* La misión, de frente, hasta que se resuelve el primer palo: lo que en el visor dice el
+          cartel de encima del marcador (`CartelDeLaMaquina`), con las mismas frases. Después lo
+          que se lleva y las vidas ya están en el marcador de la esquina. */}
+      {cartel != null && faseDelCartel === 'antes' && (
+        <div className="pointer-events-none fixed inset-x-0 top-4 z-10 flex justify-center px-24">
+          <div className="animate-fade-slide-up rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 text-center backdrop-blur motion-reduce:animate-none">
+            <p className="text-sm font-bold text-white">{cartel.titulo}</p>
+            {cartel.detalle != null && <p className="text-xs text-white/60">{cartel.detalle}</p>}
+          </div>
+        </div>
+      )}
 
       {/* Sin fin no se acaba sola: este botón es su única salida con resumen. */}
       {sinFin && gameState === 'playing' && (
@@ -451,13 +466,21 @@ export function HUD() {
               </div>
             </dl>
             <div className="flex w-full flex-col items-center gap-2">
+              {/* Lo resaltado es repetir: la misma partida otra vez, sin pasar por el menú. */}
+              <button
+                type="button"
+                onClick={() => startGame()}
+                className="cta-gradient w-full rounded-xl px-6 py-3 text-base font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              >
+                {t('Play again')}
+              </button>
               <button
                 type="button"
                 onClick={resetGame}
-                className="cta-gradient w-full rounded-xl px-6 py-3 text-base font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/10 px-6 py-2 text-sm font-semibold uppercase tracking-wide text-white/80 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
               >
-                 {t('Back to the menu')}
-</button>
+                {t('Back to the menu')}
+              </button>
               <ShareResultButton />
             </div>
           </div>

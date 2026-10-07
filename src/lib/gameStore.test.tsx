@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MACHINE_HEIGHT, MAX_STICKS, MIN_STICKS } from './gameConfig'
 import { COUNTDOWN_SECONDS, useGame, useGameStoreValue, type OpcionesDelSalon } from './gameStore'
-import { CHALLENGE_SETUP } from './gameMode'
+import { CHALLENGE_LIVES, CHALLENGE_SETUP, DEFAULT_GAME_MODE } from './gameMode'
 import { buildStickLayout } from './stickLayout'
 import { HIGH_SCORE_KEYS } from './highScore'
 import { HAZANAS, HAZANAS_KEY } from './hazanas'
@@ -10,7 +10,9 @@ import { HOOP_ADJUST_RANGE, HOOP_ADJUST_STEP } from './hoopHeight'
 import { OWN_SCENERY_KEY } from './sceneryPreference'
 import { PLAZO_DEL_PASO, TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE, type TutorialStepKey } from './tutorial'
 import { DEFAULT_VOLUMES, SCENERY_KEY, VOLUME_KEYS } from './ajustes'
-import { setVolume } from './ajustesCliente'
+import { setLang, setVolume } from './ajustesCliente'
+import type { Objetivo } from './objetivo'
+import { formatoDeCifra } from './textos'
 
 // La cuenta atrás usa `setTimeout`, así que todo el fichero corre con relojes
 // falsos: si no, cada partida costaría tres segundos reales de test.
@@ -44,6 +46,16 @@ function runOutCountdown() {
   }
 }
 
+/**
+ * Abre el juego y deja elegida **la práctica**, que es lo que juegan casi todos estos tests: ahí
+ * se eligen los palos y la velocidad. El menú abre en el reto (lo comprueba «práctica y desafío»).
+ */
+function abrirEnPractica(opciones?: OpcionesDelSalon) {
+  const hook = renderHook(() => useGameStoreValue(opciones))
+  act(() => hook.result.current.setGameMode('practice'))
+  return hook
+}
+
 /** Arranca una partida y agota la cuenta atrás, dejándola en juego. */
 function startPlaying(store: {
   current: ReturnType<typeof useGameStoreValue>
@@ -70,7 +82,7 @@ function playRound(
 
 describe('selección previa a la partida', () => {
   it('arranca en el menú con los valores por defecto', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     expect(result.current.gameState).toBe('menu')
     expect(result.current.stickCount).toBe(MIN_STICKS)
     expect(result.current.difficulty).toBe('easy')
@@ -78,13 +90,13 @@ describe('selección previa a la partida', () => {
   })
 
   it('acepta cualquier número de palos dentro del rango', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setStickCount(9))
     expect(result.current.stickCount).toBe(9)
   })
 
   it('recorta los valores fuera de rango en vez de romper la escena', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     act(() => result.current.setStickCount(MIN_STICKS - 3))
     expect(result.current.stickCount).toBe(MIN_STICKS)
@@ -97,7 +109,7 @@ describe('selección previa a la partida', () => {
   })
 
   it('redondea los decimales y descarta NaN', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     act(() => result.current.setStickCount(7.4))
     expect(result.current.stickCount).toBe(7)
@@ -107,7 +119,7 @@ describe('selección previa a la partida', () => {
   })
 
   it('cambia de dificultad', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setDifficulty('impossible'))
     expect(result.current.difficulty).toBe('impossible')
   })
@@ -115,7 +127,7 @@ describe('selección previa a la partida', () => {
 
 describe('ciclo de una partida', () => {
   it('empieza a jugar con el marcador a cero', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     startPlaying(result)
 
     expect(result.current.gameState).toBe('playing')
@@ -124,14 +136,14 @@ describe('ciclo de una partida', () => {
   })
 
   it('renueva el identificador de partida para remontar los palos', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     const before = result.current.runId
     startPlaying(result)
     expect(result.current.runId).toBe(before + 1)
   })
 
   it('suma los palos atrapados sin cerrar la partida antes de tiempo', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
 
@@ -143,7 +155,7 @@ describe('ciclo de una partida', () => {
   })
 
   it('cuenta como resuelto el palo perdido, sin sumar al marcador', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
     act(() => result.current.missStick())
@@ -153,7 +165,7 @@ describe('ciclo de una partida', () => {
   })
 
   it('termina la partida cuando se resuelve el último palo', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 3)
 
     expect(result.current.gameState).toBe('finished')
@@ -166,7 +178,7 @@ describe('ciclo de una partida', () => {
     // mientras se atrapa otro: ambas resoluciones caen en el mismo lote de
     // React. El contador se actualiza en función del valor previo, así que
     // ninguna se pierde.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
 
@@ -182,7 +194,7 @@ describe('ciclo de una partida', () => {
   })
 
   it('sobrevive a una resolución de más sin volver al menú', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 5)
     act(() => result.current.missStick())
 
@@ -192,7 +204,7 @@ describe('ciclo de una partida', () => {
 
 describe('cuenta atrás', () => {
   it('la partida no arranca de golpe: primero cuenta', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame())
 
     expect(result.current.gameState).toBe('countdown')
@@ -200,7 +212,7 @@ describe('cuenta atrás', () => {
   })
 
   it('va bajando un segundo cada vez', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame())
 
     act(() => void vi.advanceTimersByTime(1000))
@@ -214,13 +226,13 @@ describe('cuenta atrás', () => {
   it('los palos no caen mientras se cuenta', () => {
     // `StickMachine` los mantiene parados mirando la fase; si la cuenta atrás
     // no fuera una fase propia, el primer palo saldría antes del "ya".
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame())
     expect(result.current.gameState).not.toBe('playing')
   })
 
   it('al llegar a cero se empieza a jugar', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame())
     runOutCountdown()
 
@@ -228,7 +240,7 @@ describe('cuenta atrás', () => {
   })
 
   it('volver al menú durante la cuenta la corta', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame())
     act(() => result.current.resetGame())
 
@@ -266,7 +278,7 @@ describe('tutorial de la primera vez', () => {
     // Y sin que nadie lo pida: quien llega por primera vez no sabe que hay algo
     // que pedir. La decisión es del juego y no del botón que se pulse, porque
     // dentro de la sesión también se empieza desde el overlay con el teclado.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     wearHeadset(result)
 
     act(() => result.current.startGame())
@@ -277,7 +289,7 @@ describe('tutorial de la primera vez', () => {
   it('pero la partida no se para: la lección corre encima', () => {
     // Es la diferencia con la demostración de antes, que ponía la partida en
     // cola: quien la miraba sin hacer nada salía igual que entró.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame({ tutorial: true }))
 
     expect(result.current.gameState).toBe('countdown')
@@ -291,7 +303,7 @@ describe('tutorial de la primera vez', () => {
   it('en escritorio no enseña nada, aunque no se haya visto', () => {
     // Allí la pantalla de inicio lo explica con texto, que se lee antes de
     // empezar y sin gafas puestas.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame())
 
     expect(result.current.tutorialSeen).toBe(false)
@@ -301,7 +313,7 @@ describe('tutorial de la primera vez', () => {
 
   it('con las gafas puestas pero ya vista, se juega directamente', () => {
     localStorage.setItem(TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     wearHeadset(result)
 
     act(() => result.current.startGame())
@@ -312,7 +324,7 @@ describe('tutorial de la primera vez', () => {
     // Lo guardado es la versión de la lección. La 1 era la demostración por
     // reloj, que no se hacía jugando.
     localStorage.setItem(TUTORIAL_SEEN_KEY, '1')
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     wearHeadset(result)
 
     expect(result.current.tutorialSeen).toBe(false)
@@ -321,7 +333,7 @@ describe('tutorial de la primera vez', () => {
   })
 
   it('cada paso se supera atrapando un palo, no mirando', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
 
@@ -336,7 +348,7 @@ describe('tutorial de la primera vez', () => {
     // Retirarla es quedarse sin paso: eso es lo que desmonta el panel, en el
     // visor y en el overlay. Lo que se guarda es lo que la quita de las
     // próximas partidas.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
     catchOne(result)
@@ -350,7 +362,7 @@ describe('tutorial de la primera vez', () => {
     // Lo aprendido atrapando se anota fuera de React, así que `startGame` tiene
     // que releerlo: mirando lo que se leyó al montar, la segunda partida de la
     // misma visita volvería a enseñar lo ya aprendido.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     wearHeadset(result)
     act(() => result.current.startGame())
     runOutCountdown()
@@ -364,7 +376,7 @@ describe('tutorial de la primera vez', () => {
   })
 
   it('el botón de siguiente da el paso por pasado sin haberlo hecho', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
 
@@ -377,7 +389,7 @@ describe('tutorial de la primera vez', () => {
   it('y sin paso puesto no hace nada', () => {
     // Sin lección en marcha no hay nada que pasar, y sumar a la cuenta de
     // saltados dejaría el primer paso oculto en la próxima partida.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame())
     runOutCountdown()
 
@@ -388,7 +400,7 @@ describe('tutorial de la primera vez', () => {
   it('el plazo de seguridad pasa el paso solo, si el hito no llega', () => {
     // Un paso que no se consiga —porque los palos se escapan— dejaría a alguien
     // encerrado en él con el panel delante de la cara toda la partida.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
 
@@ -401,7 +413,7 @@ describe('tutorial de la primera vez', () => {
   it('el plazo no corre mientras no se juega', () => {
     // Con la cuenta atrás no hay palos que atrapar: gastar ahí el plazo del
     // primer paso sería pasarlo antes de que nadie haya podido intentarlo.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame({ tutorial: true }))
 
     act(() => void vi.advanceTimersByTime(PLAZO_DEL_PASO.grab * 1000))
@@ -409,7 +421,7 @@ describe('tutorial de la primera vez', () => {
   })
 
   it('ni con la pregunta de salir en pantalla, que para la partida', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
     act(() => result.current.askToQuit())
@@ -419,7 +431,7 @@ describe('tutorial de la primera vez', () => {
   })
 
   it('saltarla cuenta como vista: ya ha decidido', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame({ tutorial: true }))
     act(() => result.current.finishTutorial())
 
@@ -430,7 +442,7 @@ describe('tutorial de la primera vez', () => {
   })
 
   it('y saltarla no toca la partida, que nunca llegó a pararse', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
     act(() => result.current.catchStick(0.5))
@@ -441,7 +453,7 @@ describe('tutorial de la primera vez', () => {
   })
 
   it('retirarla dos veces no vuelve a escribir nada', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame({ tutorial: true }))
     act(() => result.current.finishTutorial())
     localStorage.removeItem(TUTORIAL_SEEN_KEY)
@@ -453,7 +465,7 @@ describe('tutorial de la primera vez', () => {
   it('dejarla a medias no cuenta como vista', () => {
     // Volver al menú con el panel puesto no es haberla hecho: se la encontrará
     // otra vez al darle a empezar.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
     act(() => result.current.resetGame())
@@ -473,7 +485,7 @@ describe('tutorial de la primera vez', () => {
     // Los pasos dados por pasados se olvidan al volver al menú: si no, quien
     // dejó la lección a medias se encontraría el segundo paso sin ver el
     // primero.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     wearHeadset(result)
     act(() => result.current.startGame())
     runOutCountdown()
@@ -486,7 +498,7 @@ describe('tutorial de la primera vez', () => {
   })
 
   it('una vez vista no vuelve a salir al empezar otra', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     wearHeadset(result)
     act(() => result.current.startGame())
     act(() => result.current.finishTutorial())
@@ -498,7 +510,7 @@ describe('tutorial de la primera vez', () => {
 
   it('lo visto en otra visita sigue visto al volver', () => {
     localStorage.setItem(TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     expect(result.current.tutorialSeen).toBe(true)
   })
@@ -507,7 +519,7 @@ describe('tutorial de la primera vez', () => {
     // Es lo que hace el botón del menú inmersivo: pedirlo explícitamente vale
     // más que lo que hubiera guardado.
     localStorage.setItem(TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     act(() => result.current.startGame({ tutorial: true }))
     expect(result.current.teaching).toBe(true)
@@ -517,7 +529,7 @@ describe('tutorial de la primera vez', () => {
   it('con qué se juega lo apunta la sesión, y solo cambia lo que se enseña', () => {
     // Con las manos desnudas no hay botón que nombrar: cambia la frase, no lo
     // que hay que hacer.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     expect(result.current.bareHanded).toBe(false)
 
     act(() => result.current.setBareHanded(true))
@@ -540,15 +552,41 @@ describe('práctica y desafío', () => {
     startPlaying(store)
   }
 
-  it('se entra en práctica, sin vidas que perder', () => {
+  it('el menú abre en el reto, con sus tres vidas: Jugar sin tocar nada empieza la partida que da medalla', () => {
     const { result } = renderHook(() => useGameStoreValue())
+
+    expect(DEFAULT_GAME_MODE).toBe('challenge')
+    expect(result.current.gameMode).toBe('challenge')
+    expect(result.current.lives).toBe(CHALLENGE_LIVES)
+
+    startPlaying(result)
+
+    expect(result.current.gameMode).toBe('challenge')
+    expect(result.current.activeStickCount).toBe(CHALLENGE_SETUP.stickCount)
+    expect(result.current.activeDifficulty).toBe(CHALLENGE_SETUP.difficulty)
+    expect(result.current.faseDelCartel).toBe('antes')
+  })
+
+  it('y se abre en el reto siempre: no se recuerda el último modo jugado', () => {
+    const first = abrirEnPractica()
+    playRound(first.result, 5, 5)
+
+    const reopened = renderHook(() => useGameStoreValue())
+
+    expect(reopened.result.current.gameMode).toBe('challenge')
+  })
+
+  it('la práctica queda a un toque, sin vidas que perder', () => {
+    const { result } = renderHook(() => useGameStoreValue())
+
+    act(() => result.current.setGameMode('practice'))
 
     expect(result.current.gameMode).toBe('practice')
     expect(result.current.lives).toBeNull()
   })
 
   it('en práctica, fallarlos todos no corta la partida antes de tiempo', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setStickCount(13))
     startPlaying(result)
 
@@ -559,7 +597,7 @@ describe('práctica y desafío', () => {
   })
 
   it('el desafío arranca con tres vidas y cada fallo cuesta una', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     startChallenge(result, 13)
     expect(result.current.lives).toBe(3)
 
@@ -572,7 +610,7 @@ describe('práctica y desafío', () => {
   })
 
   it('atrapar palos no gasta vidas', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     startChallenge(result, 13)
 
     act(() => result.current.catchStick(0.5))
@@ -584,7 +622,7 @@ describe('práctica y desafío', () => {
   it('quedarse sin vidas cierra la partida aunque queden palos', () => {
     // Es lo que distingue al desafío: la partida tiene un final que no depende
     // de que caiga todo lo que hay colgado.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     startChallenge(result, 13)
 
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
@@ -598,7 +636,7 @@ describe('práctica y desafío', () => {
   it('un fallo de más no deja las vidas en negativo', () => {
     // Dos palos pueden tocar el suelo en el mismo lote justo al agotarse la
     // última vida.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     startChallenge(result, 13)
 
     act(() => {
@@ -610,7 +648,7 @@ describe('práctica y desafío', () => {
   })
 
   it('resolver todos los palos con vidas es superar el reto', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     startChallenge(result, CHALLENGE_SETUP.stickCount)
 
     act(() => result.current.missStick())
@@ -622,7 +660,7 @@ describe('práctica y desafío', () => {
   })
 
   it('la partida de práctica termina sin desenlace de reto', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 3)
 
     expect(result.current.gameState).toBe('finished')
@@ -633,7 +671,7 @@ describe('práctica y desafío', () => {
   it('el modo sobrevive a la partida y a volver al menú', () => {
     // Como el número de palos o la dificultad: elegirlo otra vez en cada
     // revancha sería justo lo que estorba con el visor puesto.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     startChallenge(result, 5)
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
 
@@ -651,7 +689,7 @@ describe('práctica y desafío', () => {
     // pantalla, cambiar de modo mandaba esos puntos al récord del otro modo,
     // uno que no se ha jugado. Rompiendo la guarda, el récord de desafío
     // aparece con los puntos de esta partida de práctica.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 5)
     const points = result.current.points
     expect(points).toBeGreaterThan(0)
@@ -668,7 +706,7 @@ describe('práctica y desafío', () => {
   it('cada modo lleva su propio récord', () => {
     // Un desafío se corta al quedarse sin vidas, así que con una marca común
     // nunca podría batir a la práctica equivalente.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 5)
     const practiceRecord = result.current.bestPoints
     expect(practiceRecord).toBeGreaterThan(0)
@@ -690,7 +728,7 @@ describe('práctica y desafío', () => {
     // Es el motivo de que haya dos marcas: un desafío se corta al quedarse sin
     // vidas, así que con una sola nunca podría batir a la práctica y el modo
     // con algo en juego sería el único sin nada que superar.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 5)
     const practiceRecord = result.current.bestPoints
 
@@ -712,7 +750,7 @@ describe('el desafío va preconfigurado', () => {
   it('juega siempre con lo que fija el modo, elija lo que se elija en práctica', () => {
     // Su récord es el de la cabina: con la dificultad y los palos a elegir, dos récords del
     // desafío no serían la misma partida.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setDifficulty('impossible'))
     act(() => result.current.setStickCount(MAX_STICKS))
     act(() => result.current.setGameMode('challenge'))
@@ -736,10 +774,10 @@ describe('el reto del salón', () => {
     })
   }
 
-  it('sin opciones, nada cambia: menú, práctica y sin reto', () => {
+  it('sin opciones se queda en el menú, con el reto elegido pero sin ser el reto del salón', () => {
     const { result } = renderHook(() => useGameStoreValue())
     expect(result.current.gameState).toBe('menu')
-    expect(result.current.gameMode).toBe('practice')
+    expect(result.current.gameMode).toBe('challenge')
     expect(result.current.enReto).toBe(false)
   })
 
@@ -776,7 +814,7 @@ describe('el reto del salón', () => {
   })
 
   it('sin reto, cada partida estrena semilla', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     startPlaying(result)
     const primera = result.current.stickSeed
     act(() => result.current.resetGame())
@@ -838,7 +876,7 @@ describe('el reto del salón', () => {
 
   it('avisa de cualquier partida con puntuación, no solo del desafío', () => {
     const onTerminar = vi.fn()
-    const { result } = conReto({ onTerminar })
+    const { result } = abrirEnPractica({ onTerminar })
     playRound(result, 5, 5)
     expect(onTerminar).toHaveBeenCalledWith({
       modo: 'practice',
@@ -873,12 +911,12 @@ describe('escenario o passthrough', () => {
   it('se entra con el escenario puesto', () => {
     // Es la experiencia completa; quien prefiera ver su cuarto lo quita desde
     // el menú inmersivo.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     expect(result.current.scenery).toBe('scene')
   })
 
   it('se puede alternar en cualquier momento', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     act(() => result.current.setScenery('passthrough'))
     expect(result.current.scenery).toBe('passthrough')
@@ -890,7 +928,7 @@ describe('escenario o passthrough', () => {
   it('la elección sobrevive a la partida', () => {
     // Cambiar de decorado no es parte de la partida: quitarlo al empezar o al
     // volver al menú obligaría a elegirlo cada vez.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setScenery('passthrough'))
 
     playRound(result, 5, 3)
@@ -903,7 +941,7 @@ describe('escenario o passthrough', () => {
   it('el selector del menú escribe el escenario del arcade, con sus valores', () => {
     // Una sola preferencia, la misma que enseña el panel del salón: `passthrough` se guarda
     // como `room`, que es lo que el salón y los demás juegos entienden.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     act(() => result.current.setScenery('passthrough'))
     expect(window.localStorage.getItem(SCENERY_KEY)).toBe('room')
@@ -914,7 +952,7 @@ describe('escenario o passthrough', () => {
   })
 
   it('lo que se elige en el salón llega a la partida sin recargar', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     act(() => {
       window.localStorage.setItem(SCENERY_KEY, 'room')
@@ -929,7 +967,7 @@ describe('escenario o passthrough', () => {
     // manda lo que diga el salón, y sin nada elegido allí, el sitio dibujado.
     window.localStorage.setItem(OWN_SCENERY_KEY, 'passthrough')
 
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     expect(result.current.scenery).toBe('scene')
     expect(window.localStorage.getItem(OWN_SCENERY_KEY)).toBeNull()
@@ -943,12 +981,12 @@ describe('silencio', () => {
   // comprueba aquí es que el store lo traduce bien y que se entera de los
   // cambios, vengan del menú del arcade o de otra pestaña.
   it('se entra con sonido', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     expect(result.current.muted).toBe(false)
   })
 
   it('se puede silenciar y volver a activar', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     act(() => setVolume('sfx', 0))
     expect(result.current.muted).toBe(true)
@@ -961,7 +999,7 @@ describe('silencio', () => {
     // Silenciar es una preferencia del jugador, no un ajuste de la ronda:
     // devolver el sonido al empezar o al volver al menú obligaría a apagarlo
     // cada vez, que es justo lo que molesta con el visor puesto.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => setVolume('sfx', 0))
 
     playRound(result, 5, 3)
@@ -974,30 +1012,30 @@ describe('silencio', () => {
   it('la elección sobrevive a la visita', () => {
     // Es para lo que se guarda: en el visor, apagar el sonido cada vez que uno
     // se pone las gafas es el gesto más incómodo que hay.
-    const first = renderHook(() => useGameStoreValue())
+    const first = abrirEnPractica()
     act(() => setVolume('sfx', 0))
     first.unmount()
 
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     expect(result.current.muted).toBe(true)
   })
 
   it('volver al sonido también se recuerda', () => {
     // El otro lado del mismo trato: quien lo enciende no se encuentra el juego
     // mudo otra vez en la visita siguiente.
-    const first = renderHook(() => useGameStoreValue())
+    const first = abrirEnPractica()
     act(() => setVolume('sfx', 0))
     act(() => setVolume('sfx', DEFAULT_VOLUMES.sfx))
     first.unmount()
 
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     expect(result.current.muted).toBe(false)
   })
 
   it('lo que silencie otra pestaña se ve aquí', () => {
     // El navegador cuenta con el evento `storage` que otra pestaña ha escrito.
     // Sin escucharlo, silenciar en una dejaría la otra sonando.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     act(() => {
       localStorage.setItem(VOLUME_KEYS.sfx, '0')
@@ -1010,13 +1048,13 @@ describe('silencio', () => {
 
 describe('altura del aro', () => {
   it('sin visor y sin corrección guardada, el aro está donde siempre', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     expect(result.current.hoopAdjustment).toBe(0)
     expect(result.current.hoopHeight).toBeCloseTo(MACHINE_HEIGHT, 6)
   })
 
   it('sube y baja a pasos, y el aro le sigue', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     act(() => result.current.adjustHoop(1))
     expect(result.current.hoopAdjustment).toBeCloseTo(HOOP_ADJUST_STEP, 6)
@@ -1032,7 +1070,7 @@ describe('altura del aro', () => {
   it('no se pasa del tope por mucho que se insista', () => {
     // Es la valla que pide el enunciado: desde el menú no se puede dejar el aro
     // ni por las nubes ni dentro del suelo.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     for (let i = 0; i < 20; i++) act(() => result.current.adjustHoop(1))
     expect(result.current.hoopAdjustment).toBeCloseTo(HOOP_ADJUST_RANGE, 6)
@@ -1042,20 +1080,20 @@ describe('altura del aro', () => {
   })
 
   it('la corrección se guarda y sigue ahí en la visita siguiente', () => {
-    const { result, unmount } = renderHook(() => useGameStoreValue())
+    const { result, unmount } = abrirEnPractica()
     act(() => result.current.adjustHoop(-2))
     const chosen = result.current.hoopAdjustment
     unmount()
 
     // Otra visita: el store nace leyendo lo guardado, sin pasar por el menú.
-    const { result: later } = renderHook(() => useGameStoreValue())
+    const { result: later } = abrirEnPractica()
     expect(later.current.hoopAdjustment).toBeCloseTo(chosen, 6)
   })
 
   it('no escribe nada cuando la pulsación no cambia el valor', () => {
     // En el tope el botón se apaga, pero un mando que insista no puede acabar
     // escribiendo en el almacenamiento en cada pulsación.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     for (let i = 0; i < 4; i++) act(() => result.current.adjustHoop(1))
 
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
@@ -1065,7 +1103,7 @@ describe('altura del aro', () => {
   })
 
   it('la corrección sobrevive a la partida', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.adjustHoop(-1))
     const chosen = result.current.hoopAdjustment
 
@@ -1077,7 +1115,7 @@ describe('altura del aro', () => {
   })
 
   it('con el visor midiendo, el aro se planta sobre los ojos del jugador', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     act(() => result.current.setPlayerEyeHeight(1.2))
     const seated = result.current.hoopHeight
@@ -1091,7 +1129,7 @@ describe('altura del aro', () => {
   it('al cerrarse la sesión el aro vuelve a su altura de referencia', () => {
     // Fuera del visor no hay a quién medir, y la medida de la última sesión no
     // dice nada de quien juegue después.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setPlayerEyeHeight(1.9))
     expect(result.current.hoopHeight).toBeGreaterThan(MACHINE_HEIGHT)
 
@@ -1102,7 +1140,7 @@ describe('altura del aro', () => {
   it('la medida del visor queda a la vista, no solo dentro del aro', () => {
     // La interfaz inmersiva también cuelga de los ojos del jugador (ver
     // `xrUiRise` en `xrLayout.ts`), así que necesita el mismo dato.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     expect(result.current.playerEyeHeight).toBeNull()
 
     act(() => result.current.setPlayerEyeHeight(1.2))
@@ -1113,7 +1151,7 @@ describe('altura del aro', () => {
   })
 
   it('una medida imposible del visor no mueve el aro', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setPlayerEyeHeight(Number.NaN))
     expect(result.current.hoopHeight).toBeCloseTo(MACHINE_HEIGHT, 6)
   })
@@ -1121,7 +1159,7 @@ describe('altura del aro', () => {
 
 describe('puntuación y racha', () => {
   it('atrapar suma puntos; fallar no', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     startPlaying(result)
 
     act(() => result.current.catchStick(0.5))
@@ -1133,11 +1171,11 @@ describe('puntuación y racha', () => {
   })
 
   it('cogerlo pronto puntúa más que rescatarlo del suelo', () => {
-    const early = renderHook(() => useGameStoreValue())
+    const early = abrirEnPractica()
     startPlaying(early.result)
     act(() => early.result.current.catchStick(0))
 
-    const late = renderHook(() => useGameStoreValue())
+    const late = abrirEnPractica()
     startPlaying(late.result)
     act(() => late.result.current.catchStick(1))
 
@@ -1145,11 +1183,11 @@ describe('puntuación y racha', () => {
   })
 
   it('la misma partida renta más en una dificultad alta', () => {
-    const easy = renderHook(() => useGameStoreValue())
+    const easy = abrirEnPractica()
     startPlaying(easy.result)
     act(() => easy.result.current.catchStick(0.5))
 
-    const hard = renderHook(() => useGameStoreValue())
+    const hard = abrirEnPractica()
     act(() => hard.result.current.setDifficulty('impossible'))
     startPlaying(hard.result)
     act(() => hard.result.current.catchStick(0.5))
@@ -1158,7 +1196,7 @@ describe('puntuación y racha', () => {
   })
 
   it('la racha crece al encadenar y se rompe al fallar', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setStickCount(9))
     startPlaying(result)
 
@@ -1174,7 +1212,7 @@ describe('puntuación y racha', () => {
   })
 
   it('guarda la mejor racha aunque luego se rompa', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setStickCount(9))
     startPlaying(result)
 
@@ -1191,7 +1229,7 @@ describe('puntuación y racha', () => {
     // Los dos mandos XR pueden resolver a la vez. Si la racha se leyera del
     // render anterior, ambos cobrarían el mismo bonus y el segundo saldría
     // barato.
-    const batched = renderHook(() => useGameStoreValue())
+    const batched = abrirEnPractica()
     act(() => batched.result.current.setStickCount(9))
     startPlaying(batched.result)
     act(() => {
@@ -1199,7 +1237,7 @@ describe('puntuación y racha', () => {
       batched.result.current.catchStick(0.5)
     })
 
-    const sequential = renderHook(() => useGameStoreValue())
+    const sequential = abrirEnPractica()
     act(() => sequential.result.current.setStickCount(9))
     startPlaying(sequential.result)
     act(() => sequential.result.current.catchStick(0.5))
@@ -1210,7 +1248,7 @@ describe('puntuación y racha', () => {
   })
 
   it('empezar otra partida borra puntos y racha', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 5)
     expect(result.current.points).toBeGreaterThan(0)
 
@@ -1224,7 +1262,7 @@ describe('puntuación y racha', () => {
 
 describe('mejor puntuación', () => {
   it('se empieza sin récord', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     expect(result.current.bestPoints).toBe(0)
     expect(result.current.isRecord).toBe(false)
   })
@@ -1232,7 +1270,7 @@ describe('mejor puntuación', () => {
   it('la marca a batir no se mueve mientras se juega', () => {
     // Si el récord se actualizara palo a palo, al terminar sería siempre igual
     // a los puntos de la partida y nunca se podría decir que se ha batido.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
 
@@ -1244,7 +1282,7 @@ describe('mejor puntuación', () => {
   })
 
   it('al terminar, la puntuación pasa a ser el récord', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 5)
 
     expect(result.current.bestPoints).toBe(result.current.points)
@@ -1252,7 +1290,7 @@ describe('mejor puntuación', () => {
   })
 
   it('una partida peor no baja el récord ni lo anuncia', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 5)
     const record = result.current.bestPoints
 
@@ -1264,7 +1302,7 @@ describe('mejor puntuación', () => {
   })
 
   it('el récord sobrevive a volver al menú y a la siguiente partida', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 5)
     const record = result.current.bestPoints
 
@@ -1278,7 +1316,7 @@ describe('mejor puntuación', () => {
   })
 
   it('una partida sin atrapar nada no cuenta como récord', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 0)
 
     expect(result.current.bestPoints).toBe(0)
@@ -1288,12 +1326,12 @@ describe('mejor puntuación', () => {
   it('el récord sigue ahí al volver a abrir el juego', () => {
     // Es lo que separa "entre partidas" de "entre visitas": el segundo store
     // no comparte nada con el primero salvo el almacenamiento del navegador.
-    const first = renderHook(() => useGameStoreValue())
+    const first = abrirEnPractica()
     playRound(first.result, 5, 5)
     const record = first.result.current.bestPoints
     expect(record).toBeGreaterThan(0)
 
-    const reopened = renderHook(() => useGameStoreValue())
+    const reopened = abrirEnPractica()
 
     expect(reopened.result.current.bestPoints).toBe(record)
     // Recuperado, no recién batido: nadie ha jugado todavía en esta visita.
@@ -1308,7 +1346,7 @@ describe('mejor puntuación', () => {
       throw new DOMException('bloqueado', 'SecurityError')
     })
 
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 5)
 
     expect(result.current.points).toBeGreaterThan(0)
@@ -1320,7 +1358,7 @@ describe('mejor puntuación', () => {
     // La marca a batir se congela al empezar, así que una partida puede superar
     // esa y aun así quedarse por debajo de lo guardado. Anunciarla sería
     // prometer un récord que el menú va a desmentir en cuanto se vuelva.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
 
@@ -1340,7 +1378,7 @@ describe('mejor puntuación', () => {
   it('un récord ilegible en el navegador no rompe el juego', () => {
     localStorage.setItem('stick-rush:best-points', 'lo que sea')
 
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     expect(result.current.bestPoints).toBe(0)
 
@@ -1352,7 +1390,7 @@ describe('mejor puntuación', () => {
 
 describe('vuelta al menú y revancha', () => {
   it('vuelve al menú conservando la configuración elegida', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setDifficulty('hard'))
     playRound(result, 6, 2)
 
@@ -1366,7 +1404,7 @@ describe('vuelta al menú y revancha', () => {
   })
 
   it('no se queda en "terminada" al encadenar otra partida', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     playRound(result, 5, 5)
     expect(result.current.gameState).toBe('finished')
 
@@ -1378,7 +1416,7 @@ describe('vuelta al menú y revancha', () => {
   })
 
   it('no da por terminada una partida que no ha empezado', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.missStick())
     expect(result.current.gameState).toBe('menu')
   })
@@ -1386,7 +1424,7 @@ describe('vuelta al menú y revancha', () => {
 
 describe('práctica sin fin', () => {
   it('al resolver la tanda la máquina se recarga en vez de acabar, y termina el jugador', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setEndless(true))
     act(() => result.current.setStickCount(5))
     startPlaying(result)
@@ -1415,7 +1453,7 @@ describe('práctica sin fin', () => {
 
 describe('modo niveles', () => {
   it('juega el nivel más alto desbloqueado con sus palos y velocidad, sin vidas', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setGameMode('levels'))
     act(() => result.current.setDifficulty('impossible'))
 
@@ -1426,7 +1464,7 @@ describe('modo niveles', () => {
   })
 
   it('superar el nivel da estrellas y desbloquea el siguiente, sin mover el jugado', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setGameMode('levels'))
     startPlaying(result)
 
@@ -1443,7 +1481,7 @@ describe('modo niveles', () => {
   })
 
   it('no superar no abre nada, y no se elige más allá de lo desbloqueado', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setGameMode('levels'))
     act(() => result.current.setLevel(9))
     expect(result.current.activeLevel).toBe(1)
@@ -1461,7 +1499,7 @@ describe('terminar el tutorial cuando ya no está', () => {
   it('no hace nada', () => {
     // El botón de saltar y el reloj del tutorial llaman a lo mismo: sin esto,
     // el que llegue segundo arrancaría otra cuenta atrás a media partida.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
 
     act(() => result.current.finishTutorial())
 
@@ -1479,7 +1517,7 @@ describe('usar el store sin haberlo montado', () => {
 describe('elegir nivel a media partida', () => {
   it('no se puede: el nivel que se juega es el de cuando empezó', () => {
     // Cambiarlo por debajo cambiaría los palos y la velocidad a mitad de tanda.
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setGameMode('levels'))
     act(() => result.current.startGame())
     const jugando = result.current.activeLevel
@@ -1499,7 +1537,7 @@ describe('elegir nivel a media partida', () => {
  */
 describe('dejar la partida', () => {
   it('pregunta en vez de salir', () => {
-    const hook = renderHook(() => useGameStoreValue())
+    const hook = abrirEnPractica()
     act(() => hook.result.current.startGame())
 
     act(() => hook.result.current.askToQuit())
@@ -1509,7 +1547,7 @@ describe('dejar la partida', () => {
   })
 
   it('seguir jugando la devuelve donde estaba', () => {
-    const hook = renderHook(() => useGameStoreValue())
+    const hook = abrirEnPractica()
     act(() => hook.result.current.startGame())
     act(() => hook.result.current.askToQuit())
 
@@ -1519,7 +1557,7 @@ describe('dejar la partida', () => {
   })
 
   it('y confirmar sí sale', () => {
-    const hook = renderHook(() => useGameStoreValue())
+    const hook = abrirEnPractica()
     act(() => hook.result.current.startGame())
     act(() => hook.result.current.askToQuit())
 
@@ -1530,7 +1568,7 @@ describe('dejar la partida', () => {
   })
 
   it('empezar otra se lleva la pregunta por delante', () => {
-    const hook = renderHook(() => useGameStoreValue())
+    const hook = abrirEnPractica()
     act(() => hook.result.current.startGame())
     act(() => hook.result.current.askToQuit())
 
@@ -1562,7 +1600,7 @@ describe('la partida a dos', () => {
   }
 
   it('solo, el desafío es el de siempre: sin partida a dos', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setGameMode('challenge'))
     expect(result.current.players).toBe(1)
     startPlaying(result)
@@ -1571,7 +1609,7 @@ describe('la partida a dos', () => {
   })
 
   it('a dos fuera del desafío no cuenta: se juega solo', () => {
-    const { result } = renderHook(() => useGameStoreValue())
+    const { result } = abrirEnPractica()
     act(() => result.current.setPlayers(2))
     startPlaying(result)
     expect(result.current.duel).toBeNull()
@@ -1665,7 +1703,7 @@ describe('las hazañas', () => {
 
   function conAviso() {
     const onTerminar = vi.fn()
-    const hook = renderHook(() => useGameStoreValue({ onTerminar }))
+    const hook = abrirEnPractica({ onTerminar })
     return { ...hook, onTerminar }
   }
 
@@ -1803,5 +1841,148 @@ describe('las hazañas', () => {
     act(() => result.current.catchStick(0.5, true))
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
     expect(ultimo(onTerminar)).toMatchObject({ modo: 'duel', hazanas: [HAZANAS.deEspaldas] })
+  })
+})
+
+describe('el cartel del objetivo', () => {
+  /** Los listones de Stick Rush en el salón. */
+  const OBJETIVO: Objetivo = {
+    medallas: { bronce: 1900, plata: 3750, oro: 5200 },
+    mejorEs: 'mas',
+    unidad: 'points in challenge',
+    record: null,
+    modo: 'challenge',
+  }
+
+  afterEach(() => {
+    act(() => setLang('en'))
+  })
+
+  function conObjetivo(objetivo: Objetivo | undefined = OBJETIVO) {
+    return renderHook(() => useGameStoreValue({ objetivo }))
+  }
+
+  it('en el menú no hay cartel', () => {
+    const { result } = conObjetivo()
+
+    expect(result.current.cartel).toBeNull()
+    expect(result.current.faseDelCartel).toBeNull()
+    expect(result.current.medalla).toBeNull()
+  })
+
+  it('al darle a Jugar sin tocar nada: la misión y los tres listones, hasta el primer palo', () => {
+    const { result } = conObjetivo()
+    act(() => result.current.startGame())
+
+    expect(result.current.faseDelCartel).toBe('antes')
+    expect(result.current.cartel).toMatchObject({
+      titulo: 'Catch 13 sticks. Drop three and out',
+      detalle: 'Bronze 1,900 · Silver 3,750 · Gold 5,200',
+    })
+
+    runOutCountdown()
+    expect(result.current.faseDelCartel).toBe('antes')
+
+    act(() => result.current.missStick())
+    expect(result.current.faseDelCartel).toBe('jugando')
+    expect(result.current.cartel).toMatchObject({ titulo: 'Bronze at 1,900 · you have 0', detalle: 'Lives ♥♥♡ · Sticks 12' })
+  })
+
+  it('la medalla sube al cruzar cada listón, con los puntos de la partida', () => {
+    const { result } = conObjetivo({ ...OBJETIVO, medallas: { bronce: 1, plata: 400, oro: 100000 } })
+    startPlaying(result)
+    expect(result.current.medalla).toBeNull()
+
+    act(() => result.current.catchStick(0.5))
+    expect(result.current.points).toBeGreaterThan(0)
+    expect(result.current.points).toBeLessThan(400)
+    expect(result.current.medalla).toBe('bronce')
+
+    for (let i = 0; i < 3; i++) act(() => result.current.catchStick(0.5))
+    expect(result.current.points).toBeGreaterThanOrEqual(400)
+    expect(result.current.medalla).toBe('plata')
+    expect(result.current.cartel?.titulo).toBe(
+      `Gold at 100,000 · you have ${formatoDeCifra(result.current.points, 'en')}`,
+    )
+  })
+
+  it('al acabar dice lo conseguido y lo que faltó, y otra partida empieza de nuevo por la misión', () => {
+    const { result } = conObjetivo()
+    startPlaying(result)
+    act(() => result.current.catchStick(0.5))
+    const puntos = result.current.points
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+
+    expect(result.current.gameState).toBe('finished')
+    expect(result.current.faseDelCartel).toBe('final')
+    expect(result.current.cartel).toMatchObject({
+      titulo: `No medal · ${puntos} points in challenge`,
+      detalle: `${formatoDeCifra(1900 - puntos, 'en')} short of bronze`,
+    })
+
+    // «Otra»: repetir el reto sin pasar por el menú.
+    act(() => result.current.startGame())
+    expect(result.current.gameMode).toBe('challenge')
+    expect(result.current.faseDelCartel).toBe('antes')
+    expect(result.current.medalla).toBeNull()
+  })
+
+  it('se dice en el idioma de quien juega', () => {
+    const { result } = conObjetivo()
+    act(() => setLang('es'))
+    act(() => result.current.startGame())
+
+    expect(result.current.cartel).toMatchObject({
+      titulo: 'Atrapa 13 palos. Tres al suelo y fuera',
+      detalle: 'Bronce 1900 · Plata 3750 · Oro 5200',
+    })
+  })
+
+  it('en la práctica, dentro del salón, dice que no cuenta y no lleva la cuenta', () => {
+    const { result } = conObjetivo()
+    act(() => result.current.setGameMode('practice'))
+    startPlaying(result)
+
+    expect(result.current.cartel).toMatchObject({ titulo: 'Practice · does not count for a medal', discreto: true })
+    expect(result.current.faseDelCartel).toBeNull()
+    expect(result.current.medalla).toBeNull()
+  })
+
+  it('a dos tampoco cuenta, y al acabar la tanda el cartel se retira', () => {
+    const { result } = conObjetivo()
+    act(() => result.current.setPlayers(2))
+    startPlaying(result)
+
+    expect(result.current.cartel?.titulo).toBe('Two players · does not count for a medal')
+    expect(result.current.faseDelCartel).toBeNull()
+
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+    expect(result.current.gameState).toBe('finished')
+    expect(result.current.cartel).toBeNull()
+  })
+
+  it('con el juego abierto suelto: la misión y el récord guardado aquí, y fuera del reto nada', () => {
+    localStorage.setItem(HIGH_SCORE_KEYS.challenge, '3100')
+    const { result } = renderHook(() => useGameStoreValue())
+    act(() => result.current.startGame())
+
+    expect(result.current.cartel).toMatchObject({
+      titulo: 'Catch 13 sticks. Drop three and out',
+      detalle: 'Your record 3,100',
+    })
+    expect(result.current.medalla).toBeNull()
+
+    act(() => result.current.resetGame())
+    act(() => result.current.setGameMode('practice'))
+    startPlaying(result)
+    expect(result.current.cartel).toBeNull()
+  })
+
+  it('con el reto del salón se entra ya con la misión delante', () => {
+    const { result } = renderHook(() => useGameStoreValue({ reto: { semilla: 7 }, objetivo: OBJETIVO }))
+
+    expect(result.current.gameState).toBe('countdown')
+    expect(result.current.faseDelCartel).toBe('antes')
+    expect(result.current.cartel?.detalle).toBe('Bronze 1,900 · Silver 3,750 · Gold 5,200')
   })
 })

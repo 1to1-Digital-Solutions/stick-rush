@@ -18,6 +18,7 @@ import { useGame, type SceneryMode } from '../../lib/gameStore'
 import { DECOR_POINTER_EVENTS, MENU_POINTER_ORDER } from '../../lib/punteros'
 import { sceneryOf } from '../../lib/sceneryPreference'
 import { ManosDelJugador } from '../xr/ManosDelJugador'
+import { CartelDeLaMaquina } from '../xr/CartelDeLaMaquina'
 import { XRCountdown } from '../xr/XRCountdown'
 import { XRGazeAnchor } from '../xr/XRGazeAnchor'
 import { XRDuelPanel, XRHud, XRQuitButton, XRQuitConfirm } from '../xr/XRHud'
@@ -237,6 +238,8 @@ export function GameWorld({ hasDomUi = false, anchor }: GameWorldProps) {
           hay palos que se pueden coger. Es un orden, no una distancia. */}
       <XRGazeAnchor always={!hasDomUi} pointerEventsOrder={MENU_POINTER_ORDER}>
         <XRHud hasDomUi={hasDomUi} />
+        {/* Qué hay que superar, de frente: encima del marcador y por debajo de donde caen los palos. */}
+        <CartelDeLaMaquina hasDomUi={hasDomUi} />
         <XRMenu hasDomUi={hasDomUi} />
         <XRTutorial />
         <XRCountdown hasDomUi={hasDomUi} />

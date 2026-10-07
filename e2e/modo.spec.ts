@@ -25,7 +25,56 @@ test.describe('Modo de juego', () => {
     await openGame(page)
   })
 
-  test('el menú ofrece los tres modos, con Práctica puesta', async ({ page }) => {
+  test('el menú abre en el reto: Jugar sin tocar nada lo empieza, con la misión delante', async ({ page }) => {
+    await openGame(page, '/', { mode: null })
+
+    const section = page.getByRole('region', { name: 'Mode' })
+    await expect(section.getByRole('button')).toHaveCount(3)
+    await expect(modeButton(page, 'Challenge')).toHaveAttribute('aria-pressed', 'true')
+    await expect(modeButton(page, 'Practice')).toHaveAttribute('aria-pressed', 'false')
+    // Lo que pone en juego cada uno, y si cuenta para medalla, se lee sin entrar a la partida.
+    await expect(modeButton(page, 'Challenge')).toContainText('Counts for a medal. Three lives')
+    await expect(modeButton(page, 'Practice')).toContainText('No medal')
+    await expect(modeButton(page, 'Levels')).toContainText('No medal')
+
+    await page.getByRole('button', { name: 'Play', exact: true }).click()
+
+    // La misión se lee de frente mientras cuenta, y lo que se juega es el reto: trece palos y tres vidas.
+    await expect(page.getByText('Catch 13 sticks. Drop three and out')).toBeVisible()
+    await expect(page.getByRole('status')).toHaveAttribute(
+      'aria-label',
+      new RegExp(`Caught 0 of ${CHALLENGE_SETUP.stickCount}$`),
+    )
+    expect(await readLives(page)).toBe(3)
+
+    // Con el primer palo resuelto la misión deja sitio: lo que se lleva ya está en el marcador.
+    await expect.poll(() => readLives(page)).toBe(2)
+    await expect(page.getByText('Catch 13 sticks. Drop three and out')).toBeHidden()
+  })
+
+  test('al acabar, lo resaltado es «otra»: repite el reto sin pasar por el menú', async ({ page }) => {
+    await openGame(page, '/', { mode: null })
+    await page.getByRole('button', { name: 'Play', exact: true }).click()
+    await waitForGameOver(page)
+
+    const dialog = page.getByRole('dialog')
+    const otra = dialog.getByRole('button', { name: 'Play again' })
+    // El primero de los botones, y con el relleno del botón principal.
+    await expect(dialog.getByRole('button').first()).toHaveText('Play again')
+    await expect(otra).toHaveClass(/cta-gradient/)
+    await expect(dialog.getByRole('button', { name: 'Back to the menu' })).not.toHaveClass(/cta-gradient/)
+
+    await otra.click()
+
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeHidden()
+    await expect(page.getByRole('status')).toHaveAttribute(
+      'aria-label',
+      new RegExp(`Lives 3 of 3\\. Caught 0 of ${CHALLENGE_SETUP.stickCount}$`),
+    )
+  })
+
+  test('el menú ofrece los tres modos, y la práctica queda a un toque', async ({ page }) => {
     const section = page.getByRole('region', { name: 'Mode' })
     await expect(section.getByRole('button')).toHaveCount(3)
     await expect(modeButton(page, 'Practice')).toHaveAttribute(

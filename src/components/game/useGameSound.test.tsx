@@ -4,6 +4,7 @@ import {
   COUNTDOWN_SECONDS,
   GameContext,
   type GameStore,
+  type OpcionesDelSalon,
   useGameStoreValue,
 } from '../../lib/gameStore'
 import { useGameSound } from './useGameSound'
@@ -70,7 +71,7 @@ afterEach(() => {
  * porque parte de lo que hay que comprobar es cuándo llega ese cambio respecto
  * del clic que desbloquea el audio.
  */
-function renderGame() {
+function renderGame(opciones?: OpcionesDelSalon) {
   const store = { current: null as GameStore | null }
 
   function Sound() {
@@ -79,7 +80,7 @@ function renderGame() {
   }
 
   function Harness() {
-    const value = useGameStoreValue()
+    const value = useGameStoreValue(opciones)
     store.current = value
     return (
       <GameContext.Provider value={value}>
@@ -378,5 +379,63 @@ describe('el volumen de los efectos', () => {
 
     // Volver del silencio crea otro motor, y nace ya con el volumen de ahora.
     expect(setEngineVolume).toHaveBeenCalledWith(0.6)
+  })
+})
+
+describe('el listón de medalla', () => {
+  const objetivo = {
+    medallas: { bronce: 1, plata: 100000, oro: 200000 },
+    mejorEs: 'mas',
+    unidad: 'points in challenge',
+    record: null,
+    modo: 'challenge',
+  } as const
+
+  it('cruzarlo suena una vez por listón, con su medalla, además del atrape', () => {
+    const store = renderGame({ objetivo })
+    interact()
+    startPlaying(store)
+    play.mockClear()
+
+    act(() => store.current.catchStick(0.5))
+    expect(playedSounds()).toEqual([
+      { name: 'catch', streak: 1 },
+      { name: 'medal', rank: 0 },
+    ])
+
+    // El siguiente palo no cruza nada: solo se oye el atrape.
+    play.mockClear()
+    act(() => store.current.catchStick(0.5))
+    expect(playedSounds()).toEqual([{ name: 'catch', streak: 2 }])
+
+  })
+
+  it('y suena la medalla a la que se llega: de un salto a la plata, la plata', () => {
+    const store = renderGame({ objetivo: { ...objetivo, medallas: { bronce: 1, plata: 2, oro: 200000 } } })
+    interact()
+    startPlaying(store)
+    play.mockClear()
+
+    act(() => store.current.catchStick(0.5))
+
+    expect(store.current.medalla).toBe('plata')
+    expect(playedSounds().filter((sound) => sound.name === 'medal')).toEqual([{ name: 'medal', rank: 1 }])
+  })
+
+  it('sin salón no hay listones que cruzar, y en la práctica tampoco', () => {
+    const suelto = renderGame()
+    interact()
+    startPlaying(suelto)
+    act(() => suelto.current.catchStick(0.5))
+    expect(playedSounds().some((sound) => sound.name === 'medal')).toBe(false)
+    suelto.unmount()
+
+    const practica = renderGame({ objetivo })
+    act(() => practica.current.setGameMode('practice'))
+    interact()
+    startPlaying(practica)
+    play.mockClear()
+    act(() => practica.current.catchStick(0.5))
+    expect(playedSounds()).toEqual([{ name: 'catch', streak: 1 }])
   })
 })

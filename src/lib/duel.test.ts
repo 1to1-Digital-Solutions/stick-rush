@@ -143,7 +143,7 @@ describe('lo que se dice al acabar una tanda a dos', () => {
     expect(dicho.pass).toBeNull()
     expect(dicho.next).toBeNull()
     expect(dicho.winner).toBe(1)
-    expect(dicho.lines.map((l) => l.text)).toEqual(['Jugador 1: 1.500 puntos', 'Jugador 2: 1.700 puntos'])
+    expect(dicho.lines.map((l) => l.text)).toEqual(['Jugador 1: 1500 puntos', 'Jugador 2: 1700 puntos'])
     expect(dicho.tally).toBe('Ganadas: 3–2 · empates: 1')
   })
 

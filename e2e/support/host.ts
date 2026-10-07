@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { expect, type Page } from '@playwright/test'
 
+import type { Objetivo } from '../../src/lib/objetivo'
 import { HOST_BUNDLE } from './globalSetup'
 
 /** Donde el salón sirve los estáticos de este juego. */
@@ -12,8 +13,11 @@ const BUNDLE_PATH = '/anfitrion-de-prueba.js'
 const PUBLIC_DIR = path.join(process.cwd(), 'public')
 
 /** El HTML del anfitrión. */
-function html({ aLaCarta = false, reto }: HostOptions): string {
-  const cabina = (aLaCarta ? ` data-cabina="a-la-carta"` : '') + (reto == null ? '' : ` data-reto="${reto}"`)
+function html({ aLaCarta = false, reto, objetivo }: HostOptions): string {
+  const cabina =
+    (aLaCarta ? ` data-cabina="a-la-carta"` : '') +
+    (reto == null ? '' : ` data-reto="${reto}"`) +
+    (objetivo == null ? '' : ` data-objetivo="${JSON.stringify(objetivo).replace(/"/g, '&quot;')}"`)
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -40,6 +44,8 @@ export interface HostOptions {
   aLaCarta?: boolean
   /** La semilla del reto que el salón le pasa a la escena (`reto`), si se quiere uno. */
   reto?: number
+  /** Los listones de medalla que el salón le pasa a la escena (`objetivo`), si se quieren. */
+  objetivo?: Objetivo
 }
 
 export interface TestHost {
@@ -132,4 +138,17 @@ export function partidasTerminadas(page: Page) {
 /** Un objeto de la escena, por nombre, visto desde fuera del Canvas. */
 export function buscarEnLaEscena(page: Page, nombre: string) {
   return page.evaluate((n) => window.__stickRushHost.buscar(n), nombre)
+}
+
+/**
+ * Deja de pintar un objeto de la escena, o lo vuelve a pintar. Es lo que permite medir lo que
+ * cuesta **eso** y nada más: las llamadas de dibujo con él menos las llamadas sin él.
+ */
+export function esconderEnLaEscena(page: Page, nombre: string, oculto: boolean) {
+  return page.evaluate(([n, o]) => window.__stickRushHost.esconder(n, o), [nombre, oculto] as const)
+}
+
+/** Apunta la cámara del anfitrión, sin visor, a un punto de la escena. */
+export function mirarEnLaEscena(page: Page, [x, y, z]: readonly [number, number, number]) {
+  return page.evaluate(([a, b, c]) => window.__stickRushHost.mirar(a, b, c), [x, y, z] as const)
 }

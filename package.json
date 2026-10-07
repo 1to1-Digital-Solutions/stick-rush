@@ -47,6 +47,10 @@
         "partida": {
           "measured": 56,
           "margin": 4
+        },
+        "cartel-del-objetivo": {
+          "min": 1,
+          "max": 2
         }
       }
     }

@@ -27,6 +27,7 @@ import { useExit } from '../../game/exit'
 import { HOOP_ADJUST_RANGE } from '../../lib/hoopHeight'
 import {
   menuLabelsFor,
+  menuLabelText,
   ROW_LABEL_RISE,
   MENU_TEXT,
   XR_DIFFICULTY_SPACING,
@@ -566,7 +567,8 @@ export function dibujarLosNombres(
   players: PlayerCount = 1,
 ): void {
   for (const { text, x, y } of menuLabelsFor(gameMode)) {
-    drawText(ctx, t(text), x, y + ROW_LABEL_RISE, {
+    // La fila del modo dice cuál hay elegido —«Reto», «Práctica»—, no «Modo».
+    drawText(ctx, t(menuLabelText(text, gameMode)), x, y + ROW_LABEL_RISE, {
       size: MENU_TEXT.label,
       color: '#94a3b8',
       maxWidth: 0.3,

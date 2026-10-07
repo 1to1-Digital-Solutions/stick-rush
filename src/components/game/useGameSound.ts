@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { type GameState, useGame } from '../../lib/gameStore'
+import { MEDALLAS, listonCruzado } from '../../lib/objetivo'
 import { createSoundEngine, type RoundOutcome, type SoundEngine } from '../../lib/sound'
 
 /**
@@ -27,6 +28,7 @@ export function useGameSound() {
     duel,
     levelResult,
     lives,
+    medalla,
   } = useGame()
   const engineRef = useRef<SoundEngine | null>(null)
   // El volumen de efectos del arcade, guardado aparte para poder aplicarlo al
@@ -132,6 +134,16 @@ export function useGameSound() {
       if (celebra) engine.play({ name: 'record' })
     }
   }, [score, missed, countdown, gameState, streak, celebra, duel, levelResult, lives])
+
+  // El listón de medalla que se acaba de cruzar: el sonido corto de la celebración del cartel.
+  // Sale de la misma medalla que el cartel mira, así que suena cuando él cambia de color.
+  const medallaDeAntes = useRef(medalla)
+
+  useEffect(() => {
+    const cruzado = listonCruzado(medallaDeAntes.current, medalla)
+    medallaDeAntes.current = medalla
+    if (cruzado != null) engineRef.current?.play({ name: 'medal', rank: MEDALLAS.indexOf(cruzado) as 0 | 1 | 2 })
+  }, [medalla])
 }
 
 /**

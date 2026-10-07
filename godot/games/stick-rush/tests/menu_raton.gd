@@ -1,7 +1,8 @@
-## El menú y los palos con el ratón, en la escena de verdad: que se empieza en el menú, que elegir
+## El menú y los palos con el ratón, en la escena de verdad: que se empieza en el menú con el reto
+## elegido y la práctica a un toque, que elegir
 ## velocidad y palos y subir el aro y darle a jugar empieza la partida con eso, que un clic en un
 ## palo durante la cuenta atrás no lo coge y jugando sí, que un clic en el aire no coge nada, que
-## Escape pregunta antes de dejar la partida, que salir vuelve al menú, que el modo va pasando, y
+## Escape pregunta antes de dejar la partida, que salir vuelve al menú con el modo que se eligió, y
 ## que la flecha de la esquina sale del juego.
 ##
 ## Los clics son eventos del ratón empujados al viewport, sobre donde la cámara pinta cada botón
@@ -22,6 +23,10 @@ const CIELO := Vector2(900, 60)
 ## `escape`, `esperar` una fase, `esperar_tiempo` fotogramas, y las comprobaciones.
 const PASOS := [
 	["esperar", "menu"],
+	# El menú abre en el reto; un toque en el modo lo pasa a la práctica, que es donde se elige.
+	["modo", "challenge"],
+	["apretar", "mode"], ["soltar", ""],
+	["modo", "practice"],
 	["apretar", "difficulty:hard"], ["soltar", ""],
 	["apretar", "sticks:7"], ["soltar", ""],
 	["apretar", "hoopUp"], ["soltar", ""],
@@ -41,8 +46,9 @@ const PASOS := [
 	["esperar", "quit"],
 	["apretar", "confirm:leave"], ["soltar", ""],
 	["esperar", "menu"],
-	["apretar", "mode"], ["soltar", ""],
-	["modo", "levels"],
+	# El modo elegido sigue puesto al volver. (No se pulsa otra vez: sin ventana el motor corre
+	# más deprisa que el reloj, y dos toques al mismo botón tan seguidos son un doble roce.)
+	["modo", "practice"],
 	["apretar", "exit"], ["soltar", ""],
 	["salida", ""],
 ]
@@ -135,7 +141,7 @@ func _process(_delta: float) -> void:
 				failures.append("paso %d: %d palos cogidos y tocaban %d" % [paso, game.atrapados(), con])
 		"modo":
 			if game.modo_de_la_partida() != con:
-				failures.append("el modo pasa de práctica a %s y no a %s" % [game.modo_de_la_partida(), con])
+				failures.append("paso %d: el modo es %s y no %s" % [paso, game.modo_de_la_partida(), con])
 		"salida":
 			if not game.has_meta("salida"):
 				failures.append("la flecha de salir no ha salido")

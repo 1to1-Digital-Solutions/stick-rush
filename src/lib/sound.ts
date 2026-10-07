@@ -31,6 +31,8 @@ export type Sound =
   | { name: 'over'; outcome: RoundOutcome }
   /** Y encima del cierre, si la partida ha batido la marca. */
   | { name: 'record' }
+  /** Se cruza un listón de medalla: 0 el bronce, 1 la plata, 2 el oro. */
+  | { name: 'medal'; rank: 0 | 1 | 2 }
 
 /** Cómo ha acabado la partida. */
 export type RoundOutcome = 'win' | 'loss' | 'close'
@@ -165,7 +167,31 @@ export function soundVoices(sound: Sound): ToneSpec[] {
       return closingVoices(sound.outcome)
     case 'record':
       return RECORD_VOICES
+    case 'medal':
+      return medalVoices(sound.rank)
   }
+}
+
+/** Lo que se espera a que suene el atrape que cruzó el listón, en segundos. */
+const MEDAL_DELAY = 0.18
+/** La nota de cada listón, en semitonos sobre la raíz: la tercera y la quinta del acorde de ganar. */
+const MEDAL_SEMITONES = [0, 4, 7] as const
+
+/**
+ * El listón cruzado: dos notas cortas hacia arriba, una quinta, más agudas cuanto mejor es la
+ * medalla. Corto a propósito —la partida sigue y los palos no esperan— y por debajo del cierre,
+ * que es el que acaba. El oro se queda en 1.978 Hz: sin pasar de los 2 kHz, como todo lo demás.
+ */
+function medalVoices(rank: 0 | 1 | 2): ToneSpec[] {
+  const base = transpose(880, MEDAL_SEMITONES[rank])
+  return [base, base * 1.5].map((hz, index) => ({
+    type: 'sine',
+    from: hz,
+    to: hz,
+    duration: index === 0 ? 0.09 : 0.2,
+    gain: 0.3,
+    delay: MEDAL_DELAY + index * 0.09,
+  }))
 }
 
 /**

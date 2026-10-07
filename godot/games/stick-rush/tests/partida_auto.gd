@@ -8,6 +8,9 @@
 ## jugando el desafío con los palos sacados de ella, la misma semilla da el mismo reparto, y la
 ## partida jugada se le cuenta al salón como reto.
 ##
+## Y el del objetivo: con el metadato `goal` del salón el cartel enseña los listones de medalla; sin
+## él (la segunda entrada al reto), solo la misión.
+##
 ## Y **la partida a dos** (`duel.ts`): el desafío a dos, las dos tandas seguidas por el jugador
 ## automático, la segunda con la semilla de la primera; el segundo deja escapar un palo más, así que
 ## gana el primero; se apunta a la pareja sin tocar el récord, al salón se le cuenta una vez, y el
@@ -29,6 +32,12 @@ const MAX_FRAMES := 72 * 120
 const SEMILLA := 20260926
 ## Lo que se deja correr el reto para mirar su reparto: la cuenta atrás y un poco más.
 const FOTOGRAMAS_DEL_RETO := 72 * 5
+## El objetivo de la cabina tal y como lo deja el salón en su metadato `goal` (`xrcade.gd`).
+const OBJETIVO := {
+	"medallas": {"bronce": 1900, "plata": 3750, "oro": 5200},
+	"mejorEs": "mas", "unidad": "points in challenge", "record": null, "modo": "challenge",
+}
+const LISTONES := "Bronze 1,900 · Silver 3,750 · Gold 5,200"
 
 var game: Node
 var salon: Node
@@ -69,11 +78,14 @@ func _process(_delta: float) -> void:
 		"reto", "reto-otra-vez":
 			if frames == 10:
 				comprobar_la_entrada()
+				comprobar_el_cartel(fase == "reto")
 			elif frames >= FOTOGRAMAS_DEL_RETO:
 				repartos.append(game.reparto_de_la_tanda())
 				game.queue_free()
 				if fase == "reto":
 					# Otra vez, desde cero, con la misma semilla: tiene que salir el mismo reparto.
+					# Y ya sin objetivo: un salón que no le pone medallas al juego.
+					salon.remove_meta("goal")
 					fase = "reto-otra-vez"
 					montar(true)
 				else:
@@ -175,6 +187,7 @@ func empezar_el_reto() -> void:
 	salon = SALON.new()
 	salon.name = "XRcade"
 	salon.set_meta("challenge_seed", SEMILLA)
+	salon.set_meta("goal", JSON.stringify(OBJETIVO))
 	get_tree().root.add_child(salon)
 	# Sin el jugador automático: el reto se entra jugando, sin pasar por el menú, y aquí solo se mira.
 	montar(true)
@@ -189,6 +202,17 @@ func comprobar_la_entrada() -> void:
 		fallos.append("con el reto del salón se entra a la cuenta atrás, no a %s" % game.fase())
 	if int(game.semilla_de_la_partida()) != SEMILLA:
 		fallos.append("la semilla es %d y el salón prestó %d" % [game.semilla_de_la_partida(), SEMILLA])
+
+
+## Con el objetivo del salón el cartel enseña los listones bajo la misión; sin él, solo la misión.
+func comprobar_el_cartel(con_objetivo: bool) -> void:
+	var lineas: PackedStringArray = game.cartel_del_objetivo().split("\n", false)
+	if lineas.is_empty():
+		fallos.append("en la cuenta atrás del reto no hay cartel del objetivo")
+	elif con_objetivo and not lineas.has(LISTONES):
+		fallos.append("con el objetivo del salón el cartel no enseña los listones: %s" % [lineas])
+	elif not con_objetivo and lineas.size() != 1:
+		fallos.append("sin objetivo del salón el cartel dice algo más que la misión: %s" % [lineas])
 
 
 func comprobar_los_repartos() -> void:

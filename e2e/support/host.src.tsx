@@ -5,6 +5,7 @@ import { XR, XROrigin, createXRStore } from '@react-three/xr'
 import { Vector3, type Object3D } from 'three'
 
 import { StickRushScene } from '../../src/game/StickRushScene'
+import type { Objetivo } from '../../src/lib/objetivo'
 import type { Resultado } from '../../src/lib/semilla'
 
 /**
@@ -30,6 +31,9 @@ const aLaCarta = mount.dataset.cabina === 'a-la-carta'
 
 /** El reto del salón, si la página lo trae: la semilla, como la pasaría el arco de cabinas. */
 const reto = mount.dataset.reto == null ? undefined : { semilla: Number(mount.dataset.reto) }
+
+/** Los listones de medalla del juego, si la página los trae: lo que el salón pasa en `objetivo`. */
+const objetivo = mount.dataset.objetivo == null ? undefined : (JSON.parse(mount.dataset.objetivo) as Objetivo)
 
 const store = createXRStore({
   // Lo que el contrato pide cablear al anfitrión: los perfiles de mando bajo su propio prefijo.
@@ -59,11 +63,16 @@ declare global {
       entrarEnLaCabina: () => void
       /** Lo que la escena ha contado al acabar cada partida (`onTerminar`), en orden. */
       terminadas: Resultado[]
+      /** Deja de pintar ese objeto, o lo vuelve a pintar: para medir lo que cuesta. `false` si no está. */
+      esconder: (nombre: string, oculto: boolean) => boolean
+      /** Apunta la cámara del anfitrión a ese punto de la escena (fuera de la sesión inmersiva). */
+      mirar: (x: number, y: number, z: number) => void
     }
   }
 }
 
 let escena: Object3D | null = null
+let camara: Object3D | null = null
 let entrar = () => {}
 
 window.__stickRushHost = {
@@ -83,17 +92,29 @@ window.__stickRushHost = {
   },
   entrarEnLaCabina: () => entrar(),
   terminadas: [],
+  esconder(nombre, oculto) {
+    const objeto = escena?.getObjectByName(nombre)
+    if (objeto == null) return false
+    objeto.visible = !oculto
+    return true
+  },
+  mirar(x, y, z) {
+    camara?.lookAt(x, y, z)
+  },
 }
 
 /** Deja la escena a mano de `buscar`. */
 function Sonda() {
   const scene = useThree((state) => state.scene)
+  const camera = useThree((state) => state.camera)
   useEffect(() => {
     escena = scene
+    camara = camera
     return () => {
       escena = null
+      camara = null
     }
-  }, [scene])
+  }, [scene, camera])
   return null
 }
 
@@ -114,6 +135,7 @@ function Cabina() {
       assetsBase={assetsBase}
       onExit={() => {}}
       reto={reto}
+      objetivo={objetivo}
       onTerminar={(resultado) => window.__stickRushHost.terminadas.push(resultado)}
     />
   )

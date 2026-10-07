@@ -1,6 +1,6 @@
 import { DIFFICULTY_ORDER, MAX_STICKS, type Difficulty } from './gameConfig'
 import { eligeJugadores } from './duel'
-import { picksSetup, type GameMode } from './gameMode'
+import { GAME_MODE_LABELS, picksSetup, type GameMode } from './gameMode'
 import { REFERENCE_EYE_HEIGHT, isPlausibleEyeHeight } from './hoopHeight'
 import { EYE_HEIGHTS, eyesAt, type PanelPose, type Point } from './panelReading'
 
@@ -176,6 +176,58 @@ export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
  * `livesRow` lo que se le añade cuando lleva corazones o estrellas.
  */
 export const XR_HUD_PANEL = { run: 0.27, finished: 0.42, livesRow: 0.06 } as const
+
+/**
+ * El cartel del objetivo (`lib/objetivo.ts`, `lib/cartelDeLaMaquina.ts`): **de frente, justo
+ * encima del marcador**, que es la franja que ya se miraba para saber cómo iba la partida.
+ *
+ * Por debajo de la máquina y no encima del aro: los palos cuelgan y caen por delante de la cara,
+ * y un cartel ahí arriba taparía la caída. Aquí queda a 27° por debajo de la mirada —se lee
+ * bajando los ojos, sin mover la cabeza— y más lejos que cualquier palo (el del frente cae a 65 cm
+ * y esto está a 85), así que ninguno queda detrás de él. Su borde de arriba se queda por debajo
+ * del aviso de salir y del tutorial, que empiezan a 1,21 m.
+ *
+ * A CALIBRAR CON EL VISOR (la altura: más arriba se lee mejor y se acerca al tutorial).
+ */
+export const XR_CARTEL_POSITION: Vec3 = [0, 1.16, -0.85]
+
+/**
+ * El marcador cuando el cartel de encima ya dice los puntos y las vidas: se queda con las fichas
+ * de los palos y la racha —y, al acabar, los botones—, y su panel encoge a lo que lleva.
+ *
+ * `height` es lo alto del panel y `centre` dónde queda su centro respecto del sitio del marcador:
+ * su borde de arriba no pasa de 13,5 cm, que es lo que deja libre al cartel. Las fichas no se
+ * mueven al acabar (`content`): con el cartel encima no hay sitio hacia arriba, y los botones
+ * ocupan lo que dejaron la barra y las vidas.
+ */
+export const XR_HUD_WITH_SIGN = {
+  content: 0.04,
+  run: { height: 0.15, centre: 0.06 },
+  finished: { height: 0.33, centre: -0.03 },
+} as const
+
+/** Cómo se reparte el marcador: lo alto de su panel, dónde va su centro y a qué altura las fichas. */
+export interface HudLayout {
+  readonly height: number
+  readonly centre: number
+  readonly content: number
+}
+
+/**
+ * El reparto del marcador en cada momento.
+ *
+ * @param finished con la partida acabada: el panel lleva además la fila de botones
+ * @param row con fila de vidas o de estrellas bajo la barra
+ * @param sign el cartel de encima ya dice los puntos y las vidas (`XR_HUD_WITH_SIGN`)
+ */
+export function xrHudLayout({ finished, row, sign }: { finished: boolean; row: boolean; sign: boolean }): HudLayout {
+  if (sign) return { content: XR_HUD_WITH_SIGN.content, ...(finished ? XR_HUD_WITH_SIGN.finished : XR_HUD_WITH_SIGN.run) }
+  return {
+    height: (finished ? XR_HUD_PANEL.finished : XR_HUD_PANEL.run) + (row ? XR_HUD_PANEL.livesRow : 0),
+    centre: 0,
+    content: finished ? 0.1 : 0.04,
+  }
+}
 /**
  * Botón de volver al menú durante la partida —deja la partida, no la sesión:
  * el de salir del visor es `XR_MENU_EXIT_OFFSET`, y por eso llevan iconos
@@ -501,6 +553,18 @@ export function menuLabelsFor(mode: GameMode): readonly (typeof MENU_LABELS)[num
   const conSuFila = MENU_LABELS.filter(({ text }) => text !== 'Players' || eligeJugadores(mode))
   if (picksSetup(mode) || mode === 'levels') return conSuFila
   return conSuFila.filter(({ text }) => text !== 'Sticks' && text !== 'Speed')
+}
+
+/**
+ * Lo que se escribe en un rótulo del menú. El de la fila del modo dice **cuál** hay elegido
+ * —«Challenge», que en español es «Reto»—: su interruptor lo dibuja con corazones o estrellas,
+ * y un dibujo no dice cómo se llama lo que cuenta para medalla. Los demás, lo que son.
+ */
+export function menuLabelText(
+  text: (typeof MENU_LABELS)[number]['text'],
+  mode: GameMode,
+): Exclude<(typeof MENU_LABELS)[number]['text'], 'Mode'> | (typeof GAME_MODE_LABELS)[GameMode] {
+  return text === 'Mode' ? GAME_MODE_LABELS[mode] : text
 }
 
 function offset([x, y, z]: Vec3, dx: number, dy: number): Vec3 {

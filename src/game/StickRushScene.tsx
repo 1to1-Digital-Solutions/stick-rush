@@ -5,6 +5,7 @@ import { GameWorld } from '../components/game/GameWorld'
 import { setAssetsBase } from '../lib/assets'
 import type { HostAnchor } from '../lib/hostAnchor'
 import type { ResultadoConHazanas } from '../lib/hazanas'
+import type { Objetivo } from '../lib/objetivo'
 import type { Reto } from '../lib/semilla'
 import { ExitProvider } from './exit'
 
@@ -46,6 +47,12 @@ export interface StickRushSceneProps {
    * con los nombres de API estrenados en la partida, si hay alguno (`lib/hazanas.ts`).
    */
   onTerminar?: (resultado: ResultadoConHazanas) => void
+  /**
+   * Qué hay que superar: los tres listones de medalla del juego, la marca de quien juega y el
+   * modo en que cuentan. Con él, el cartel de encima del marcador dice qué listón falta y cuánto
+   * queda; sin él, la misión y el récord guardado en este navegador.
+   */
+  objetivo?: Objetivo
 }
 
 /**
@@ -62,14 +69,14 @@ export interface StickRushSceneProps {
  *
  * El contrato completo, en `docs/montar-el-juego.md`.
  */
-export function StickRushScene({ assetsBase, anchor, onExit, reto, onTerminar }: StickRushSceneProps) {
+export function StickRushScene({ assetsBase, anchor, onExit, reto, onTerminar, objetivo }: StickRushSceneProps) {
   // Durante el render y no en un efecto: la escena pide el HDRI y las texturas
   // en cuanto se monta, es decir, antes de que corra ningún efecto. Escribir la
   // misma base dos veces no cambia nada, así que repetir el render es inocuo.
   if (assetsBase !== undefined) setAssetsBase(assetsBase)
 
   return (
-    <GameProvider reto={reto} onTerminar={onTerminar}>
+    <GameProvider reto={reto} onTerminar={onTerminar} objetivo={objetivo}>
       <ExitProvider onExit={onExit}>
         <GameWorld anchor={anchor} />
       </ExitProvider>

@@ -23,7 +23,10 @@
       "over-win": { "args": [{ "name": "over", "outcome": "win" }] },
       "over-loss": { "args": [{ "name": "over", "outcome": "loss" }] },
       "over-close": { "args": [{ "name": "over", "outcome": "close" }] },
-      "record": { "args": [{ "name": "record" }] }
+      "record": { "args": [{ "name": "record" }] },
+      "medal-bronze": { "args": [{ "name": "medal", "rank": 0 }] },
+      "medal-silver": { "args": [{ "name": "medal", "rank": 1 }] },
+      "medal-gold": { "args": [{ "name": "medal", "rank": 2 }] }
     }
   },
   "music": { "feria": "public/audio/feria.mp3" }

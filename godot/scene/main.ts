@@ -43,6 +43,7 @@ import {
   print,
 } from 'godot'
 
+import { objetivoDe } from '@kit/lib/juegoBase'
 import { ACCION, estaAgarrando, type Mano } from '@kit/lib/xr/manos'
 import { aislarElGuardado, argumento, hayBandera } from '@kit/runtime/argumentos'
 import { Escenario, vistaDelVisor } from '@kit/runtime/escena/escenario'
@@ -53,6 +54,7 @@ import { simularMandos, verConLaCabezaSimulada, type Simulacion } from '@kit/run
 
 import { DIFFICULTY_SPEEDS, PLAYER_OFFSET_Z, STICK_MISS_Y, type Difficulty } from '@/lib/gameConfig'
 import type { GameMode } from '@/lib/gameMode'
+import { pulsosDelListon } from '@/lib/cartelDeLaMaquina'
 import { pulsosDelAtrape } from '@/lib/haptics'
 import { headsetEyeHeight, hoopFallSpeed } from '@/lib/hoopHeight'
 import * as hostAnchor from '@/lib/hostAnchor'
@@ -238,6 +240,10 @@ export default class StickRush extends Node3D {
     // En el hub nativo, la semilla del reto la lleva su autoload como metadato (`challenge_seed`).
     const salon = this.get_node_or_null('/root/XRcade')
     if (salon != null && salon.has_meta('challenge_seed')) reto = Number(salon.get_meta('challenge_seed')) >>> 0
+    // Y el objetivo de la cabina (el metadato `goal`: los listones de medalla, la marca y el modo en
+    // que cuenta), leído como `base.objetivo()` del kit —su mismo `objetivoDe`—: es la prop
+    // `objetivo` de la web. Sin salón, o si no le pone medallas, `null` y el cartel dice la misión.
+    const objetivo = objetivoDe(salon != null && salon.has_meta('goal') ? salon.get_meta('goal') : null)
     if (autoplay && this.semillaFija == null) this.semillaFija = SEMILLA_DEL_BOT
     this.ayudasEnPlano = hayBandera('ayudas') || this.shotAyudasPath != null || this.has_meta('ayudas')
 
@@ -252,6 +258,7 @@ export default class StickRush extends Node3D {
 
     this.partida = new Partida({
       reto: reto == null ? null : { semilla: reto },
+      objetivo,
       alTerminar: (resultado) => this.contarAlSalon(resultado),
       semillas: () => this.semillaFija ?? semillaAlAzar(),
     })
@@ -416,6 +423,7 @@ export default class StickRush extends Node3D {
       acabaElDuelo: p.duel != null && duelOver(p.duel),
       levelPassed: p.levelResult?.passed ?? null,
       lives: p.lives,
+      medalla: p.medalla,
     }
   }
 
@@ -626,6 +634,10 @@ export default class StickRush extends Node3D {
       if (mando.visible) this.manosVistas.add(mando.mano)
     }
     this.interfaz.actualizar(delta)
+    // El listón cruzado se nota en la mano buena, un instante después del atrape que lo cruzó; el
+    // color y el pulso son del cartel, y el sonido sale de las pistas (`sonidosDesde`).
+    const cruzada = this.interfaz.listonCruzado
+    if (cruzada != null && this.player != null) this.player.vibrar(pulsosDelListon(cruzada, this.player.manoBuena))
     const paso = this.interfaz.tutorial.paso
     if (paso != null) this.tutorialVisto.add(paso)
   }
@@ -779,6 +791,12 @@ export default class StickRush extends Node3D {
 
   semilla_de_la_partida(): number {
     return this.partida.semilla
+  }
+
+  /** Lo que dice el cartel del objetivo ahora mismo, una línea por renglón, o vacío si no está colgado. */
+  cartel_del_objetivo(): string {
+    const cartel = this.interfaz.cartel
+    return cartel.nodo.visible ? cartel.panel.escritos.map((e) => e.texto).join('\n') : ''
   }
 
   /** El reparto de la tanda en curso (turno y anclaje de cada palo): dos iguales son el mismo. */

@@ -69,6 +69,7 @@ import {
   XR_STICK_PICKER_SPACING,
   XR_STICK_ROW_Y,
   menuLabelsFor,
+  menuLabelText,
   type Vec3,
 } from '@/lib/xrLayout'
 
@@ -418,7 +419,8 @@ export class MenuDelJuego {
     const { panel } = this
     panel.borrarTextos()
     for (const { text, x, y } of menuLabelsFor(estado.modo)) {
-      panel.escribir(t(text), x, y + ROW_LABEL_RISE, { alto: MENU_TEXT.label, color: COLORES.suave, anchoMax: 0.3 })
+      // La fila del modo dice cuál hay elegido —«Reto», «Práctica»—, no «Modo».
+      panel.escribir(t(menuLabelText(text, estado.modo)), x, y + ROW_LABEL_RISE, { alto: MENU_TEXT.label, color: COLORES.suave, anchoMax: 0.3 })
     }
     // A dos, la explicación es la de la partida a dos: el modo ya lo dice su interruptor.
     const pista = juegaADos(estado.modo, estado.jugadores) ? PLAYER_COUNT_HINTS[2] : GAME_MODE_HINTS[estado.modo]

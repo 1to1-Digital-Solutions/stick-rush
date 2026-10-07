@@ -17,6 +17,7 @@ import {
 } from './gameConfig'
 import {
   CHALLENGE_SETUP,
+  DEFAULT_GAME_MODE,
   type GameMode,
   type RunOutcome,
   remainingLives,
@@ -57,7 +58,17 @@ import {
   subscribeUnlockedLevel,
 } from './progress'
 import { volumeFactor } from './ajustes'
-import { setScenery as setArcadeScenery, useScenery, useVolumes } from './ajustesCliente'
+import { setScenery as setArcadeScenery, useLang, useScenery, useVolumes } from './ajustesCliente'
+import { llevaLaCuenta, partidaDelCartel } from './cartelDeLaMaquina'
+import {
+  cartelDeObjetivo,
+  medallaQueCelebra,
+  type FaseDelObjetivo,
+  type Medalla,
+  type Objetivo,
+  type VistaDelCartel,
+} from './objetivo'
+import { traductorSuave } from './textos'
 import {
   HOOP_ADJUST_STEP,
   clampHoopAdjustment,
@@ -129,6 +140,12 @@ export interface OpcionesDelSalon {
    * hazañas estrenadas en ella si hay alguna (`hazanas.ts`).
    */
   onTerminar?: (resultado: ResultadoConHazanas) => void
+  /**
+   * Los listones de medalla del juego y la marca de quien juega, para el cartel de encima del
+   * marcador (`objetivo.ts`). Sin él —el juego abierto suelto— el cartel dice la misión y el
+   * récord guardado en este navegador.
+   */
+  objetivo?: Objetivo
 }
 
 export interface GameStore {
@@ -202,6 +219,19 @@ export interface GameStore {
    * distingue superar el reto de quedarse sin vidas en la pantalla de fin.
    */
   outcome: RunOutcome | null
+  /**
+   * Lo que dice el cartel del objetivo (`objetivo.ts`), ya traducido, o `null` si no hay nada que
+   * colgar: en el menú, y fuera del reto con el juego abierto suelto.
+   */
+  cartel: VistaDelCartel | null
+  /**
+   * En qué momento va la partida que cuenta para medalla —antes de resolverse el primer palo,
+   * jugando o acabada—, o `null` si lo que se juega no cuenta. Con ella el cartel ya dice los
+   * puntos y las vidas, y el marcador de debajo los calla.
+   */
+  faseDelCartel: FaseDelObjetivo | null
+  /** La medalla que ya es de quien juega en esta partida: cuando sube, se celebra el listón. */
+  medalla: Medalla | null
   /** Palos atrapados en la partida actual. */
   score: number
   /**
@@ -389,16 +419,13 @@ function clampStickCount(count: number): number {
   return Math.min(MAX_STICKS, Math.max(MIN_STICKS, Math.round(count)))
 }
 
-export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): GameStore {
+export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSalon = {}): GameStore {
   const [stickCount, setStickCountState] = useState(MIN_STICKS)
   const [difficulty, setDifficulty] = useState<Difficulty>('easy')
-  // Se entra en práctica: es el juego de siempre y quien acaba de llegar no
-  // tiene por qué estrenarse con vidas que aún no sabe cómo se pierden. El
-  // desafío está a un toque, en el mismo sitio. Con el reto del salón, en cambio,
-  // el modo ya está elegido: el del récord de la cabina.
-  const [gameMode, setGameModeState] = useState<GameMode>(() =>
-    reto != null ? MODO_DEL_RETO : 'practice',
-  )
+  // Se abre en el reto, con salón o sin él (`DEFAULT_GAME_MODE`): Jugar sin tocar nada empieza la
+  // partida que da medalla, y la práctica está a un toque, en el mismo sitio. Con el reto del
+  // salón el modo es ese mismo: el del récord de la cabina.
+  const [gameMode, setGameModeState] = useState<GameMode>(DEFAULT_GAME_MODE)
   // El reto se mira una sola vez, al montar: es lo que decide con qué se arranca.
   const [enReto, setEnReto] = useState(() => reto != null)
   // De dónde sale el reparto de la partida en marcha. La del reto si se juega el reto; si no,
@@ -746,6 +773,35 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
     adjustment: hoopAdjustment,
   })
 
+  // El cartel del objetivo: qué hay que superar y cuánto falta. Se arma ya traducido, como lo
+  // pide `objetivo.ts`: sus frases son plantillas y partirlas fuera no vale para dos idiomas.
+  const lang = useLang()
+  const aDos = duelAhora !== null
+  const partidaQueSeCuenta = useMemo(
+    () =>
+      partidaDelCartel(
+        {
+          objetivo,
+          gameMode,
+          aDos,
+          gameState,
+          points,
+          lives,
+          resolved,
+          stickCount: activeStickCount,
+          record: recordToBeat,
+        },
+        traductorSuave(lang),
+      ),
+    [objetivo, gameMode, aDos, gameState, points, lives, resolved, activeStickCount, recordToBeat, lang],
+  )
+  const cartel = useMemo(
+    () => (partidaQueSeCuenta == null ? null : cartelDeObjetivo(partidaQueSeCuenta, traductorSuave(lang))),
+    [partidaQueSeCuenta, lang],
+  )
+  const faseDelCartel = llevaLaCuenta(partidaQueSeCuenta) ? partidaQueSeCuenta.fase : null
+  const medalla = partidaQueSeCuenta == null ? null : medallaQueCelebra(partidaQueSeCuenta)
+
   const setStickCount = useCallback((count: number) => {
     setStickCountState(clampStickCount(count))
   }, [])
@@ -916,6 +972,9 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
       waveResolved,
       lives,
       outcome,
+      cartel,
+      faseDelCartel,
+      medalla,
       score,
       resolved,
       points,
@@ -983,6 +1042,9 @@ export function useGameStoreValue({ reto, onTerminar }: OpcionesDelSalon = {}): 
       waveResolved,
       lives,
       outcome,
+      cartel,
+      faseDelCartel,
+      medalla,
       score,
       resolved,
       points,

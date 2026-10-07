@@ -7,7 +7,7 @@
  *   los palos y después la velocidad, cada uno una partida suelta sin vidas que
  *   se puntúa con estrellas al acabar; una estrella desbloquea el siguiente y
  *   lo desbloqueado se recuerda entre visitas (`progress.ts`).
- * - **Desafío**: se juega con **vidas**. Cada palo que toca el suelo cuesta una,
+ * - **Reto** (`challenge`, el desafío): se juega con **vidas**. Cada palo que toca el suelo cuesta una,
  *   y la partida acaba al quedarse sin ellas —aunque queden palos colgando— o al
  *   resolverlos todos, que es superar el reto. Es el modo heroico.
  *
@@ -30,19 +30,32 @@ export type GameMode = 'practice' | 'levels' | 'challenge'
 /** Orden de los modos en los selectores, del más suave al más exigente. */
 export const GAME_MODE_ORDER: GameMode[] = ['practice', 'levels', 'challenge']
 
-/** Etiqueta visible para el usuario (idioma del producto: español). */
+/** Cómo se llama cada modo en los menús, en inglés (la clave del diccionario: «Challenge» es «Reto»). */
 export const GAME_MODE_LABELS = {
   practice: 'Practice',
   levels: 'Levels',
   challenge: 'Challenge',
 } as const satisfies Record<GameMode, string>
 
-/** Qué promete cada modo, en una línea, para el menú de escritorio. */
+/**
+ * Qué promete cada modo, en una línea, para los dos menús, **y si cuenta para medalla**: el
+ * récord de la cabina y las medallas del salón salen del reto, y quien elige otra cosa tiene que
+ * saberlo antes de empezar y no al acabar.
+ */
 export const GAME_MODE_HINTS = {
-  practice: 'Every stick drops and missing costs nothing.',
-  levels: 'One level at a time: the one you clear stays unlocked.',
-  challenge: 'Three lives: every stick that gets away costs one.',
+  practice: 'No medal. Every stick drops, missing costs nothing.',
+  levels: 'No medal. One level at a time, each unlocks the next.',
+  challenge: 'Counts for a medal. Three lives, one per stick lost.',
 } as const satisfies Record<GameMode, string>
+
+/**
+ * El modo que hay elegido al abrir el menú, **siempre**: no se recuerda el último.
+ *
+ * Se abre en el reto porque es el modo del récord y de las medallas del salón: quien entra y
+ * pulsa Jugar sin tocar nada tiene que estar jugando a lo que cuenta, con su objetivo delante.
+ * La práctica queda a un toque.
+ */
+export const DEFAULT_GAME_MODE: GameMode = 'challenge'
 
 /** Vidas con las que arranca un desafío. */
 export const CHALLENGE_LIVES = 3

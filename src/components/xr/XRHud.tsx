@@ -15,8 +15,8 @@ import { type ShareStatus, useShareResult } from '../useShareResult'
 import {
   XR_END_RUN_POSITION,
   XR_END_RUN_YAW,
-  XR_HUD_PANEL,
   XR_HUD_POSITION,
+  xrHudLayout,
   CONFIRM_BOXES,
   CONFIRM_TEXT,
   XR_CONFIRM_POSITION,
@@ -47,6 +47,10 @@ import {
  * El HUD normal es DOM y en inmersivo no se ve, así que el jugador se quedaba
  * sin marcador ni resultado. Este lo sustituye con geometría: una ficha por
  * palo, atrapado / perdido / pendiente.
+ *
+ * **En la partida que cuenta para medalla calla lo que ya dice el cartel de encima**
+ * (`CartelDeLaMaquina`): los puntos y las vidas se leen allí, con el listón que falta, y aquí
+ * quedan las fichas y la racha. Repetirlos debajo era obligar a elegir dónde mirar.
  *
  * No usa texto a propósito: `<Text>` de drei descarga las fuentes de un CDN
  * (troika resuelve la tipografía contra jsdelivr), y el juego debe verse aunque
@@ -154,7 +158,7 @@ function StreakPips({ streak }: { streak: number }) {
 /** Separación y tamaño de los corazones de vida en el marcador. */
 const LIFE_SPACING = 0.05
 const LIFE_SIZE = 0.019
-/** Dónde va la fila de vidas dentro del marcador. Cuánto lo alarga lo dice `XR_HUD_PANEL`. */
+/** Dónde va la fila de vidas dentro del marcador. Cuánto lo alarga lo dice `xrHudLayout`. */
 const LIFE_ROW_Y = -0.105
 /** El gastado se apaga a gris y encoge; el vivo va del rojo de siempre. */
 const LIFE_SPENT_COLOR = '#3f4a5a'
@@ -302,6 +306,7 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
     startGame,
     resetGame,
     player,
+    faseDelCartel,
   } = useGame()
   const sinFin = gameMode === 'practice' && endless
   // Fuera de sesión inmersiva manda el HUD en DOM, y en el menú manda XRMenu.
@@ -341,36 +346,40 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
   // la partida y siguen ahí al acabar, que es con las que se acabó. En Niveles
   // ese sitio lo ocupan las estrellas al terminar.
   const totalLives = startingLives(gameMode)
-  const showLives = lives != null && totalLives != null
+  // Con el cartel del objetivo encima, los puntos y las vidas se leen allí.
+  const enElCartel = faseDelCartel != null
+  const showLives = lives != null && totalLives != null && !enElCartel
   const showStars = finished && levelResult != null
+  const layout = xrHudLayout({ finished, row: showLives || showStars, sign: enElCartel })
   return (
     <group position={XR_HUD_POSITION}>
       {/* Panel de fondo: en AR el mundo real está detrás, sin él las fichas
           pierden contraste sobre cualquier pared. */}
-      <XRPanel
-        // Al acabar, el ancho no puede depender de cuántos palos se jugaran:
-        // con los pocos de una partida corta, la fila de tres botones se
-        // saldría del panel y perdería el fondo que la despega del passthrough.
-        width={Math.max(width + 0.2, finished ? BUTTONS_WIDTH + 0.06 : 0)}
-        height={
-          (finished ? XR_HUD_PANEL.finished : XR_HUD_PANEL.run) +
-          (showLives || showStars ? XR_HUD_PANEL.livesRow : 0)
-        }
-        color={PANEL_COLOR}
-        opacity={0.72}
-      />
+      <group position={[0, layout.centre, 0]}>
+        <XRPanel
+          // Al acabar, el ancho no puede depender de cuántos palos se jugaran:
+          // con los pocos de una partida corta, la fila de tres botones se
+          // saldría del panel y perdería el fondo que la despega del passthrough.
+          width={Math.max(width + 0.2, finished ? BUTTONS_WIDTH + 0.06 : 0)}
+          height={layout.height}
+          color={PANEL_COLOR}
+          opacity={0.72}
+        />
+      </group>
 
-      <group position={[0, finished ? 0.1 : 0.04, 0]}>
+      <group position={[0, layout.content, 0]}>
         {tokens.map((token) => (
           <Token key={token.index} state={token.state} x={token.x} />
         ))}
         <StreakPips streak={streak} />
-        <ScoreBar
-          ratio={ratio}
-          recordRatio={recordRatio}
-          isRecord={isRecord}
-          width={Math.max(width, 0.28)}
-        />
+        {!enElCartel && (
+          <ScoreBar
+            ratio={ratio}
+            recordRatio={recordRatio}
+            isRecord={isRecord}
+            width={Math.max(width, 0.28)}
+          />
+        )}
         {showLives && <Lives lives={lives} total={totalLives} y={LIFE_ROW_Y} />}
         {/* A dos, de quién es la tanda: la pareja de fichas con la de quien tiene el mando
             encendida y crecida (la de este lado, el jugador 1; la de enfrente, el 2), a la

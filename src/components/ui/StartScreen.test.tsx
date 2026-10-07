@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { GameProvider } from '../GameProvider'
 import { PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS } from '../../lib/duel'
+import { GAME_MODE_HINTS, GAME_MODE_ORDER } from '../../lib/gameMode'
 import { StartScreen } from './StartScreen'
 
 // Sin visor no hay entrada al visor: lo que se prueba es qué pregunta el menú.
@@ -28,6 +29,36 @@ async function abrir() {
 }
 
 const modo = (nombre: string) => screen.getByRole('button', { name: new RegExp(`^${nombre}`) })
+
+describe('el menú de la web abre en el reto', () => {
+  it('con el reto elegido, sin preguntar palos ni velocidad: Jugar sin tocar nada lo empieza', async () => {
+    await abrir()
+
+    expect(modo('Challenge').getAttribute('aria-pressed')).toBe('true')
+    expect(modo('Practice').getAttribute('aria-pressed')).toBe('false')
+    expect(screen.queryByText('Number of sticks')).toBeNull()
+    expect(screen.queryByText('Difficulty')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Play' })).toBeDefined()
+  })
+
+  it('la práctica queda a un toque, con sus palos y su velocidad', async () => {
+    await abrir()
+    fireEvent.click(modo('Practice'))
+
+    expect(modo('Practice').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('Number of sticks')).toBeDefined()
+    expect(screen.getByText('Difficulty')).toBeDefined()
+  })
+
+  it('dice de cada modo si cuenta para medalla: solo el reto', async () => {
+    await abrir()
+
+    for (const mode of GAME_MODE_ORDER) expect(screen.getByText(GAME_MODE_HINTS[mode]), mode).toBeDefined()
+    expect(modo('Challenge').textContent).toContain('Counts for a medal')
+    expect(modo('Practice').textContent).toContain('No medal')
+    expect(modo('Levels').textContent).toContain('No medal')
+  })
+})
 
 describe('el menú de la web, a dos', () => {
   it('solo el desafío pregunta contra quién: solo, o a dos pasándose el mando', async () => {

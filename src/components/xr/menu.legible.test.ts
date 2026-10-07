@@ -97,6 +97,26 @@ describe('los nombres de las filas del menú se leen', () => {
     }
   })
 
+  it('la fila del modo se llama como el modo elegido: el que cuenta para medalla, «Reto»', () => {
+    const escrito = (lang: (typeof IDIOMAS)[number], gameMode: (typeof GAME_MODE_ORDER)[number]) => {
+      const { ctx, escritos } = lienzoQueApunta()
+      dibujarLosNombres(ctx, traductor(lang), gameMode)
+      return escritos.map((e) => e.texto)
+    }
+
+    expect(escrito('es', 'challenge')).toContain('Reto')
+    expect(escrito('en', 'challenge')).toContain('Challenge')
+    expect(escrito('es', 'practice')).toContain('Práctica')
+    expect(escrito('es', 'levels')).toContain('Niveles')
+    // Y ya no dice «Modo», que no decía cuál.
+    for (const lang of IDIOMAS) {
+      for (const gameMode of GAME_MODE_ORDER) expect(escrito(lang, gameMode)).not.toContain(traductor(lang)('Mode'))
+    }
+    // Lo que explica debajo empieza por si cuenta para medalla.
+    expect(escrito('es', 'challenge').join(' ')).toContain('Cuenta para medalla.')
+    expect(escrito('es', 'practice').join(' ')).toContain('Sin medalla.')
+  })
+
   /**
    * El control de la propia medida: un panel del que no se leyera nada daría
    * cero problemas igual que uno perfecto. Estrechado a la mitad tiene que cantar.

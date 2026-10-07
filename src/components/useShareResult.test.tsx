@@ -53,6 +53,8 @@ function playRound(
   total: number,
   caught: number,
 ) {
+  // El menú abre en el reto, que va fijo: los palos se eligen en la práctica.
+  act(() => current.game.setGameMode('practice'))
   act(() => current.game.setStickCount(total))
   act(() => current.game.startGame())
   for (let second = 0; second < COUNTDOWN_SECONDS; second++) {

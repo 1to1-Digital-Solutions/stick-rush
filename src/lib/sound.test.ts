@@ -21,6 +21,9 @@ const EVERY_SOUND: Sound[] = [
   { name: 'over', outcome: 'loss' },
   { name: 'over', outcome: 'close' },
   { name: 'record' },
+  { name: 'medal', rank: 0 },
+  { name: 'medal', rank: 1 },
+  { name: 'medal', rank: 2 },
 ]
 
 describe('recetas de los sonidos', () => {
@@ -406,5 +409,36 @@ describe('el cierre de la partida', () => {
 
     expect(grave({ name: 'record' })).toBeGreaterThan(agudo({ name: 'over', outcome: 'win' }))
     expect(record[0].delay).toBeGreaterThan(0.3)
+  })
+})
+
+describe('el listón de medalla', () => {
+  const notas = (rank: 0 | 1 | 2) => soundVoices({ name: 'medal', rank })
+
+  it('son dos notas cortas hacia arriba, una quinta', () => {
+    for (const rank of [0, 1, 2] as const) {
+      const [primera, segunda] = notas(rank)
+      expect(notas(rank)).toHaveLength(2)
+      expect(segunda.from).toBeCloseTo(primera.from * 1.5)
+      expect(segunda.delay).toBeGreaterThan(primera.delay)
+    }
+  })
+
+  it('más agudo cuanto mejor es la medalla, sin pasar de los 2 kHz', () => {
+    expect(notas(1)[0].from).toBeGreaterThan(notas(0)[0].from)
+    expect(notas(2)[0].from).toBeGreaterThan(notas(1)[0].from)
+    for (const rank of [0, 1, 2] as const) {
+      for (const voz of notas(rank)) expect(Math.max(voz.from, voz.to)).toBeLessThan(2000)
+    }
+  })
+
+  it('suena después del atrape que lo cruzó y acaba mucho antes que un cierre', () => {
+    const atrape = soundVoices({ name: 'catch', streak: 1 })
+    const finDelAtrape = Math.max(...atrape.map((voz) => voz.delay + voz.duration))
+    const fin = (voces: ReturnType<typeof soundVoices>) => Math.max(...voces.map((voz) => voz.delay + voz.duration))
+
+    expect(notas(0)[0].delay).toBeGreaterThanOrEqual(finDelAtrape)
+    expect(fin(notas(2))).toBeLessThan(fin(soundVoices({ name: 'over', outcome: 'win' })))
+    expect(fin(notas(2))).toBeLessThan(0.5)
   })
 })

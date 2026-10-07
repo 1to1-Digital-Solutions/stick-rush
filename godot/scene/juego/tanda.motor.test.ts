@@ -198,6 +198,6 @@ describe('qué suena, con la regla de `useGameSound.ts`', () => {
   })
 
   it('todo lo que puede sonar es un fichero de `godot-kit.json`', () => {
-    expect(SOUNDS.length).toBe(17)
+    expect(SOUNDS.length).toBe(20)
   })
 })
