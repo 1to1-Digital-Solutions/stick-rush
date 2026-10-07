@@ -12,7 +12,8 @@ their head. The whole scene is at human scale (1 unit = 1 metre).
 
 ## How to play
 
-1. Pick the mode — **Práctica** (practice) or **Desafío** (challenge).
+1. Pick the mode — the menu opens on **Reto** (challenge), the one that counts for a medal;
+   **Práctica** (practice) and **Niveles** (levels) are one tap away.
 2. Pick how many sticks you want, **between 5 and 13**.
 3. Pick the difficulty — **Fácil, Medio, Difícil, Experto or Imposible** (easy to
    impossible) — which sets the fall speed: from about 5.7 s per stick on Fácil to
@@ -43,7 +44,7 @@ have given, so the figure has a scale, and your best streak. The whole formula i
 plain arithmetic in `src/lib/scoring.ts`, tested without a browser.
 
 **The two modes.** In *Práctica* every stick falls and missing one costs nothing:
-it is the game as it always was, to warm up. In *Desafío* you play with **three
+it is the game as it always was, to warm up. In *Reto* you play with **three
 lives** — every stick that reaches the floor costs one, and the round is over when
 you run out of them (even with sticks still hanging) or when you clear them all.
 The lives you have left are on the scoreboard while you play, in the browser and in
@@ -61,7 +62,7 @@ UI: no text.
 
 **Sharing the result.** The score screen has a share button in both modes: it hands
 the system a short line with the score, the mode, the difficulty, the sticks caught
-and — in *Desafío* — the lives you finished with, plus a link to the game. It uses
+and — in *Reto* — the lives you finished with, plus a link to the game. It uses
 the **Web Share API** where there is one and falls back to the **clipboard**, saying
 so, which is what makes the button answer inside a headset too: an immersive session
 may have nowhere to draw the system sheet, and there the text is left copied instead.

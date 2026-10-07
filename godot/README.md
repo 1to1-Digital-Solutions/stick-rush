@@ -61,6 +61,19 @@ segundos de la cuenta atrás, la salida, el final (ganar, perder o terminar) y e
 de `useGameSound.ts` (`juego/sonido.ts`); y la música de la feria con su fundido. El idioma y los
 volúmenes son los del salón, del guardado.
 
+**El menú abre en el reto** y **el objetivo se lee de frente, bajo la máquina**
+(`interfaz/cartel.ts`): el cartel de la web con lo que dice `objetivo.ts` y en el sitio de
+`cartelDeLaMaquina.ts`, encima del marcador —la misión hasta el primer palo, lo que se lleva, las
+vidas y los palos que quedan mientras se juega, lo que faltó al acabar—, del mismo tamaño en el
+ojo que en la web; el marcador calla lo que el cartel ya dice (sin barra, sin vidas y sin la letra
+del final). Al cruzar un listón el cartel cambia de color, crece y vuelve, suena (`medal-*`) y se
+nota en la mano buena. En plano cuelga de la cámara, arriba en medio. **Los listones de medalla
+llegan del salón nativo**: `main.ts` lee el metadato `goal` del autoload `XRcade` con el
+`objetivoDe` del kit (lo mismo que su `base.objetivo()`, la prop `objetivo` de la web) y se lo pasa
+a la `Partida`; con él el cartel dice los listones, celebra cada medalla y dice «no cuenta» fuera
+del modo del récord. Sin salón, o si no le pone medallas, dice la misión y el récord guardado. Lo
+fija `tests/partida_auto.gd`, con el metadato y sin él.
+
 **El reto del salón** (`semilla.ts`): con `-- --reto=<semilla>`, o si el autoload `XRcade` lleva
 `challenge_seed`, se entra directo en **el desafío** (el modo del récord de la cabina), sin menú ni
 tutorial, con el reparto y el turno de los palos sacados de la semilla. Al acabar cada partida se
@@ -95,7 +108,7 @@ lint, cobertura al 100 % y los e2e). La escena importa `marcas.ts`.
 | `scene/juego/alcance.ts` | Qué palo coge la mano (la esfera del puño) o el ratón (el rayo) |
 | `scene/juego/sonido.ts` | Qué suena y cuándo (`useGameSound.ts`) |
 | `scene/mundo/` | La máquina (`maquina.ts`), los palos pintados (`palos.ts`), la feria, la plaza y tu habitación (`feria.ts`) y las ayudas (`ayudas.ts`); las piezas sueltas y el escenario son del kit |
-| `scene/interfaz/` | El menú, el marcador, volver, terminar, el aviso, el final de cada tanda a dos (`PanelDelDuelo`), la cuenta atrás, el tutorial, los iconos de `xrIcons.ts` y el de contra quién, y dónde va cada panel con visor y en plano |
+| `scene/interfaz/` | El menú, el marcador, el cartel del objetivo (`cartel.ts`), volver, terminar, el aviso, el final de cada tanda a dos (`PanelDelDuelo`), la cuenta atrás, el tutorial, los iconos de `xrIcons.ts` y el de contra quién, y dónde va cada panel con visor y en plano |
 | `scene/**/*.motor.test.ts` | La partida contra el store de la web, la tanda contra `Stick.tsx` y el sonido contra `useGameSound.ts`, el mundo (y que lo del paquete es lo de la web byte a byte), y los paneles medidos con el instrumento de la web en los dos idiomas y pulsados con el ratón: corren con los tests de dominio |
 | `godot-kit.json` | Para el kit: el id, el repo (`..`), los efectos (con la nota del atrape y la cuenta atrás en sus escalones) y la música |
 | `games/stick-rush/` | Lo que va en el `.pck`; `tests/` se queda fuera al exportar |
@@ -105,9 +118,9 @@ lint, cobertura al 100 % y los e2e). La escena importa `marcas.ts`.
 | `games/stick-rush/tests/xr_mando.*` | Dos partidas con visor simulado cogiendo con las dos manos: diestro sentado en el salón y zurdo de pie. La mano de cada atrape y su pulso, la altura del mundo y del aro, el anclaje, el giro, el tutorial con el mando en las manos y las ayudas |
 | `tests/run.sh` | Todo lo del motor de una vez (`npm run godot:test`) |
 
-**Qué tests entran en el motor** lo decide el kit por el grafo de imports: 27 de los 43 ficheros de
-`src/lib`, más los del kit y los del port: **682 tests**. `npm run godot:build -- --list-tests` dice
-por qué no entran los otros 16 (los que usan `vi`, los que tocan `window` o leen el disco).
+**Qué tests entran en el motor** lo decide el kit por el grafo de imports: 31 de los 48 ficheros de
+`src/lib`, más los del kit y los del port: **830 tests**. `npm run godot:build -- --list-tests` dice
+por qué no entran los otros 17 (los que usan `vi`, los que tocan `window` o leen el disco).
 
 ## Cómo se usa
 

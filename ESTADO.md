@@ -24,6 +24,9 @@ Qué mirar con las gafas, y dónde se toca:
 | Manos desnudas, en la web y en el salón | `src/components/xr/ManosDelJugador.tsx` |
 | ¿Se nota el atrape y el in extremis distinto? | `src/lib/haptics.ts`, `src/lib/tactos.ts` |
 | ¿La caída acelerando se lee como una caída? | `fallAcceleration` (`src/lib/gameConfig.ts`) |
+| **Pendiente de visor — el cartel del objetivo** (encima del marcador, 27° bajo la mirada; el menú abre en el reto): ¿se entiende la misión en los tres primeros segundos?, ¿se lee sin buscarlo?, ¿molesta al jugar? | `XR_CARTEL_POSITION` (`src/lib/xrLayout.ts`), `MISION_DEL_RETO` (`src/lib/cartelDeLaMaquina.ts`) |
+| Cartel: la letra (la misión sale a 1°); el marcador sin barra ni vidas, ¿se echan de menos? | `LETRA_DEL_CARTEL` (`CartelDeObjetivo.tsx`), `XR_HUD_WITH_SIGN`; en Godot, `CARTEL` (`godot/scene/interfaz/cartel.ts`) |
+| Cartel: el listón cruzado (color, pulso, dos notas y un toque en la mano buena tras el atrape), ¿se nota sin distraer? | `medalVoices` (`src/lib/sound.ts`), `RETARDO_DEL_LISTON`, `tactoDelListon` |
 
 Lo que solo puede decir el visor del port de Godot está en «Lo que se sabe y lo que falta» de
 `godot/README.md`. La lista común de todos los juegos: `organizate/docs/pendiente-de-visor.md`.

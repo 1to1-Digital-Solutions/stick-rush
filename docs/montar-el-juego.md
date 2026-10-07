@@ -116,14 +116,16 @@ puede pasar el cierre de su propia sesión, que es lo que hace la web del juego.
 
 #### El reto con semilla y el aviso de fin de partida
 
-Dos props más, las dos opcionales: sin ellas, el juego arranca en el menú y sortea como siempre.
-Los tipos `Reto` y `Resultado` están en `src/lib/semilla.ts`, que es el mismo fichero en todos
-los juegos del salón.
+Tres props más, las tres opcionales: sin ellas, el juego arranca en el menú —con el reto elegido—
+y sortea como siempre. Los tipos `Reto` y `Resultado` están en `src/lib/semilla.ts` y `Objetivo`
+en `src/lib/objetivo.ts` (el paquete lo exporta), que son los mismos ficheros en todos los juegos
+del salón.
 
 | Prop | Qué es |
 | --- | --- |
 | `reto` | `{ semilla }`: jugar un reto concreto del salón (el reto del día, «reta mi puntuación»). |
 | `onTerminar` | `({ modo, puntos, reto }) => void`: el aviso de que ha acabado una partida con puntuación. |
+| `objetivo` | `{ medallas: { bronce, plata, oro }, mejorEs, unidad, record, modo }`: los listones de medalla del juego y la marca de quien juega. |
 
 **Con `reto`**, la escena entra **directamente en una partida del desafío** (`challenge`), que
 es el modo del récord de la cabina (`stick-rush:best-points:challenge`), con su cuenta atrás y
@@ -145,7 +147,16 @@ como lo llama el juego (`practice`, `levels`, `challenge`; la práctica sin fin 
 `onExit`). La práctica sin fin sí: su final es que quien juega diga basta, y trae resumen. Tras
 el reto la pantalla final es la de siempre, y jugar otra vez ya no es el reto.
 
-`<StickRush>` y `mountStickRush` aceptan las mismas dos opciones.
+**Con `objetivo`**, el **cartel del objetivo** —de frente, encima del marcador y por debajo de
+donde caen los palos (`XR_CARTEL_POSITION`)— dice qué hay que superar: durante la cuenta atrás y
+hasta que se resuelve el primer palo, la misión y los tres listones; jugando, el listón que falta,
+lo que se lleva, las vidas y los palos que quedan; al acabar, lo que faltó para la siguiente
+medalla. `modo` es el modo del que salen las medallas (`challenge`): en cualquier otro, y a dos,
+el cartel dice mientras se juega que la partida no cuenta para medalla. Sin la prop, en el reto
+dice la misión y el récord guardado en este navegador. `unidad` llega ya en el idioma de quien
+juega. Lo que el cartel ya dice —los puntos y las vidas— el marcador de debajo lo calla.
+
+`<StickRush>` y `mountStickRush` aceptan `reto` y `onTerminar`; `objetivo` es de la escena.
 
 ### Como aplicación, con su propio Canvas
 
@@ -194,7 +205,7 @@ Toda la superficie pública es esa:
 
 | Nombre                         | Qué es                                                                                |
 | ------------------------------ | ------------------------------------------------------------------------------------- |
-| `StickRushScene`               | El juego como **escena**, dentro del Canvas y la sesión de otro. Props: `assetsBase`, `anchor`, `onExit`, `reto`, `onTerminar`. |
+| `StickRushScene`               | El juego como **escena**, dentro del Canvas y la sesión de otro. Props: `assetsBase`, `anchor`, `onExit`, `reto`, `onTerminar`, `objetivo`. |
 | `StickRush`                    | El juego como aplicación, con su propio Canvas y su propia sesión.                    |
 | `mountStickRush(elemento, …)`  | Lo mismo sobre un elemento del DOM. Devuelve `{ unmount() }`, que además cierra la sesión. |
 | `assetsBase`                   | De dónde cuelgan los ficheros del paso 3. Por defecto, la raíz del sitio.              |

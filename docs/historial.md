@@ -1291,3 +1291,31 @@ Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
   lleva el email personal.
 - `.claude/` y `.organizate/install-state.json` se publicarán y dejan ver el tooling
   interno. Sin secretos, pero es una decisión.
+
+## El menú abre en el reto y el cartel del objetivo (2026-10-05)
+
+Del visor (web): «cuando entro a jugar no tengo clara cuál es la misión». Lo que se decidió y por qué:
+
+- **Se abre en el reto, siempre** (`DEFAULT_GAME_MODE`), y el modo se llama **«Reto»** en español
+  («Challenge» sigue siendo la clave). Antes se abría en práctica para no estrenarse con vidas;
+  ahora Jugar sin tocar nada tiene que ser la partida que da medalla. Cada modo dice lo primero
+  si cuenta para medalla, en frases de dos renglones: una tercera línea se sale del panel del visor.
+- **El cartel común** (`objetivo.ts`, `CartelDeObjetivo.tsx`, copiados de basketball) va **encima
+  del marcador**, a 1,16 m (`XR_CARTEL_POSITION`): 27° bajo la mirada, más lejos que cualquier palo
+  y por debajo del tutorial y del aviso de salir, que empiezan a 1,21 m. Encima del aro taparía la
+  caída. El marcador calla lo que el cartel dice (barra de puntos y vidas) y encoge
+  (`XR_HUD_WITH_SIGN`); al acabar no sube, porque arriba está el cartel.
+- **La misión se acortó**: «Atrapa los 13 palos. Tres al suelo y se acaba» salía a 0,82° (0,69° en
+  inglés) porque el cartel escribe una línea y la encoge. «Atrapa 13 palos. Tres al suelo y fuera»
+  queda en un grado. Se enseña en la cuenta atrás **y hasta que se resuelve el primer palo**: tres
+  segundos no daban para leerla.
+- **Lo que no cuenta** (práctica, niveles, a dos) lo dice el cartel bajito solo dentro del salón y
+  solo mientras se juega: al acabar, el panel del final ocupa ese sitio.
+- **El listón cruzado**: color y pulso del cartel, dos notas (`medal`) después del atrape y un
+  toque en la mano buena 90 ms más tarde (`pulse()` no encola y el atrape ya vibra).
+- En la web sin visor la misión sale arriba en DOM hasta el primer palo, y el botón resaltado del
+  final es «Otra» (antes solo había «Volver al menú»).
+- **El emulador de los e2e** llevaba roto desde que `iwer` subió a 2.4: sin `forceInstall` se
+  aparta ante el `navigator.xr` de Chromium y ningún test de sesión podía entrar al visor.
+- El e2e del menú de Godot ya no pulsa dos veces el botón del modo: sin ventana el motor corre más
+  deprisa que el reloj y el segundo toque caía dentro del doble roce (300 ms).
