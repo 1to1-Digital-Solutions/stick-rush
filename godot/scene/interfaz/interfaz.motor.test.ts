@@ -413,11 +413,12 @@ describe('el cartel del objetivo mide lo que la web', () => {
     expect(marcador.medida.height).toBeLessThan(entero)
     marcador.pintar({ ...estado, enElCartel: true, terminada: true })
     expect(marcador.medida.height).toBeCloseTo(XR_HUD_WITH_SIGN.finished.height)
-    expect(marcador.panel.escritos).toEqual([])
+    // Solo los rótulos de los botones: cómo ha acabado y los puntos los dice el cartel.
+    expect(marcador.panel.escritos.map((e) => e.texto)).toEqual(['Otra partida', 'Menú'])
     expect(marcador.repetir.nodo.visible).toBe(true)
     // Sin cartel, el final sigue diciendo cómo ha acabado y los puntos.
     marcador.pintar({ ...estado, terminada: true })
-    expect(marcador.panel.escritos.map((e) => e.texto)).toEqual(['Te has quedado sin vidas', '2100'])
+    expect(marcador.panel.escritos.map((e) => e.texto)).toEqual(['Otra partida', 'Menú', 'Te has quedado sin vidas', '2100'])
     marcador.nodo.free()
   })
 })

@@ -198,10 +198,44 @@ const DONE_BUTTON = { color: '#166534', emissive: '#22c55e', intensity: 0.5 }
 const FAILED_BUTTON = { color: '#b91c1c', emissive: '#dc2626', intensity: 0.4 }
 
 /** Separación entre los botones de fin de partida, con aire entre sus zonas. */
-const BUTTON_SPACING = 0.16
+const BUTTON_SPACING = 0.36
 const BUTTON_HIT: [number, number, number] = [0.15, 0.11, 0.06]
-/** Lo que ocupan los tres botones de lado a lado, zonas sensibles incluidas. */
-const BUTTONS_WIDTH = BUTTON_SPACING * 2 + BUTTON_HIT[0]
+
+/**
+ * Los rótulos de debajo de los botones de fin de partida.
+ *
+ * Eran tres iconos sin texto —repetir, compartir, casa— y los demás juegos del salón rotulan
+ * «Otra partida»: con el visor puesto un icono solo se adivina. Van **debajo de la placa**, en
+ * un solo lienzo para los tres (una llamada de dibujo), y se miden en los dos idiomas
+ * (`rotulosDelFinal.legible.test.ts`). `y` es su centro respecto de la fila de botones.
+ */
+export const ROTULOS_DEL_FINAL = { width: 3 * BUTTON_SPACING, height: 0.06, y: -0.08, size: 0.047 } as const
+
+/** Lo que dice cada botón, de izquierda a derecha: repetir, compartir y volver al menú. */
+export const TEXTOS_DEL_FINAL: readonly TextKey[] = ['Play again', 'Share', 'Menu']
+
+/** Pinta los tres rótulos. Fuera del componente para medirlo con el lienzo que apunta. */
+export function dibujarRotulosDelFinal(ctx: CanvasRenderingContext2D, t: (clave: TextKey) => string): void {
+  TEXTOS_DEL_FINAL.forEach((texto, i) => {
+    drawText(ctx, t(texto), (i - 1) * BUTTON_SPACING, 0, {
+      size: ROTULOS_DEL_FINAL.size,
+      color: '#e2e8f0',
+      weight: '700',
+      maxWidth: BUTTON_SPACING - 0.01,
+    })
+  })
+}
+
+/** El lienzo de los rótulos, debajo de la fila de botones. */
+function RotulosDelFinal() {
+  const t = traductor(useLang())
+  const draw = useCallback((ctx: CanvasRenderingContext2D) => dibujarRotulosDelFinal(ctx, t), [t])
+  return (
+    <group position={[0, ROTULOS_DEL_FINAL.y, 0.004]}>
+      <CanvasPanel width={ROTULOS_DEL_FINAL.width} height={ROTULOS_DEL_FINAL.height} draw={draw} fallbackColor="#000000" />
+    </group>
+  )
+}
 
 /** Placa de un botón de fin de partida. */
 function ButtonPlate({
@@ -360,7 +394,7 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
           // Al acabar, el ancho no puede depender de cuántos palos se jugaran:
           // con los pocos de una partida corta, la fila de tres botones se
           // saldría del panel y perdería el fondo que la despega del passthrough.
-          width={Math.max(width + 0.2, finished ? BUTTONS_WIDTH + 0.06 : 0)}
+          width={Math.max(width + 0.2, finished ? ROTULOS_DEL_FINAL.width + 0.06 : 0)}
           height={layout.height}
           color={PANEL_COLOR}
           opacity={0.72}
@@ -425,6 +459,7 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
             <ButtonPlate style={NEUTRAL_BUTTON} />
             <XRHomeIcon position={[0, 0, 0.008]} />
           </XRPressable>
+          <RotulosDelFinal />
         </group>
       )}
     </group>

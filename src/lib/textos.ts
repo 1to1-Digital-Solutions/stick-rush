@@ -114,6 +114,7 @@ const ES = {
   Leave: 'Salir',
     'Back to the menu': 'Volver al menú',
   Share: 'Compartir',
+  Menu: 'Menú',
 
   // Resumen
   'Play again': 'Otra partida',

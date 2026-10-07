@@ -35,7 +35,7 @@ import { CHALLENGE_LIVES } from '@/lib/gameMode'
 import type { Stars } from '@/lib/levels'
 import type { Player } from '@/lib/duel'
 import type { StickStatus } from '@/lib/stickLayout'
-import { formatoDeCifra } from '@/lib/textos'
+import { formatoDeCifra, traductor } from '@/lib/textos'
 import { XR_HOME_ICON } from '@/lib/xrIcons'
 import { xrHudLayout } from '@/lib/xrLayout'
 
@@ -55,15 +55,16 @@ const LIFE_SPACING = 0.05
 const LIFE_SIZE = 0.019
 const LIFE_ROW_Y = -0.105
 const LIFE_SPENT_COLOR = '#3f4a5a'
-/** Los botones del final (`BUTTON_SPACING`, `BUTTON_HIT`, `BUTTONS_WIDTH`). */
-const BUTTON_SPACING = 0.16
+/** Los botones del final y sus rótulos (`BUTTON_SPACING`, `BUTTON_HIT`, `ROTULOS_DEL_FINAL`). */
+const BUTTON_SPACING = 0.36
 const BUTTON_HIT = { width: 0.15, height: 0.11 } as const
-const BUTTONS_WIDTH = BUTTON_SPACING * 2 + BUTTON_HIT.width
+/** Debajo de cada placa, lo que hace: un icono solo se adivina con el visor puesto. */
+export const ROTULOS_DEL_FINAL = { width: 3 * BUTTON_SPACING, y: -0.08 } as const
 
 /** Lo que crece el panel del final por arriba para la letra: cómo ha acabado y los puntos. */
 export const SUBIDA_DEL_FINAL = 0.12
 /** A qué tamaño se escribe cada cosa del final. */
-export const LETRA_DEL_MARCADOR = { titulo: 0.03, puntos: 0.05 } as const
+export const LETRA_DEL_MARCADOR = { titulo: 0.03, puntos: 0.05, rotulo: 0.047 } as const
 
 /** Lo que enseña el marcador. */
 export interface EstadoDelMarcador {
@@ -183,7 +184,7 @@ export class Marcador {
     const enElCartel = estado.enElCartel === true
     const vidas = enElCartel ? null : estado.vidas
     const conFila = vidas != null || estado.estrellas != null
-    this.ancho = Math.max(ancho + 0.2, terminada ? BUTTONS_WIDTH + 0.06 : 0)
+    this.ancho = Math.max(ancho + 0.2, terminada ? ROTULOS_DEL_FINAL.width + 0.06 : 0)
     // El panel de la web, y al acabar lo que crece por arriba para la letra. Con el cartel encima
     // no crece: arriba está el cartel, que es quien dice cómo ha acabado.
     const reparto = xrHudLayout({ finished: terminada, row: conFila, sign: enElCartel })
@@ -260,6 +261,14 @@ export class Marcador {
 
     const { panel } = this
     panel.borrarTextos()
+    if (terminada) {
+      // Los rótulos de los botones, como en la web (`dibujarRotulosDelFinal`): aquí no hay compartir.
+      const t = traductor(estado.lang)
+      const y = -0.12 - centro + ROTULOS_DEL_FINAL.y
+      const letra = { alto: LETRA_DEL_MARCADOR.rotulo, color: COLORES.claro, anchoMax: BUTTON_SPACING - 0.01 }
+      panel.escribir(t('Play again'), -BUTTON_SPACING, y, letra)
+      panel.escribir(t('Menu'), BUTTON_SPACING, y, letra)
+    }
     if (!terminada || enElCartel) return
     const arriba = this.alto / 2
     panel.escribir(estado.titulo, 0, arriba - 0.04, { alto: LETRA_DEL_MARCADOR.titulo, color: COLORES.claro, anchoMax: this.ancho - 0.04 })
