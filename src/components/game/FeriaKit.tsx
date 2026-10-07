@@ -59,12 +59,14 @@ export function FeriaKit() {
   // Llegan después del precalentado de la escena (`Calentar`), que las encontró sin cargar: se
   // calientan aquí, al montarse. Sin esto, con «tu habitación» elegida el recinto está oculto
   // y su shader se compilaría al enseñarlo, que es un tirón con el visor puesto.
+  // Con `compile` y no `compileAsync`: nadie espera la promesa, y su sondeo de `isReady()` revienta
+  // si un material se desmonta entretanto (lo cuenta `Calentar.tsx`).
   const grupo = useRef<Group>(null)
   const gl = useThree((state) => state.gl)
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera)
   useLayoutEffect(() => {
-    if (grupo.current != null) void gl.compileAsync(grupo.current, camera, scene)
+    if (grupo.current != null) gl.compile(grupo.current, camera, scene)
   }, [gl, camera, scene])
 
   return (
