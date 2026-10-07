@@ -116,7 +116,7 @@ const ES = {
   Share: 'Compartir',
 
   // Resumen
-  'Play again': 'Otra',
+  'Play again': 'Otra partida',
   'Game over!': '¡Partida terminada!',
   'Challenge cleared!': '¡Reto superado!',
   'You are out of lives': 'Te has quedado sin vidas',
@@ -129,6 +129,22 @@ const ES = {
   'sticks.': 'palos.',
   'sticks, endless.': 'palos sin fin.',
   '1 star': '1 estrella',
+  '{stars} stars': '{stars} estrellas',
+  'Level {level} cleared!': '¡Nivel {level} superado!',
+  'Level {level} not cleared': 'Nivel {level} sin superar',
+  'Level {level} unlocked': 'Nivel {level} desbloqueado',
+  'of {max} possible': 'de {max} posibles',
+  // El marcador de la esquina y lo que anuncia el lector de pantalla.
+  'Streak ×{streak}': 'Racha ×{streak}',
+  '{score} / {total} sticks': '{score} / {total} palos',
+  '{score} sticks · set {set} / {total}': '{score} palos · tanda {set} / {total}',
+  'Level {level} · ': 'Nivel {level} · ',
+  '{points} points. ': '{points} puntos. ',
+  'Level {level}. ': 'Nivel {level}. ',
+  'Lives {lives} of {total}. ': 'Vidas {lives} de {total}. ',
+  'Caught {score} of {total}': 'Atrapados {score} de {total}',
+  'Caught {score}, endless, set {set}': 'Atrapados {score}, sin fin, tanda {set}',
+  'Starting in {seconds}': 'Empieza en {seconds}',
 
   // Compartir
   'Shared!': '¡Compartido!',

@@ -8,7 +8,7 @@ import { FRASES, FRASES_CON_LAS_MANOS } from '../../lib/tutorial'
 import { type ShareStatus, useShareResult } from '../useShareResult'
 import { HeartIcon, ShareIcon, StarIcon } from '../ui/icons'
 import { useLang } from '../../lib/ajustesCliente'
-import { formatoDeCifra, formatea, traductor } from '../../lib/textos'
+import { formatoDeCifra, formatea, traductor, type TextKey } from '../../lib/textos'
 import { PLAYER_LABELS, duelSummary } from '../../lib/duel'
 /**
  * Vidas que quedan, una por corazón: llenos los que conservas, de contorno los
@@ -40,7 +40,7 @@ function Lives({ lives, total }: { lives: number; total: number }) {
  * que va al portapapeles sin avisar parece un botón que no hace nada. Cancelar
  * no dice nada, que es lo que ha pedido quien cancela.
  */
-const SHARE_MESSAGES: Record<ShareStatus, string> = {
+const SHARE_MESSAGES: Record<ShareStatus, TextKey | ''> = {
   idle: '',
   shared: 'Shared!',
   copied: 'Result copied to the clipboard.',
@@ -60,7 +60,8 @@ const SHARE_MESSAGES: Record<ShareStatus, string> = {
 function ShareResultButton() {
   const t = traductor(useLang())
   const { status, share } = useShareResult()
-  const message = SHARE_MESSAGES[status]
+  const clave = SHARE_MESSAGES[status]
+  const message = clave === '' ? '' : t(clave)
 
   return (
     <>
@@ -204,26 +205,24 @@ export function HUD() {
   // desafío es el dato que decide si sigues jugando.
   const livesLabel =
     lives != null && totalLives != null
-      ? `Lives ${lives} of ${totalLives}. `
+      ? formatea(t('Lives {lives} of {total}. '), { lives, total: totalLives })
       : ''
   // El desafío se gana o se pierde, y el jugador tiene que saber cuál de las
   // dos le ha pasado antes de mirar ninguna cifra. La práctica no se pierde:
   // ahí el título se queda como estaba.
   const title = levels
-    ? levelResult?.passed
-      ? `Level ${activeLevel} cleared!`
-      : `Level ${activeLevel} not cleared`
+    ? formatea(t(levelResult?.passed ? 'Level {level} cleared!' : 'Level {level} not cleared'), { level: activeLevel })
     : gameMode !== 'challenge'
-      ? 'Game over!'
+      ? t('Game over!')
       : outcome === 'cleared'
-        ? 'Challenge cleared!'
-        : 'You are out of lives'
+        ? t('Challenge cleared!')
+        : t('You are out of lives')
   // Sin fin, lo atrapado se cuenta de la partida entera y no «de N»: los palos
   // no se acaban. Y el nivel se anuncia antes que nada en Niveles.
   const caughtLabel = sinFin
-    ? `Caught ${score}, endless, set ${wave + 1}`
-    : `Caught ${score} of ${stickCount}`
-  const levelLabel = levels ? `Level ${activeLevel}. ` : ''
+    ? formatea(t('Caught {score}, endless, set {set}'), { score, set: wave + 1 })
+    : formatea(t('Caught {score} of {total}'), { score, total: stickCount })
+  const levelLabel = levels ? formatea(t('Level {level}. '), { level: activeLevel }) : ''
   return (
     <>
       {/* Marcador permanente durante la partida */}
@@ -233,7 +232,7 @@ export function HUD() {
         <div
           role="status"
           aria-live="polite"
-          aria-label={`${points} points. ${levelLabel}${livesLabel}${caughtLabel}`}
+          aria-label={`${formatea(t('{points} points. '), { points })}${levelLabel}${livesLabel}${caughtLabel}`}
           className="rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 backdrop-blur"
         >
           <p className="text-xs uppercase tracking-[0.2em] text-white/50">
@@ -243,7 +242,9 @@ export function HUD() {
             {formatoDeCifra(points, lang)}
           </p>
           <p className="text-xs font-medium text-white/50">
-            {sinFin ? `${score} sticks · set ${waveScore} / ${stickCount}` : `${score} / ${stickCount} sticks`}
+            {sinFin
+              ? formatea(t('{score} sticks · set {set} / {total}'), { score, set: waveScore, total: stickCount })
+              : formatea(t('{score} / {total} sticks'), { score, total: stickCount })}
           </p>
           {lives != null && totalLives != null && (
             <span className="mt-1.5 flex justify-end">
@@ -256,12 +257,12 @@ export function HUD() {
             palos seguidos. Con el "x1" permanente sería ruido. */}
         {streak >= 2 && (
           <span className="animate-fade-slide-up rounded-md border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/15 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--color-accent)] backdrop-blur">
-            Streak ×{streak}
+            {formatea(t('Streak ×{streak}'), { streak })}
           </span>
         )}
 
         <span className="rounded-md border border-white/10 bg-[var(--color-muted)]/80 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white/60 backdrop-blur">
-          {levels ? `Level ${activeLevel} · ` : ''}{DIFFICULTY_LABELS[difficulty]}
+          {levels ? formatea(t('Level {level} · '), { level: activeLevel }) : ''}{t(DIFFICULTY_LABELS[difficulty])}
         </span>
 
         {/* A dos, de quién es la tanda: con dos personas turnándose, el marcador tiene que
@@ -342,7 +343,7 @@ export function HUD() {
             // marcador, que convive con ella en pantalla.
             role="timer"
             aria-live="assertive"
-            aria-label={`Starting in ${countdown}`}
+            aria-label={formatea(t('Starting in {seconds}'), { seconds: countdown })}
             // La clave fuerza el remontaje en cada número, y con él la
             // animación: sin ella el texto cambiaría sin dar el golpe.
             key={countdown}
@@ -374,7 +375,7 @@ export function HUD() {
             {levelResult && (
               <div
                 role="img"
-                aria-label={levelResult.stars === 1 ? '1 star' : `${levelResult.stars} stars`}
+                aria-label={levelResult.stars === 1 ? t('1 star') : formatea(t('{stars} stars'), { stars: levelResult.stars })}
                 className="flex items-center gap-1 text-[var(--color-accent)]"
               >
                 {Array.from({ length: 3 }, (_, index) => (
@@ -388,7 +389,7 @@ export function HUD() {
               </p>
               {!sinFin && (
                 <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-                  of {formatoDeCifra(maxPossible, lang)} possible
+                  {formatea(t('of {max} possible'), { max: formatoDeCifra(maxPossible, lang) })}
                 </p>
               )}
               {/* El récord: batido, se anuncia; si no, se enseña la marca que
@@ -398,17 +399,17 @@ export function HUD() {
               {levelResult ? (
                 levelResult.unlocked != null && (
                   <p className="animate-fade-slide-up mt-2 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)]/15 px-3 py-1 text-sm font-bold uppercase tracking-wide text-[var(--color-accent)] motion-reduce:animate-none">
-                    Level {levelResult.unlocked} unlocked
+                    {formatea(t('Level {level} unlocked'), { level: levelResult.unlocked })}
                   </p>
                 )
               ) : isRecord ? (
                 <p className="animate-fade-slide-up mt-2 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)]/15 px-3 py-1 text-sm font-bold uppercase tracking-wide text-[var(--color-accent)] motion-reduce:animate-none">
-                  {sinFin ? 'Best streak!' : 'New record!'}
+                  {t(sinFin ? 'Best streak!' : 'New record!')}
                 </p>
               ) : (
                 bestPoints > 0 && (
                   <p className="mt-2 text-sm text-white/50">
-                    {sinFin ? 'Your best streak:' : 'Your record:'}{' '}
+                    {t(sinFin ? 'Your best streak:' : 'Your record:')}{' '}
                     <span className="font-bold tabular-nums text-white/80">
                       {sinFin ? `×${bestPoints}` : formatoDeCifra(bestPoints, lang)}
                     </span>
@@ -461,7 +462,7 @@ export function HUD() {
                    {t('Difficulty')}
 </dt>
                 <dd className="font-bold text-white/80">
-                  {DIFFICULTY_LABELS[difficulty]}
+                  {t(DIFFICULTY_LABELS[difficulty])}
                 </dd>
               </div>
             </dl>
