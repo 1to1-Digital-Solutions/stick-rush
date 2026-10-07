@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { useTexture } from '@react-three/drei'
+import { useFrame, useThree } from '@react-three/fiber'
 import { Quaternion, RepeatWrapping, Vector3 } from 'three'
 import { assetUrl } from '../../lib/assets'
 import {
@@ -127,6 +128,25 @@ export function StickMachine() {
   // mientras se decide, y eso es un punto que cuesta pensárselo.
   const paused = gameState !== 'playing' || prompt !== null
   const reducedMotion = useReducedMotion()
+
+  // Con el ratón quieto, lo que hay debajo se vuelve a mirar en cada fotograma.
+  //
+  // R3F solo lanza su rayo cuando llega un evento de puntero, y aquí lo que se mueve son los
+  // palos: se mecen unos píxeles colgados y luego caen. Con el ratón parado junto al borde de uno
+  // —nadie lo mueve durante la cuenta atrás—, que el palo estuviera o no debajo dependía de en
+  // qué punto del vaivén pilló al último movimiento, y si no estaba, el cursor ya no se encendía
+  // aunque el palo volviera a pasar por debajo. `events.update()` repite el último evento de
+  // puntero contra la escena de ahora, y de ahí salen los `pointerover` y `pointerout` de siempre.
+  //
+  // Solo desde la cuenta atrás hasta el final (en el menú y al acabar no hay nada que coger) y
+  // solo en pantalla: con el visor se coge con la mano, y ahí no hay ratón que repasar.
+  const events = useThree((state) => state.events)
+  const gl = useThree((state) => state.gl)
+  useFrame(() => {
+    if (gameState !== 'countdown' && gameState !== 'playing') return
+    if (gl.xr.isPresenting) return
+    events.update?.()
+  })
 
   const [normalMap, roughnessMap] = useTexture([
     assetUrl(WOOD_TEXTURES.normalMap),
