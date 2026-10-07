@@ -24,6 +24,7 @@
  */
 import { MAX_STICKS, MIN_STICKS, type Difficulty } from '@/lib/gameConfig'
 import type { Lang } from '@/lib/ajustes'
+import { enCalentamiento } from '@/lib/calentamiento'
 import { llevaLaCuenta, partidaDelCartel } from '@/lib/cartelDeLaMaquina'
 import { CHALLENGE_SETUP, DEFAULT_GAME_MODE, remainingLives, runOutcome, type GameMode, type RunOutcome } from '@/lib/gameMode'
 import {
@@ -152,6 +153,13 @@ export class Partida {
   tutorialSeen: boolean
   /** Si esta partida va enseñando a jugar (la lección corre con la partida, no la para). */
   teaching = false
+  /**
+   * La partida empezó calentando (`calentamiento.ts`): los palos perdidos no quitan vidas y no se
+   * acaba. Se apaga al volver a empezar el reto de cero, cuando la lección se cierra.
+   */
+  calentando = false
+  /** El reto acaba de empezar de cero tras el calentamiento: se avisa hasta el primer palo. */
+  private avisoDeQueCuenta = false
   /** Si se juega con las gafas puestas: decide a quién se enseña la lección. */
   immersive = false
   /** Si se juega con las manos desnudas: cambia la frase de la lección, no el gesto. */
@@ -257,11 +265,16 @@ export class Partida {
   }
 
   get lives(): number | null {
-    return remainingLives(this.gameMode, this.misses)
+    return remainingLives(this.gameMode, this.calentando ? 0 : this.misses)
+  }
+
+  /** Hasta que se resuelve el primer palo del reto que empezó de cero tras el calentamiento. */
+  get ahoraCuenta(): boolean {
+    return this.avisoDeQueCuenta && this.resolved === 0
   }
 
   get outcome(): RunOutcome | null {
-    if (!this.running) return null
+    if (!this.running || this.calentando) return null
     if (this.endlessRun) return this.endedByPlayer ? 'cleared' : null
     return runOutcome({ mode: this.gameMode, resolved: this.resolved, misses: this.misses, stickCount: this.activeStickCount })
   }
@@ -339,6 +352,8 @@ export class Partida {
         resolved: this.resolved,
         stickCount: this.activeStickCount,
         record: this.recordToBeat,
+        calentando: this.calentando,
+        ahoraCuenta: this.ahoraCuenta,
       },
       traductorSuave(lang),
     )
@@ -463,6 +478,8 @@ export class Partida {
     this.levelAtStart = this.selectedLevel
     this.runId++
     this.teaching = opciones?.tutorial ?? (this.immersive && !visto)
+    this.calentando = enCalentamiento({ ensenando: this.teaching, gameMode: this.gameMode, aDos: this.duelo != null, enReto: false })
+    this.avisoDeQueCuenta = false
     this.tutorialSkipped = 0
     this.plazo = 0
     this.anotada = false
@@ -530,6 +547,8 @@ export class Partida {
     this.clearRun()
     this.cuentaAtras = 0
     this.teaching = false
+    this.calentando = false
+    this.avisoDeQueCuenta = false
     this.tutorialSkipped = 0
     this.enReto = false
     this.running = false
@@ -561,6 +580,12 @@ export class Partida {
     if (this.teaching && this.tutorialStep === null && !this.anotada) {
       markTutorialSeen()
       this.anotada = true
+    }
+    // La lección se ha cerrado sobre el calentamiento: el reto empieza de cero (`calentamiento.ts`).
+    if (this.calentando && this.running && this.tutorialStep === null) {
+      if (this.teaching) markTutorialSeen()
+      this.startGame({ tutorial: false })
+      this.avisoDeQueCuenta = true
     }
     this.alCambiar()
   }

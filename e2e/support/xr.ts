@@ -163,7 +163,7 @@ export async function pressAndRelease(
 export async function pressPlayInsideSession(page: Page, attempts = 8) {
   const score = page.getByRole('status')
   for (let attempt = 0; attempt < attempts; attempt++) {
-    await page.getByRole('button', { name: 'Play' }).focus()
+    await page.getByRole('button', { name: 'Play', exact: true }).focus()
     await page.keyboard.press('Enter')
 
     // No basta con que aparezca el marcador: si la partida arranca en el hueco

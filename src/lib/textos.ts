@@ -29,6 +29,9 @@ const ES = {
   // juego ya decía por su cuenta no choque.
   ...OBJETIVO_ES,
   'Catch {sticks} sticks. Drop three and out': 'Atrapa {sticks} palos. Tres al suelo y fuera',
+  // El calentamiento: con la lección en marcha el reto aún no cuenta (`calentamiento.ts`).
+  'Warm-up': 'Calentamiento',
+  'Now it counts for a medal': 'Ahora cuenta para medalla',
 
   // Lo que dice la pestaña y lo que se lee al compartir el enlace
   'Catch the sticks falling from the machine before they hit the ground. Play in the browser or in mixed reality (VR/AR).':

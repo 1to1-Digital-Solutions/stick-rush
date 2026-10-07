@@ -9,6 +9,7 @@
  * Sin three ni React: la escena coloca lo que sale de aquí y los tests lo miden.
  */
 
+import { AHORA_CUENTA, CALENTAMIENTO } from './calentamiento'
 import { PLAYER_COUNT_LABELS } from './duel'
 import { CHALLENGE_LIVES, CHALLENGE_SETUP, GAME_MODE_LABELS, type GameMode } from './gameMode'
 import { REFERENCE_EYE_HEIGHT } from './hoopHeight'
@@ -111,6 +112,10 @@ export interface LoQueSeJuega {
   stickCount: number
   /** El récord del reto guardado aquí al empezar; cero si no hay. */
   record: number
+  /** La lección corre sobre el reto: lo que pasa aún no cuenta (`calentamiento.ts`). */
+  calentando?: boolean
+  /** La lección se acaba de cerrar y el reto empieza de cero: hasta el primer palo, se avisa. */
+  ahoraCuenta?: boolean
 }
 
 /**
@@ -121,11 +126,21 @@ export interface LoQueSeJuega {
  * las vidas y los palos que quedan; al acabar, lo que faltó. En cualquier otro modo, y a dos,
  * dentro del salón el cartel dice bajito que no cuenta para medalla mientras se juega; con el
  * juego abierto suelto no hay medalla de la que hablar y no se cuelga. En el menú, tampoco.
+ *
+ * **El calentamiento** dice bajito que no cuenta, con salón y sin él; y al cerrarse la lección, la
+ * cuenta atrás del reto que empieza de cero dice «Ahora cuenta para medalla» en lugar de la misión
+ * —que ya se ha jugado—, con los listones debajo.
  */
 export function partidaDelCartel(juego: LoQueSeJuega, t: Traducir): Partida | null {
   const { gameMode, gameState } = juego
   if (gameState === 'menu') return null
   const objetivo = juego.objetivo ?? null
+  if (juego.calentando === true) {
+    // Sin salón el cartel solo dice la misión, así que la misión es ya la frase entera.
+    const modo = t(CALENTAMIENTO)
+    const mision = t('{mode} · does not count for a medal', { mode: modo })
+    return { objetivo, fase: 'jugando', puntos: juego.points, mision, cuenta: false, modo }
+  }
   const mision = t(MISION_DEL_RETO, { sticks: CHALLENGE_SETUP.stickCount })
   const cuenta =
     gameMode === MODO_DE_LAS_MEDALLAS && !juego.aDos && juego.lives != null && cuentaParaMedalla(objetivo, gameMode)
@@ -139,7 +154,7 @@ export function partidaDelCartel(juego: LoQueSeJuega, t: Traducir): Partida | nu
     objetivo,
     fase: gameState === 'finished' ? 'final' : sinEmpezar ? 'antes' : 'jugando',
     puntos: juego.points,
-    mision,
+    mision: juego.ahoraCuenta === true && sinEmpezar ? t(AHORA_CUENTA) : mision,
     queda: loQueQueda(juego.lives as number, juego.stickCount - juego.resolved, t),
     record: juego.record > 0 ? juego.record : null,
   }

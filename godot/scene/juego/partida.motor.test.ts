@@ -495,3 +495,34 @@ describe('el cartel del objetivo, como en la web', () => {
     expect(sonidosDesde({ ...base, medalla: undefined }, { ...base, medalla: undefined })).toEqual([])
   })
 })
+
+describe('el calentamiento, como en el store de la web', () => {
+  beforeEach(() => gameStorage()?.clear())
+
+  it('tres palos al suelo con la lección delante dejan el reto intacto, y al cerrarla empieza de cero', () => {
+    const p = new Partida()
+    p.setImmersive(true)
+    jugando(p)
+    expect([p.gameMode, p.calentando]).toEqual(['challenge', true])
+    resolver(p, 3, false)
+    expect([p.gameState, p.lives]).toEqual(['playing', CHALLENGE_LIVES])
+    expect(p.cartel('es')?.titulo).toBe('Calentamiento · no cuenta para medalla')
+
+    const antes = p.runId
+    p.finishTutorial()
+    p.tick(0.01)
+    expect([p.calentando, p.runId, p.gameState, p.resolved, p.lives, p.ahoraCuenta]).toEqual([false, antes + 1, 'countdown', 0, CHALLENGE_LIVES, true])
+    p.tick(COUNTDOWN_SECONDS)
+    p.missStick()
+    expect([p.ahoraCuenta, p.lives]).toEqual([false, CHALLENGE_LIVES - 1])
+  })
+
+  it('nunca en la práctica ni en el reto del salón', () => {
+    const practica = enPractica()
+    practica.setImmersive(true)
+    jugando(practica)
+    expect(practica.calentando).toBe(false)
+    const delReto = new Partida({ reto: { semilla: 7 } })
+    expect(delReto.calentando).toBe(false)
+  })
+})

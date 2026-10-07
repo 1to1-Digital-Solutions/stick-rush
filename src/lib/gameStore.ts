@@ -98,6 +98,7 @@ import {
   tutorialSeen as leerTutorialVisto,
   tutorialStep as pasoDelTutorial,
 } from './tutorial'
+import { enCalentamiento } from './calentamiento'
 
 export type GameState = 'menu' | 'countdown' | 'playing' | 'finished'
 
@@ -204,6 +205,14 @@ export interface GameStore {
    * otra partida o se vuelve al menú.
    */
   enReto: boolean
+  /**
+   * La lección corre sobre el reto: **lo que pasa aún no cuenta** (`calentamiento.ts`). Los palos
+   * perdidos no quitan vidas y la partida no se acaba; al cerrarse la lección el reto empieza de
+   * cero.
+   */
+  calentando: boolean
+  /** La lección se acaba de cerrar y aún no se ha resuelto el primer palo del reto: se avisa. */
+  ahoraCuenta: boolean
   /** Tanda en curso de la partida sin fin, empezando en 0; siempre 0 si no. */
   wave: number
   /** Palos atrapados y resueltos de la TANDA en curso; en sin fin, no de la partida. */
@@ -501,6 +510,10 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
   //
   // Con reto se entra jugando: el salón ya ha elegido juego y modo por quien juega.
   const [running, setRunning] = useState(() => reto != null)
+  // Si esta partida empezó calentando (`calentamiento.ts`). Se apaga solo al volver a empezar el
+  // reto de cero: mientras tanto la partida no se acaba, aunque la lección ya se haya retirado.
+  const [calentamiento, setCalentamiento] = useState(false)
+  const [avisoDeQueCuenta, setAvisoDeQueCuenta] = useState(false)
   // El escenario tampoco es estado de React, y además no es del juego: es el
   // escenario del arcade (`xrcade:scenery`), traducido a `scene`/`passthrough` en
   // el borde (`sceneryPreference.ts`). Se cambia desde el panel del salón y desde
@@ -578,14 +591,16 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
   // Cuándo se acaba una partida lo decide el modo (ver `gameMode.ts`): en
   // práctica, el último palo; en desafío, también quedarse sin vidas. Sin fin
   // no se acaba sola: la cierra el jugador.
-  const outcome = running
+  const outcome = running && !calentamiento
     ? endlessRun
       ? endedByPlayer
         ? 'cleared'
         : null
       : runOutcome({ mode: gameMode, resolved, misses, stickCount: activeStickCount })
     : null
-  const lives = remainingLives(gameMode, misses)
+  // Calentando, los palos perdidos no cuestan vidas.
+  const lives = remainingLives(gameMode, calentamiento ? 0 : misses)
+  const ahoraCuenta = avisoDeQueCuenta && resolved === 0
   const gameState: GameState = !running
     ? 'menu'
     : countdown > 0
@@ -790,10 +805,12 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
           resolved,
           stickCount: activeStickCount,
           record: recordToBeat,
+          calentando: calentamiento,
+          ahoraCuenta,
         },
         traductorSuave(lang),
       ),
-    [objetivo, gameMode, aDos, gameState, points, lives, resolved, activeStickCount, recordToBeat, lang],
+    [objetivo, gameMode, aDos, gameState, points, lives, resolved, activeStickCount, recordToBeat, calentamiento, ahoraCuenta, lang],
   )
   const cartel = useMemo(
     () => (partidaQueSeCuenta == null ? null : cartelDeObjetivo(partidaQueSeCuenta, traductorSuave(lang))),
@@ -892,13 +909,32 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
       setUnlockedAtStart(getUnlockedLevel())
       setLevelAtStart(selectedLevel)
       setRunId((id) => id + 1)
-      setTeaching(options?.tutorial ?? (immersive && !visto))
+      const ensenando = options?.tutorial ?? (immersive && !visto)
+      setTeaching(ensenando)
+      setCalentamiento(enCalentamiento({ ensenando, gameMode, aDos: partida !== null, enReto: false }))
+      setAvisoDeQueCuenta(false)
       setTutorialSkipped(0)
       setCountdown(COUNTDOWN_SECONDS)
       setRunning(true)
     },
     [clearRun, gameMode, players, duelAhora, endless, selectedLevel, immersive],
   )
+
+  // **La lección se cierra y el reto empieza de cero** (`calentamiento.ts`): por sus pasos, por
+  // «Siguiente», por «Saltar» o por su plazo, que en los cuatro casos deja el paso en `null`. La
+  // lección ya queda anotada como vista (`finishTutorial` o el efecto de arriba), así que la
+  // partida nueva no enseña; y avisa de que ahora cuenta hasta que se resuelva su primer palo.
+  //
+  // Una vez por partida: dos ejecuciones del efecto —Strict Mode las provoca— empezarían dos.
+  const reempezada = useRef(-1)
+  useEffect(() => {
+    if (!calentamiento || !running || tutorialStep !== null) return
+    /* v8 ignore next */
+    if (reempezada.current === runId) return
+    reempezada.current = runId
+    startGame({ tutorial: false })
+    setAvisoDeQueCuenta(true)
+  }, [calentamiento, running, tutorialStep, startGame, runId])
 
   const catchStick = useCallback(
     (fallProgress: number, espaldas = false) => {
@@ -935,6 +971,8 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
     // Dejar la lección a medias no cuenta como haberla visto: quien vuelve al
     // menú con el panel puesto se la encuentra otra vez al empezar.
     setTeaching(false)
+    setCalentamiento(false)
+    setAvisoDeQueCuenta(false)
     setTutorialSkipped(0)
     setEnReto(false)
     // Volver al menú deja la partida a dos: la siguiente empieza de cero. Lo conseguido en la
@@ -967,6 +1005,8 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
       activeStickCount,
       stickSeed,
       enReto,
+      calentando: calentamiento,
+      ahoraCuenta,
       wave,
       waveScore,
       waveResolved,
@@ -1037,6 +1077,8 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
       activeStickCount,
       stickSeed,
       enReto,
+      calentamiento,
+      ahoraCuenta,
       wave,
       waveScore,
       waveResolved,

@@ -537,6 +537,81 @@ describe('tutorial de la primera vez', () => {
   })
 })
 
+/**
+ * El calentamiento (`calentamiento.ts`): la primera partida con el visor, en el reto y con la
+ * lección delante, no cuenta.
+ */
+describe('el calentamiento', () => {
+  function enElReto(opciones?: OpcionesDelSalon) {
+    const hook = renderHook(() => useGameStoreValue(opciones))
+    act(() => hook.result.current.setImmersive(true))
+    return hook
+  }
+
+  it('tres palos al suelo con la lección delante dejan el reto intacto', () => {
+    const { result } = enElReto()
+    act(() => result.current.startGame())
+    runOutCountdown()
+    expect(result.current.calentando).toBe(true)
+
+    for (let i = 0; i < 3; i++) act(() => result.current.missStick())
+
+    expect(result.current.gameState).toBe('playing')
+    expect(result.current.lives).toBe(3)
+    expect(result.current.cartel?.titulo).toBe('Warm-up · does not count for a medal')
+    expect(result.current.cartel?.discreto).toBe(true)
+  })
+
+  it('al cerrarse la lección el reto empieza de cero y avisa de que ya cuenta', () => {
+    const { result } = enElReto({ objetivo: { medallas: { bronce: 1900, plata: 3750, oro: 5200 }, mejorEs: 'mas', unidad: 'points', record: null, modo: 'challenge' } })
+    act(() => result.current.startGame())
+    runOutCountdown()
+    act(() => result.current.missStick())
+    act(() => result.current.catchStick(0.5))
+    const antes = result.current.runId
+
+    // El segundo palo atrapado supera el último paso.
+    act(() => result.current.catchStick(0.5))
+
+    expect(result.current.calentando).toBe(false)
+    expect(result.current.teaching).toBe(false)
+    expect(result.current.runId).toBe(antes + 1)
+    expect(result.current.gameState).toBe('countdown')
+    expect([result.current.score, result.current.resolved, result.current.points, result.current.lives]).toEqual([0, 0, 0, 3])
+    expect(result.current.ahoraCuenta).toBe(true)
+    expect(result.current.cartel?.titulo).toBe('Now it counts for a medal')
+    expect(result.current.cartel?.detalle).toBe('Bronze 1,900 · Silver 3,750 · Gold 5,200')
+
+    // Hasta que se resuelve el primer palo del reto.
+    runOutCountdown()
+    act(() => result.current.missStick())
+    expect(result.current.ahoraCuenta).toBe(false)
+    expect(result.current.lives).toBe(2)
+  })
+
+  it('saltar la lección también empieza el reto de cero', () => {
+    const { result } = enElReto()
+    act(() => result.current.startGame())
+    runOutCountdown()
+    act(() => result.current.missStick())
+    act(() => result.current.finishTutorial())
+
+    expect([result.current.calentando, result.current.resolved, result.current.gameState]).toEqual([false, 0, 'countdown'])
+  })
+
+  it('en la práctica, a dos y al volver al menú no hay calentamiento', () => {
+    const practica = abrirEnPractica()
+    act(() => practica.result.current.setImmersive(true))
+    act(() => practica.result.current.startGame())
+    expect(practica.result.current.calentando).toBe(false)
+
+    const { result } = enElReto()
+    act(() => result.current.startGame())
+    act(() => result.current.resetGame())
+    expect([result.current.calentando, result.current.ahoraCuenta]).toEqual([false, false])
+  })
+})
+
 describe('práctica y desafío', () => {
   /**
    * Arranca una partida de desafío con `total` palos y la deja en juego. Pasa
