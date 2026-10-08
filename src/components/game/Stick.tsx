@@ -20,6 +20,7 @@ import { pulsarAtrape } from '../../lib/haptics'
 import { deEspaldas } from '../../lib/hazanas'
 import { publishStick, stickProbeRequested } from '../../lib/sceneProbe'
 import { stickPointerEvents } from '../../lib/punteros'
+import { PALO_TRAS_EL_MENU, opacidadHacia } from '../../lib/xrLayout'
 import { SWING_RELEASE_DECAY, hangingSwing } from '../../lib/stickSwing'
 import {
   type StickState,
@@ -88,6 +89,11 @@ export interface StickProps {
    */
   paused: boolean
   /**
+   * Casi transparente: el menú del visor está detrás y se lee entre los palos que cuelgan
+   * (`paloTapaElMenu`). Se atenúa y vuelve poco a poco, nunca de golpe.
+   */
+  atenuado?: boolean
+  /**
    * Atrapado por el jugador (click o mando XR). Recibe cuánto llevaba cayendo
    * el palo, en fracción de su tiempo de caída: de 0 (recién soltado) a 1 (a
    * ras de suelo). Cogerlo pronto puntúa más. `espaldas`, si se cogió de
@@ -109,6 +115,7 @@ export function Stick({
   swingPhase,
   swaying,
   paused,
+  atenuado = false,
   onCatch,
   onMiss,
 }: StickProps) {
@@ -152,6 +159,8 @@ export function Stick({
   const swingLevel = useRef(swaying ? 1 : 0)
   // Intensidad del glow al ser atrapado, que decae con el tiempo.
   const flash = useRef(0)
+  // Lo que se ve del palo colgado: 1 entero, `PALO_TRAS_EL_MENU` con el menú del visor detrás.
+  const velo = useRef(1)
   // Un palo solo puede resolverse una vez. Hace falta un ref además del
   // estado porque `setState` no se aplica hasta el siguiente render: dos
   // capturas en el mismo frame (los dos mandos XR apuntando al mismo palo,
@@ -340,6 +349,15 @@ export function Stick({
     }
 
     if (state === 'hanging') {
+      // Con el menú del visor detrás, casi transparente y sin tapar en profundidad lo que el
+      // panel pinta por delante de su placa; al pulsar Jugar vuelve entero antes de soltarse.
+      const material = materialRef.current
+      const hacia = atenuado ? PALO_TRAS_EL_MENU : 1
+      if (material && velo.current !== hacia) {
+        velo.current = opacidadHacia(velo.current, hacia, delta)
+        material.opacity = velo.current
+        material.depthWrite = velo.current >= 1
+      }
       if (!paused && elapsed.current >= delay) {
         setState('falling')
       }
@@ -370,7 +388,7 @@ export function Stick({
     >
       {/* Hilo que une el arco con el palo. Solo mientras cuelga: en cuanto el
           palo se suelta deja de haber nada que lo sujete. */}
-      <mesh position={[0, -STICK_CORD_LENGTH / 2, 0]} visible={state === 'hanging'}>
+      <mesh position={[0, -STICK_CORD_LENGTH / 2, 0]} visible={state === 'hanging' && !atenuado}>
         <cylinderGeometry args={[0.005, 0.005, STICK_CORD_LENGTH, 6]} />
         <meshStandardMaterial color="#4a4038" metalness={0.1} roughness={0.9} />
       </mesh>

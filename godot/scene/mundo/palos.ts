@@ -38,6 +38,8 @@ import {
   WOOD_TEXTURES,
 } from '@/lib/gameConfig'
 
+import { PALO_TRAS_EL_MENU, opacidadHacia, paloTapaElMenu } from '@/lib/xrLayout'
+
 import type { Palo, Tanda } from '../juego/tanda'
 import { TUBE_RADIUS } from './maquina'
 import { cilindro, malla, mallaDeToro, mate, opacidad, translucido } from '@kit/runtime/escena/piezas'
@@ -64,6 +66,8 @@ interface PaloPintado {
   gancho: MeshInstance3D
   /** Lo último que se le pintó, para no tocar el motor si no ha cambiado. */
   pintado: string
+  /** Lo que se ve del palo colgado: 1 entero, `PALO_TRAS_EL_MENU` con el menú detrás. */
+  velo: number
   sitio: string
 }
 
@@ -118,7 +122,7 @@ export class PalosPintados {
       gancho.visible = false
       this.nodo.add_child(grupo)
       this.nodo.add_child(gancho)
-      this.pintados.push({ grupo, hilo, cuerpo, material, onda, materialDeLaOnda, gancho, pintado: '', sitio: '' })
+      this.pintados.push({ grupo, hilo, cuerpo, material, onda, materialDeLaOnda, gancho, pintado: '', sitio: '', velo: 1 })
     }
   }
 
@@ -127,8 +131,13 @@ export class PalosPintados {
     return this.pintados[indice].cuerpo
   }
 
-  /** Pinta la tanda: cada palo en su sitio y con su aspecto; los que no son de la tanda, fuera. */
-  pintar(tanda: Tanda | null): void {
+  /**
+   * Pinta la tanda: cada palo en su sitio y con su aspecto; los que no son de la tanda, fuera.
+   *
+   * `enElMenu`: la columna del menú queda detrás de los palos de ese lado, que se atenúan mientras
+   * se elige y vuelven poco a poco al pulsar Jugar (`paloTapaElMenu`, como `Stick.tsx`).
+   */
+  pintar(tanda: Tanda | null, delta = 0, enElMenu = false): void {
     const palos = tanda?.palos ?? []
     this.pintados.forEach((p, i) => {
       const palo = palos[i]
@@ -136,6 +145,8 @@ export class PalosPintados {
       if (p.grupo.visible !== visible) p.grupo.visible = visible
       if (p.gancho.visible !== (palo != null)) p.gancho.visible = palo != null
       if (palo == null) return
+      const hacia = enElMenu && palo.estado === 'hanging' && paloTapaElMenu(palo.layout.anchor) ? PALO_TRAS_EL_MENU : 1
+      if (p.velo !== hacia) p.velo = palo.estado === 'hanging' ? opacidadHacia(p.velo, hacia, delta) : 1
       this.pintarUno(p, palo)
     })
   }
@@ -150,10 +161,10 @@ export class PalosPintados {
       p.grupo.rotation = new Vector3(palo.inclinacion.x, 0, palo.inclinacion.z)
       p.gancho.position = new Vector3(x, ay - TUBE_RADIUS - 0.012, z)
     }
-    const colgando = palo.estado === 'hanging'
+    const colgando = palo.estado === 'hanging' && p.velo >= 1
     if (p.hilo.visible !== colgando) p.hilo.visible = colgando
-    // Lo que no cambia fotograma a fotograma se pinta solo al cambiar: el destello y el tinte.
-    const clave = `${palo.estado}:${palo.flash.toFixed(3)}:${palo.missTint.toFixed(3)}`
+    // Lo que no cambia fotograma a fotograma se pinta solo al cambiar: el destello, el tinte y el velo.
+    const clave = `${palo.estado}:${palo.flash.toFixed(3)}:${palo.missTint.toFixed(3)}:${p.velo.toFixed(3)}`
     if (clave === p.pintado) return
     p.pintado = clave
     const m = p.material
@@ -180,7 +191,7 @@ export class PalosPintados {
       m.emission_energy_multiplier = 0.35 * k
       return
     }
-    m.albedo_color = BASE
+    m.albedo_color = new Color(BASE.r, BASE.g, BASE.b, p.velo)
     m.emission = BASE
     m.emission_energy_multiplier = 0
   }

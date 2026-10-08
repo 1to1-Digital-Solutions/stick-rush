@@ -18,6 +18,7 @@ import { PIEZAS, colocaciones } from '@/lib/feriaKit'
 import { MACHINE_HEIGHT, MAX_STICKS, STICK_CAUGHT_COLOR, STICK_MISS_Y, WOOD_TEXTURES } from '@/lib/gameConfig'
 import { GUION_DE_AYUDAS, caidaDelFantasma, paloDelFantasma } from '@/lib/guionDeAyudas'
 import { WHEEL_CABIN_COUNT } from '@/lib/sceneryLayout'
+import { PALO_TRAS_EL_MENU, paloTapaElMenu } from '@/lib/xrLayout'
 import { gameStorage } from '@/lib/storage'
 
 import { Tanda } from '../juego/tanda'
@@ -100,6 +101,28 @@ describe('los palos pintados', () => {
     const rojo = palos.cuerpo(0).material_override as StandardMaterial3D
     expect(rojo.albedo_color.r).toBeGreaterThan(rojo.albedo_color.g * 3)
     expect((palos.cuerpo(0).get_parent() as Node3D).position.y).toBeCloseTo(STICK_MISS_Y)
+  })
+
+  it('en el menú, los palos de delante de la columna se atenúan poco a poco y vuelven al jugar', () => {
+    const palos = new PalosPintados(padre)
+    const tanda = new Tanda('a', 5, 13, MACHINE_HEIGHT, false)
+    const tapan = tanda.palos.filter((palo) => paloTapaElMenu(palo.layout.anchor)).map((palo) => palo.indice)
+    const alfa = (i: number) => (palos.cuerpo(i).material_override as StandardMaterial3D).albedo_color.a
+    const hilo = (i: number) => (palos.cuerpo(i).get_parent() as Node3D).get_child(0) as MeshInstance3D
+    expect(tapan.length).toBeGreaterThan(0)
+    palos.pintar(tanda, 0.1, true)
+    // A medio camino: nada que se vea cambia de brillo de golpe.
+    expect(alfa(tapan[0])).toBeLessThan(1)
+    expect(alfa(tapan[0])).toBeGreaterThan(PALO_TRAS_EL_MENU)
+    for (let i = 0; i < 10; i++) palos.pintar(tanda, 0.1, true)
+    expect(alfa(tapan[0])).toBeCloseTo(PALO_TRAS_EL_MENU)
+    expect(hilo(tapan[0]).visible).toBe(false)
+    const delFrente = tanda.palos.find((palo) => !tapan.includes(palo.indice))!.indice
+    expect(alfa(delFrente)).toBe(1)
+    expect(hilo(delFrente).visible).toBe(true)
+    for (let i = 0; i < 10; i++) palos.pintar(tanda, 0.1, false)
+    expect(alfa(tapan[0])).toBe(1)
+    expect(hilo(tapan[0]).visible).toBe(true)
   })
 
   it('la madera lleva el relieve y la rugosidad de la web, sin su color', () => {

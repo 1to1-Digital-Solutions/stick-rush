@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { useTexture } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
+import { useXR } from '@react-three/xr'
 import { Quaternion, RepeatWrapping, Vector3 } from 'three'
 import { assetUrl } from '../../lib/assets'
 import {
@@ -18,6 +19,7 @@ import {
 import { useGame } from '../../lib/gameStore'
 import { hoopFallSpeed } from '../../lib/hoopHeight'
 import { buildStickLayout } from '../../lib/stickLayout'
+import { paloTapaElMenu } from '../../lib/xrLayout'
 import {
   BulbGlass,
   BulbSocket,
@@ -128,6 +130,9 @@ export function StickMachine() {
   // mientras se decide, y eso es un punto que cuesta pensárselo.
   const paused = gameState !== 'playing' || prompt !== null
   const reducedMotion = useReducedMotion()
+  // En el menú del visor la columna queda detrás de los palos de ese lado: se atenúan mientras
+  // se elige (`paloTapaElMenu`). Sin visor el menú va en la web o delante, y no se toca nada.
+  const enElMenuDelVisor = useXR((state) => state.mode) != null && gameState === 'menu'
 
   // Con el ratón quieto, lo que hay debajo se vuelve a mirar en cada fotograma.
   //
@@ -378,6 +383,7 @@ export function StickMachine() {
           swingPhase={stick.swingPhase}
           swaying={!reducedMotion}
           paused={paused}
+          atenuado={enElMenuDelVisor && paloTapaElMenu(stick.anchor)}
           onCatch={catchStick}
           onMiss={missStick}
         />

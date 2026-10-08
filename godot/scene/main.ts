@@ -617,7 +617,7 @@ export default class StickRush extends Node3D {
   private pintar(delta: number): void {
     const p = this.partida
     this.maquina.colocar(p.hoopHeight)
-    this.palos.pintar(this.tanda)
+    this.palos.pintar(this.tanda, delta, p.gameState === 'menu')
     this.feria.actualizar(delta, p.streak)
     if (this.frames % RELEER_EL_VISOR === 0) this.escenario.releer()
     this.escenario.actualizar()

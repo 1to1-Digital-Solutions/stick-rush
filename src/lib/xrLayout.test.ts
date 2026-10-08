@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { problemasDeLaSalida, type PanelBox } from './exitCorner'
-import { MENU_PANEL } from '../components/xr/XRMenu'
 import { ALTO_DE_LINEA } from '../components/xr/canvasPanel'
 import {
   RETAKE_DELTA,
@@ -40,8 +39,20 @@ import {
   XR_HUD_POSITION,
   XR_HUD_WITH_SIGN,
   xrHudLayout,
+  ATENUAR_POR_SEGUNDO,
+  MENU_PANEL,
+  PALO_TRAS_EL_MENU,
+  XR_MENU_POSE,
+  opacidadHacia,
+  paloTapaElMenu,
+  rumbosDelMenu,
+  type Vec3,
 } from './xrLayout'
-import { MIN_EYE_HEIGHT } from './hoopHeight'
+import { MIN_EYE_HEIGHT, REFERENCE_EYE_HEIGHT, hoopHeightFor } from './hoopHeight'
+import { MAX_STICKS, PLAYER_OFFSET_Z, STICK_CORD_LENGTH, STICK_LENGTH, STICK_RADIUS } from './gameConfig'
+import { EYE_HEIGHTS } from './panelReading'
+import { buildStickLayout } from './stickLayout'
+import { SWING_AMPLITUDE } from './stickSwing'
 
 /**
  * Del panel del menú solo se puede comprobar sin visor lo que es aritmética:
@@ -369,5 +380,100 @@ describe('el rótulo de la fila del modo', () => {
     for (const { text } of MENU_LABELS) {
       if (text !== 'Mode') expect(menuLabelText(text, 'challenge')).toBe(text)
     }
+  })
+})
+
+describe('los palos que tapan el menú del visor se atenúan', () => {
+  /** Lo que se mece el pie del palo colgado, sumado a su grosor: unos tres centímetros. */
+  const HOLGURA = STICK_RADIUS + (STICK_CORD_LENGTH + STICK_LENGTH) * SWING_AMPLITUDE
+
+  /** Los puntos de la placa del menú, en las coordenadas de la máquina (quien juega, `PLAYER_OFFSET_Z` atrás). */
+  function puntosDeLaPlaca(ojos: number): [number, number, number][] {
+    const { position, yaw, scale } = XR_MENU_POSE
+    const subida = xrUiRise(ojos)
+    const puntos: [number, number, number][] = []
+    for (let i = 0; i <= 12; i++) {
+      for (let j = 0; j <= 10; j++) {
+        const lx = ((i / 12 - 0.5) * MENU_PANEL[0]) * scale
+        const ly = ((j / 10 - 0.5) * MENU_PANEL[1]) * scale
+        puntos.push([
+          position[0] + Math.cos(yaw) * lx,
+          position[1] + subida + ly,
+          position[2] - Math.sin(yaw) * lx + PLAYER_OFFSET_Z,
+        ])
+      }
+    }
+    return puntos
+  }
+
+  /** Si el palo que cuelga de ese gancho se cruza con la línea de los ojos a ese punto de la placa. */
+  function seCruza(gancho: [number, number, number], ojo: [number, number, number], punto: [number, number, number]): boolean {
+    const [gx, gy, gz] = gancho
+    const arriba = gy - STICK_CORD_LENGTH
+    const abajo = arriba - STICK_LENGTH
+    // Donde la línea pasa más cerca del eje del palo, en planta.
+    const dx = punto[0] - ojo[0]
+    const dz = punto[2] - ojo[2]
+    const t = ((gx - ojo[0]) * dx + (gz - ojo[2]) * dz) / (dx * dx + dz * dz)
+    if (t <= 0 || t >= 1) return false
+    const y = ojo[1] + t * (punto[1] - ojo[1])
+    const cerca = Math.hypot(ojo[0] + t * dx - gx, ojo[2] + t * dz - gz)
+    return cerca < HOLGURA && y <= arriba + HOLGURA && y >= abajo - HOLGURA
+  }
+
+  const CASOS = EYE_HEIGHTS.flatMap((ojos) =>
+    Array.from({ length: MAX_STICKS - 4 }, (_, i) => ({ ojos, palos: i + 5 })),
+  )
+
+  it('ningún palo que se queda entero se ve por delante de la placa, a ninguna altura ni con ningún número de palos', () => {
+    for (const { ojos, palos } of CASOS) {
+      const ojo: [number, number, number] = [0, ojos, PLAYER_OFFSET_Z]
+      const placa = puntosDeLaPlaca(ojos)
+      for (const { anchor } of buildStickLayout(palos, 1, hoopHeightFor({ eyeHeight: ojos }))) {
+        if (paloTapaElMenu(anchor)) continue
+        expect(
+          placa.some((punto) => seCruza(anchor, ojo, punto)),
+          `${palos} palos, ojos a ${ojos}: el palo de ${anchor.map((v) => v.toFixed(2)).join(', ')} tapa el menú`,
+        ).toBe(false)
+      }
+    }
+  })
+
+  it('y los que se atenúan sí lo tapaban: solo los de ese lado, el frente sigue colgando', () => {
+    for (const { ojos, palos } of CASOS) {
+      const ojo: [number, number, number] = [0, ojos, PLAYER_OFFSET_Z]
+      const placa = puntosDeLaPlaca(ojos)
+      const ganchos = buildStickLayout(palos, 1, hoopHeightFor({ eyeHeight: ojos })).map((palo) => palo.anchor)
+      const atenuados = ganchos.filter((gancho) => paloTapaElMenu(gancho))
+      expect(atenuados.length, `${palos} palos`).toBeGreaterThan(0)
+      expect(atenuados.length, `${palos} palos`).toBeLessThanOrEqual(Math.ceil(palos / 2))
+      expect(atenuados.some((gancho) => placa.some((punto) => seCruza(gancho, ojo, punto))), `${palos} palos`).toBe(true)
+      // Todos a la izquierda, que es donde está la columna: los del frente y la derecha, enteros.
+      for (const [x] of atenuados) expect(x).toBeLessThan(-0.15)
+    }
+  })
+
+  it('la placa ocupa de 29° a 81° a la izquierda, con el margen', () => {
+    const [desde, hasta] = rumbosDelMenu()
+    expect(desde).toBeGreaterThan(20)
+    expect(desde).toBeLessThan(30)
+    expect(hasta).toBeGreaterThan(80)
+    expect(hasta).toBeLessThan(90)
+  })
+
+  it('el control: con la columna al frente, los palos del frente sí taparían', () => {
+    const alFrente = { ...XR_MENU_POSE, position: [0, REFERENCE_EYE_HEIGHT, -1.5] as Vec3, yaw: 0 }
+    const delFrente = buildStickLayout(13, 1).find(({ anchor }) => Math.abs(anchor[0]) < 0.01)!
+    expect(paloTapaElMenu(delFrente.anchor, alFrente)).toBe(true)
+    expect(paloTapaElMenu(delFrente.anchor)).toBe(false)
+  })
+
+  it('se atenúan y vuelven poco a poco, en un cuarto de segundo', () => {
+    expect(opacidadHacia(1, PALO_TRAS_EL_MENU, 0.1)).toBeCloseTo(0.6)
+    expect(opacidadHacia(0.6, PALO_TRAS_EL_MENU, 1)).toBe(PALO_TRAS_EL_MENU)
+    expect(opacidadHacia(PALO_TRAS_EL_MENU, 1, 0.1)).toBeCloseTo(0.55)
+    expect(opacidadHacia(0.9, 1, 1)).toBe(1)
+    expect(opacidadHacia(0.5, 1, -1)).toBe(0.5)
+    expect(1 / ATENUAR_POR_SEGUNDO).toBeLessThanOrEqual(0.25)
   })
 })

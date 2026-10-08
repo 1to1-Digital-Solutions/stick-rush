@@ -1,4 +1,4 @@
-import { DIFFICULTY_ORDER, MAX_STICKS, type Difficulty } from './gameConfig'
+import { DIFFICULTY_ORDER, MAX_STICKS, PLAYER_OFFSET_Z, STICK_RADIUS, type Difficulty } from './gameConfig'
 import { eligeJugadores } from './duel'
 import { GAME_MODE_LABELS, picksSetup, type GameMode } from './gameMode'
 import { REFERENCE_EYE_HEIGHT, isPlausibleEyeHeight } from './hoopHeight'
@@ -132,6 +132,9 @@ export const XR_COLUMN = { distance: 1.5, azimuth: (55 * Math.PI) / 180 } as con
  */
 export const XR_MENU_SCALE = 1.35
 
+/** Lo que ocupa la placa del menú, en metros, antes de crecer con la pose. */
+export const MENU_PANEL: [number, number] = [1.06, 0.92 + BANDA_DE_LA_PISTA]
+
 /** La columna del menú en el visor: a la izquierda, a la altura de los ojos, de cara. */
 export const XR_MENU_POSE: MenuPose = {
   position: [
@@ -157,6 +160,70 @@ export const XR_MENU_DESK_POSE: MenuPose = {
 /** La pose del menú según haya sesión inmersiva o no. */
 export function menuPoseFor(immersive: boolean): MenuPose {
   return immersive ? XR_MENU_POSE : XR_MENU_DESK_POSE
+}
+
+/**
+ * **Los palos que tapan el menú se atenúan mientras se elige.** Quien juega está dentro del aro,
+ * y el aro rodea todo lo que tiene delante: a la distancia y altura que sea, entre los ojos y la
+ * columna siempre cuelgan palos (el emulador lo enseñó: el menú se leía entre barrotes
+ * amarillos). Apartar la columna más de 90° la dejaría a la espalda, y la regla pide el menú
+ * cerca del frente. Así que en el menú del visor esos palos se quedan casi transparentes, y
+ * vuelven enteros en cuanto se pulsa Jugar: el resto de la máquina se sigue viendo colgar.
+ */
+export const PALO_TRAS_EL_MENU = 0.15
+
+/** Lo que tarda en atenuarse o volver un palo, a este ritmo por segundo: un cuarto de segundo. */
+export const ATENUAR_POR_SEGUNDO = 4
+
+/**
+ * El margen, en grados, a cada lado de la placa: el vaivén del palo colgado y su grosor, y algo
+ * por si la cabeza no está justo donde se nace.
+ */
+export const MARGEN_DEL_MENU_GRADOS = 6
+
+/** Hacia dónde queda un punto del espacio de quien juega, en grados: positivo a la izquierda. */
+function rumbo(x: number, z: number): number {
+  return (Math.atan2(-x, -z) * 180) / Math.PI
+}
+
+/**
+ * De qué rumbo a qué rumbo ocupa la placa del menú vista desde los ojos, en grados (positivo a la
+ * izquierda), con el margen ya sumado.
+ */
+export function rumbosDelMenu(pose: MenuPose = XR_MENU_POSE): [number, number] {
+  const medio = (MENU_PANEL[0] * pose.scale) / 2
+  // El +X de la placa, girada `yaw` sobre la vertical como el `rotation.y` de three.
+  const dx = Math.cos(pose.yaw) * medio
+  const dz = -Math.sin(pose.yaw) * medio
+  const [x, , z] = pose.position
+  const a = rumbo(x - dx, z - dz)
+  const b = rumbo(x + dx, z + dz)
+  return [Math.min(a, b) - MARGEN_DEL_MENU_GRADOS, Math.max(a, b) + MARGEN_DEL_MENU_GRADOS]
+}
+
+/**
+ * Si el palo que cuelga de ese gancho se ve por delante de la placa del menú.
+ *
+ * El gancho viene en las coordenadas de la máquina (el centro del aro en el origen) y quien
+ * juega está `PLAYER_OFFSET_Z` por detrás de él. Solo se mira el rumbo: la placa de la columna
+ * mide más de un metro de alto y cubre, vista desde los ojos, toda la franja de donde cuelgan
+ * los palos (`xrLayout.test.ts` lo comprueba).
+ */
+export function paloTapaElMenu(gancho: Vec3, pose: MenuPose = XR_MENU_POSE): boolean {
+  const [x, , z] = gancho
+  const delPalo = rumbo(x, z - PLAYER_OFFSET_Z)
+  const lado = (Math.atan2(STICK_RADIUS, Math.hypot(x, z - PLAYER_OFFSET_Z)) * 180) / Math.PI
+  const [desde, hasta] = rumbosDelMenu(pose)
+  return delPalo + lado >= desde && delPalo - lado <= hasta
+}
+
+/**
+ * La opacidad de un palo en este fotograma, yendo hacia la que le toca sin saltar: nada que se
+ * vea grande cambia de brillo de golpe (`.claude/rules/xr.md`).
+ */
+export function opacidadHacia(actual: number, objetivo: number, delta: number): number {
+  const paso = Math.max(0, delta) * ATENUAR_POR_SEGUNDO
+  return actual < objetivo ? Math.min(objetivo, actual + paso) : Math.max(objetivo, actual - paso)
 }
 
 /** Centro del panel del menú en el visor. */

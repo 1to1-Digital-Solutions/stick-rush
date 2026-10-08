@@ -52,7 +52,7 @@ import { HOOP_ADJUST_RANGE } from '@/lib/hoopHeight'
 import { LEVEL_COUNT, type Stars } from '@/lib/levels'
 import { traductor } from '@/lib/textos'
 import {
-  BANDA_DE_LA_PISTA,
+  MENU_PANEL,
   MENU_TEXT,
   PISTA_ANCHO,
   PISTA_Y,
@@ -84,8 +84,8 @@ import {
   triangulosDelAroSinFin,
 } from './iconos'
 
-/** Lo que ocupa la placa del menú (`MENU_PANEL` de `XRMenu.tsx`). */
-export const MENU_PANEL: readonly [number, number] = [1.06, 0.92 + BANDA_DE_LA_PISTA]
+/** Lo que ocupa la placa del menú (`MENU_PANEL` de `xrLayout.ts`). */
+export { MENU_PANEL }
 
 /** Los colores de `XRUi.tsx` y `XRMenu.tsx`. */
 export const COLORES = {

@@ -19,7 +19,7 @@ Qué mirar con las gafas, y dónde se toca:
 |---|---|
 | ¿El paso atrás es el justo? ¿Se llega al palo del frente? | `PLAYER_OFFSET_Z` (`src/lib/gameConfig.ts`) |
 | ¿Máquina a buena altura? ¿Cuelgan por encima de la cara? | `HOOP_RISE_ABOVE_EYES` (`src/lib/hoopHeight.ts`) |
-| Columna de ajustes (55° a la izquierda, 1,5 m): **en el emulador sí estorban** los palos que cuelgan delante (informe UX 2026-10); sin arreglar todavía | `XR_COLUMN`, `XR_MENU_SCALE` (`src/lib/xrLayout.ts`) |
+| Columna de ajustes (55° a la izquierda, 1,5 m): en el menú, los palos de ese lado se atenúan (casi transparentes, sin hilo) y vuelven al pulsar Jugar. ¿Se lee el menú limpio y la máquina sigue pareciendo entera? Web y Godot | `PALO_TRAS_EL_MENU`, `paloTapaElMenu`, `XR_COLUMN` (`src/lib/xrLayout.ts`) |
 | **El calentamiento** (`src/lib/calentamiento.ts`): la primera partida con el visor, en el reto y con la lección delante, los palos perdidos no quitan vidas; al cerrarla, el reto empieza de cero con «Ahora cuenta para medalla» en el cartel. ¿Se entiende? Web y Godot | `enCalentamiento`, `partidaDelCartel` |
 | Los rótulos bajo los botones del final (Otra partida / Compartir / Menú): ¿se leen sin estorbar? | `ROTULOS_DEL_FINAL` (`XRHud.tsx`; Godot, `marcador.ts`) |
 | ¿Se lee el guante como mano y se ve cerrarse? En el salón va sin mando debajo | `src/components/xr/Guante.tsx`, `src/lib/guante.ts` |

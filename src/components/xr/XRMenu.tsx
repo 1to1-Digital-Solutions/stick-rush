@@ -44,7 +44,7 @@ import {
   XR_MODE_TOGGLE_OFFSET,
   XR_SCENERY_PICKER_OFFSET,
   XR_STICK_PICKER_SPACING,
-  BANDA_DE_LA_PISTA,
+  MENU_PANEL,
   PISTA_ANCHO,
   PISTA_Y,
   XR_MENU_PLAY_HIT,
@@ -545,8 +545,8 @@ function TutorialButton() {
   )
 }
 
-/** Lo que ocupa la placa del menú, en metros. */
-export const MENU_PANEL: [number, number] = [1.06, 0.92 + BANDA_DE_LA_PISTA]
+/** Lo que ocupa la placa del menú, en metros (`xrLayout.ts`, que la necesita para los palos). */
+export { MENU_PANEL }
 
 /**
  * De qué es cada fila del menú.
