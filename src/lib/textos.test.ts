@@ -6,6 +6,7 @@ import { DIFFICULTY_LABELS } from './gameConfig'
 import { TEXT_KEYS, formatea, formatoDeCifra, texto, traductor, traductorSuave } from './textos'
 import { OBJETIVO_ES } from './objetivo'
 import { PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS, PLAYER_LABELS } from './duel'
+import { MENU_ES, plural } from './palabras'
 
 /**
  * El diccionario del juego.
@@ -64,6 +65,18 @@ describe('el diccionario', () => {
     expect(traductor('es')('Game over!')).toBe('¡Partida terminada!')
   })
 
+  it('dice el plural que toca, con uno y con dos, en los dos idiomas', () => {
+    const decir = (lang: 'en' | 'es', n: number, una: string, varias: string) => traductorSuave(lang)(plural(n, una, varias), { n, stars: n })
+    expect(decir('en', 1, '{stars} star', '{stars} stars')).toBe('1 star')
+    expect(decir('en', 2, '{stars} star', '{stars} stars')).toBe('2 stars')
+    expect(decir('es', 1, '{stars} star', '{stars} stars')).toBe('1 estrella')
+    expect(decir('es', 2, '{stars} star', '{stars} stars')).toBe('2 estrellas')
+    expect(decir('en', 1, '≈ {n} stick', '≈ {n} sticks')).toBe('≈ 1 stick')
+    expect(decir('en', 2, '≈ {n} stick', '≈ {n} sticks')).toBe('≈ 2 sticks')
+    expect(decir('es', 1, '≈ {n} stick', '≈ {n} sticks')).toBe('≈ 1 palo')
+    expect(decir('es', 2, '≈ {n} stick', '≈ {n} sticks')).toBe('≈ 2 palos')
+  })
+
   it('traduce todas las etiquetas de los mapas de configuración', () => {
     // Si un modo o una dificultad gana una entrada y no se traduce, esto cae
     // antes de que nadie vea el juego a medias en español.
@@ -75,7 +88,9 @@ describe('el diccionario', () => {
       ...Object.values(PLAYER_COUNT_HINTS),
       ...PLAYER_LABELS,
     ]
-    const sinTraducir = etiquetas.filter((e) => texto('es', e) === e)
+    // Las comunes que se dicen igual en los dos idiomas («Solo») no cuentan.
+    const iguales = Object.entries(MENU_ES).filter(([en, es]) => en === es).map(([en]) => en)
+    const sinTraducir = etiquetas.filter((e) => texto('es', e) === e && !iguales.includes(e))
     expect(sinTraducir).toEqual([])
   })
 })

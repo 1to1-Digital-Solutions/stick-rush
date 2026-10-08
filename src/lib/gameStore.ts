@@ -69,6 +69,7 @@ import {
   type VistaDelCartel,
 } from './objetivo'
 import { traductorSuave } from './textos'
+import { exponerPartida } from './partidaDePrueba'
 import {
   HOOP_ADJUST_STEP,
   clampHoopAdjustment,
@@ -972,6 +973,36 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
     setResolved((value) => value + 1)
     setStreak(0)
   }, [])
+
+  // El gancho de los e2e comunes (`partidaDePrueba.ts`): solo hace algo si el test lo ha pedido.
+  // Lee el estado vigente de una referencia, no el del render en que se dejó puesto.
+  const enCurso = useRef({ cartel, resolved, score })
+  useEffect(() => {
+    enCurso.current = { cartel, resolved, score }
+  }, [cartel, resolved, score])
+  useEffect(() => {
+    exponerPartida({
+      start: () => {
+        startGame({ tutorial: false })
+        setCountdown(0)
+      },
+      score: (puntos) => {
+        setPoints(puntos)
+        // Como si ya se hubiera atrapado un palo: hasta el primero, el cartel dice la misión.
+        if (enCurso.current.resolved === 0) {
+          setResolved(1)
+          setScore(1)
+        }
+      },
+      end: () => {
+        // Los palos que quedan, atrapados: el reto se supera y se le cuenta al salón.
+        const { resolved: hechos, score: atrapados } = enCurso.current
+        setScore(atrapados + activeStickCount - hechos)
+        setResolved(activeStickCount)
+      },
+      cartel: () => enCurso.current.cartel,
+    })
+  }, [startGame, activeStickCount])
 
   const askToQuit = useCallback(() => setPrompt('quit'), [])
   const keepPlaying = useCallback(() => setPrompt(null), [])

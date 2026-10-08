@@ -5,6 +5,7 @@ import { XR, XROrigin, createXRStore } from '@react-three/xr'
 import { Vector3, type Object3D } from 'three'
 
 import { StickRushScene } from '../../src/game/StickRushScene'
+import type { HostAnchor } from '../../src/lib/hostAnchor'
 import type { Objetivo } from '../../src/lib/objetivo'
 import type { Resultado } from '../../src/lib/semilla'
 
@@ -31,6 +32,9 @@ const aLaCarta = mount.dataset.cabina === 'a-la-carta'
 
 /** El reto del salón, si la página lo trae: la semilla, como la pasaría el arco de cabinas. */
 const reto = mount.dataset.reto == null ? undefined : { semilla: Number(mount.dataset.reto) }
+
+/** Dónde plantar el mundo, si la página lo trae: el anclaje que presta el salón. */
+const anchor = mount.dataset.anchor == null ? undefined : (JSON.parse(mount.dataset.anchor) as HostAnchor)
 
 /** Los listones de medalla del juego, si la página los trae: lo que el salón pasa en `objetivo`. */
 const objetivo = mount.dataset.objetivo == null ? undefined : (JSON.parse(mount.dataset.objetivo) as Objetivo)
@@ -133,6 +137,7 @@ function Cabina() {
   return (
     <StickRushScene
       assetsBase={assetsBase}
+      anchor={anchor}
       onExit={() => {}}
       reto={reto}
       objetivo={objetivo}

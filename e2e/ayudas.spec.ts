@@ -37,9 +37,9 @@ const CAPTURAS = 'test-results/capturas'
  * fantasma y donde está el mando. **Las dos medidas de una comparación se toman con la cabeza en
  * el mismo sitio**: si no, lo que se compara son dos vistas y no dos escenas.
  */
-const A_LA_MAQUINA = { yaw: 0, pitch: (-18 * Math.PI) / 180 }
+const A_LA_MAQUINA = { yaw: 0, pitch: -18 }
 /** Y a los pies, que es donde están las huellas: solo para la captura. */
-const A_LOS_PIES = { yaw: 0, pitch: (-70 * Math.PI) / 180 }
+const A_LOS_PIES = { yaw: 0, pitch: -70 }
 
 /** Lo que tarda la ayuda más paciente en irse sola, más el cruce con el que se desvanece. */
 const HASTA_QUE_SE_VAN = Math.max(...GUION_DE_AYUDAS.map((ayuda) => ayuda.caduca)) + CRUCE + 2
@@ -98,7 +98,7 @@ test.describe('Las ayudas visuales', () => {
     // Con el reto la partida arranca sola al montar la escena, así que se ve la cuenta atrás
     // entera sin pulsar nada en el menú del visor.
     await installXREmulator(page)
-    await openHost(page, { aLaCarta: true, reto: 7 })
+    await openHost(page, undefined, { aLaCarta: true, reto: 7 })
     await enterHostVR(page)
     await enterHostBooth(page)
 

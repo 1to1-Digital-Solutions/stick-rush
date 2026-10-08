@@ -43,7 +43,8 @@ import {
   print,
 } from 'godot'
 
-import { objetivoDe } from '@kit/lib/juegoBase'
+import { nombreDe, objetivoDe } from '@kit/lib/juegoBase'
+import { fijarNombreDelJuego } from '@/lib/plantillaDelMenu'
 import { ACCION, estaAgarrando, type Mano } from '@kit/lib/xr/manos'
 import { aislarElGuardado, argumento, hayBandera } from '@kit/runtime/argumentos'
 import { Escenario, vistaDelVisor } from '@kit/runtime/escena/escenario'
@@ -244,7 +245,11 @@ export default class StickRush extends Node3D {
     // Y el objetivo de la cabina (el metadato `goal`: los listones de medalla, la marca y el modo en
     // que cuenta), leído como `base.objetivo()` del kit —su mismo `objetivoDe`—: es la prop
     // `objetivo` de la web. Sin salón, o si no le pone medallas, `null` y el cartel dice la misión.
+    // Al empezar cada partida, la partida le sube el récord con lo que ya ha contado al salón
+    // (`objetivoConLoJugado`): el metadato se lee una vez y no se entera de la marca nueva.
     const objetivo = objetivoDe(salon != null && salon.has_meta('goal') ? salon.get_meta('goal') : null)
+    // Y cómo se llama la cabina (`game_name`), antes de pintar el menú: es el nombre del juego.
+    fijarNombreDelJuego(nombreDe(salon != null && salon.has_meta('game_name') ? salon.get_meta('game_name') : null))
     if (autoplay && this.semillaFija == null) this.semillaFija = SEMILLA_DEL_BOT
     this.ayudasEnPlano = hayBandera('ayudas') || this.shotAyudasPath != null || this.has_meta('ayudas')
 

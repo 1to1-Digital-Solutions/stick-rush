@@ -164,8 +164,8 @@ $GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --autoplay
 
 # Lo que se vería con el visor, sin visor: la cabeza de mentira hace de cámara y el jugador
 # automático coge con las manos. `--menu` se queda en el menú, `--mirar=<grados>` gira la cabeza a
-# la izquierda (la columna está a 55°) y `--bajar=<grados>` baja la vista (el marcador)
-$GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --visor-simulado --menu --mirar=55 --shot-menu=/tmp/columna.png
+# la izquierda (la columna está a 30°) y `--bajar=<grados>` baja la vista (el marcador)
+$GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --visor-simulado --menu --mirar=30 --shot-menu=/tmp/columna.png
 $GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --visor-simulado --bajar=25 --shot=/tmp/visor.png
 
 # El .pck para el hub (ejecuta antes el build)
@@ -207,7 +207,7 @@ comprueba que el hub lo monta, le cede la pantalla y vuelve al salón.
   2. **La altura del aro**: medio metro sobre los ojos medidos en el menú, de pie; sentado a los
      ojos, en su cota con el mundo bajado. Que los palos crucen el alcance del brazo en los dos.
   3. **Lo que se siente**: el agarre en la mano que coge, y el in extremis más fuerte.
-  4. **La columna a la izquierda** (55°, 1,5 m, ×1,35) con los palos cruzando por delante, y el
+  4. **La columna a la izquierda** (30°, 1,5 m, ×1,35) con los palos cruzando por delante, y el
      marcador bajo el aro: que se leen con la letra del motor.
   5. **El tutorial** por encima del marcador y el mando de verdad en las dos manos, y **las ayudas**:
      las huellas, el palo fantasma y el mando junto a él.

@@ -18,10 +18,13 @@
  * - **abajo**, jugar en medio y **salir en la esquina de abajo a la derecha**, la de los dieciséis
  *   (`exitCorner.ts`).
  *
- * Encima, en letra, los nombres de las filas y la explicación del modo (`dibujarLosNombres` de la
- * web, `MENU_LABELS`, `MENU_TEXT`, `PISTA_Y`). **Simplificado respecto de la web**: sin los botones
- * de silenciar y de la música, que en Godot son los volúmenes del salón. El resto va sin letra, como
- * en la web: cada ajuste se dice con lo que significa.
+ * Lo que no es el modo ni quién juega va plegado tras **«Más opciones»**, en la esquina de abajo a
+ * la izquierda, como en la web (`menuDelJuego.ts`): abre plegado y con el reto no hay botón.
+ *
+ * Encima, en letra, los nombres de las filas, la explicación del modo y el nombre de «Más opciones»
+ * (`dibujarLosNombres` de la web, `MENU_LABELS`, `MENU_TEXT`, `PISTA_Y`). Ni la web ni Godot llevan
+ * los botones de silenciar y de la música, que son los volúmenes del salón. El resto va sin letra,
+ * como en la web: cada ajuste se dice con lo que significa.
  *
  * Todo lo escrito queda apuntado en `panel.escritos` para medirlo con el instrumento de la web
  * (`interfaz.motor.test.ts`).
@@ -46,14 +49,16 @@ import {
   STICK_COLOR,
   type Difficulty,
 } from '@/lib/gameConfig'
-import { CHALLENGE_LIVES, GAME_MODE_HINTS, picksSetup, type GameMode } from '@/lib/gameMode'
-import { PLAYER_COUNT_HINTS, eligeJugadores, juegaADos, type PlayerCount } from '@/lib/duel'
+import { CHALLENGE_LIVES, GAME_MODE_HINTS, type GameMode } from '@/lib/gameMode'
+import { PLAYER_COUNT_HINTS, juegaADos, type PlayerCount } from '@/lib/duel'
+import { botonDeOpciones, seVe, type FilaDelMenu } from '@/lib/menuDelJuego'
 import { HOOP_ADJUST_RANGE } from '@/lib/hoopHeight'
 import { LEVEL_COUNT, type Stars } from '@/lib/levels'
 import { traductor } from '@/lib/textos'
 import {
   MENU_PANEL,
   MENU_TEXT,
+  OPCIONES_ANCHO,
   PISTA_ANCHO,
   PISTA_Y,
   ROW_LABEL_RISE,
@@ -131,6 +136,8 @@ export interface EstadoDelMenu {
   escenario: 'scene' | 'passthrough'
   /** Cuántos juegan: solo cuenta en el desafío (`juegaADos`). */
   jugadores: PlayerCount
+  /** Si se ha pedido lo plegado tras «Más opciones». Es de la interfaz: abre plegado. */
+  masOpciones: boolean
 }
 
 export interface AccionesDelMenu {
@@ -140,6 +147,8 @@ export interface AccionesDelMenu {
   alternarSinFin(): void
   /** Solo, o a dos pasándose el mando. */
   alternarJugadores(): void
+  /** Despliega lo plegado tras «Más opciones», o lo vuelve a plegar. */
+  alternarOpciones(): void
   elegirNivel(nivel: number): void
   elegirEscenario(escenario: 'scene' | 'passthrough'): void
   /** +1 sube el aro un paso; −1 lo baja. */
@@ -164,6 +173,7 @@ export class MenuDelJuego {
   private readonly barras = new Map<Difficulty, MeshInstance3D[]>()
   private readonly corazones: MeshInstance3D[] = []
   private readonly estrellasDelModo: MeshInstance3D[] = []
+  private readonly rielDelAro: MeshInstance3D
   private readonly aroEntero: MeshInstance3D
   private readonly aroMedio: MeshInstance3D
   private readonly marcaDelAro: MeshInstance3D
@@ -182,9 +192,9 @@ export class MenuDelJuego {
       b.dibujo(iconoDeFlecha(0.026, arriba ? 'up' : 'down', '#ffffff'), '#ffffff')
     }
     const [gx, gy] = XR_HOOP_GAUGE_OFFSET
-    const riel = rectangulo(0.012, HOOP_GAUGE_HEIGHT, COLORES.ficha, gx, gy)
-    riel.position = new Vector3(0, 0, 0.004)
-    this.nodo.add_child(riel)
+    this.rielDelAro = rectangulo(0.012, HOOP_GAUGE_HEIGHT, COLORES.ficha, gx, gy)
+    this.rielDelAro.position = new Vector3(0, 0, 0.004)
+    this.nodo.add_child(this.rielDelAro)
     this.marcaDelAro = rectangulo(0.05, 0.009, STICK_COLOR)
     this.nodo.add_child(this.marcaDelAro)
 
@@ -277,6 +287,10 @@ export class MenuDelJuego {
       this.barras.set(nivel, barras)
     })
 
+    // «Más opciones», en la esquina de enfrente de la de salir: su nombre va escrito encima.
+    const opciones = this.anadir('opciones', caja(XR_MENU_SPOT.opciones, XR_MENU_HIT.opciones), () => acciones.alternarOpciones())
+    this.placa(opciones, 'opciones', OPCIONES_ANCHO, 0.1, COLORES.neutro)
+
     // Jugar, y salir en la esquina.
     const jugar = this.anadir('play', caja(XR_MENU_SPOT.play, XR_MENU_PLAY_HIT), () => acciones.jugar())
     this.placa(jugar, 'play', 0.32, 0.1, COLORES.jugar)
@@ -315,11 +329,21 @@ export class MenuDelJuego {
 
   /** Pinta un estado: qué filas se ven, qué está elegido, qué se apaga y qué se escribe. */
   pintar(estado: EstadoDelMenu): void {
-    const practica = picksSetup(estado.modo)
     const niveles = estado.modo === 'levels'
     const reto = estado.modo === 'challenge'
+    // Lo que se ve con el modo y el plegado de ahora (`menuDelJuego.ts`), como en la web.
+    const ve = (fila: FilaDelMenu) => seVe(fila, estado.modo, 'visor', estado.masOpciones)
+    const practica = ve('sticks')
+
+    // «Más opciones»: con el reto no está; desplegado, la placa se enciende.
+    const opciones = this.boton('opciones')
+    opciones.nodo.visible = botonDeOpciones(estado.modo, 'visor', estado.masOpciones) != null
+    opciones.colorDelDibujo(this.placas.get('opciones')!, estado.masOpciones ? COLORES.azul : COLORES.neutro)
 
     // El aro: en los topes, su botón se apaga; la marca dice cuánto queda.
+    for (const id of ['hoopDown', 'hoopUp']) this.boton(id).nodo.visible = ve('hoop')
+    this.rielDelAro.visible = ve('hoop')
+    this.marcaDelAro.visible = ve('hoop')
     this.boton('hoopDown').apagado = estado.ajusteDelAro <= -HOOP_ADJUST_RANGE
     this.boton('hoopUp').apagado = estado.ajusteDelAro >= HOOP_ADJUST_RANGE
     const [gx, gy] = XR_HOOP_GAUGE_OFFSET
@@ -338,7 +362,7 @@ export class MenuDelJuego {
 
     // Tanda o sin fin.
     const sinFin = this.boton('endless')
-    sinFin.nodo.visible = practica
+    sinFin.nodo.visible = ve('endless')
     sinFin.colorDelDibujo(this.placas.get('endless')!, estado.sinFin ? COLORES.azul : COLORES.ficha)
     this.aroEntero.visible = estado.sinFin
     this.aroMedio.visible = !estado.sinFin
@@ -346,7 +370,7 @@ export class MenuDelJuego {
     // Contra quién: a dos, la placa se enciende además de salir la segunda ficha.
     const jugadores = this.boton('players')
     const aDos = estado.jugadores === 2
-    jugadores.nodo.visible = eligeJugadores(estado.modo)
+    jugadores.nodo.visible = ve('players')
     jugadores.colorDelDibujo(this.placas.get('players')!, aDos ? COLORES.jugar : COLORES.ficha)
     this.pareja.forEach((pieza, i) => {
       jugadores.colorDelDibujo(pieza, aDos ? '#ffffff' : COLORES.suave)
@@ -357,6 +381,7 @@ export class MenuDelJuego {
     for (const escenario of ['scene', 'passthrough'] as const) {
       const id = `scenery:${escenario}`
       const b = this.boton(id)
+      b.nodo.visible = ve('around')
       const elegido = estado.escenario === escenario
       const sin = escenario === 'passthrough' && !estado.habitacion
       // Apagada de verdad sin realidad aumentada: por opacidad y por color, no solo por color.
@@ -402,7 +427,7 @@ export class MenuDelJuego {
     // La velocidad: en la práctica se elige; en los niveles se ve apagada la del nivel.
     for (const nivel of DIFFICULTY_ORDER) {
       const b = this.boton(`difficulty:${nivel}`)
-      b.nodo.visible = practica || niveles
+      b.nodo.visible = ve('speed') || niveles
       const elegido = nivel === estado.dificultad
       b.apagado = niveles && !elegido
       b.colorDelDibujo(this.placas.get(`difficulty:${nivel}`)!, elegido ? DIFFICULTY_COLORS[nivel] : COLORES.ficha)
@@ -418,9 +443,9 @@ export class MenuDelJuego {
     const t = traductor(estado.lang)
     const { panel } = this
     panel.borrarTextos()
-    for (const { text, x, y } of menuLabelsFor(estado.modo)) {
-      // La fila del modo dice cuál hay elegido —«Reto», «Práctica»—, no «Modo».
-      panel.escribir(t(menuLabelText(text, estado.modo)), x, y + ROW_LABEL_RISE, { alto: MENU_TEXT.label, color: COLORES.suave, anchoMax: 0.3 })
+    for (const { text, x, y } of menuLabelsFor(estado.modo, estado.masOpciones)) {
+      // La fila del modo dice «Modo» y cuál hay elegido: «Modo: Reto».
+      panel.escribir(menuLabelText(text, estado.modo, t), x, y + ROW_LABEL_RISE, { alto: MENU_TEXT.label, color: COLORES.suave, anchoMax: 0.3 })
     }
     // A dos, la explicación es la de la partida a dos: el modo ya lo dice su interruptor.
     const pista = juegaADos(estado.modo, estado.jugadores) ? PLAYER_COUNT_HINTS[2] : GAME_MODE_HINTS[estado.modo]
@@ -430,5 +455,11 @@ export class MenuDelJuego {
       anchoMax: PISTA_ANCHO,
       ancla: 'top',
     })
+    // El nombre de «Más opciones», en su placa y en dos renglones, a la letra de la explicación.
+    const opciones = botonDeOpciones(estado.modo, 'visor', estado.masOpciones)
+    if (opciones != null) {
+      const [ox, oy] = XR_MENU_SPOT.opciones
+      panel.parrafo(t(opciones), ox, oy, { alto: MENU_TEXT.hint, color: '#ffffff', anchoMax: OPCIONES_ANCHO, interlineado: 1.15 })
+    }
   }
 }

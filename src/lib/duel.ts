@@ -44,7 +44,7 @@ export type PlayerCount = (typeof PLAYER_COUNTS)[number]
 
 /** Etiqueta visible de cada opción, en inglés (ver `textos.ts`). */
 export const PLAYER_COUNT_LABELS = {
-  1: 'On your own',
+  1: MENU_EN.solo,
   2: MENU_EN.duelo,
 } as const satisfies Record<PlayerCount, string>
 

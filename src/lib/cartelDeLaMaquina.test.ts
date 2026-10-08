@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   MISION_DEL_RETO,
   MODO_DE_LAS_MEDALLAS,
+  PUNTOS_DE_UN_PALO,
+  enPalos,
+  palosPara,
   RETARDO_DEL_LISTON,
   VISTA_SIN_GIRAR,
   apartadoDeLaMirada,
@@ -206,6 +209,30 @@ describe('la partida que se le cuenta al cartel', () => {
       detalle: 'Bronce 1900 · Plata 3750 · Oro 5200',
     })
     expect(medallaQueCelebra(partida!)).toBeNull()
+  })
+
+  it('la primera vez, sin récord, el bronce dicho en palos y el oro', () => {
+    const sinRecord = { ...OBJETIVO, record: null }
+    expect(cartelDeObjetivo(partidaDelCartel(reto({ gameState: 'countdown', objetivo: sinRecord }), es)!, es).detalle).toBe(
+      'Bronce ≈ 13 palos · Oro 5200',
+    )
+    expect(cartelDeObjetivo(partidaDelCartel(reto({ gameState: 'countdown', objetivo: sinRecord }), en)!, en).detalle).toBe(
+      'Bronze ≈ 13 sticks · Gold 5,200',
+    )
+    // Un bronce de un palo se dice con su cifra: «≈ 1 palo» es el primer atrape.
+    const deUnPalo = { ...sinRecord, medallas: { bronce: 10, plata: 20, oro: 30 } }
+    expect(cartelDeObjetivo(partidaDelCartel(reto({ gameState: 'countdown', objetivo: deUnPalo }), en)!, en).detalle).toBe(
+      'Bronze 10 · Silver 20 · Gold 30',
+    )
+  })
+
+  it('los puntos, en palos: lo menos que vale uno en el reto, y el plural que toca', () => {
+    expect(PUNTOS_DE_UN_PALO).toBe(150)
+    expect([palosPara(1), palosPara(150), palosPara(151), palosPara(1900)]).toEqual([1, 1, 2, 13])
+    expect(enPalos(es)(150)).toBe('≈ 1 palo')
+    expect(enPalos(es)(300)).toBe('≈ 2 palos')
+    expect(enPalos(en)(150)).toBe('≈ 1 stick')
+    expect(enPalos(en)(300)).toBe('≈ 2 sticks')
   })
 
   it('y sigue hasta que se resuelve el primer palo: da tiempo a leerla', () => {

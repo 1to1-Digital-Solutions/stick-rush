@@ -12,7 +12,7 @@ import { catchHangingStick, modeButton, openGame, waitForGameOver } from './help
 test('a dos: el primero juega, le pasa el mando al segundo y al acabar sale quién gana', async ({ page }) => {
   await openGame(page)
   await modeButton(page, 'Challenge').click()
-  await expect(page.getByRole('region', { name: 'Who you play against' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Players' })).toBeVisible()
   await page.getByRole('button', { name: /^Duel/ }).click()
   await page.getByRole('button', { name: 'Play', exact: true }).click()
 
@@ -37,6 +37,6 @@ test('a dos: el primero juega, le pasa el mando al segundo y al acabar sale qui�
   // De vuelta al menú, lo que lleva la pareja sigue ahí, y el récord del desafío no se ha tocado.
   await page.getByRole('button', { name: 'Back to the menu' }).click()
   await expect(page.getByText('Duels won: 1–0 · tied: 0')).toBeVisible()
-  await page.getByRole('button', { name: /^On your own/ }).click()
+  await page.getByRole('button', { name: /^Solo/ }).click()
   await expect(page.getByText(/Best score in/)).toHaveCount(0)
 })

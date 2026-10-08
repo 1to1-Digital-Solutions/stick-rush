@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MACHINE_HEIGHT, MAX_STICKS, MIN_STICKS } from './gameConfig'
 import { COUNTDOWN_SECONDS, useGame, useGameStoreValue, type OpcionesDelSalon } from './gameStore'
@@ -580,7 +580,7 @@ describe('el calentamiento', () => {
     expect([result.current.score, result.current.resolved, result.current.points, result.current.lives]).toEqual([0, 0, 0, 3])
     expect(result.current.ahoraCuenta).toBe(true)
     expect(result.current.cartel?.titulo).toBe('Now it counts for a medal')
-    expect(result.current.cartel?.detalle).toBe('Bronze 1,900 · Silver 3,750 · Gold 5,200')
+    expect(result.current.cartel?.detalle).toBe('Bronze ≈ 13 sticks · Gold 5,200')
 
     // Hasta que se resuelve el primer palo del reto.
     runOutCountdown()
@@ -1961,14 +1961,15 @@ describe('el cartel del objetivo', () => {
     expect(result.current.medalla).toBeNull()
   })
 
-  it('al darle a Jugar sin tocar nada: la misión y los tres listones, hasta el primer palo', () => {
+  it('al darle a Jugar sin tocar nada: la misión y el bronce en palos, hasta el primer palo', () => {
     const { result } = conObjetivo()
     act(() => result.current.startGame())
 
     expect(result.current.faseDelCartel).toBe('antes')
+    // Sin récord, la primera vez: el bronce contado en palos, que es lo que cuenta la misión.
     expect(result.current.cartel).toMatchObject({
       titulo: 'Catch 13 sticks. Drop three and out',
-      detalle: 'Bronze 1,900 · Silver 3,750 · Gold 5,200',
+      detalle: 'Bronze ≈ 13 sticks · Gold 5,200',
     })
 
     runOutCountdown()
@@ -2025,7 +2026,7 @@ describe('el cartel del objetivo', () => {
 
     expect(result.current.cartel).toMatchObject({
       titulo: 'Atrapa 13 palos. Tres al suelo y fuera',
-      detalle: 'Bronce 1900 · Plata 3750 · Oro 5200',
+      detalle: 'Bronce ≈ 13 palos · Oro 5200',
     })
   })
 
@@ -2074,6 +2075,52 @@ describe('el cartel del objetivo', () => {
 
     expect(result.current.gameState).toBe('countdown')
     expect(result.current.faseDelCartel).toBe('antes')
-    expect(result.current.cartel?.detalle).toBe('Bronze 1,900 · Silver 3,750 · Gold 5,200')
+    expect(result.current.cartel?.detalle).toBe('Bronze ≈ 13 sticks · Gold 5,200')
+  })
+})
+
+describe('el gancho de los e2e comunes (`partidaDePrueba.ts`)', () => {
+  /** Los listones de ensayo de los e2e: el bronce a 10, sin récord. */
+  const ENSAYO: Objetivo = {
+    medallas: { bronce: 10, plata: 20, oro: 30 },
+    mejorEs: 'mas',
+    unidad: 'points in challenge',
+    record: null,
+    modo: 'challenge',
+  }
+
+  // Las escenas de los tests de antes siguen montadas: con el gancho pedido, también se dejarían.
+  beforeEach(() => cleanup())
+  afterEach(() => {
+    delete window.__partidaStickRush
+  })
+
+  it('sin pedirlo no se deja nada', () => {
+    renderHook(() => useGameStoreValue({ objetivo: ENSAYO }))
+    expect(window.__partidaStickRush).toBeUndefined()
+  })
+
+  it('empieza el reto sin cuenta atrás, le pone los puntos, cruza el bronce y lo acaba contándoselo al salón', () => {
+    window.__partidaStickRush = {}
+    const onTerminar = vi.fn()
+    const { result } = renderHook(() => useGameStoreValue({ objetivo: ENSAYO, onTerminar }))
+    const partida = window.__partidaStickRush!
+
+    expect(partida.cartel!()).toBeNull()
+    act(() => partida.start!())
+    expect([result.current.gameState, result.current.gameMode, result.current.teaching]).toEqual(['playing', 'challenge', false])
+    expect(partida.cartel!()?.detalle).toBe('Bronze 10 · Silver 20 · Gold 30')
+
+    act(() => partida.score!(1))
+    expect(partida.cartel!()?.titulo).toBe('Bronze at 10 · you have 1')
+    act(() => partida.score!(10))
+    expect(partida.cartel!()?.vitor).toBe('Bronze!')
+    expect(result.current.resolved).toBe(1)
+
+    act(() => partida.end!())
+    expect(result.current.gameState).toBe('finished')
+    expect(result.current.outcome).toBe('cleared')
+    expect(partida.cartel!()?.titulo).toBe('Bronze · 10 points in challenge')
+    expect(onTerminar).toHaveBeenCalledWith(expect.objectContaining({ modo: 'challenge', puntos: 10 }))
   })
 })

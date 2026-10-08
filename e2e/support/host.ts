@@ -1,8 +1,13 @@
 import path from 'node:path'
 import { expect, type Page } from '@playwright/test'
 
+import type { HostAnchor } from '../../src/lib/hostAnchor'
 import type { Objetivo } from '../../src/lib/objetivo'
+import type { Ensayo } from './comun'
 import { HOST_BUNDLE } from './globalSetup'
+
+/** El récord de Stick Rush para los e2e comunes (`support/comun.ts`): los puntos del reto. */
+export const ENSAYO: Ensayo = { modo: 'challenge', mejorEs: 'mas' }
 
 /** Donde el salón sirve los estáticos de este juego. */
 export const ASSETS_BASE = '/juegos/stick-rush/'
@@ -12,9 +17,13 @@ const PAGE_PATH = '/anfitrion-de-prueba'
 const BUNDLE_PATH = '/anfitrion-de-prueba.js'
 const PUBLIC_DIR = path.join(process.cwd(), 'public')
 
-/** El HTML del anfitrión. */
-function html({ aLaCarta = false, reto, objetivo }: HostOptions): string {
+/**
+ * El HTML del anfitrión. El anclaje viaja en el propio documento: el juego lo usa en su primera
+ * colocación, como cuando el salón monta la escena con él.
+ */
+function html(anchor: HostAnchor | undefined, { aLaCarta = false, reto, objetivo }: HostOptions): string {
   const cabina =
+    (anchor == null ? '' : ` data-anchor="${JSON.stringify(anchor).replace(/"/g, '&quot;')}"`) +
     (aLaCarta ? ` data-cabina="a-la-carta"` : '') +
     (reto == null ? '' : ` data-reto="${reto}"`) +
     (objetivo == null ? '' : ` data-objetivo="${JSON.stringify(objetivo).replace(/"/g, '&quot;')}"`)
@@ -61,7 +70,7 @@ export interface TestHost {
  * este juego: lo suyo cuelga de `/juegos/stick-rush/`. Algo que lo pidiera de la raíz
  * funcionaría en la web propia y faltaría justo donde se juega.
  */
-export async function openHost(page: Page, opciones: HostOptions = {}): Promise<TestHost> {
+export async function openHost(page: Page, anchor?: HostAnchor, opciones: HostOptions = {}): Promise<TestHost> {
   const csp = (await page.request.get('/')).headers()['content-security-policy']
   expect(csp, 'el servidor no devolvió política de seguridad').toBeTruthy()
 
@@ -73,7 +82,7 @@ export async function openHost(page: Page, opciones: HostOptions = {}): Promise<
       return route.fulfill({
         contentType: 'text/html; charset=utf-8',
         headers: { 'content-security-policy': csp },
-        body: html(opciones),
+        body: html(anchor, opciones),
       })
     }
     if (pathname === BUNDLE_PATH) {

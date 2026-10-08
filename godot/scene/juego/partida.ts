@@ -26,6 +26,7 @@ import { MAX_STICKS, MIN_STICKS, type Difficulty } from '@/lib/gameConfig'
 import type { Lang } from '@/lib/ajustes'
 import { enCalentamiento } from '@/lib/calentamiento'
 import { llevaLaCuenta, partidaDelCartel } from '@/lib/cartelDeLaMaquina'
+import { objetivoConLoJugado } from '@kit/lib/juegoBase'
 import { CHALLENGE_SETUP, DEFAULT_GAME_MODE, remainingLives, runOutcome, type GameMode, type RunOutcome } from '@/lib/gameMode'
 import {
   controllerHolder,
@@ -175,7 +176,16 @@ export class Partida {
   private levelAtStart = 1
   private readonly alTerminar: ((resultado: ResultadoConHazanas) => void) | undefined
   private readonly semillas: () => number
+  /** El objetivo de la cabina tal como lo pasó el salón al montar (el metadato `goal`). */
   private readonly objetivo: Objetivo | null
+  /**
+   * El de la partida en curso: el de la cabina con el récord subido por lo ya contado al salón
+   * (`objetivoConLoJugado`), tomado al empezar cada partida como el récord de la web al pulsar
+   * «Jugar». Leído una sola vez al montar, la segunda partida compararía con el récord viejo.
+   */
+  private objetivoDeLaPartida: Objetivo | null
+  /** Lo que la partida le ha contado al salón al acabar cada una, en orden. */
+  private readonly contados: ResultadoConHazanas[] = []
   /** La partida (su `runId`) cuyo final ya se guardó y se contó al salón. */
   private avisada = -1
   /** Si la lección de esta partida ya se anotó como vista al superar sus pasos. */
@@ -189,6 +199,7 @@ export class Partida {
 
   constructor({ reto = null, alTerminar, semillas = semillaAlAzar, objetivo = null }: OpcionesDeLaPartida = {}) {
     this.objetivo = objetivo
+    this.objetivoDeLaPartida = objetivo
     this.alTerminar = alTerminar
     this.semillas = semillas
     this.hoopAdjustment = getHoopAdjustment()
@@ -343,7 +354,7 @@ export class Partida {
   private paraElCartel(lang: Lang): PartidaDelObjetivo | null {
     return partidaDelCartel(
       {
-        objetivo: this.objetivo,
+        objetivo: this.objetivoDeLaPartida,
         gameMode: this.gameMode,
         aDos: this.duel != null,
         gameState: this.gameState,
@@ -474,6 +485,7 @@ export class Partida {
     if (this.duelo == null || this.duelo !== ahora) this.hazanas = SIN_HAZANAS
     this.semilla = this.duelo?.semilla ?? this.semillas() >>> 0
     this.recordToBeat = this.endlessRun ? getBestEndlessStreak() : getBestPoints(this.gameMode)
+    this.objetivoDeLaPartida = objetivoConLoJugado(this.objetivo, this.contados)
     this.unlockedAtStart = getUnlockedLevel()
     this.levelAtStart = this.selectedLevel
     this.runId++
@@ -618,13 +630,19 @@ export class Partida {
     if (duelo != null) {
       if (!duelOver(duelo)) return
       saveDuelResult(duelWinner(duelo))
-      this.alTerminar?.(conHazanas({ modo: 'duel', puntos: mejorDelDuelo(duelo), reto: false }, estrenarHazanas(this.hazanas.logradas)))
+      this.contar(conHazanas({ modo: 'duel', puntos: mejorDelDuelo(duelo), reto: false }, estrenarHazanas(this.hazanas.logradas)))
       return
     }
     const nivel = this.levelResult
     if (nivel != null) saveLevelResult(this.activeLevel, nivel.stars)
     else if (this.endlessRun) saveBestEndlessStreak(this.bestStreak)
     else saveBestPoints(this.gameMode, this.points)
-    this.alTerminar?.(conHazanas({ modo: this.gameMode, puntos: this.points, reto: this.enReto }, estrenarHazanas(this.hazanas.logradas)))
+    this.contar(conHazanas({ modo: this.gameMode, puntos: this.points, reto: this.enReto }, estrenarHazanas(this.hazanas.logradas)))
+  }
+
+  /** Le cuenta al salón cómo ha acabado una partida y se lo apunta para el objetivo de la siguiente. */
+  private contar(resultado: ResultadoConHazanas): void {
+    this.contados.push(resultado)
+    this.alTerminar?.(resultado)
   }
 }

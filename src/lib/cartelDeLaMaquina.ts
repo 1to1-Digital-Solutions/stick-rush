@@ -14,6 +14,8 @@ import { PLAYER_COUNT_LABELS } from './duel'
 import { CHALLENGE_LIVES, CHALLENGE_SETUP, GAME_MODE_LABELS, type GameMode } from './gameMode'
 import { REFERENCE_EYE_HEIGHT } from './hoopHeight'
 import { MEDALLAS, cuentaParaMedalla, type Medalla, type Objetivo, type Partida, type Traducir } from './objetivo'
+import { plural } from './palabras'
+import { stickPoints } from './scoring'
 import { distanceFromEyes, eyesAt, pointOnPanel, tiltTowardEyes, type PanelPose, type Point } from './panelReading'
 import { pulsosDe, type Mano, type Pulso, type Tacto } from './tactos'
 import { XR_CARTEL_POSITION, type Vec3 } from './xrLayout'
@@ -95,6 +97,28 @@ export function loQueQueda(vidas: number, palos: number, t: Traducir): string {
   return `${t('Lives')} ${'♥'.repeat(CHALLENGE_LIVES - gastadas)}${'♡'.repeat(gastadas)} · ${t('Sticks')} ${palos}`
 }
 
+/**
+ * Lo que da un palo atrapado en el reto sin racha ni reflejos: lo menos que vale un palo. Es la
+ * vara con la que se cuentan en palos los puntos de un listón.
+ */
+export const PUNTOS_DE_UN_PALO = stickPoints({ difficulty: CHALLENGE_SETUP.difficulty, streak: 1, fallProgress: 1 })
+
+/** Cuántos palos hay que atrapar, como mucho, para llegar a esos puntos: el bronce 1900 son 13. */
+export function palosPara(puntos: number): number {
+  return Math.ceil(puntos / PUNTOS_DE_UN_PALO)
+}
+
+/**
+ * Los puntos de un listón dichos en palos, ya traducidos: `1900` → «≈ 13 palos». Es el `contable`
+ * del cartel: la misión cuenta palos y el récord, puntos, y quien empieza no sabe cuánto es 1900.
+ */
+export function enPalos(t: Traducir): (puntos: number) => string {
+  return (puntos) => {
+    const n = palosPara(puntos)
+    return t(plural(n, '≈ {n} stick', '≈ {n} sticks'), { n })
+  }
+}
+
 /** Lo que el cartel necesita saber de lo que se está jugando. */
 export interface LoQueSeJuega {
   /** Lo que pasó el salón, si lo pasó. */
@@ -157,6 +181,9 @@ export function partidaDelCartel(juego: LoQueSeJuega, t: Traducir): Partida | nu
     mision: juego.ahoraCuenta === true && sinEmpezar ? t(AHORA_CUENTA) : mision,
     queda: loQueQueda(juego.lives as number, juego.stickCount - juego.resolved, t),
     record: juego.record > 0 ? juego.record : null,
+    // La primera vez, el bronce en palos. Con un bronce de un palo o menos, la cifra: «≈ 1 palo»
+    // es el primer atrape y no dice hasta dónde hay que llegar.
+    contable: objetivo != null && palosPara(objetivo.medallas.bronce) > 1 ? enPalos(t) : null,
   }
 }
 

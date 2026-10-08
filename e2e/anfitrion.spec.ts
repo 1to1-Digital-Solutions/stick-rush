@@ -103,7 +103,7 @@ test('con un reto, la escena montada dentro de la sesión entra jugando y avisa 
   page.on('pageerror', (error) => errors.push(error.message))
 
   await installXREmulator(page)
-  await openHost(page, { aLaCarta: true, reto: 20260925 })
+  await openHost(page, undefined, { aLaCarta: true, reto: 20260925 })
   await enterHostVR(page)
   await enterHostBooth(page)
 

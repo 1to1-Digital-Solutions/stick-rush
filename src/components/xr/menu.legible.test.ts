@@ -8,6 +8,7 @@ import {
   MENU_TEXT,
   XR_MENU_DESK_POSE,
   XR_MENU_HIT,
+  XR_MENU_OPCIONES_OFFSET,
   XR_MENU_POSE,
   XR_MENU_SPOT,
   type MenuPose,
@@ -15,8 +16,8 @@ import {
 } from '../../lib/xrLayout'
 import {
   MIN_READING_DEGREES,
+  centreInside,
   eyesAt,
-  noTextOwnsAButton,
   sizesOffList,
   textsOnButtons,
   unreadableTexts,
@@ -24,6 +25,10 @@ import {
 } from '../../lib/panelReading'
 import { traductor } from '../../lib/textos'
 import { PLAYER_COUNT_HINTS } from '../../lib/duel'
+import { MENU_EN } from '../../lib/palabras'
+
+/** Plegado, como abre, y desplegado tras «Más opciones». */
+const PLEGADOS = [false, true] as const
 
 /**
  * Los rótulos del panel del menú, medidos en vez de mirados.
@@ -64,16 +69,18 @@ describe('los nombres de las filas del menú se leen', () => {
   it('en los dos idiomas', () => {
     for (const lang of IDIOMAS) {
       for (const gameMode of GAME_MODE_ORDER) {
-        const { ctx, escritos } = lienzoQueApunta()
-        dibujarLosNombres(ctx, traductor(lang), gameMode)
-        expect(escritos.length, 'no se ha medido nada').toBeGreaterThan(0)
-        for (const { nombre, pose } of SITIOS) {
-          const escalados = aEscala(escritos, pose.scale)
-          const panel = { width: PANEL_MEDIDO.width * pose.scale, height: PANEL_MEDIDO.height * pose.scale }
-          expect(
-            problemasDeLegibilidad(escalados, { panel, distancia: distancia(escalados, pose) }),
-            `${lang} ${gameMode}, ${nombre}`,
-          ).toEqual([])
+        for (const masOpciones of PLEGADOS) {
+          const { ctx, escritos } = lienzoQueApunta()
+          dibujarLosNombres(ctx, traductor(lang), gameMode, 1, masOpciones)
+          expect(escritos.length, 'no se ha medido nada').toBeGreaterThan(0)
+          for (const { nombre, pose } of SITIOS) {
+            const escalados = aEscala(escritos, pose.scale)
+            const panel = { width: PANEL_MEDIDO.width * pose.scale, height: PANEL_MEDIDO.height * pose.scale }
+            expect(
+              problemasDeLegibilidad(escalados, { panel, distancia: distancia(escalados, pose) }),
+              `${lang} ${gameMode} ${masOpciones ? 'desplegado' : 'plegado'}, ${nombre}`,
+            ).toEqual([])
+          }
         }
       }
     }
@@ -97,21 +104,17 @@ describe('los nombres de las filas del menú se leen', () => {
     }
   })
 
-  it('la fila del modo se llama como el modo elegido: el que cuenta para medalla, «Reto»', () => {
+  it('la fila del modo dice «Modo» y cuál hay elegido: el que cuenta para medalla, «Reto»', () => {
     const escrito = (lang: (typeof IDIOMAS)[number], gameMode: (typeof GAME_MODE_ORDER)[number]) => {
       const { ctx, escritos } = lienzoQueApunta()
       dibujarLosNombres(ctx, traductor(lang), gameMode)
       return escritos.map((e) => e.texto)
     }
 
-    expect(escrito('es', 'challenge')).toContain('Reto')
-    expect(escrito('en', 'challenge')).toContain('Challenge')
-    expect(escrito('es', 'practice')).toContain('Práctica')
-    expect(escrito('es', 'levels')).toContain('Niveles')
-    // Y ya no dice «Modo», que no decía cuál.
-    for (const lang of IDIOMAS) {
-      for (const gameMode of GAME_MODE_ORDER) expect(escrito(lang, gameMode)).not.toContain(traductor(lang)('Mode'))
-    }
+    expect(escrito('es', 'challenge')).toContain('Modo: Reto')
+    expect(escrito('en', 'challenge')).toContain('Mode: Challenge')
+    expect(escrito('es', 'practice')).toContain('Modo: Práctica')
+    expect(escrito('es', 'levels')).toContain('Modo: Niveles')
     // Lo que explica debajo empieza por si cuenta para medalla.
     expect(escrito('es', 'challenge').join(' ')).toContain('Cuenta para medalla.')
     expect(escrito('es', 'practice').join(' ')).toContain('Sin medalla.')
@@ -131,17 +134,56 @@ describe('los nombres de las filas del menú se leen', () => {
   })
 })
 
-/** Todo lo que puede escribir el panel: cada modo, y el desafío a dos, en los dos idiomas. */
+/**
+ * Todo lo que puede escribir el panel: cada modo, y el desafío a dos, en los dos idiomas, plegado
+ * y desplegado.
+ */
 function todosLosMomentos(): { donde: string; escritos: Escrito[] }[] {
   return IDIOMAS.flatMap((lang) =>
-    [...GAME_MODE_ORDER, 'a dos' as const].map((momento) => {
-      const gameMode = momento === 'a dos' ? 'challenge' : momento
-      const { ctx, escritos } = lienzoQueApunta()
-      dibujarLosNombres(ctx, traductor(lang), gameMode, momento === 'a dos' ? 2 : 1)
-      return { donde: `${lang} ${momento}`, escritos }
-    }),
+    [...GAME_MODE_ORDER, 'a dos' as const].flatMap((momento) =>
+      PLEGADOS.map((masOpciones) => {
+        const gameMode = momento === 'a dos' ? 'challenge' : momento
+        const { ctx, escritos } = lienzoQueApunta()
+        dibujarLosNombres(ctx, traductor(lang), gameMode, momento === 'a dos' ? 2 : 1, masOpciones)
+        return { donde: `${lang} ${momento}${masOpciones ? ' desplegado' : ''}`, escritos }
+      }),
+    ),
   )
 }
+
+describe('el botón de «Más opciones»', () => {
+  const escrito = (lang: (typeof IDIOMAS)[number], gameMode: (typeof GAME_MODE_ORDER)[number], masOpciones: boolean) => {
+    const { ctx, escritos } = lienzoQueApunta()
+    dibujarLosNombres(ctx, traductor(lang), gameMode, 1, masOpciones)
+    return escritos.map((e) => e.texto).join(' ')
+  }
+
+  it('dice qué hace, en su placa y en los dos idiomas: desplegar o volver a plegar', () => {
+    for (const gameMode of ['practice', 'levels'] as const) {
+      expect(escrito('en', gameMode, false), gameMode).toContain('More options')
+      expect(escrito('es', gameMode, false), gameMode).toContain('Más opciones')
+      expect(escrito('en', gameMode, true), gameMode).toContain('Fewer options')
+      expect(escrito('es', gameMode, true), gameMode).toContain('Menos opciones')
+    }
+  })
+
+  it('y con el reto no está: es una partida fija', () => {
+    for (const lang of IDIOMAS) {
+      for (const masOpciones of PLEGADOS) {
+        const dicho = escrito(lang, 'challenge', masOpciones)
+        expect(dicho).not.toContain(traductor(lang)(MENU_EN.masOpciones).split(' ')[0])
+        expect(dicho).not.toContain(traductor(lang)(MENU_EN.menosOpciones).split(' ')[0])
+      }
+    }
+  })
+
+  it('lo plegado no se nombra hasta que se pide', () => {
+    expect(escrito('es', 'practice', false)).not.toContain('Aro')
+    expect(escrito('es', 'practice', false)).not.toContain('Velocidad')
+    expect(escrito('es', 'practice', true)).toContain('Aro')
+    expect(escrito('es', 'practice', true)).toContain('Velocidad')
+  })
+})
 
 describe('a dos, el menú dice lo que toca', () => {
   it('nombra la fila de contra quién y explica la partida a dos, en los dos idiomas', () => {
@@ -187,9 +229,11 @@ describe('cada letra del menú se lee de un vistazo', () => {
     }
   })
 
-  it('y ningún rótulo se mete en un botón: la explicación pasa entre salir y silenciar', () => {
-    // Los botones son geometría y el instrumento no los ve. Aquí ningún texto es de un botón, así
-    // que cuenta cualquier roce.
+  it('y ningún rótulo se mete en un botón: la explicación pasa entre salir y «Más opciones»', () => {
+    // Los botones son geometría y el instrumento no los ve. El único texto de un botón es el de
+    // «Más opciones», escrito en su placa; en los demás cuenta cualquier roce.
+    const [ox, oy] = XR_MENU_OPCIONES_OFFSET
+    const esElSuyo: typeof centreInside = (texto, boton) => boton.x === ox && boton.y === oy && centreInside(texto, boton)
     const botones = Object.keys(XR_MENU_HIT).map((nombre) => ({
       x: XR_MENU_SPOT[nombre][0],
       y: XR_MENU_SPOT[nombre][1],
@@ -197,7 +241,7 @@ describe('cada letra del menú se lee de un vistazo', () => {
       height: XR_MENU_HIT[nombre][1],
     }))
     for (const { donde, escritos } of todosLosMomentos()) {
-      expect(textsOnButtons(escritos, botones, noTextOwnsAButton), donde).toEqual([])
+      expect(textsOnButtons(escritos, botones, esElSuyo), donde).toEqual([])
     }
   })
 

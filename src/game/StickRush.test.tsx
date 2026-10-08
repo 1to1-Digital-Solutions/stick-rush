@@ -36,7 +36,8 @@ describe('montar el juego desde fuera', () => {
 
     // `getByRole` lanza si no está: el juego que no arranca fuera de su web se
     // queda sin menú, o revienta al renderizar.
-    expect(screen.getByRole('heading', { name: 'STICK RUSH' }).tagName).toBe('H1')
+    // Como se llama la cabina: sin salón, el del paquete (en mayúsculas de rótulo por estilo).
+    expect(screen.getByRole('heading', { name: 'Stick Rush' }).tagName).toBe('H1')
     expect(screen.getByRole('button', { name: 'Play' })).toBeDefined()
   })
 
@@ -86,7 +87,7 @@ describe('montar el juego sobre un elemento del DOM', () => {
       juego = mountStickRush(contenedor, { assetsBase: '/juegos/stick-rush/' })
     })
 
-    expect(contenedor.textContent).toContain('STICK RUSH')
+    expect(contenedor.textContent).toContain('Stick Rush')
     expect(assetUrl('textures/wood_nor_1k.jpg')).toBe(
       '/juegos/stick-rush/textures/wood_nor_1k.jpg',
     )

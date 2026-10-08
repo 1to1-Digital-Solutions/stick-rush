@@ -7,7 +7,8 @@ import { maxScore } from '../../lib/scoring'
 import { FRASES, FRASES_CON_LAS_MANOS } from '../../lib/tutorial'
 import { HeartIcon, StarIcon } from '../ui/icons'
 import { useLang } from '../../lib/ajustesCliente'
-import { formatoDeCifra, formatea, traductor } from '../../lib/textos'
+import { formatoDeCifra, formatea, traductor, traductorSuave } from '../../lib/textos'
+import { plural } from '../../lib/palabras'
 import { PLAYER_LABELS, duelSummary } from '../../lib/duel'
 /**
  * Vidas que quedan, una por corazón: llenos los que conservas, de contorno los
@@ -322,7 +323,7 @@ export function HUD() {
             {levelResult && (
               <div
                 role="img"
-                aria-label={levelResult.stars === 1 ? t('1 star') : formatea(t('{stars} stars'), { stars: levelResult.stars })}
+                aria-label={traductorSuave(lang)(plural(levelResult.stars, '{stars} star', '{stars} stars'), { stars: levelResult.stars })}
                 className="flex items-center gap-1 text-[var(--color-accent)]"
               >
                 {Array.from({ length: 3 }, (_, index) => (

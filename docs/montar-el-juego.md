@@ -126,6 +126,7 @@ del salón.
 | `reto` | `{ semilla }`: jugar un reto concreto del salón (el reto del día, «reta mi puntuación»). |
 | `onTerminar` | `({ modo, puntos, reto }) => void`: el aviso de que ha acabado una partida con puntuación. |
 | `objetivo` | `{ medallas: { bronce, plata, oro }, mejorEs, unidad, record, modo }`: los listones de medalla del juego y la marca de quien juega. |
+| `nombre` | El `name` del manifiesto del catálogo: cómo se llama el juego en su menú. Sin él, «Stick Rush», el del `package.json`. |
 
 **Con `reto`**, la escena entra **directamente en una partida del desafío** (`challenge`), que
 es el modo del récord de la cabina (`stick-rush:best-points:challenge`), con su cuenta atrás y
@@ -205,7 +206,7 @@ Toda la superficie pública es esa:
 
 | Nombre                         | Qué es                                                                                |
 | ------------------------------ | ------------------------------------------------------------------------------------- |
-| `StickRushScene`               | El juego como **escena**, dentro del Canvas y la sesión de otro. Props: `assetsBase`, `anchor`, `onExit`, `reto`, `onTerminar`, `objetivo`. |
+| `StickRushScene`               | El juego como **escena**, dentro del Canvas y la sesión de otro. Props: `assetsBase`, `anchor`, `onExit`, `reto`, `onTerminar`, `objetivo`, `nombre`. |
 | `StickRush`                    | El juego como aplicación, con su propio Canvas y su propia sesión.                    |
 | `mountStickRush(elemento, …)`  | Lo mismo sobre un elemento del DOM. Devuelve `{ unmount() }`, que además cierra la sesión. |
 | `assetsBase`                   | De dónde cuelgan los ficheros del paso 3. Por defecto, la raíz del sitio.              |

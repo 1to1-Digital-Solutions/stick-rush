@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Righteous, Poppins } from 'next/font/google'
 import './globals.css'
 import { idiomaDeLaPeticion } from '../lib/idioma-servidor'
+import { nombreDelJuego } from '../lib/plantillaDelMenu'
 import { traductor } from '../lib/textos'
 
 const righteous = Righteous({
@@ -26,7 +27,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const t = traductor(await idiomaDeLaPeticion())
 
   return {
-    title: 'Stick Rush',
+    // Como la cabina del catálogo: la web propia no pasa por el salón, así que es el del paquete.
+    title: nombreDelJuego(),
     description: t('Catch the sticks falling from the machine before they hit the ground. Play in the browser or in mixed reality (VR/AR).'),
   }
 }

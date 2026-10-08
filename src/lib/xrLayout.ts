@@ -1,8 +1,10 @@
 import { DIFFICULTY_ORDER, MAX_STICKS, PLAYER_OFFSET_Z, STICK_RADIUS, type Difficulty } from './gameConfig'
-import { eligeJugadores } from './duel'
-import { GAME_MODE_LABELS, picksSetup, type GameMode } from './gameMode'
+import { GAME_MODE_LABELS, type GameMode } from './gameMode'
 import { REFERENCE_EYE_HEIGHT, isPlausibleEyeHeight } from './hoopHeight'
 import { EYE_HEIGHTS, eyesAt, type PanelPose, type Point } from './panelReading'
+import { GRADOS_DEL_MENU } from './plantillaDelMenu'
+import { formatea, type TextKey } from './textos'
+import { seVe, type FilaDelMenu } from './menuDelJuego'
 
 /**
  * Dónde se coloca cada cosa de la interfaz inmersiva, en metros. Las alturas se
@@ -109,17 +111,18 @@ export interface MenuPose {
 
 /**
  * Dónde va la columna de ajustes en el visor: la regla común de los juegos del salón
- * (`.claude/rules/xr.md`, «La columna va lejos y a la izquierda, fuera de donde se juega»).
+ * (`.claude/rules/xr.md`): el menú nace a `GRADOS_DEL_MENU` o menos del frente y se aparta al
+ * empezar.
  *
- * **Estaba de frente, a 95 cm**: en medio del aro, justo donde caen los palos. Con las gafas
- * todas las columnas estorbaban jugando, y esta la que más. Ahora va a metro y medio
- * de los ojos y 55° a la izquierda: **fuera del aro** —que tiene 57 cm de radio— y fuera de
- * donde se mira jugando. El botón que la abre durante la partida (`XR_QUIT_POSITION`) ya
- * estaba a la izquierda, que es lo que pide la regla.
+ * **Estuvo de frente, a 95 cm**: en medio del aro, justo donde caen los palos. Después se fue a 55°
+ * a la izquierda, fuera de donde se mira jugando, y había que girar la cabeza para encontrarlo.
+ * Va a metro y medio de los ojos y a 30° a la izquierda: se ve al entrar sin girarse, y los palos
+ * que quedan entre los ojos y la placa se atenúan mientras se elige (`paloTapaElMenu`). Solo se
+ * pinta en el menú: al empezar, el panel se va y queda el botón de volver (`XR_QUIT_POSITION`).
  *
- * A CALIBRAR CON EL VISOR (distancia entre 1,4 y 1,6; ángulo entre 50° y 65°).
+ * A CALIBRAR CON EL VISOR (distancia entre 1,4 y 1,6).
  */
-export const XR_COLUMN = { distance: 1.5, azimuth: (55 * Math.PI) / 180 } as const
+export const XR_COLUMN = { distance: 1.5, azimuth: (GRADOS_DEL_MENU * Math.PI) / 180 } as const
 
 /**
  * Cuánto crece el panel en la columna.
@@ -369,12 +372,15 @@ export const XR_QUIT_YAW = Math.atan2(
  */
 export const XR_MENU_EXIT_OFFSET: Vec3 = [0.42, -0.37 + SUBIDA_DE_LA_PISTA, 0]
 /**
- * Botón de silenciar, en la esquina opuesta a la de salir del visor. Los dos
- * ajustes de la fila de abajo quedan así uno en cada punta, con el de empezar
- * en medio: en el visor se apunta a pulso y un vecino a pocos centímetros se
- * pulsa por error.
+ * El botón de «Más opciones», en la esquina opuesta a la de salir del visor. Era el sitio del de
+ * silenciar, que el salón cambió por sus volúmenes: los dos ajustes de la fila de abajo quedan uno
+ * en cada punta, con el de empezar en medio, porque en el visor se apunta a pulso y un vecino a
+ * pocos centímetros se pulsa por error. Lleva su nombre escrito en dos renglones
+ * (`dibujarLosNombres`), medido en `menu.legible.test.ts`.
  */
-export const XR_MENU_SOUND_OFFSET: Vec3 = [-0.42, -0.37, 0]
+export const XR_MENU_OPCIONES_OFFSET: Vec3 = [-0.42, -0.37, 0]
+/** Lo ancho que se escribe su nombre: lo que mide su placa. */
+export const OPCIONES_ANCHO = 0.15
 /**
  * Fila de ajustes, la primera bajo la del aro: a la izquierda a qué se juega
  * (práctica, niveles o desafío) y a la derecha qué se ve alrededor. **El menú
@@ -559,7 +565,7 @@ export const XR_MENU_PLAY_HIT: Vec3 = [0.36, 0.13, 0.06]
  */
 export const XR_MENU_HIT: Record<string, Vec3> = {
   exit: [0.16, 0.13, 0.06],
-  sound: [0.16, 0.13, 0.06],
+  opciones: [0.16, 0.13, 0.06],
   tutorial: [0.14, 0.12, 0.06],
   music: [0.14, 0.12, 0.06],
   hoopDown: [0.13, 0.1, 0.06],
@@ -573,7 +579,7 @@ export const XR_MENU_HIT: Record<string, Vec3> = {
 /** Dónde va cada uno de esos botones. Mismo nombre, mismo orden. */
 export const XR_MENU_SPOT: Record<keyof typeof XR_MENU_HIT, Vec3> = {
   exit: XR_MENU_EXIT_OFFSET,
-  sound: XR_MENU_SOUND_OFFSET,
+  opciones: XR_MENU_OPCIONES_OFFSET,
   tutorial: XR_MENU_TUTORIAL_OFFSET,
   music: XR_MENU_MUSIC_OFFSET,
   hoopDown: XR_HOOP_DOWN_OFFSET,
@@ -609,29 +615,38 @@ export const MENU_LABELS = [
   { text: 'Around', x: 0.245, y: SETTINGS_ROW_Y },
 ] as const
 
-/**
- * Los nombres de fila que se enseñan con cada modo. **Solo la práctica pregunta** palos y
- * velocidad; en Niveles la fila de los palos es la escalera y la velocidad se ve apagada, la
- * del nivel; el desafío va fijo (`CHALLENGE_SETUP`) y sus filas no se ven, así que tampoco
- * sus nombres: un rótulo sobre un hueco se lee como una opción que falta.
- */
-export function menuLabelsFor(mode: GameMode): readonly (typeof MENU_LABELS)[number][] {
-  // Contra quién solo se pregunta en el desafío, en el hueco del centro de la fila de ajustes.
-  const conSuFila = MENU_LABELS.filter(({ text }) => text !== 'Players' || eligeJugadores(mode))
-  if (picksSetup(mode) || mode === 'levels') return conSuFila
-  return conSuFila.filter(({ text }) => text !== 'Sticks' && text !== 'Speed')
+/** La fila de cada rótulo: el de los palos y el de la velocidad nombran también la escalera de los niveles. */
+const FILAS_DEL_ROTULO: Record<(typeof MENU_LABELS)[number]['text'], readonly FilaDelMenu[]> = {
+  Hoop: ['hoop'],
+  Sticks: ['sticks', 'levels'],
+  Speed: ['speed', 'levels'],
+  Mode: ['mode'],
+  Players: ['players'],
+  Around: ['around'],
 }
 
 /**
- * Lo que se escribe en un rótulo del menú. El de la fila del modo dice **cuál** hay elegido
- * —«Challenge», que en español es «Reto»—: su interruptor lo dibuja con corazones o estrellas,
- * y un dibujo no dice cómo se llama lo que cuenta para medalla. Los demás, lo que son.
+ * Los nombres de fila que se enseñan con cada modo: los de las filas a la vista
+ * (`menuDelJuego.ts`). **Solo la práctica pregunta** palos y velocidad; en Niveles la fila de los
+ * palos es la escalera y la velocidad se ve apagada, la del nivel; el desafío va fijo
+ * (`CHALLENGE_SETUP`) y sus filas no se ven, así que tampoco sus nombres: un rótulo sobre un hueco
+ * se lee como una opción que falta. Lo plegado tras «Más opciones», tampoco.
+ */
+export function menuLabelsFor(mode: GameMode, masOpciones = false): readonly (typeof MENU_LABELS)[number][] {
+  return MENU_LABELS.filter(({ text }) => FILAS_DEL_ROTULO[text].some((fila) => seVe(fila, mode, 'visor', masOpciones)))
+}
+
+/**
+ * Lo que se escribe en un rótulo del menú. El de la fila del modo dice «Modo» y **cuál** hay
+ * elegido —«Modo: Reto»—: su interruptor lo dibuja con corazones o estrellas, y un dibujo no dice
+ * cómo se llama lo que cuenta para medalla. Los demás, lo que son.
  */
 export function menuLabelText(
   text: (typeof MENU_LABELS)[number]['text'],
   mode: GameMode,
-): Exclude<(typeof MENU_LABELS)[number]['text'], 'Mode'> | (typeof GAME_MODE_LABELS)[GameMode] {
-  return text === 'Mode' ? GAME_MODE_LABELS[mode] : text
+  t: (clave: TextKey) => string,
+): string {
+  return text === 'Mode' ? formatea(t('Mode: {mode}'), { mode: t(GAME_MODE_LABELS[mode]) }) : t(text)
 }
 
 function offset([x, y, z]: Vec3, dx: number, dy: number): Vec3 {
@@ -660,9 +675,9 @@ export function xrMenuExitPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   return onMenu(dx, dy, pose)
 }
 
-/** Botón de silenciar, dentro del panel del menú. */
-export function xrMenuSoundPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
-  const [dx, dy] = XR_MENU_SOUND_OFFSET
+/** Botón de «Más opciones», dentro del panel del menú. */
+export function xrMenuOpcionesPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
+  const [dx, dy] = XR_MENU_OPCIONES_OFFSET
   return onMenu(dx, dy, pose)
 }
 

@@ -8,8 +8,9 @@
 ## jugando el desafío con los palos sacados de ella, la misma semilla da el mismo reparto, y la
 ## partida jugada se le cuenta al salón como reto.
 ##
-## Y el del objetivo: con el metadato `goal` del salón el cartel enseña los listones de medalla; sin
-## él (la segunda entrada al reto), solo la misión.
+## Y el del objetivo: con el metadato `goal` del salón el cartel enseña los listones de medalla (sin
+## récord todavía, el bronce dicho en palos y el oro); sin él (la segunda entrada al reto), solo la
+## misión.
 ##
 ## Y **la partida a dos** (`duel.ts`): el desafío a dos, las dos tandas seguidas por el jugador
 ## automático, la segunda con la semilla de la primera; el segundo deja escapar un palo más, así que
@@ -37,7 +38,8 @@ const OBJETIVO := {
 	"medallas": {"bronce": 1900, "plata": 3750, "oro": 5200},
 	"mejorEs": "mas", "unidad": "points in challenge", "record": null, "modo": "challenge",
 }
-const LISTONES := "Bronze 1,900 · Silver 3,750 · Gold 5,200"
+## Sin récord en el salón, la primera vez: el bronce en palos (`contable`) y el oro.
+const LISTONES := "Bronze ≈ 13 sticks · Gold 5,200"
 
 var game: Node
 var salon: Node

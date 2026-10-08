@@ -42,7 +42,7 @@ test('con el reto del salón, el cartel cuelga encima del marcador y cuesta una 
   page.on('pageerror', (error) => errors.push(error.message))
 
   await contarLlamadas(page)
-  await openHost(page, { reto: 20260925, objetivo: OBJETIVO })
+  await openHost(page, undefined, { reto: 20260925, objetivo: OBJETIVO })
 
   // Desde la cuenta atrás: la misión se lee antes de que caiga el primer palo.
   await expect
@@ -75,7 +75,7 @@ test('con el reto del salón, el cartel cuelga encima del marcador y cuesta una 
 })
 
 test('sin reto ni partida, en el menú, no hay cartel', async ({ page }) => {
-  await openHost(page, { objetivo: OBJETIVO })
+  await openHost(page, undefined, { objetivo: OBJETIVO })
 
   // El menú es lo primero que monta la escena; el cartel solo cuelga con la partida en marcha.
   await expect.poll(() => buscarEnLaEscena(page, 'world-anchor')).not.toBeNull()

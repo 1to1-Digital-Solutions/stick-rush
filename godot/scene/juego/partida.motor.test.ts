@@ -465,6 +465,25 @@ describe('el cartel del objetivo, como en la web', () => {
     expect(p.cartel('es')).toMatchObject({ titulo: `Plata · ${p.points} points in challenge`, detalle: `Te han faltado ${formatoDeCifra(100000 - p.points, 'es')} para el oro` })
   })
 
+  it('dos partidas seguidas: la segunda compara con el récord nuevo de la primera, que el salón no ha vuelto a pasar', () => {
+    const contados: unknown[] = []
+    const p = new Partida({ objetivo: OBJETIVO, alTerminar: (resultado) => contados.push(resultado) })
+    jugando(p)
+    // La primera vez, el bronce en palos y el oro.
+    expect(p.cartel('es')?.detalle).toBe('Bronce ≈ 13 palos · Oro 5200')
+    resolver(p, 3)
+    resolver(p, 3, false)
+    const hechos = p.points
+    expect(hechos).toBeGreaterThan(0)
+    expect(p.cartel('en')?.pie).toContain('First record!')
+    expect(contados).toHaveLength(1)
+    // El metadato `goal` sigue sin récord, pero la partida ya lo sabe: lo pide al empezar.
+    jugando(p)
+    expect(p.cartel('es')?.detalle).toBe('Bronce 1900 · Plata 3750 · Oro 5200')
+    resolver(p, 3, false)
+    expect(p.cartel('en')?.pie).toContain(`Your best ${formatoDeCifra(hechos, 'en')}`)
+  })
+
   it('fuera del reto: en el salón dice que no cuenta mientras se juega; suelto, no se cuelga', () => {
     const enElSalon = enPractica({ objetivo: OBJETIVO })
     jugando(enElSalon)

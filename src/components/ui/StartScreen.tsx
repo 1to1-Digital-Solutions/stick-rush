@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import {
   DIFFICULTY_COLORS,
   DIFFICULTY_LABELS,
@@ -12,17 +13,18 @@ import {
   type GameMode,
   GAME_MODE_HINTS,
   GAME_MODE_LABELS,
-  GAME_MODE_ORDER,
-  picksSetup,
   startingLives,
 } from '../../lib/gameMode'
-import { PLAYER_COUNTS, PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS, eligeJugadores, juegaADos } from '../../lib/duel'
+import { PLAYER_COUNTS, PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS, juegaADos } from '../../lib/duel'
+import { MODOS_DEL_MENU, botonDeOpciones, seVe } from '../../lib/menuDelJuego'
+import { MENU_EN, plural } from '../../lib/palabras'
+import { nombreDelJuego } from '../../lib/plantillaDelMenu'
 import { useGame } from '../../lib/gameStore'
 import { LEVEL_COUNT, levelSpec } from '../../lib/levels'
 import { HeartIcon, InfinityIcon, StarIcon } from './icons'
 import { XRWrapper } from '../xr/XRWrapper'
 import { useLang } from '../../lib/ajustesCliente'
-import { formatea, formatoDeCifra, traductor } from '../../lib/textos'
+import { formatea, formatoDeCifra, traductor, traductorSuave } from '../../lib/textos'
 
 const STICK_OPTIONS = Array.from(
   { length: MAX_STICKS - MIN_STICKS + 1 },
@@ -86,7 +88,8 @@ function Stars({ stars, className = 'size-4' }: { stars: number; className?: str
  * los palos y la velocidad los dice el nivel y no el jugador.
  */
 function LevelPicker() {
-  const t = traductor(useLang())
+  const lang = useLang()
+  const t = traductor(lang)
   const { activeLevel, unlockedLevel, levelStars, setLevel } = useGame()
   const spec = levelSpec(activeLevel)
 
@@ -104,7 +107,7 @@ function LevelPicker() {
           const locked = level > unlockedLevel
           const stars = levelStars[index] ?? 0
           const selected = level === activeLevel
-          const estrellas = stars === 1 ? '1 star' : `${stars} stars`
+          const estrellas = traductorSuave(lang)(plural(stars, '{stars} star', '{stars} stars'), { stars })
           return (
             <button
               key={level}
@@ -201,7 +204,7 @@ function PlayersPicker() {
         id="players-label"
         className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
       >
-        {t('Who you play against')}
+        {t(MENU_EN.jugadores)}
       </h2>
       <div className="grid gap-2 sm:grid-cols-2">
         {PLAYER_COUNTS.map((count) => {
@@ -266,11 +269,13 @@ export function StartScreen() {
     setGameMode,
     startGame,
   } = useGame()
-  // **Solo la práctica pregunta** palos y velocidad. En Niveles los dice el nivel —sus
-  // selectores se cambian por la escalera— y el desafío va fijo (`CHALLENGE_SETUP`): se elige
-  // el modo y se le da a Jugar. Las filas no se enseñan ni apagadas.
-  const levels = gameMode === 'levels'
-  const pregunta = picksSetup(gameMode)
+  // **Solo la práctica pregunta** palos y velocidad, y tras «Más opciones» (`menuDelJuego.ts`). En
+  // Niveles los dice el nivel —sus selectores se cambian por la escalera— y el desafío va fijo
+  // (`CHALLENGE_SETUP`): se elige el modo y se le da a Jugar. Las filas no se enseñan ni apagadas.
+  // Lo plegado es de la interfaz: no se guarda, y la portada abre plegada.
+  const [masOpciones, setMasOpciones] = useState(false)
+  const ve = (fila: Parameters<typeof seVe>[0]) => seVe(fila, gameMode, 'portada', masOpciones)
+  const opciones = botonDeOpciones(gameMode, 'portada', masOpciones)
   return (
     <main className="absolute inset-0 z-20 flex w-full items-center justify-center overflow-y-auto bg-[var(--color-background)] px-6 py-12">
       {/* Gradiente radial sutil de fondo */}
@@ -281,8 +286,9 @@ export function StartScreen() {
 
       <div className="animate-fade-slide-up relative z-10 flex w-full max-w-xl flex-col items-center gap-10 text-center">
         <header className="flex flex-col gap-2">
-          <h1 className="text-glow-primary text-5xl tracking-wide text-[var(--color-primary)] sm:text-6xl">
-            STICK RUSH
+          {/* Como se llama la cabina del salón (`plantillaDelMenu.ts`), en mayúsculas de rótulo. */}
+          <h1 className="text-glow-primary text-5xl uppercase tracking-wide text-[var(--color-primary)] sm:text-6xl">
+            {nombreDelJuego()}
           </h1>
           <p className="text-sm text-white/60 sm:text-base">
              {t('Catch the sticks before they hit the ground.')}
@@ -301,7 +307,7 @@ export function StartScreen() {
              {t('Mode')}
 </h2>
           <div className="grid gap-2 sm:grid-cols-3">
-            {GAME_MODE_ORDER.map((mode) => {
+            {MODOS_DEL_MENU.map((mode) => {
               const selected = mode === gameMode
               return (
                 <button
@@ -332,12 +338,12 @@ export function StartScreen() {
           </div>
         </section>
 
-        {levels && <LevelPicker />}
-        {gameMode === 'practice' && <EndlessToggle />}
-        {eligeJugadores(gameMode) && <PlayersPicker />}
+        {ve('levels') && <LevelPicker />}
+        {ve('players') && <PlayersPicker />}
+        {ve('endless') && <EndlessToggle />}
 
         {/* Selector de número de palos */}
-        {pregunta && (
+        {ve('sticks') && (
         <section className="flex w-full flex-col gap-3" aria-labelledby="sticks-label">
           <h2
             id="sticks-label"
@@ -369,7 +375,7 @@ export function StartScreen() {
         )}
 
         {/* Selector de dificultad */}
-        {pregunta && (
+        {ve('speed') && (
         <section
           className="flex w-full flex-col gap-3"
           aria-labelledby="difficulty-label"
@@ -407,6 +413,18 @@ export function StartScreen() {
             })}
           </div>
         </section>
+        )}
+
+        {/* «Más opciones»: lo que la plantilla deja plegado, a un toque. */}
+        {opciones != null && (
+          <button
+            type="button"
+            aria-expanded={masOpciones}
+            onClick={() => setMasOpciones(!masOpciones)}
+            className="min-h-11 rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-white/70 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+          >
+            {t(opciones)}
+          </button>
         )}
 
         {/* CTA principal, con el silencio a mano por si el juego molesta */}

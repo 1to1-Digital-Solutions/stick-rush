@@ -76,17 +76,19 @@ const api = {
   },
 
   /**
-   * Gira la cabeza: `yaw` a la izquierda (radianes, positivo) y `pitch` hacia arriba.
+   * Gira la cabeza, en **grados**: `yaw` a la izquierda y `pitch` hacia arriba, en positivo. Es el
+   * convenio común de los diecisiete (`mirar` de `support/comun.ts`).
    *
-   * El emulador entra siempre mirando al frente, y la columna del menú está a 55° a la
-   * izquierda (`XR_COLUMN`): sin girar la cabeza no sale en ninguna captura. Primero el rumbo
-   * y después la inclinación, que es el orden de una cabeza. El mismo que en basketball.
+   * El emulador entra siempre mirando al frente; las ayudas del suelo, por ejemplo, están a los
+   * pies. Primero el rumbo y después la inclinación, que es el orden de una cabeza (el Euler
+   * `'YXZ'` de three).
    */
   lookAt(yaw: number, pitch = 0) {
-    const cy = Math.cos(yaw / 2)
-    const sy = Math.sin(yaw / 2)
-    const cp = Math.cos(pitch / 2)
-    const sp = Math.sin(pitch / 2)
+    const medio = Math.PI / 360
+    const cy = Math.cos(yaw * medio)
+    const sy = Math.sin(yaw * medio)
+    const cp = Math.cos(pitch * medio)
+    const sp = Math.sin(pitch * medio)
     device.quaternion.set(cy * sp, sy * cp, -sy * sp, cy * cp)
   },
 

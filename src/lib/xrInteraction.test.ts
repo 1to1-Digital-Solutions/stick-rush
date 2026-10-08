@@ -38,7 +38,7 @@ import {
   xrHoopDownPosition,
   xrHoopUpPosition,
   xrMenuExitPosition,
-  xrMenuSoundPosition,
+  xrMenuOpcionesPosition,
   xrMenuTutorialPosition,
   xrModeTogglePosition,
   xrEndlessTogglePosition,
@@ -129,7 +129,7 @@ describe('la interfaz cae dentro del campo de visión', () => {
     ['el marcador', XR_HUD_POSITION],
     ['el botón de volver al menú', XR_QUIT_POSITION],
     ['el botón de salir del visor', xrMenuExitPosition(DESK)],
-    ['el botón de silenciar', xrMenuSoundPosition(DESK)],
+    ['el botón de «Más opciones»', xrMenuOpcionesPosition(DESK)],
     // Los dos ajustes de la fila del medio están apartados a las puntas del
     // panel para no pulsarse por error, así que ya no caen sobre el eje de la
     // mirada y hay que comprobarlos como los demás.
@@ -405,11 +405,11 @@ describe('quién está jugando: mandos o manos desnudas', () => {
  * La columna del menú en el visor: la regla común de los juegos del salón (`.claude/rules/xr.md`,
  * «La columna va lejos y a la izquierda, fuera de donde se juega»).
  */
-describe('la columna del menú va lejos, a la izquierda y fuera del aro', () => {
+describe('la columna del menú va lejos, a la izquierda, cerca del frente y fuera del aro', () => {
   const botones: Array<[string, Vec3]> = [
     ['el centro', XR_MENU_POSITION],
     ['salir del visor', xrMenuExitPosition()],
-    ['silenciar', xrMenuSoundPosition()],
+    ['más opciones', xrMenuOpcionesPosition()],
     ['el modo', xrModeTogglePosition()],
     ['sin fin', xrEndlessTogglePosition()],
     ['el escenario', xrSceneryPickerPosition()],
@@ -424,12 +424,12 @@ describe('la columna del menú va lejos, a la izquierda y fuera del aro', () => 
   /** Hacia dónde queda, en radianes: positivo a la izquierda. */
   const azimut = ([x, , z]: Vec3) => Math.atan2(-x, -z)
 
-  it('su centro, a metro y medio de los ojos y entre 50° y 65° a la izquierda', () => {
+  it('su centro, a metro y medio de los ojos y a la izquierda, sin pasar de 30° del frente', () => {
     const [x, y, z] = XR_MENU_POSITION
     expect(Math.hypot(x, z)).toBeGreaterThanOrEqual(1.4)
     expect(Math.hypot(x, z)).toBeLessThanOrEqual(1.6)
-    expect((azimut(XR_MENU_POSITION) * 180) / Math.PI).toBeGreaterThanOrEqual(50)
-    expect((azimut(XR_MENU_POSITION) * 180) / Math.PI).toBeLessThanOrEqual(65)
+    expect((azimut(XR_MENU_POSITION) * 180) / Math.PI).toBeGreaterThan(0)
+    expect((azimut(XR_MENU_POSITION) * 180) / Math.PI).toBeLessThanOrEqual(30 + 1e-9)
     expect(y).toBe(REFERENCE_EYE_HEIGHT)
   })
 

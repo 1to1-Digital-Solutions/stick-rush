@@ -44,7 +44,7 @@ import { cartelDeObjetivo, type Objetivo } from '@/lib/objetivo'
 import { maxScore } from '@/lib/scoring'
 import { traductorSuave } from '@/lib/textos'
 import { HOOP_ADJUST_STEP } from '@/lib/hoopHeight'
-import { noTextOwnsAButton, sizesOffList, textsOnButtons, unreadableTexts, worstReadingDistance, type PanelPose } from '@/lib/panelReading'
+import { centreInside, sizesOffList, textsOnButtons, unreadableTexts, worstReadingDistance, type PanelPose } from '@/lib/panelReading'
 import { gameStorage } from '@/lib/storage'
 import { TUTORIAL_STEPS } from '@/lib/tutorial'
 import {
@@ -111,6 +111,7 @@ function estadoDelMenu(cambios: Partial<EstadoDelMenu> = {}): EstadoDelMenu {
     habitacion: false,
     escenario: 'scene',
     jugadores: 1,
+    masOpciones: false,
     ...cambios,
   }
 }
@@ -123,6 +124,7 @@ describe('el menú mide lo que la web', () => {
       elegirPalos: nada,
       alternarSinFin: nada,
       alternarJugadores: nada,
+      alternarOpciones: nada,
       elegirNivel: nada,
       elegirEscenario: nada,
       moverElAro: nada,
@@ -138,31 +140,39 @@ describe('el menú mide lo que la web', () => {
   ]
 
   it('los nombres de las filas y la explicación del modo, en los dos idiomas', () => {
-    menu.pintar(estadoDelMenu({ lang: 'es' }))
+    menu.pintar(estadoDelMenu({ lang: 'es', masOpciones: true }))
     const textos = menu.panel.escritos.map((e) => e.texto)
-    // La fila del modo se llama como el modo elegido, y su explicación empieza por si da medalla.
-    expect(textos).toEqual(expect.arrayContaining(['Aro', 'Palos', 'Velocidad', 'Práctica', 'Alrededor']))
-    expect(textos).not.toContain('Modo')
+    // La fila del modo dice «Modo» y cuál hay elegido, y su explicación empieza por si da medalla.
+    expect(textos).toEqual(expect.arrayContaining(['Aro', 'Palos', 'Velocidad', 'Modo: Práctica', 'Alrededor', 'Menos']))
     expect(textos.some((t) => t.startsWith('Sin medalla. Caen todos'))).toBe(true)
-    // El desafío va fijo: sin las filas que no se eligen, sin sus nombres.
-    menu.pintar(estadoDelMenu({ modo: 'challenge' }))
+    // Plegado, como abre: el modo y el botón de «Más opciones».
+    menu.pintar(estadoDelMenu({ lang: 'es' }))
+    expect(menu.panel.escritos.map((e) => e.texto)).toEqual(expect.arrayContaining(['Modo: Práctica', 'Más', 'opciones']))
+    expect(menu.panel.escritos.map((e) => e.texto)).not.toContain('Aro')
+    // El desafío va fijo: sin las filas que no se eligen, sin sus nombres y sin «Más opciones».
+    menu.pintar(estadoDelMenu({ modo: 'challenge', masOpciones: true }))
     expect(menu.panel.escritos.map((e) => e.texto)).not.toContain('Sticks')
-    expect(menu.panel.escritos.map((e) => e.texto)).toContain('Challenge')
+    expect(menu.panel.escritos.map((e) => e.texto)).not.toContain('Hoop')
+    expect(menu.panel.escritos.map((e) => e.texto)).not.toContain('More')
+    expect(menu.panel.escritos.map((e) => e.texto)).toContain('Mode: Challenge')
     menu.pintar(estadoDelMenu({ lang: 'es', modo: 'challenge' }))
-    expect(menu.panel.escritos.map((e) => e.texto)).toContain('Reto')
+    expect(menu.panel.escritos.map((e) => e.texto)).toContain('Modo: Reto')
     expect(menu.panel.escritos.some((e) => e.texto.startsWith('Cuenta para medalla.'))).toBe(true)
   })
 
   it('se lee en la columna del visor y en escritorio, en cada idioma y modo, sin tamaños fuera de la lista', () => {
     for (const lang of LANGS) {
       for (const [modo, jugadores] of [...GAME_MODE_ORDER.map((m) => [m, 1] as const), ['challenge', 2] as const]) {
-        menu.pintar(estadoDelMenu({ lang, modo, jugadores }))
-        const escritos = menu.panel.escritos
-        expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(MENU_TEXT)), `${lang} ${modo}`).toEqual([])
-        for (const { nombre, pose } of SITIOS) {
-          const escalados = aEscala(escritos, pose.scale)
-          const panel = { width: MENU_PANEL[0] * pose.scale, height: MENU_PANEL[1] * pose.scale }
-          expect(medir(escalados, panel, xrPanelViews(pose.position, pose.yaw)), `${lang} ${modo}, ${nombre}`).toEqual([])
+        for (const masOpciones of [false, true]) {
+          menu.pintar(estadoDelMenu({ lang, modo, jugadores, masOpciones }))
+          const escritos = menu.panel.escritos
+          const donde = `${lang} ${modo}${masOpciones ? ' desplegado' : ''}`
+          expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(MENU_TEXT)), donde).toEqual([])
+          for (const { nombre, pose } of SITIOS) {
+            const escalados = aEscala(escritos, pose.scale)
+            const panel = { width: MENU_PANEL[0] * pose.scale, height: MENU_PANEL[1] * pose.scale }
+            expect(medir(escalados, panel, xrPanelViews(pose.position, pose.yaw)), `${donde}, ${nombre}`).toEqual([])
+          }
         }
       }
     }
@@ -179,10 +189,15 @@ describe('el menú mide lo que la web', () => {
 
   it('ningún rótulo se mete en un botón de la web', () => {
     const botones = Object.keys(XR_MENU_HIT).map((id) => ({ x: XR_MENU_SPOT[id][0], y: XR_MENU_SPOT[id][1], width: XR_MENU_HIT[id][0], height: XR_MENU_HIT[id][1] }))
+    // El único texto de un botón es el nombre de «Más opciones», escrito en su placa.
+    const [ox, oy] = XR_MENU_SPOT.opciones
+    const esElSuyo: typeof centreInside = (texto, boton) => boton.x === ox && boton.y === oy && centreInside(texto, boton)
     for (const lang of LANGS) {
       for (const modo of GAME_MODE_ORDER) {
-        menu.pintar(estadoDelMenu({ lang, modo }))
-        expect(textsOnButtons(menu.panel.escritos, botones, noTextOwnsAButton), `${lang} ${modo}`).toEqual([])
+        for (const masOpciones of [false, true]) {
+          menu.pintar(estadoDelMenu({ lang, modo, masOpciones }))
+          expect(textsOnButtons(menu.panel.escritos, botones, esElSuyo), `${lang} ${modo}`).toEqual([])
+        }
       }
     }
   })
@@ -193,12 +208,22 @@ describe('el menú mide lo que la web', () => {
     expect(problemasDeLaSalida(salida, resto, { width: MENU_PANEL[0], height: MENU_PANEL[1] })).toEqual([])
   })
 
-  it('solo la práctica pregunta palos y velocidad; los niveles, su escalera; y lo apagado no se pulsa', () => {
+  it('lo de la práctica y lo de alrededor, tras «Más opciones»; con el reto, ni el botón', () => {
     menu.pintar(estadoDelMenu())
+    expect([menu.boton('sticks:5').nodo.visible, menu.boton('hoopUp').nodo.visible, menu.boton('scenery:scene').nodo.visible]).toEqual([false, false, false])
+    expect(menu.boton('opciones').nodo.visible).toBe(true)
+    menu.pintar(estadoDelMenu({ masOpciones: true }))
+    expect([menu.boton('sticks:5').nodo.visible, menu.boton('hoopUp').nodo.visible, menu.boton('scenery:scene').nodo.visible]).toEqual([true, true, true])
+    menu.pintar(estadoDelMenu({ modo: 'challenge', masOpciones: true }))
+    expect([menu.boton('opciones').nodo.visible, menu.boton('hoopUp').nodo.visible, menu.boton('players').nodo.visible]).toEqual([false, false, true])
+  })
+
+  it('solo la práctica pregunta palos y velocidad; los niveles, su escalera; y lo apagado no se pulsa', () => {
+    menu.pintar(estadoDelMenu({ masOpciones: true }))
     expect(menu.boton('sticks:5').nodo.visible && menu.boton('difficulty:easy').nodo.visible && !menu.boton('level:1').nodo.visible).toBe(true)
     expect([menu.boton('sticks:4').apagado, menu.boton(`sticks:${MAX_STICKS}`).apagado]).toEqual([true, false])
     expect(menu.boton('scenery:passthrough').apagado).toBe(true)
-    menu.pintar(estadoDelMenu({ modo: 'levels', abierto: 3, nivel: 2 }))
+    menu.pintar(estadoDelMenu({ modo: 'levels', abierto: 3, nivel: 2, masOpciones: true }))
     expect([menu.boton('sticks:5').nodo.visible, menu.boton('level:1').nodo.visible, menu.boton('level:3').apagado, menu.boton('level:4').apagado]).toEqual([
       false,
       true,
@@ -212,7 +237,7 @@ describe('el menú mide lo que la web', () => {
     expect(menu.boton('players').nodo.visible).toBe(true)
     menu.pintar(estadoDelMenu({ modo: 'practice' }))
     expect(menu.boton('players').nodo.visible).toBe(false)
-    menu.pintar(estadoDelMenu({ ajusteDelAro: 0.2 }))
+    menu.pintar(estadoDelMenu({ ajusteDelAro: 0.2, masOpciones: true }))
     expect([menu.boton('hoopUp').apagado, menu.boton('hoopDown').apagado]).toEqual([true, false])
   })
 })
@@ -507,6 +532,8 @@ describe('la interfaz con el ratón', () => {
 
   it('empieza en el menú; elegir y jugar empieza la partida con lo elegido', () => {
     expect(partida.gameState).toBe('menu')
+    // Lo de la práctica y el aro, plegados tras «Más opciones».
+    clic('opciones')
     clic('difficulty:expert')
     clic('sticks:11')
     clic('hoopUp')
@@ -612,6 +639,7 @@ describe('la interfaz con el ratón', () => {
   })
 
   it('la partida sin fin se termina con su botón; en el final, repetir y volver al menú', () => {
+    clic('opciones')
     clic('endless')
     clic('play')
     partida.tick(COUNTDOWN_SECONDS)

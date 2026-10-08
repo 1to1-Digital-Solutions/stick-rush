@@ -8,7 +8,7 @@ import {
   XR_HOOP_UP_OFFSET,
   XR_MENU_EXIT_OFFSET,
   XR_MENU_MUSIC_OFFSET,
-  XR_MENU_SOUND_OFFSET,
+  XR_MENU_OPCIONES_OFFSET,
   XR_MENU_TUTORIAL_OFFSET,
   startTracking,
   trackHeight,
@@ -49,6 +49,8 @@ import {
   type Vec3,
 } from './xrLayout'
 import { MIN_EYE_HEIGHT, REFERENCE_EYE_HEIGHT, hoopHeightFor } from './hoopHeight'
+import { GRADOS_DEL_MENU, gradosDelFrente } from './plantillaDelMenu'
+import { traductor } from './textos'
 import { MAX_STICKS, PLAYER_OFFSET_Z, STICK_CORD_LENGTH, STICK_LENGTH, STICK_RADIUS } from './gameConfig'
 import { EYE_HEIGHTS } from './panelReading'
 import { buildStickLayout } from './stickLayout'
@@ -86,16 +88,16 @@ describe('las esquinas del panel del menú', () => {
     }
   })
 
-  it('mantiene salir y silenciar cada uno en una punta de la fila de abajo', () => {
+  it('mantiene salir y «Más opciones» cada uno en una punta de la fila de abajo', () => {
     // La regla que ya había: son las dos cosas que cuesta caro confundir.
-    expect(XR_MENU_EXIT_OFFSET[1]).toBe(XR_MENU_SOUND_OFFSET[1])
-    expect(separacion(XR_MENU_EXIT_OFFSET, XR_MENU_SOUND_OFFSET)).toBeGreaterThan(0.5)
+    expect(XR_MENU_EXIT_OFFSET[1]).toBe(XR_MENU_OPCIONES_OFFSET[1])
+    expect(separacion(XR_MENU_EXIT_OFFSET, XR_MENU_OPCIONES_OFFSET)).toBeGreaterThan(0.5)
   })
 
   it('no mete la música en la fila de abajo, que ya está llena', () => {
-    // Ahí solo quedaban quince centímetros entre empezar y silenciar, que es
+    // Ahí solo quedaban quince centímetros entre empezar y «Más opciones», que es
     // menos de lo que mide un botón de esquina.
-    expect(XR_MENU_MUSIC_OFFSET[1]).not.toBe(XR_MENU_SOUND_OFFSET[1])
+    expect(XR_MENU_MUSIC_OFFSET[1]).not.toBe(XR_MENU_OPCIONES_OFFSET[1])
   })
 })
 
@@ -269,15 +271,23 @@ describe('la salida', () => {
 })
 
 describe('los nombres de las filas, según el modo', () => {
-  const nombres = (mode: Parameters<typeof menuLabelsFor>[0]) => menuLabelsFor(mode).map(({ text }) => text)
+  const nombres = (mode: Parameters<typeof menuLabelsFor>[0], masOpciones = false) =>
+    menuLabelsFor(mode, masOpciones).map(({ text }) => text)
 
-  it('la práctica y los niveles nombran todas sus filas, sin la de contra quién', () => {
-    expect(menuLabelsFor('practice')).toEqual(MENU_LABELS.filter(({ text }) => text !== 'Players'))
-    expect(menuLabelsFor('levels')).toEqual(MENU_LABELS.filter(({ text }) => text !== 'Players'))
+  it('desplegadas, la práctica y los niveles nombran todas sus filas, sin la de contra quién', () => {
+    expect(menuLabelsFor('practice', true)).toEqual(MENU_LABELS.filter(({ text }) => text !== 'Players'))
+    expect(menuLabelsFor('levels', true)).toEqual(MENU_LABELS.filter(({ text }) => text !== 'Players'))
+  })
+
+  it('plegadas, como abre el menú, solo lo del modo: en los niveles, su escalera y su velocidad', () => {
+    expect(nombres('practice')).toEqual(['Mode'])
+    expect(nombres('levels')).toEqual(['Sticks', 'Speed', 'Mode'])
   })
 
   it('el desafío no nombra filas que no enseña: va fijo, pregunta contra quién y se le da a empezar', () => {
-    expect(nombres('challenge')).toEqual(['Hoop', 'Mode', 'Players', 'Around'])
+    expect(nombres('challenge')).toEqual(['Mode', 'Players'])
+    // Es una partida fija: lo plegado no se enseña aunque se pida.
+    expect(nombres('challenge', true)).toEqual(['Mode', 'Players'])
   })
 
   it('contra quién va en el hueco de sin fin, que el desafío no enseña, y el aviso a dos donde el de salir', () => {
@@ -370,16 +380,30 @@ describe('el reparto del marcador', () => {
 })
 
 describe('el rótulo de la fila del modo', () => {
-  it('dice cuál hay elegido, no «Modo»: el que cuenta para medalla se llama por su nombre', () => {
-    expect(menuLabelText('Mode', 'challenge')).toBe('Challenge')
-    expect(menuLabelText('Mode', 'practice')).toBe('Practice')
-    expect(menuLabelText('Mode', 'levels')).toBe('Levels')
+  it('dice «Modo» y cuál hay elegido: el que cuenta para medalla se llama por su nombre', () => {
+    expect(menuLabelText('Mode', 'challenge', traductor('en'))).toBe('Mode: Challenge')
+    expect(menuLabelText('Mode', 'practice', traductor('en'))).toBe('Mode: Practice')
+    expect(menuLabelText('Mode', 'levels', traductor('es'))).toBe('Modo: Niveles')
+    expect(menuLabelText('Mode', 'challenge', traductor('es'))).toBe('Modo: Reto')
   })
 
   it('los demás rótulos dicen lo que son, se juegue a lo que se juegue', () => {
     for (const { text } of MENU_LABELS) {
-      if (text !== 'Mode') expect(menuLabelText(text, 'challenge')).toBe(text)
+      if (text !== 'Mode') expect(menuLabelText(text, 'challenge', traductor('en'))).toBe(text)
     }
+  })
+})
+
+describe('el menú del visor nace de frente', () => {
+  it(`a ${GRADOS_DEL_MENU}° o menos de la mirada, a metro y medio, y de cara a quien juega`, () => {
+    expect(gradosDelFrente(XR_MENU_POSE.position)).toBeLessThanOrEqual(GRADOS_DEL_MENU)
+    expect(Math.hypot(XR_MENU_POSE.position[0], XR_MENU_POSE.position[2])).toBeCloseTo(1.5)
+    expect(XR_MENU_POSE.yaw).toBeCloseTo(Math.atan2(-XR_MENU_POSE.position[0], -XR_MENU_POSE.position[2]))
+  })
+
+  it('el control: a 55°, donde estuvo, no pasaría', () => {
+    const a = (55 * Math.PI) / 180
+    expect(gradosDelFrente([-Math.sin(a) * 1.5, REFERENCE_EYE_HEIGHT, -Math.cos(a) * 1.5])).toBeGreaterThan(GRADOS_DEL_MENU)
   })
 })
 
@@ -448,24 +472,25 @@ describe('los palos que tapan el menú del visor se atenúan', () => {
       expect(atenuados.length, `${palos} palos`).toBeGreaterThan(0)
       expect(atenuados.length, `${palos} palos`).toBeLessThanOrEqual(Math.ceil(palos / 2))
       expect(atenuados.some((gancho) => placa.some((punto) => seCruza(gancho, ojo, punto))), `${palos} palos`).toBe(true)
-      // Todos a la izquierda, que es donde está la columna: los del frente y la derecha, enteros.
-      for (const [x] of atenuados) expect(x).toBeLessThan(-0.15)
+      // Todos del frente a la izquierda, que es donde está la columna: los de la derecha, enteros.
+      for (const [x] of atenuados) expect(x).toBeLessThan(0.1)
     }
   })
 
-  it('la placa ocupa de 29° a 81° a la izquierda, con el margen', () => {
+  it('la placa ocupa de casi el frente a 61° a la izquierda, con el margen', () => {
     const [desde, hasta] = rumbosDelMenu()
-    expect(desde).toBeGreaterThan(20)
-    expect(desde).toBeLessThan(30)
-    expect(hasta).toBeGreaterThan(80)
-    expect(hasta).toBeLessThan(90)
+    expect(desde).toBeGreaterThan(-3)
+    expect(desde).toBeLessThan(0)
+    expect(hasta).toBeGreaterThan(60)
+    expect(hasta).toBeLessThan(65)
   })
 
-  it('el control: con la columna al frente, los palos del frente sí taparían', () => {
-    const alFrente = { ...XR_MENU_POSE, position: [0, REFERENCE_EYE_HEIGHT, -1.5] as Vec3, yaw: 0 }
-    const delFrente = buildStickLayout(13, 1).find(({ anchor }) => Math.abs(anchor[0]) < 0.01)!
-    expect(paloTapaElMenu(delFrente.anchor, alFrente)).toBe(true)
-    expect(paloTapaElMenu(delFrente.anchor)).toBe(false)
+  it('el control: con la columna a la derecha, los palos de la derecha sí taparían', () => {
+    const [x, y, z] = XR_MENU_POSE.position
+    const aLaDerecha = { ...XR_MENU_POSE, position: [-x, y, z] as Vec3, yaw: -XR_MENU_POSE.yaw }
+    const deLaDerecha = buildStickLayout(13, 1).find(({ anchor }) => anchor[0] > 0.3)!
+    expect(paloTapaElMenu(deLaDerecha.anchor, aLaDerecha)).toBe(true)
+    expect(paloTapaElMenu(deLaDerecha.anchor)).toBe(false)
   })
 
   it('se atenúan y vuelven poco a poco, en un cuarto de segundo', () => {

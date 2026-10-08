@@ -5,6 +5,8 @@
 ## Escape pregunta antes de dejar la partida, que salir vuelve al menú con el modo que se eligió, y
 ## que la flecha de la esquina sale del juego.
 ##
+## La velocidad, los palos y el aro van tras «Más opciones», que se despliega antes de elegirlos.
+##
 ## Los clics son eventos del ratón empujados al viewport, sobre donde la cámara pinta cada botón
 ## (`pantalla_del_boton`) o cada palo (`pantalla_del_palo`): el mismo camino que un clic de verdad,
 ## puntería incluida. Apretar y soltar van en pasos distintos, como con una mano: la pulsación
@@ -27,6 +29,8 @@ const PASOS := [
 	["modo", "challenge"],
 	["apretar", "mode"], ["soltar", ""],
 	["modo", "practice"],
+	# Lo de la práctica y el aro van plegados tras «Más opciones»: se despliegan para elegirlos.
+	["apretar", "opciones"], ["soltar", ""],
 	["apretar", "difficulty:hard"], ["soltar", ""],
 	["apretar", "sticks:7"], ["soltar", ""],
 	["apretar", "hoopUp"], ["soltar", ""],

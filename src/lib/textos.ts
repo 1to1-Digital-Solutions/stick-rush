@@ -32,6 +32,9 @@ const ES = {
   // Los botones y estados comunes del salón (`palabras.ts`), dichos igual en todos los juegos.
   ...MENU_ES,
   'Catch {sticks} sticks. Drop three and out': 'Atrapa {sticks} palos. Tres al suelo y fuera',
+  // Lo que vale el bronce en palos, la primera vez (`contable` del cartel).
+  '≈ {n} stick': '≈ {n} palo',
+  '≈ {n} sticks': '≈ {n} palos',
 
   // Lo que dice la pestaña y lo que se lee al compartir el enlace
   'Catch the sticks falling from the machine before they hit the ground. Play in the browser or in mixed reality (VR/AR).':
@@ -39,7 +42,8 @@ const ES = {
 
   // Menú
   'Catch the sticks before they hit the ground.': 'Atrapa los palos antes de que toquen el suelo.',
-  Mode: 'Modo',
+  // La fila del modo en el visor: el nombre de la fila y el modo elegido, que su interruptor solo dibuja.
+  'Mode: {mode}': 'Modo: {mode}',
   'Number of sticks': 'Número de palos',
   Difficulty: 'Dificultad',
   Length: 'Longitud',
@@ -65,9 +69,6 @@ const ES = {
   'It reloads until you say stop.': 'Se recarga hasta que tú digas.',
 
   // A dos
-  'On your own': 'Solo',
-  Players: 'Jugadores',
-  'Who you play against': 'Contra quién juegas',
   'Your three lives against your record.': 'Tus tres vidas contra tu récord.',
   'Pass the controller: same sticks, most points wins.':
     'Pasaos el mando: mismos palos, gana quien más saque.',
@@ -125,7 +126,7 @@ const ES = {
   of: 'de',
   'sticks.': 'palos.',
   'sticks, endless.': 'palos sin fin.',
-  '1 star': '1 estrella',
+  '{stars} star': '{stars} estrella',
   '{stars} stars': '{stars} estrellas',
   'Level {level} cleared!': '¡Nivel {level} superado!',
   'Level {level} not cleared': 'Nivel {level} sin superar',

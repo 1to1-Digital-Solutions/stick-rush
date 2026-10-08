@@ -165,6 +165,20 @@ describe('el cartel de encima del marcador se lee', () => {
     }
   })
 
+  it('la primera vez, el bronce en palos, legible con los ojos a 1,4 y a 1,9 m sin que la interfaz suba', () => {
+    for (const lang of IDIOMAS) {
+      const t = traductorSuave(lang)
+      const partida = partidaDelCartel(juego({ gameState: 'countdown', objetivo: { ...OBJETIVO, record: null }, record: 0 }), t)
+      const vista = cartelDeObjetivo(partida!, t)
+      expect(vista.detalle, lang).toBe(lang === 'es' ? 'Bronce ≈ 13 palos · Oro 5200' : 'Bronze ≈ 13 sticks · Gold 5,200')
+      const escritos = medir(vista)
+      expect(problemasDeLegibilidad(escritos, { panel: PANEL_DEL_CARTEL, distancia: DISTANCIA_DE_DIBUJO }), lang).toEqual([])
+      for (const ojos of [1.4, 1.9]) {
+        for (const angulo of gradosDesde(escritos, ojos)) expect(angulo, `${lang}, ojos a ${ojos}`).toBeGreaterThan(MIN_ANGULO)
+      }
+    }
+  })
+
   it('el control: la misión larga, con sus artículos y su «se acaba», no llegaba a leerse', () => {
     const larga = { titulo: 'Catch all 13 sticks. Three on the floor and it is over', detalle: null, barra: null, medalla: null, discreto: false }
     expect(gradosDesde(medir(larga))[0]).toBeLessThan(MIN_ANGULO)

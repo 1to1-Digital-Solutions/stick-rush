@@ -5,7 +5,7 @@
  * `XRTutorial` dentro de `XRGazeAnchor`.
  *
  * **Con el visor, en las cotas de la web** (`lib/xrLayout.ts`): el menú en la columna de la izquierda
- * —a metro y medio, 55° y agrandado (`XR_MENU_POSE`)—, el marcador por debajo del aro, volver al menú
+ * —a metro y medio, a 30° del frente y agrandado (`XR_MENU_POSE`)—, el marcador por debajo del aro, volver al menú
  * arriba a la izquierda, el aviso y la cuenta atrás delante y el tutorial por encima del marcador.
  * Todo cuelga de `raiz`, en el mundo del jugador (que ya se planta donde lo presta el salón y gira con
  * el stick), y sube o baja con los ojos de quien juega lo que el mundo no haya bajado ya
@@ -29,7 +29,8 @@ import type { MandoEnLaMano } from '@kit/runtime/ui/tutorial'
 import type { Lang, Scenery } from '@/lib/ajustes'
 import { sitioDelCartel } from '@/lib/cartelDeLaMaquina'
 import type { Medalla } from '@/lib/objetivo'
-import { GAME_MODE_ORDER, startingLives } from '@/lib/gameMode'
+import { startingLives } from '@/lib/gameMode'
+import { siguienteModo } from '@/lib/menuDelJuego'
 import { duelSummary } from '@/lib/duel'
 import { getDuelTally } from '@/lib/duelTally'
 import { scoreRatio } from '@/lib/scoring'
@@ -145,6 +146,8 @@ export class InterfazDelJuego {
   private readonly escenario: EscenarioDelMenu | null
   private readonly dejarDeEscuchar: () => void
   private pintadoMenu = ''
+  /** Lo plegado tras «Más opciones», pedido: es de la interfaz, y el menú vuelve a abrir plegado. */
+  private masOpciones = false
   private pintadoMarcador = ''
   private pintadoAviso = ''
   private pintadoDuelo = ''
@@ -171,11 +174,14 @@ export class InterfazDelJuego {
     const p = partida
     this.menu = new MenuDelJuego(
       {
-        siguienteModo: () => p.setGameMode(GAME_MODE_ORDER[(GAME_MODE_ORDER.indexOf(p.gameMode) + 1) % GAME_MODE_ORDER.length]),
+        siguienteModo: () => p.setGameMode(siguienteModo(p.gameMode)),
         elegirDificultad: (d) => p.setDifficulty(d),
         elegirPalos: (n) => p.setStickCount(n),
         alternarSinFin: () => p.setEndless(!p.endless),
         alternarJugadores: () => p.setPlayers(p.players === 2 ? 1 : 2),
+        alternarOpciones: () => {
+          this.masOpciones = !this.masOpciones
+        },
         elegirNivel: (n) => p.setLevel(n),
         elegirEscenario: (modo) => this.escenario?.elegir(sceneryOf(modo)),
         moverElAro: (pasos) => p.adjustHoop(pasos),
@@ -270,6 +276,7 @@ export class InterfazDelJuego {
       habitacion: this.escenario?.hayHabitacion ?? false,
       escenario: sceneryModeOf(this.escenario?.elegido ?? 'place'),
       jugadores: p.players,
+      masOpciones: this.masOpciones,
     }
   }
 
@@ -338,7 +345,10 @@ export class InterfazDelJuego {
         this.menu.pintar(estado)
         this.pintadoMenu = clave
       }
-    } else this.pintadoMenu = ''
+    } else {
+      this.pintadoMenu = ''
+      this.masOpciones = false
+    }
 
     this.marcador.nodo.visible = fase !== 'menu'
     if (fase !== 'menu') {

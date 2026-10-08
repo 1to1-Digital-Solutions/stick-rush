@@ -16,6 +16,7 @@ interface XRTestApi {
   aim: (hand: Hand, target: Point) => void
   press: (hand: Hand, button: 'squeeze' | 'trigger', value?: number) => void
   seat: (eyeHeight: number) => void
+  /** Gira la cabeza, en grados: a la izquierda y hacia arriba en positivo. */
   lookAt: (yaw: number, pitch?: number) => void
   useHands: () => void
   placeBareHand: (hand: Hand, target: Point) => void
@@ -226,10 +227,10 @@ export async function startGameInsideSession(page: Page, attempts = 8) {
 }
 
 /**
- * Gira la cabeza del visor: `yaw` a la izquierda y `pitch` hacia arriba, en radianes.
+ * Gira la cabeza del visor: `yaw` a la izquierda y `pitch` hacia arriba, en grados.
  *
- * El emulador entra siempre mirando al frente, y lo que hay que ver a veces no está ahí: la
- * columna del menú, a 55° a la izquierda, o las ayudas del suelo, a los pies.
+ * El emulador entra siempre mirando al frente, y lo que hay que ver a veces no está ahí: las
+ * ayudas del suelo, a los pies.
  */
 export async function lookAt(page: Page, yaw: number, pitch = 0) {
   await page.evaluate(([y, p]) => window.__xrTest.lookAt(y, p), [yaw, pitch] as const)

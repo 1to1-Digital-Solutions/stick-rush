@@ -9,6 +9,7 @@ import {
   readPoints,
   readScore,
   startGame,
+  verMasOpciones,
   waitForGameOver,
 } from './helpers'
 
@@ -168,6 +169,8 @@ test.describe('Partida', () => {
     await page.getByRole('button', { name: 'Back to the menu' }).click()
 
     await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
+    // El menú vuelve a abrir plegado: lo elegido sigue tras «Más opciones».
+    await verMasOpciones(page)
     await expect(
       page.getByRole('button', { name: 'Impossible', exact: true }),
     ).toHaveAttribute('aria-pressed', 'true')

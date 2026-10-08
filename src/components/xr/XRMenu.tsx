@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useXR } from '@react-three/xr'
 import {
   DIFFICULTY_COLORS,
@@ -10,15 +10,10 @@ import {
   MIN_STICKS,
   STICK_COLOR,
 } from '../../lib/gameConfig'
-import {
-  CHALLENGE_LIVES,
-  GAME_MODE_HINTS,
-  GAME_MODE_ORDER,
-  type GameMode,
-  picksSetup,
-} from '../../lib/gameMode'
+import { CHALLENGE_LIVES, GAME_MODE_HINTS, type GameMode } from '../../lib/gameMode'
+import { botonDeOpciones, seVe, siguienteModo } from '../../lib/menuDelJuego'
 import { useGame } from '../../lib/gameStore'
-import { PLAYER_COUNT_HINTS, eligeJugadores, juegaADos, type PlayerCount } from '../../lib/duel'
+import { PLAYER_COUNT_HINTS, juegaADos, type PlayerCount } from '../../lib/duel'
 import { useLang } from '../../lib/ajustesCliente'
 import { traductor, type TextKey } from '../../lib/textos'
 import { CanvasPanel, drawParagraph, drawText } from './canvasPanel'
@@ -39,6 +34,8 @@ import {
   XR_HOOP_UP_OFFSET,
   XR_LEVEL_PICKER_SPACING,
   XR_MENU_EXIT_OFFSET,
+  XR_MENU_OPCIONES_OFFSET,
+  OPCIONES_ANCHO,
   menuPoseFor,
   XR_MENU_TUTORIAL_OFFSET,
   XR_MODE_TOGGLE_OFFSET,
@@ -253,7 +250,8 @@ function ModeToggle() {
   const challenge = gameMode === 'challenge'
   const levels = gameMode === 'levels'
   const width = (CHALLENGE_LIVES - 1) * MODE_HEART_SPACING
-  const next = GAME_MODE_ORDER[(GAME_MODE_ORDER.indexOf(gameMode) + 1) % GAME_MODE_ORDER.length]
+  // El reto primero (`MODOS_DEL_MENU`): del reto se pasa a la práctica y de los niveles, al reto.
+  const next = siguienteModo(gameMode)
 
   return (
     <XRPressable
@@ -565,10 +563,11 @@ export function dibujarLosNombres(
   t: (clave: TextKey) => string,
   gameMode: GameMode = 'practice',
   players: PlayerCount = 1,
+  masOpciones = false,
 ): void {
-  for (const { text, x, y } of menuLabelsFor(gameMode)) {
-    // La fila del modo dice cuál hay elegido —«Reto», «Práctica»—, no «Modo».
-    drawText(ctx, t(menuLabelText(text, gameMode)), x, y + ROW_LABEL_RISE, {
+  for (const { text, x, y } of menuLabelsFor(gameMode, masOpciones)) {
+    // La fila del modo dice «Modo» y cuál hay elegido: «Modo: Reto».
+    drawText(ctx, menuLabelText(text, gameMode, t), x, y + ROW_LABEL_RISE, {
       size: MENU_TEXT.label,
       color: '#94a3b8',
       maxWidth: 0.3,
@@ -586,15 +585,28 @@ export function dibujarLosNombres(
     maxWidth: PISTA_ANCHO,
     anchor: 'top',
   })
+
+  // El nombre del botón de plegar, en su placa y en dos renglones: «Más / opciones».
+  const opciones = botonDeOpciones(gameMode, 'visor', masOpciones)
+  if (opciones != null) {
+    // A la letra de la explicación y no a la de los rótulos: abajo del todo, en la esquina y vista en
+    // escorzo, la de los rótulos se quedaba en 1,39°.
+    drawParagraph(ctx, t(opciones), XR_MENU_OPCIONES_OFFSET[0], XR_MENU_OPCIONES_OFFSET[1], {
+      size: MENU_TEXT.hint,
+      color: '#ffffff',
+      maxWidth: OPCIONES_ANCHO,
+      lineHeight: 1.15,
+    })
+  }
 }
 
-function RowLabels() {
+function RowLabels({ masOpciones }: { masOpciones: boolean }) {
   const t = traductor(useLang())
   const { gameMode, players } = useGame()
 
   const escribir = useCallback(
-    (ctx: CanvasRenderingContext2D) => dibujarLosNombres(ctx, t, gameMode, players),
-    [t, gameMode, players],
+    (ctx: CanvasRenderingContext2D) => dibujarLosNombres(ctx, t, gameMode, players, masOpciones),
+    [t, gameMode, players, masOpciones],
   )
 
   return (
@@ -609,37 +621,68 @@ function RowLabels() {
   )
 }
 
+/**
+ * El botón de «Más opciones», en la esquina opuesta a la de salir: despliega lo que la plantilla
+ * deja plegado al abrir el menú (`menuDelJuego.ts`) y lo vuelve a plegar. Su nombre va escrito
+ * con los rótulos, encima de la placa.
+ */
+function OpcionesButton({ masOpciones, onToggle }: { masOpciones: boolean; onToggle: () => void }) {
+  return (
+    <XRPressable position={XR_MENU_OPCIONES_OFFSET} onSelect={onToggle} hitSize={XR_MENU_HIT.opciones}>
+      <mesh position={[0, 0, -0.008]}>
+        <boxGeometry args={[OPCIONES_ANCHO, 0.1, 0.014]} />
+        <meshStandardMaterial
+          color={masOpciones ? '#1d4ed8' : '#334155'}
+          emissive="#94a3b8"
+          emissiveIntensity={0.22}
+          roughness={0.5}
+        />
+      </mesh>
+    </XRPressable>
+  )
+}
+
 export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
   const mode = useXR((state) => state.mode)
-  const { gameState, gameMode, startGame } = useGame()
-  const exit = useExit()
-  const levels = gameMode === 'levels'
+  const { gameState } = useGame()
   // Fuera de sesión inmersiva manda la pantalla de inicio en DOM.
   if ((hasDomUi && mode == null) || gameState !== 'menu') {
     return null
   }
+  // El panel se monta cada vez que se vuelve al menú: así nace plegado.
+  return <MenuPanel immersive={mode != null} passthroughAvailable={mode === 'immersive-ar'} />
+}
 
-  // En el visor, la columna de la izquierda (`XR_MENU_POSE`); sin visor —el salón en
-  // escritorio— delante, que ahí no se gira la cabeza para buscarla.
-  const pose = menuPoseFor(mode != null)
+function MenuPanel({ immersive, passthroughAvailable }: { immersive: boolean; passthroughAvailable: boolean }) {
+  const { gameMode, startGame } = useGame()
+  const exit = useExit()
+  // Lo plegado tras «Más opciones» es de la interfaz: no se guarda, y el menú abre plegado.
+  const [masOpciones, setMasOpciones] = useState(false)
+  const ve = (fila: Parameters<typeof seVe>[0]) => seVe(fila, gameMode, 'visor', masOpciones)
+  const opciones = botonDeOpciones(gameMode, 'visor', masOpciones)
+
+  // En el visor, la columna a ≤30° a la izquierda (`XR_MENU_POSE`); sin visor —el salón en
+  // escritorio— delante.
+  const pose = menuPoseFor(immersive)
   return (
     <group position={pose.position} rotation={[0, pose.yaw, 0]} scale={pose.scale}>
       {/* Más alto que antes: la fila del aro va arriba del todo y necesita
           panel detrás para no quedar flotando fuera de él. */}
       <XRPanel width={MENU_PANEL[0]} height={MENU_PANEL[1]} color={PANEL_COLOR} />
-      <RowLabels />
-      <HoopHeightPicker />
+      <RowLabels masOpciones={masOpciones} />
+      {ve('hoop') && <HoopHeightPicker />}
       <TutorialButton />
-      {/* **Solo la práctica pregunta** palos y velocidad. En Niveles los dice el
-          nivel: la fila de palos se cambia por la escalera y las fichas se quedan
-          de muestra. El desafío va fijo (`CHALLENGE_SETUP`): se elige el modo y se
-          le da a empezar, sin filas que no cambian nada. */}
-      {levels ? <LevelPicker /> : picksSetup(gameMode) ? <StickPicker /> : null}
-      {(levels || picksSetup(gameMode)) && <DifficultyPicker locked={levels} />}
+      {/* **Solo la práctica pregunta** palos y velocidad, y tras «Más opciones». En Niveles los
+          dice el nivel: la fila de palos se cambia por la escalera y las fichas se quedan de
+          muestra. El desafío va fijo (`CHALLENGE_SETUP`): se elige el modo y se le da a empezar,
+          sin filas que no cambian nada. */}
+      {ve('levels') ? <LevelPicker /> : ve('sticks') ? <StickPicker /> : null}
+      {(ve('levels') || ve('speed')) && <DifficultyPicker locked={ve('levels')} />}
       <ModeToggle />
-      {gameMode === 'practice' && <EndlessToggle />}
-      {eligeJugadores(gameMode) && <PlayersToggle />}
-      <SceneryPicker passthroughAvailable={mode === 'immersive-ar'} />
+      {ve('endless') && <EndlessToggle />}
+      {ve('players') && <PlayersToggle />}
+      {ve('around') && <SceneryPicker passthroughAvailable={passthroughAvailable} />}
+      {opciones != null && <OpcionesButton masOpciones={masOpciones} onToggle={() => setMasOpciones(!masOpciones)} />}
       {/* Empezar. La primera vez la partida se abre con el tutorial —con las
           gafas puestas no hay forma de saber que los palos se agarran, ni con
           qué botón—, pero eso lo decide el juego y no este botón: dentro de la

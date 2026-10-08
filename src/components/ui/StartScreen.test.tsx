@@ -41,13 +41,50 @@ describe('el menú de la web abre en el reto', () => {
     expect(screen.getByRole('button', { name: 'Play' })).toBeDefined()
   })
 
-  it('la práctica queda a un toque, con sus palos y su velocidad', async () => {
+  it('la práctica queda a un toque, con sus palos y su velocidad tras «Más opciones»', async () => {
     await abrir()
     fireEvent.click(modo('Practice'))
 
     expect(modo('Practice').getAttribute('aria-pressed')).toBe('true')
+    // Abre plegada: el modo a la vista y lo demás tras el botón.
+    expect(screen.queryByText('Number of sticks')).toBeNull()
+    expect(screen.queryByText('Length')).toBeNull()
+    const mas = screen.getByRole('button', { name: 'More options' })
+    expect(mas.getAttribute('aria-expanded')).toBe('false')
+
+    fireEvent.click(mas)
     expect(screen.getByText('Number of sticks')).toBeDefined()
     expect(screen.getByText('Difficulty')).toBeDefined()
+    expect(screen.getByText('Length')).toBeDefined()
+    const menos = screen.getByRole('button', { name: 'Fewer options' })
+    expect(menos.getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.click(menos)
+    expect(screen.queryByText('Number of sticks')).toBeNull()
+  })
+
+  it('con el reto o los niveles no hay nada plegado: ni el botón', async () => {
+    await abrir()
+    expect(screen.queryByRole('button', { name: 'More options' })).toBeNull()
+    fireEvent.click(modo('Levels'))
+    expect(screen.queryByRole('button', { name: 'More options' })).toBeNull()
+    expect(screen.getByText('Level')).toBeDefined()
+  })
+
+  it('la fila del modo empieza por el reto, el que da medalla, y se llama como la cabina', async () => {
+    await abrir()
+    const modos = screen.getAllByRole('button').filter((b) => /^(Challenge|Practice|Levels)/.test(b.textContent ?? ''))
+    expect(modos.map((b) => b.textContent?.match(/^(Challenge|Practice|Levels)/)?.[0])).toEqual(['Challenge', 'Practice', 'Levels'])
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Stick Rush')
+  })
+
+  it('cada nivel dice sus estrellas con el plural que toca, en los dos idiomas', async () => {
+    localStorage.setItem('stick-rush:levels:unlocked', '3')
+    localStorage.setItem('stick-rush:levels:stars', '1,2,0')
+    await abrir()
+    fireEvent.click(modo('Levels'))
+    expect(screen.getByRole('button', { name: 'Level 1, 1 star' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Level 2, 2 stars' })).toBeDefined()
   })
 
   it('dice de cada modo si cuenta para medalla: solo el reto', async () => {
@@ -65,11 +102,12 @@ describe('el menú de la web, a dos', () => {
     await abrir()
     for (const nombre of ['Practice', 'Levels']) {
       fireEvent.click(modo(nombre))
-      expect(screen.queryByText('Who you play against'), nombre).toBeNull()
+      expect(screen.queryByText('Players'), nombre).toBeNull()
     }
 
     fireEvent.click(modo('Challenge'))
-    expect(screen.getByText('Who you play against')).toBeDefined()
+    expect(screen.getByText('Players')).toBeDefined()
+    expect(PLAYER_COUNT_LABELS).toEqual({ 1: 'Solo', 2: 'Duel' })
     const solo = screen.getByRole('button', { name: new RegExp(`^${PLAYER_COUNT_LABELS[1]}`) })
     const aDos = screen.getByRole('button', { name: new RegExp(`^${PLAYER_COUNT_LABELS[2]}`) })
     expect(solo.getAttribute('aria-pressed')).toBe('true')

@@ -2,6 +2,7 @@ import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PLAYER_POSITION, PLAYER_OFFSET_Z } from '../lib/gameConfig'
 import { assetUrl, setAssetsBase } from '../lib/assets'
+import { nombreDelJuego } from '../lib/plantillaDelMenu'
 import { ExitProvider, useExit } from './exit'
 
 /**
@@ -80,6 +81,14 @@ describe('la escena no manda sobre la sesión', () => {
     // que es antes de que corra ningún efecto.
     render(<StickRushScene assetsBase="/juegos/stick-rush/" onExit={() => {}} />)
     expect(assetUrl('hdri.hdr')).toBe('/juegos/stick-rush/hdri.hdr')
+  })
+
+  it('el menú se llama como la cabina que la monta, y sin nombre, como el paquete', () => {
+    const { unmount } = render(<StickRushScene nombre="Cabina de prueba" onExit={() => {}} />)
+    expect(nombreDelJuego()).toBe('Cabina de prueba')
+    unmount()
+    render(<StickRushScene onExit={() => {}} />)
+    expect(nombreDelJuego()).toBe('Stick Rush')
   })
 })
 

@@ -34,6 +34,16 @@ export async function openGame(
     })
     .toBeGreaterThan(0)
   if (mode != null) await modeButton(page, mode).click()
+  if (mode === 'Practice') await verMasOpciones(page)
+}
+
+/**
+ * Despliega lo que el menú deja plegado tras «Más opciones» (los palos, la velocidad y la
+ * duración de la práctica), si está plegado.
+ */
+export async function verMasOpciones(page: Page) {
+  const mas = page.getByRole('button', { name: 'More options' })
+  if (await mas.isVisible()) await mas.click()
 }
 
 /**
@@ -66,6 +76,7 @@ export async function startGame(
   // Sin modo dicho se juega la práctica: el menú abre en el reto, que va fijo.
   await modeButton(page, mode ?? 'Practice').click()
   if (mode === undefined || mode === 'Practice') {
+    await verMasOpciones(page)
     await page.getByRole('button', { name: String(sticks), exact: true }).click()
     if (difficulty) {
       await page.getByRole('button', { name: difficulty, exact: true }).click()

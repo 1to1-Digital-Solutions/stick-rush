@@ -6,6 +6,7 @@ import { setAssetsBase } from '../lib/assets'
 import type { HostAnchor } from '../lib/hostAnchor'
 import type { ResultadoConHazanas } from '../lib/hazanas'
 import type { Objetivo } from '../lib/objetivo'
+import { fijarNombreDelJuego } from '../lib/plantillaDelMenu'
 import type { Reto } from '../lib/semilla'
 import { ExitProvider } from './exit'
 
@@ -53,6 +54,11 @@ export interface StickRushSceneProps {
    * queda; sin él, la misión y el récord guardado en este navegador.
    */
   objetivo?: Objetivo
+  /**
+   * Cómo se llama el juego en su menú: el `name` del manifiesto del catálogo, el de la cabina del
+   * salón. Sin él, el del `package.json` con mayúsculas, que es el mismo (`plantillaDelMenu.ts`).
+   */
+  nombre?: string
 }
 
 /**
@@ -69,11 +75,13 @@ export interface StickRushSceneProps {
  *
  * El contrato completo, en `docs/montar-el-juego.md`.
  */
-export function StickRushScene({ assetsBase, anchor, onExit, reto, onTerminar, objetivo }: StickRushSceneProps) {
+export function StickRushScene({ assetsBase, anchor, onExit, reto, onTerminar, objetivo, nombre }: StickRushSceneProps) {
   // Durante el render y no en un efecto: la escena pide el HDRI y las texturas
   // en cuanto se monta, es decir, antes de que corra ningún efecto. Escribir la
   // misma base dos veces no cambia nada, así que repetir el render es inocuo.
   if (assetsBase !== undefined) setAssetsBase(assetsBase)
+  // Lo mismo con el nombre: el menú lo lee desde el primer fotograma.
+  fijarNombreDelJuego(nombre)
 
   return (
     <GameProvider reto={reto} onTerminar={onTerminar} objetivo={objetivo}>
