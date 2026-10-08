@@ -62,6 +62,8 @@ func montar(meta_de_menu := false, a_dos := false) -> void:
 	if a_dos:
 		game.set_meta("a_dos", true)
 	game.set_meta("sfx_bus", "Mudo")
+	# Lo que comprueba está escrito en inglés: sin idioma pedido, el juego habla el del sistema.
+	game.set_meta("lang", "en")
 	add_child(game)
 
 

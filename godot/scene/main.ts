@@ -218,7 +218,8 @@ export default class StickRush extends Node3D {
     // automático acabaría como récord de quien tenga el juego.
     aislarElGuardado(this.harness)
     const autoplay = hayBandera('autoplay') || (this.harness && !this.harnessMenu)
-    const lang = argumento('lang')
+    // El idioma de la línea de órdenes, o el que pida la escena de test (sin nada, el del sistema).
+    const lang = argumento('lang') ?? (this.has_meta('lang') ? String(this.get_meta('lang')) : null)
     let reto: number | null = null
     this.shotPath = argumento('shot')
     this.shotMenuPath = argumento('shot-menu')

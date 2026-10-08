@@ -295,6 +295,7 @@ export class InterfazDelJuego {
             : t('You are out of lives')
     return {
       lang: this.lang,
+      modo: p.gameMode,
       terminada,
       fichas: stickStatuses(sinFin ? p.waveScore : p.score, sinFin ? p.waveResolved : p.resolved, n),
       racha: p.streak,

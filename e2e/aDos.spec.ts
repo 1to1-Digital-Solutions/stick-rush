@@ -13,7 +13,7 @@ test('a dos: el primero juega, le pasa el mando al segundo y al acabar sale qui√
   await openGame(page)
   await modeButton(page, 'Challenge').click()
   await expect(page.getByRole('region', { name: 'Who you play against' })).toBeVisible()
-  await page.getByRole('button', { name: /^Two players/ }).click()
+  await page.getByRole('button', { name: /^Duel/ }).click()
   await page.getByRole('button', { name: 'Play', exact: true }).click()
 
   // El marcador dice de qui√©n es la tanda.

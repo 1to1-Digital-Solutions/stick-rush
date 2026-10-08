@@ -480,6 +480,17 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
   const [recordToBeat, setRecordToBeat] = useState(() =>
     reto != null ? getBestPoints(MODO_DEL_RETO) : 0,
   )
+  /**
+   * El récord del salón, tomado al empezar como el local: al acabar, el salón apunta la marca
+   * nueva y vuelve a pasar `objetivo` con ella (`onTerminar`), y el cartel compararía la partida
+   * consigo misma («Has igualado tu récord»).
+   */
+  const recordDelSalon = objetivo?.record ?? null
+  const salonVivo = useRef(recordDelSalon)
+  useEffect(() => {
+    salonVivo.current = recordDelSalon
+  }, [recordDelSalon])
+  const [salonAlEmpezar, setSalonAlEmpezar] = useState(recordDelSalon)
   // El progreso de Niveles y la racha sin fin tampoco son estado de React: viven
   // en el navegador y se leen suscritos, como el récord.
   const unlockedLevel = useSyncExternalStore(
@@ -796,7 +807,7 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
     () =>
       partidaDelCartel(
         {
-          objetivo,
+          objetivo: objetivo == null ? objetivo : { ...objetivo, record: salonAlEmpezar },
           gameMode,
           aDos,
           gameState,
@@ -810,7 +821,7 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
         },
         traductorSuave(lang),
       ),
-    [objetivo, gameMode, aDos, gameState, points, lives, resolved, activeStickCount, recordToBeat, calentamiento, ahoraCuenta, lang],
+    [objetivo, salonAlEmpezar, gameMode, aDos, gameState, points, lives, resolved, activeStickCount, recordToBeat, calentamiento, ahoraCuenta, lang],
   )
   const cartel = useMemo(
     () => (partidaQueSeCuenta == null ? null : cartelDeObjetivo(partidaQueSeCuenta, traductorSuave(lang))),
@@ -906,6 +917,7 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
       setRecordToBeat(
         gameMode === 'practice' && endless ? getBestEndlessStreak() : getBestPoints(gameMode),
       )
+      setSalonAlEmpezar(salonVivo.current)
       setUnlockedAtStart(getUnlockedLevel())
       setLevelAtStart(selectedLevel)
       setRunId((id) => id + 1)

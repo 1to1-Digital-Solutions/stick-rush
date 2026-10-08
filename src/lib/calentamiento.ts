@@ -1,4 +1,5 @@
 import type { GameMode } from './gameMode'
+import { MENU_EN } from './palabras'
 
 /**
  * El calentamiento: la primera partida con el visor, mientras el tutorial está delante, no cuenta.
@@ -35,7 +36,7 @@ export function enCalentamiento({
 }
 
 /** Cómo se llama lo que se juega mientras tanto, en el cartel que dice que no cuenta. */
-export const CALENTAMIENTO = 'Warm-up'
+export const CALENTAMIENTO = MENU_EN.calentamiento
 
 /** El aviso de una línea al cerrar el tutorial, hasta que se resuelve el primer palo del reto. */
-export const AHORA_CUENTA = 'Now it counts for a medal'
+export const AHORA_CUENTA = MENU_EN.ahoraCuenta

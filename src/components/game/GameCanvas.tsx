@@ -4,6 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { XR, XROrigin, useXR } from '@react-three/xr'
 import { useGame } from '../../lib/gameStore'
+import { AroDeSalir } from '../xr/AroDeSalir'
 import { getXrStore } from '../xr/xrStore'
 import { GameWorld } from './GameWorld'
 
@@ -62,6 +63,8 @@ export function GameCanvas() {
         <XROrigin position={[0, 0, 0]} />
         <GameWorld hasDomUi />
         <DesktopControls />
+        {/* La salida común, sosteniendo B o Y: en el salón la pone el salón. */}
+        <AroDeSalir />
       </XR>
     </Canvas>
   )

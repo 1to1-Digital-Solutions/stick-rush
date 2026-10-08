@@ -58,9 +58,9 @@ test.describe('Modo de juego', () => {
     await waitForGameOver(page)
 
     const dialog = page.getByRole('dialog')
-    const otra = dialog.getByRole('button', { name: 'Play again' })
+    const otra = dialog.getByRole('button', { name: 'Another challenge' })
     // El primero de los botones, y con el relleno del botón principal.
-    await expect(dialog.getByRole('button').first()).toHaveText('Play again')
+    await expect(dialog.getByRole('button').first()).toHaveText('Another challenge')
     await expect(otra).toHaveClass(/cta-gradient/)
     await expect(dialog.getByRole('button', { name: 'Back to the menu' })).not.toHaveClass(/cta-gradient/)
 

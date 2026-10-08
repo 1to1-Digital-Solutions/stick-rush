@@ -24,6 +24,7 @@
  */
 
 import { type Difficulty, MAX_STICKS } from './gameConfig'
+import { MENU_EN } from './palabras'
 
 export type GameMode = 'practice' | 'levels' | 'challenge'
 
@@ -142,4 +143,12 @@ export function runOutcome({
   if (remainingLives(mode, misses) === 0) return 'failed'
   if (resolved >= stickCount) return 'cleared'
   return null
+}
+
+/**
+ * Lo que dice el botón de repetir al acabar, con las palabras comunes del salón (`palabras.ts`):
+ * «Otro reto» en el modo que da medalla y «Otra partida» en los demás.
+ */
+export function otraDelModo(mode: GameMode): typeof MENU_EN.otroReto | typeof MENU_EN.otraPartida {
+  return mode === 'challenge' ? MENU_EN.otroReto : MENU_EN.otraPartida
 }

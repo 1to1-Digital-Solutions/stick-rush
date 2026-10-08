@@ -18,7 +18,7 @@
  * fuente de drei no pasa su política de seguridad, así que el final solo lo cuenta con fichas y
  * barras. En el motor la letra es de casa, y el panel del final crece por arriba para decir cómo ha
  * acabado y los puntos, con las mismas frases que la pantalla de fin de la web (`HUD.tsx`). Compartir
- * no está: en el visor no hay portapapeles.
+ * no es del juego: lo ofrece el salón al volver.
  */
 import { Node3D, Vector3, type MeshInstance3D } from 'godot'
 
@@ -31,7 +31,7 @@ import { ORDEN } from '@kit/runtime/ui/texto3d'
 
 import type { Lang } from '@/lib/ajustes'
 import { LIFE_COLOR, MAX_STICKS } from '@/lib/gameConfig'
-import { CHALLENGE_LIVES } from '@/lib/gameMode'
+import { CHALLENGE_LIVES, otraDelModo, type GameMode } from '@/lib/gameMode'
 import type { Stars } from '@/lib/levels'
 import type { Player } from '@/lib/duel'
 import type { StickStatus } from '@/lib/stickLayout'
@@ -59,7 +59,7 @@ const LIFE_SPENT_COLOR = '#3f4a5a'
 const BUTTON_SPACING = 0.36
 const BUTTON_HIT = { width: 0.15, height: 0.11 } as const
 /** Debajo de cada placa, lo que hace: un icono solo se adivina con el visor puesto. */
-export const ROTULOS_DEL_FINAL = { width: 3 * BUTTON_SPACING, y: -0.08 } as const
+export const ROTULOS_DEL_FINAL = { width: 4 * BUTTON_SPACING, y: -0.08, ancho: 2 * BUTTON_SPACING - 0.04 } as const
 
 /** Lo que crece el panel del final por arriba para la letra: cómo ha acabado y los puntos. */
 export const SUBIDA_DEL_FINAL = 0.12
@@ -69,6 +69,8 @@ export const LETRA_DEL_MARCADOR = { titulo: 0.03, puntos: 0.05, rotulo: 0.047 } 
 /** Lo que enseña el marcador. */
 export interface EstadoDelMarcador {
   lang: Lang
+  /** El modo jugado: el botón de repetir dice «Otro reto» en el reto y «Otra partida» en los demás. */
+  modo: GameMode
   terminada: boolean
   fichas: readonly StickStatus[]
   racha: number
@@ -262,11 +264,11 @@ export class Marcador {
     const { panel } = this
     panel.borrarTextos()
     if (terminada) {
-      // Los rótulos de los botones, como en la web (`dibujarRotulosDelFinal`): aquí no hay compartir.
+      // Los rótulos de los botones, como en la web (`dibujarRotulosDelFinal`).
       const t = traductor(estado.lang)
       const y = -0.12 - centro + ROTULOS_DEL_FINAL.y
-      const letra = { alto: LETRA_DEL_MARCADOR.rotulo, color: COLORES.claro, anchoMax: BUTTON_SPACING - 0.01 }
-      panel.escribir(t('Play again'), -BUTTON_SPACING, y, letra)
+      const letra = { alto: LETRA_DEL_MARCADOR.rotulo, color: COLORES.claro, anchoMax: ROTULOS_DEL_FINAL.ancho }
+      panel.escribir(t(otraDelModo(estado.modo)), -BUTTON_SPACING, y, letra)
       panel.escribir(t('Menu'), BUTTON_SPACING, y, letra)
     }
     if (!terminada || enElCartel) return

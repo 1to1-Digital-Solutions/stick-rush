@@ -30,6 +30,7 @@
 import type { Lang } from './ajustes'
 import type { DuelTally } from './duelTally'
 import type { GameMode } from './gameMode'
+import { MENU_EN } from './palabras'
 import { formatea, formatoDeCifra, texto, type TextKey } from './textos'
 
 export type Player = 0 | 1
@@ -44,7 +45,7 @@ export type PlayerCount = (typeof PLAYER_COUNTS)[number]
 /** Etiqueta visible de cada opción, en inglés (ver `textos.ts`). */
 export const PLAYER_COUNT_LABELS = {
   1: 'On your own',
-  2: 'Two players',
+  2: MENU_EN.duelo,
 } as const satisfies Record<PlayerCount, string>
 
 /** Qué promete cada opción, en una línea, para el menú. */

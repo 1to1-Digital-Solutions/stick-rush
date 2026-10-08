@@ -480,7 +480,7 @@ describe('el cartel del objetivo, como en la web', () => {
     const aDos = new Partida({ objetivo: OBJETIVO })
     aDos.setPlayers(2)
     jugando(aDos)
-    expect(aDos.cartel('en')?.titulo).toBe('Two players · does not count for a medal')
+    expect(aDos.cartel('en')?.titulo).toBe('Duel · does not count for a medal')
   })
 
   it('el listón cruzado suena con su medalla, además del atrape, y una sola vez', () => {

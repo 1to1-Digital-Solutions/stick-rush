@@ -256,7 +256,7 @@ describe('la partida que se le cuenta al cartel', () => {
   it('a dos tampoco cuenta, aunque sea el reto: una tanda a dos no es la marca de nadie', () => {
     const partida = partidaDelCartel(reto({ aDos: true, points: 2100, resolved: 5 }), es)
 
-    expect(cartelDeObjetivo(partida!, es).titulo).toBe('A dos · no cuenta para medalla')
+    expect(cartelDeObjetivo(partida!, es).titulo).toBe('Duelo · no cuenta para medalla')
     expect(medallaQueCelebra(partida!)).toBeNull()
   })
 

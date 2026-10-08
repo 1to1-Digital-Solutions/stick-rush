@@ -1937,6 +1937,22 @@ describe('el cartel del objetivo', () => {
     return renderHook(() => useGameStoreValue({ objetivo }))
   }
 
+  it('al acabar compara con el récord del salón de antes, aunque el salón ya apunte la marca nueva', () => {
+    const conRecord = { ...OBJETIVO, record: 0 }
+    const hook = renderHook(({ objetivo }) => useGameStoreValue({ objetivo }), { initialProps: { objetivo: conRecord } })
+    startPlaying(hook.result)
+    act(() => hook.result.current.catchStick(0.5))
+    for (let i = 0; i < 3; i++) act(() => hook.result.current.missStick())
+    expect(hook.result.current.gameState).toBe('finished')
+    const puntos = hook.result.current.points
+    expect(puntos).toBeGreaterThan(0)
+    // Lo que hace el salón al recibir el resultado: el objetivo vuelve con la marca nueva.
+    hook.rerender({ objetivo: { ...conRecord, record: puntos } })
+
+    expect(JSON.stringify(hook.result.current.cartel)).toContain('New record!')
+    expect(JSON.stringify(hook.result.current.cartel)).not.toContain('matched')
+  })
+
   it('en el menú no hay cartel', () => {
     const { result } = conObjetivo()
 
@@ -2028,7 +2044,7 @@ describe('el cartel del objetivo', () => {
     act(() => result.current.setPlayers(2))
     startPlaying(result)
 
-    expect(result.current.cartel?.titulo).toBe('Two players · does not count for a medal')
+    expect(result.current.cartel?.titulo).toBe('Duel · does not count for a medal')
     expect(result.current.faseDelCartel).toBeNull()
 
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())

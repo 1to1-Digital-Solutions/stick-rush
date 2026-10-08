@@ -23,15 +23,15 @@
 
 import type { Lang } from './ajustes'
 import { OBJETIVO_ES, type Traducir } from './objetivo'
+import { MENU_ES } from './palabras'
 
 const ES = {
   // El cartel del objetivo, común a todos los juegos del salón. Lo primero, para que lo que el
   // juego ya decía por su cuenta no choque.
   ...OBJETIVO_ES,
+  // Los botones y estados comunes del salón (`palabras.ts`), dichos igual en todos los juegos.
+  ...MENU_ES,
   'Catch {sticks} sticks. Drop three and out': 'Atrapa {sticks} palos. Tres al suelo y fuera',
-  // El calentamiento: con la lección en marcha el reto aún no cuenta (`calentamiento.ts`).
-  'Warm-up': 'Calentamiento',
-  'Now it counts for a medal': 'Ahora cuenta para medalla',
 
   // Lo que dice la pestaña y lo que se lee al compartir el enlace
   'Catch the sticks falling from the machine before they hit the ground. Play in the browser or in mixed reality (VR/AR).':
@@ -42,11 +42,9 @@ const ES = {
   Mode: 'Modo',
   'Number of sticks': 'Número de palos',
   Difficulty: 'Dificultad',
-  Play: 'Jugar',
   Length: 'Longitud',
   Level: 'Nivel',
   'Best endless streak': 'Mejor racha sin fin',
-  'My record': 'Mi récord',
   'Best score in': 'Mejor marca en',
   'sticks on': 'palos en',
   Medium: 'Media',
@@ -56,7 +54,6 @@ const ES = {
   // Modos
   Practice: 'Práctica',
   Levels: 'Niveles',
-  Challenge: 'Reto',
   // Cada modo dice lo primero si cuenta para medalla. Cortas a propósito: en el panel del visor
   // caben dos renglones de unas 27 letras, y un tercero se sale (`menu.legible.test.ts`).
   'No medal. Every stick drops, missing costs nothing.': 'Sin medalla. Caen todos y fallar no cuesta nada.',
@@ -69,7 +66,6 @@ const ES = {
 
   // A dos
   'On your own': 'Solo',
-  'Two players': 'A dos',
   Players: 'Jugadores',
   'Who you play against': 'Contra quién juegas',
   'Your three lives against your record.': 'Tus tres vidas contra tu récord.',
@@ -115,12 +111,9 @@ const ES = {
   'You lose what you have got so far.': 'Pierdes lo que llevas.',
   'Keep playing': 'Seguir jugando',
   Leave: 'Salir',
-    'Back to the menu': 'Volver al menú',
-  Share: 'Compartir',
   Menu: 'Menú',
 
   // Resumen
-  'Play again': 'Otra partida',
   'Game over!': '¡Partida terminada!',
   'Challenge cleared!': '¡Reto superado!',
   'You are out of lives': 'Te has quedado sin vidas',
@@ -149,12 +142,6 @@ const ES = {
   'Caught {score} of {total}': 'Atrapados {score} de {total}',
   'Caught {score}, endless, set {set}': 'Atrapados {score}, sin fin, tanda {set}',
   'Starting in {seconds}': 'Empieza en {seconds}',
-
-  // Compartir
-  'Shared!': '¡Compartido!',
-  'Result copied to the clipboard.': 'Resultado copiado al portapapeles.',
-  'This browser will not share or copy: write the score down yourself.':
-    'Este navegador no deja compartir ni copiar: apunta la puntuación a mano.',
 
   // Visor
   'Enter the headset': 'Entrar en el visor',

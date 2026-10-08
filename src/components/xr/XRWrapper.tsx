@@ -69,9 +69,11 @@ export function XRWrapper() {
 </button>
       <p className="text-xs text-white/40">
         {support.ar
-          ? 'Inside you choose between the scene and your room'
-          : 'Your headset only supports virtual reality'}
+          ? t('Inside you choose between the scene and your room')
+          : t('Your headset only supports virtual reality')}
       </p>
+      {/* Cómo se sale con el visor puesto: la salida común del salón (`AroDeSalir`). */}
+      <p className="text-xs text-white/40">{t('Hold B or Y to exit')}</p>
     </div>
   )
 }

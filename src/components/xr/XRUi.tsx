@@ -15,13 +15,11 @@ import {
 import { PRESS_PULSE, pulseHaptics } from '../../lib/haptics'
 import {
   XR_CHECK_ICON,
-  XR_CROSS_ICON,
   XR_HEART_ICON,
   XR_HOME_ICON,
   XR_MUSIC_ICON,
   XR_MUSIC_OFF_ICON,
   XR_MUTED_ICON,
-  XR_SHARE_ICON,
   XR_SOUND_ICON,
   XR_STAR_ICON,
   XR_TRIANGLE_CENTER,
@@ -453,11 +451,6 @@ export function XRHeartIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_HEART_ICON} {...props} />
 }
 
-/** Avión de papel: compartir el resultado de la partida. */
-export function XRShareIcon(props: IconProps) {
-  return <XRShapeIcon icon={XR_SHARE_ICON} {...props} />
-}
-
 /** Estrella de nivel. */
 export function XRStarIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_STAR_ICON} {...props} />
@@ -498,14 +491,9 @@ export function XRStarsRow({
     </group>
   )
 }
-/** Marca de verificación: el resultado salió del visor. */
+/** Marca de verificación: hecho. */
 export function XRCheckIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_CHECK_ICON} {...props} />
-}
-
-/** Aspa: no se pudo. */
-export function XRCrossIcon(props: IconProps) {
-  return <XRShapeIcon icon={XR_CROSS_ICON} {...props} />
 }
 
 /** Altavoz con un aspa: el juego está en silencio. */

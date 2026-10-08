@@ -2,7 +2,7 @@
 
 import { useXR } from '@react-three/xr'
 import { LIFE_COLOR } from '../../lib/gameConfig'
-import { startingLives } from '../../lib/gameMode'
+import { otraDelModo, startingLives, type GameMode } from '../../lib/gameMode'
 import { useCallback } from 'react'
 
 import { useGame } from '../../lib/gameStore'
@@ -11,7 +11,6 @@ import { traductor, type TextKey } from '../../lib/textos'
 import { CanvasPanel, drawParagraph, drawText } from './canvasPanel'
 import { scoreRatio } from '../../lib/scoring'
 import { type StickStatus, stickStatuses } from '../../lib/stickLayout'
-import { type ShareStatus, useShareResult } from '../useShareResult'
 import {
   XR_END_RUN_POSITION,
   XR_END_RUN_YAW,
@@ -31,14 +30,12 @@ import { duelSummary, type DuelSummary } from '../../lib/duel'
 import {
   PANEL_COLOR,
   XRCheckIcon,
-  XRCrossIcon,
   XRHeartIcon,
   XRHomeIcon,
   XRPanel,
   XRPlayersIcon,
   XRPressable,
   XRRepeatIcon,
-  XRShareIcon,
   XRStarsRow,
 } from './XRUi'
 /**
@@ -190,12 +187,9 @@ function Lives({ lives, total, y }: { lives: number; total: number; y: number })
   )
 }
 
-/** Placas de los botones de fin de partida: la de repetir y la de las demás. */
+/** Placas de los botones de fin de partida: la de repetir y la de volver al menú. */
 const PLAY_BUTTON = { color: '#15803d', emissive: '#22c55e', intensity: 0.4 }
 const NEUTRAL_BUTTON = { color: '#334155', emissive: '#94a3b8', intensity: 0.2 }
-/** Se pudo / no se pudo: el mismo verde y el mismo rojo que las fichas de palo. */
-const DONE_BUTTON = { color: '#166534', emissive: '#22c55e', intensity: 0.5 }
-const FAILED_BUTTON = { color: '#b91c1c', emissive: '#dc2626', intensity: 0.4 }
 
 /** Separación entre los botones de fin de partida, con aire entre sus zonas. */
 const BUTTON_SPACING = 0.36
@@ -204,32 +198,38 @@ const BUTTON_HIT: [number, number, number] = [0.15, 0.11, 0.06]
 /**
  * Los rótulos de debajo de los botones de fin de partida.
  *
- * Eran tres iconos sin texto —repetir, compartir, casa— y los demás juegos del salón rotulan
- * «Otra partida»: con el visor puesto un icono solo se adivina. Van **debajo de la placa**, en
- * un solo lienzo para los tres (una llamada de dibujo), y se miden en los dos idiomas
+ * Con el visor puesto un icono solo se adivina: debajo de cada placa, lo que hace, con las palabras
+ * comunes del salón («Otro reto» u «Otra partida», y el menú). Van **debajo de la placa**, en un solo
+ * lienzo para los dos (una llamada de dibujo), y se miden en los dos idiomas
  * (`rotulosDelFinal.legible.test.ts`). `y` es su centro respecto de la fila de botones.
+ *
+ * Sin botón en medio, cada rótulo tiene casi el doble del hueco entre botones (`ancho`): «Another
+ * challenge» no cabía en uno solo sin bajar la letra. El lienzo, y con él el panel del final, se
+ * ensancha para dejarles ese sitio.
  */
-export const ROTULOS_DEL_FINAL = { width: 3 * BUTTON_SPACING, height: 0.06, y: -0.08, size: 0.047 } as const
+export const ROTULOS_DEL_FINAL = { width: 4 * BUTTON_SPACING, height: 0.06, y: -0.08, size: 0.047, ancho: 2 * BUTTON_SPACING - 0.04 } as const
 
-/** Lo que dice cada botón, de izquierda a derecha: repetir, compartir y volver al menú. */
-export const TEXTOS_DEL_FINAL: readonly TextKey[] = ['Play again', 'Share', 'Menu']
+/** Lo que dice cada botón, de izquierda a derecha: repetir y volver al menú. */
+export function textosDelFinal(gameMode: GameMode): readonly TextKey[] {
+  return [otraDelModo(gameMode), 'Menu']
+}
 
-/** Pinta los tres rótulos. Fuera del componente para medirlo con el lienzo que apunta. */
-export function dibujarRotulosDelFinal(ctx: CanvasRenderingContext2D, t: (clave: TextKey) => string): void {
-  TEXTOS_DEL_FINAL.forEach((texto, i) => {
-    drawText(ctx, t(texto), (i - 1) * BUTTON_SPACING, 0, {
+/** Pinta los rótulos, cada uno bajo su botón. Fuera del componente para medirlo con el lienzo que apunta. */
+export function dibujarRotulosDelFinal(ctx: CanvasRenderingContext2D, t: (clave: TextKey) => string, gameMode: GameMode): void {
+  textosDelFinal(gameMode).forEach((texto, i) => {
+    drawText(ctx, t(texto), (i === 0 ? -1 : 1) * BUTTON_SPACING, 0, {
       size: ROTULOS_DEL_FINAL.size,
       color: '#e2e8f0',
       weight: '700',
-      maxWidth: BUTTON_SPACING - 0.01,
+      maxWidth: ROTULOS_DEL_FINAL.ancho,
     })
   })
 }
 
 /** El lienzo de los rótulos, debajo de la fila de botones. */
-function RotulosDelFinal() {
+function RotulosDelFinal({ gameMode }: { gameMode: GameMode }) {
   const t = traductor(useLang())
-  const draw = useCallback((ctx: CanvasRenderingContext2D) => dibujarRotulosDelFinal(ctx, t), [t])
+  const draw = useCallback((ctx: CanvasRenderingContext2D) => dibujarRotulosDelFinal(ctx, t, gameMode), [t, gameMode])
   return (
     <group position={[0, ROTULOS_DEL_FINAL.y, 0.004]}>
       <CanvasPanel width={ROTULOS_DEL_FINAL.width} height={ROTULOS_DEL_FINAL.height} draw={draw} fallbackColor="#000000" />
@@ -253,48 +253,6 @@ function ButtonPlate({
         roughness={0.5}
       />
     </mesh>
-  )
-}
-
-/**
- * Cómo queda el botón de compartir después de pulsarlo.
- *
- * Con el visor puesto no hay ningún aviso del sistema que diga si el resultado
- * salió, así que lo dice el propio botón: cambia de dibujo *y* de color, nunca
- * solo de color. Cancelar deja el botón como estaba, porque no ha pasado nada.
- */
-const SHARE_FEEDBACK: Record<
-  ShareStatus,
-  { style: typeof NEUTRAL_BUTTON; Icon: typeof XRShareIcon }
-> = {
-  idle: { style: NEUTRAL_BUTTON, Icon: XRShareIcon },
-  cancelled: { style: NEUTRAL_BUTTON, Icon: XRShareIcon },
-  shared: { style: DONE_BUTTON, Icon: XRCheckIcon },
-  copied: { style: DONE_BUTTON, Icon: XRCheckIcon },
-  unavailable: { style: FAILED_BUTTON, Icon: XRCrossIcon },
-}
-
-/**
- * Compartir el resultado sin quitarse el visor.
- *
- * Dentro de la sesión la hoja de compartir del sistema puede no abrirse; ahí el
- * texto se queda en el portapapeles y el jugador lo pega al salir (ver
- * `shareOrCopy.ts`). Lo que no puede pasar es que el botón no conteste, y por
- * eso el resultado del intento se ve en la propia placa.
- */
-function ShareButton({ position }: { position: [number, number, number] }) {
-  const { status, share } = useShareResult()
-  const { style, Icon } = SHARE_FEEDBACK[status]
-
-  return (
-    <XRPressable
-      position={position}
-      onSelect={() => void share()}
-      hitSize={BUTTON_HIT}
-    >
-      <ButtonPlate style={style} />
-      <Icon position={[0, 0, 0.008]} />
-    </XRPressable>
   )
 }
 
@@ -392,7 +350,7 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
       <group position={[0, layout.centre, 0]}>
         <XRPanel
           // Al acabar, el ancho no puede depender de cuántos palos se jugaran:
-          // con los pocos de una partida corta, la fila de tres botones se
+          // con los pocos de una partida corta, la fila de botones se
           // saldría del panel y perdería el fondo que la despega del passthrough.
           width={Math.max(width + 0.2, finished ? ROTULOS_DEL_FINAL.width + 0.06 : 0)}
           height={layout.height}
@@ -447,10 +405,6 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
             <XRRepeatIcon position={[0, 0, 0.008]} size={0.026} />
           </XRPressable>
 
-          {/* En medio: compartir es lo nuevo, y así repetir y volver al menú
-              siguen en las puntas donde ya estaban. */}
-          <ShareButton position={[0, 0, 0]} />
-
           <XRPressable
             position={[BUTTON_SPACING, 0, 0]}
             onSelect={resetGame}
@@ -459,7 +413,7 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
             <ButtonPlate style={NEUTRAL_BUTTON} />
             <XRHomeIcon position={[0, 0, 0.008]} />
           </XRPressable>
-          <RotulosDelFinal />
+          <RotulosDelFinal gameMode={gameMode} />
         </group>
       )}
     </group>

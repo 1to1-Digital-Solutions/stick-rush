@@ -273,9 +273,11 @@ describe('el aviso, el tutorial y el final miden lo que la web', () => {
   it('la letra del final se lee, en los dos idiomas y con lo más largo que puede decir', () => {
     const marcador = new Marcador({ repetir: nada, volverAlMenu: nada }, new Punteria())
     for (const lang of LANGS) {
-      for (const titulo of lang === 'es' ? ['Te has quedado sin vidas', '¡Reto superado!', 'Nivel 15'] : ['You are out of lives', 'Level 15']) {
+      // El rótulo de repetir cambia con el modo: «Otro reto» y «Otra partida», la más larga.
+      for (const [titulo, modo] of (lang === 'es' ? ['Te has quedado sin vidas', '¡Reto superado!', 'Nivel 15'] : ['You are out of lives', 'Level 15']).flatMap((t) => (['challenge', 'practice'] as const).map((m) => [t, m] as const))) {
         const estado: EstadoDelMarcador = {
           lang,
+          modo,
           terminada: true,
           fichas: Array.from({ length: 5 }, () => 'caught' as const),
           racha: 5,
@@ -333,7 +335,7 @@ describe('el cartel del objetivo mide lo que la web', () => {
     for (const esquina of esquinasDelCartel(PROPORCION_DEL_CARTEL)) expect(apartadoDeLaMirada(esquina)).toBeLessThanOrEqual(VISTA_SIN_GIRAR)
   })
 
-  it('todo lo que dice se lee con la letra del motor, en los dos idiomas y donde cuelga', () => {
+  it('todo lo que dice se lee con la letra del motor, en los dos idiomas y donde cuelga: dos líneas jugando, tres con el pie del final', () => {
     const cartel = new Cartel()
     const sitio = sitioDelCartel()
     cartel.colocar(sitio)
@@ -352,6 +354,7 @@ describe('el cartel del objetivo mide lo que la web', () => {
         const distancia = Math.max(...vistas.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, ALTO_DE_LINEA)))
         const problemas = problemasDeLegibilidad(escritos, { panel, distancia })
         expect(problemas, `${lang}: ${vista.titulo} / ${vista.detalle}: ${problemas.join('; ')}`).toEqual([])
+        expect(escritos.length).toBeLessThanOrEqual(vista.pie == null ? 2 : 3)
         medidas++
       }
       for (const objetivo of [OBJETIVO, { ...OBJETIVO, record: null }, null]) {
@@ -385,6 +388,11 @@ describe('el cartel del objetivo mide lo que la web', () => {
     for (let i = 0; i < 10; i++) cartel.actualizar(vista, 'plata', 'en', 0.2)
     expect(cartel.celebrando).toBeNull()
     expect(cartel.nodo.scale.x).toBeCloseTo(escala)
+    // Mientras celebra, el título dice la medalla: el color solo no se entiende.
+    cartel.actualizar(vista, 'bronce', 'en', 0.016)
+    cartel.actualizar(vista, 'plata', 'en', 0.016)
+    expect(vista.vitor).toBe('Bronze!')
+    expect(cartel.panel.escritos[0]!.texto).toBe(vista.vitor)
     // Sin nada que decir se esconde.
     cartel.actualizar(null, null, 'en', 0.016)
     expect(cartel.nodo.visible).toBe(false)
@@ -395,6 +403,7 @@ describe('el cartel del objetivo mide lo que la web', () => {
     const marcador = new Marcador({ repetir: nada, volverAlMenu: nada }, new Punteria())
     const estado: EstadoDelMarcador = {
       lang: 'es',
+      modo: 'challenge',
       terminada: false,
       fichas: Array.from({ length: MAX_STICKS }, () => 'pending' as const),
       racha: 3,
@@ -414,11 +423,11 @@ describe('el cartel del objetivo mide lo que la web', () => {
     marcador.pintar({ ...estado, enElCartel: true, terminada: true })
     expect(marcador.medida.height).toBeCloseTo(XR_HUD_WITH_SIGN.finished.height)
     // Solo los rótulos de los botones: cómo ha acabado y los puntos los dice el cartel.
-    expect(marcador.panel.escritos.map((e) => e.texto)).toEqual(['Otra partida', 'Menú'])
+    expect(marcador.panel.escritos.map((e) => e.texto)).toEqual(['Otro reto', 'Menú'])
     expect(marcador.repetir.nodo.visible).toBe(true)
     // Sin cartel, el final sigue diciendo cómo ha acabado y los puntos.
     marcador.pintar({ ...estado, terminada: true })
-    expect(marcador.panel.escritos.map((e) => e.texto)).toEqual(['Otra partida', 'Menú', 'Te has quedado sin vidas', '2100'])
+    expect(marcador.panel.escritos.map((e) => e.texto)).toEqual(['Otro reto', 'Menú', 'Te has quedado sin vidas', '2100'])
     marcador.nodo.free()
   })
 })
@@ -427,6 +436,9 @@ describe('los ajustes del salón', () => {
   beforeEach(() => gameStorage()?.clear())
 
   it('el idioma es el guardado, y el de la línea de órdenes manda', () => {
+    // Sin nada guardado, el del sistema: depende de la máquina que corre el test.
+    expect(['en', 'es']).toContain(idioma())
+    gameStorage()!.setItem(CLAVE_DEL_IDIOMA, 'en')
     expect(idioma()).toBe('en')
     gameStorage()!.setItem(CLAVE_DEL_IDIOMA, 'es')
     expect(idioma()).toBe('es')
@@ -449,6 +461,8 @@ describe('la interfaz con el ratón', () => {
 
   beforeEach(() => {
     gameStorage()?.clear()
+    // Lo que se comprueba está en inglés: sin idioma guardado, el juego habla el del sistema.
+    gameStorage()?.setItem(CLAVE_DEL_IDIOMA, 'en')
     const tree = Engine.get_main_loop() as SceneTree
     raiz = new Node3D()
     ;(tree.current_scene ?? (tree.root as Node)).add_child(raiz)
@@ -520,7 +534,8 @@ describe('la interfaz con el ratón', () => {
     for (let i = 0; i < 3; i++) delReto.missStick()
     otra.actualizar(0.016)
     expect(delReto.gameState).toBe('finished')
-    expect(otra.cartel.panel.escritos.map((e) => e.texto)).toEqual([`You scored ${delReto.points}`])
+    // Sin récord de antes, la primera marca es récord, y el cartel lo dice.
+    expect(otra.cartel.panel.escritos.map((e) => e.texto)).toEqual([`You scored ${delReto.points}`, 'First record!'])
     // Al acabar, repetir está a la vista y empieza otro reto sin pasar por el menú.
     expect(otra.marcador.repetir.nodo.is_visible_in_tree()).toBe(true)
     delReto.startGame()

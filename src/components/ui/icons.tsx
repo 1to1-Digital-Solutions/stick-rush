@@ -33,30 +33,6 @@ export function HeartIcon({
   )
 }
 
-/**
- * Compartir: un nodo que sale hacia otros dos. Es el símbolo que ya llevan los
- * botones de compartir del sistema, así que no necesita explicarse.
- */
-export function ShareIcon({ className = 'size-5' }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className={`${className} shrink-0`}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="18" cy="5" r="2.6" />
-      <circle cx="6" cy="12" r="2.6" />
-      <circle cx="18" cy="19" r="2.6" />
-      <path d="m8.3 10.8 7.4-4.3m0 11-7.4-4.3" />
-    </svg>
-  )
-}
-
 /** Infinito: en práctica no hay nada que se agote. */
 export function InfinityIcon({ className = 'size-5' }: { className?: string }) {
   return (
