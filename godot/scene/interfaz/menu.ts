@@ -55,9 +55,11 @@ import { botonDeOpciones, seVe, type FilaDelMenu } from '@/lib/menuDelJuego'
 import { HOOP_ADJUST_RANGE } from '@/lib/hoopHeight'
 import { LEVEL_COUNT, type Stars } from '@/lib/levels'
 import { traductor } from '@/lib/textos'
+import { nombreDelJuego } from '@/lib/plantillaDelMenu'
 import {
   MENU_PANEL,
   MENU_TEXT,
+  MENU_TITLE,
   OPCIONES_ANCHO,
   PISTA_ANCHO,
   PISTA_Y,
@@ -443,6 +445,13 @@ export class MenuDelJuego {
     const t = traductor(estado.lang)
     const { panel } = this
     panel.borrarTextos()
+    // El nombre de la cabina, arriba a la izquierda: un nombre propio, sin traducir.
+    panel.escribir(nombreDelJuego(), MENU_TITLE.x, MENU_TITLE.y, {
+      alto: MENU_TEXT.title,
+      color: '#ffffff',
+      alinear: 'left',
+      anchoMax: MENU_TITLE.ancho,
+    })
     for (const { text, x, y } of menuLabelsFor(estado.modo, estado.masOpciones)) {
       // La fila del modo dice «Modo» y cuál hay elegido: «Modo: Reto».
       panel.escribir(menuLabelText(text, estado.modo, t), x, y + ROW_LABEL_RISE, { alto: MENU_TEXT.label, color: COLORES.suave, anchoMax: 0.3 })

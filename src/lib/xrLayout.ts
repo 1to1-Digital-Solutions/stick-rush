@@ -92,7 +92,7 @@ export const PISTA_ANCHO = 0.62
  * medida en su fila con el escorzo, se quedaba en 0,92°. A 35 mm cabe en dos renglones; a 36, la
  * de los niveles pide tres y se sale del panel.
  */
-export const MENU_TEXT = { label: 0.032, hint: 0.035 } as const
+export const MENU_TEXT = { title: 0.042, label: 0.032, hint: 0.035 } as const
 
 /**
  * Cómo cuelga el panel del menú de la interfaz: dónde, de cara a quién y a qué escala.
@@ -137,6 +137,18 @@ export const XR_MENU_SCALE = 1.35
 
 /** Lo que ocupa la placa del menú, en metros, antes de crecer con la pose. */
 export const MENU_PANEL: [number, number] = [1.06, 0.92 + BANDA_DE_LA_PISTA]
+
+/**
+ * El nombre de la cabina (`nombreDelJuego()`), arriba a la izquierda del panel, como en los demás
+ * juegos del salón. Va en la franja libre que queda sobre la fila del aro: su rótulo, centrado,
+ * acaba más abajo (`ROW_LABEL_RISE`), así que el nombre puede llegar hasta el borde derecho sin
+ * pisarlo. `menu.legible.test.ts` lo mide en los dos idiomas y con un nombre largo.
+ */
+export const MENU_TITLE = {
+  x: -MENU_PANEL[0] / 2 + 0.05,
+  y: 0.475,
+  ancho: MENU_PANEL[0] - 0.1,
+} as const
 
 /** La columna del menú en el visor: a la izquierda, a la altura de los ojos, de cara. */
 export const XR_MENU_POSE: MenuPose = {

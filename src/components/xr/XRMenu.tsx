@@ -19,12 +19,14 @@ import { traductor, type TextKey } from '../../lib/textos'
 import { CanvasPanel, drawParagraph, drawText } from './canvasPanel'
 import { LEVEL_COUNT } from '../../lib/levels'
 import { useExit } from '../../game/exit'
+import { nombreDelJuego } from '../../lib/plantillaDelMenu'
 import { HOOP_ADJUST_RANGE } from '../../lib/hoopHeight'
 import {
   menuLabelsFor,
   menuLabelText,
   ROW_LABEL_RISE,
   MENU_TEXT,
+  MENU_TITLE,
   XR_DIFFICULTY_SPACING,
   XR_ENDLESS_TOGGLE_OFFSET,
   XR_MENU_HIT,
@@ -565,6 +567,14 @@ export function dibujarLosNombres(
   players: PlayerCount = 1,
   masOpciones = false,
 ): void {
+  // El nombre de la cabina, arriba a la izquierda: es un nombre propio y no se traduce.
+  drawText(ctx, nombreDelJuego(), MENU_TITLE.x, MENU_TITLE.y, {
+    size: MENU_TEXT.title,
+    color: '#ffffff',
+    align: 'left',
+    maxWidth: MENU_TITLE.ancho,
+  })
+
   for (const { text, x, y } of menuLabelsFor(gameMode, masOpciones)) {
     // La fila del modo dice «Modo» y cuál hay elegido: «Modo: Reto».
     drawText(ctx, menuLabelText(text, gameMode, t), x, y + ROW_LABEL_RISE, {

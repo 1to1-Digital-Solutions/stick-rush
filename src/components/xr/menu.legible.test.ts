@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { dibujarLosNombres } from './XRMenu'
 import { ALTO_DE_LINEA } from './canvasPanel'
 import { lienzoQueApunta, problemasDeLegibilidad, type Escrito } from './legibilidad'
@@ -6,6 +6,7 @@ import { MENU_PANEL } from './XRMenu'
 import { GAME_MODE_HINTS, GAME_MODE_ORDER } from '../../lib/gameMode'
 import {
   MENU_TEXT,
+  MENU_TITLE,
   XR_MENU_DESK_POSE,
   XR_MENU_HIT,
   XR_MENU_OPCIONES_OFFSET,
@@ -26,6 +27,7 @@ import {
 import { traductor } from '../../lib/textos'
 import { PLAYER_COUNT_HINTS } from '../../lib/duel'
 import { MENU_EN } from '../../lib/palabras'
+import { fijarNombreDelJuego } from '../../lib/plantillaDelMenu'
 
 /** Plegado, como abre, y desplegado tras «Más opciones». */
 const PLEGADOS = [false, true] as const
@@ -150,6 +152,39 @@ function todosLosMomentos(): { donde: string; escritos: Escrito[] }[] {
     ),
   )
 }
+
+/**
+ * El nombre de la cabina, arriba a la izquierda, como en los demás juegos del salón: antes solo se
+ * leía en la portada web. Es un nombre propio: no pasa por `t()`.
+ */
+describe('el panel dice cómo se llama la cabina', () => {
+  afterEach(() => fijarNombreDelJuego(null))
+
+  const titulo = (escritos: readonly Escrito[]) => escritos.find((e) => e.y === MENU_TITLE.y)
+
+  it('en cada modo e idioma, sin traducirlo', () => {
+    for (const { donde, escritos } of todosLosMomentos()) {
+      expect(titulo(escritos)?.texto, donde).toBe('Stick Rush')
+    }
+  })
+
+  it('el que le da el salón, y uno largo cabe sin encogerse ni pisar nada', () => {
+    // El nombre más largo que puede traer una cabina del catálogo, y algo más.
+    fijarNombreDelJuego('Atrapa los palos que caen del aro')
+    for (const { donde, escritos } of todosLosMomentos()) {
+      expect(titulo(escritos)?.texto, donde).toBe('Atrapa los palos que caen del aro')
+      expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(MENU_TEXT)), donde).toEqual([])
+      for (const { nombre, pose } of SITIOS) {
+        const escalados = aEscala(escritos, pose.scale)
+        const panel = { width: PANEL_MEDIDO.width * pose.scale, height: PANEL_MEDIDO.height * pose.scale }
+        expect(problemasDeLegibilidad(escalados, { panel, distancia: distancia(escalados, pose) }), `${donde}, ${nombre}`).toEqual([])
+        for (const vista of vistasDe(pose)) {
+          expect(unreadableTexts(escalados, vista.pose, vista.ojos, ALTO_DE_LINEA), `${donde}, ${nombre}, ${vista.donde}`).toEqual([])
+        }
+      }
+    }
+  })
+})
 
 describe('el botón de «Más opciones»', () => {
   const escrito = (lang: (typeof IDIOMAS)[number], gameMode: (typeof GAME_MODE_ORDER)[number], masOpciones: boolean) => {

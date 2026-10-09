@@ -46,12 +46,14 @@ import { traductorSuave } from '@/lib/textos'
 import { HOOP_ADJUST_STEP } from '@/lib/hoopHeight'
 import { centreInside, sizesOffList, textsOnButtons, unreadableTexts, worstReadingDistance, type PanelPose } from '@/lib/panelReading'
 import { gameStorage } from '@/lib/storage'
+import { fijarNombreDelJuego } from '@/lib/plantillaDelMenu'
 import { TUTORIAL_STEPS } from '@/lib/tutorial'
 import {
   CONFIRM_BOXES,
   CONFIRM_TEXT,
   DUEL_TEXT,
   MENU_TEXT,
+  MENU_TITLE,
   TUTORIAL_TEXT,
   XR_DUEL_POSITION,
   XR_DUEL_SIZE,
@@ -199,6 +201,30 @@ describe('el menú mide lo que la web', () => {
           expect(textsOnButtons(menu.panel.escritos, botones, esElSuyo), `${lang} ${modo}`).toEqual([])
         }
       }
+    }
+  })
+
+  it('el nombre de la cabina, arriba a la izquierda y sin traducir; uno largo cabe sin encogerse', () => {
+    const titulo = () => menu.panel.escritos.find((e) => e.y === MENU_TITLE.y)?.texto
+    for (const lang of LANGS) {
+      menu.pintar(estadoDelMenu({ lang }))
+      expect(titulo(), lang).toBe('Stick Rush')
+    }
+    fijarNombreDelJuego('Atrapa los palos que caen del aro')
+    try {
+      for (const lang of LANGS) {
+        for (const masOpciones of [false, true]) {
+          menu.pintar(estadoDelMenu({ lang, masOpciones }))
+          const escritos = menu.panel.escritos
+          expect(titulo(), lang).toBe('Atrapa los palos que caen del aro')
+          expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(MENU_TEXT)), lang).toEqual([])
+          const pose = XR_MENU_POSE
+          const panel = { width: MENU_PANEL[0] * pose.scale, height: MENU_PANEL[1] * pose.scale }
+          expect(medir(aEscala(escritos, pose.scale), panel, xrPanelViews(pose.position, pose.yaw)), lang).toEqual([])
+        }
+      }
+    } finally {
+      fijarNombreDelJuego(null)
     }
   })
 

@@ -21,6 +21,7 @@ Qué mirar con las gafas, y dónde se toca:
 | ¿Máquina a buena altura? ¿Cuelgan por encima de la cara? | `HOOP_RISE_ABOVE_EYES` (`src/lib/hoopHeight.ts`) |
 | Columna de ajustes (30° a la izquierda, 1,5 m; antes a 55°): ¿se ve al entrar sin girarse? En el menú, los palos de delante y de ese lado se atenúan y vuelven al pulsar Jugar: ¿se lee limpio y la máquina sigue pareciendo entera? Web y Godot | `PALO_TRAS_EL_MENU`, `paloTapaElMenu`, `XR_COLUMN` (`src/lib/xrLayout.ts`) |
 | Menú de la plantilla común: «Modo: Reto», «Jugadores» y lo demás tras «Más opciones» (abajo a la izquierda). Con el reto no se ven el aro ni «Alrededor»: ¿se echa de menos ajustar el aro sentado? | `menuDelJuego.ts`, `XR_MENU_OPCIONES_OFFSET` |
+| El nombre de la cabina arriba a la izquierda del menú (antes solo en la portada web): ¿se lee sin buscarlo, sin estorbar a «Aro»? Web y Godot | `MENU_TITLE` (`src/lib/xrLayout.ts`) |
 | **El calentamiento** (`src/lib/calentamiento.ts`): la primera partida con el visor, en el reto y con la lección delante, los palos perdidos no quitan vidas; al cerrarla, el reto empieza de cero con «Ahora cuenta para medalla» en el cartel. ¿Se entiende? Web y Godot | `enCalentamiento`, `partidaDelCartel` |
 | Los rótulos bajo los botones del final (Otra partida / Compartir / Menú): ¿se leen sin estorbar? | `ROTULOS_DEL_FINAL` (`XRHud.tsx`; Godot, `marcador.ts`) |
 | ¿Se lee el guante como mano y se ve cerrarse? En el salón va sin mando debajo | `src/components/xr/Guante.tsx`, `src/lib/guante.ts` |
