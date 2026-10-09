@@ -110,7 +110,7 @@ lint, cobertura al 100 % y los e2e). La escena importa `marcas.ts`.
 | `scene/mundo/` | La máquina (`maquina.ts`), los palos pintados (`palos.ts`), la feria, la plaza y tu habitación (`feria.ts`) y las ayudas (`ayudas.ts`); las piezas sueltas y el escenario son del kit |
 | `scene/interfaz/` | El menú, el marcador, el cartel del objetivo (`cartel.ts`), volver, terminar, el aviso, el final de cada tanda a dos (`PanelDelDuelo`), la cuenta atrás, el tutorial, los iconos de `xrIcons.ts` y el de contra quién, y dónde va cada panel con visor y en plano |
 | `scene/**/*.motor.test.ts` | La partida contra el store de la web, la tanda contra `Stick.tsx` y el sonido contra `useGameSound.ts`, el mundo (y que lo del paquete es lo de la web byte a byte), y los paneles medidos con el instrumento de la web en los dos idiomas y pulsados con el ratón: corren con los tests de dominio |
-| `godot-kit.json` | Para el kit: el id, el repo (`..`), los efectos (con la nota del atrape y la cuenta atrás en sus escalones) y la música |
+| `godot-kit.json` | Para el kit: el id, el repo (`..`), **la versión del kit** (`kit`, un tag de xrcade), los efectos (con la nota del atrape y la cuenta atrás en sus escalones) y la música |
 | `games/stick-rush/` | Lo que va en el `.pck`; `tests/` se queda fuera al exportar |
 | `games/stick-rush/{sfx,music,feria,texturas,hdri,mandos}/` | Los efectos renderizados (`npm run godot:sfx`), la música, las piezas del kit, la madera, la plaza y los mandos de Quest (`npm run godot:mandos`), con `CREDITS.md`. Se versionan. La plaza va comprimida para la GPU (BC6H y ASTC, 0,5 MB cada una en vez de 4) y la madera, sin pérdida y con sus mipmaps |
 | `games/stick-rush/tests/partida_auto.*` | La partida automática entera (práctica, Difícil, nueve palos, uno que se escapa adrede): palos, puntos, récord, lo que suena, la máquina y la feria, y lo que se le cuenta al salón; el reto con la semilla del salón, que entra jugando, da el mismo reparto dos veces y se cuenta como reto; y la partida a dos entera (`--a-dos`): las dos tandas con la misma semilla, gana el primero (el segundo deja escapar uno más), se apunta a la pareja sin tocar el récord, al salón una vez y suena a ganar |
@@ -171,6 +171,13 @@ $GODOT --xr-mode off --resolution 1280x720 --fixed-fps 72 --path . -- --visor-si
 # El .pck para el hub (ejecuta antes el build)
 GODOT=$GODOT ../../xrcade/scripts/pack-game.sh "$PWD" stick-rush
 ```
+
+**La versión del kit está fijada** en `godot-kit.json` (`"kit": "v0.20.0"`). El día a día no la
+mira: `npm run godot:build`, `godot:test` y `pack-game.sh --local` usan el checkout de al lado
+(`../xrcade/godot-kit`). El `.pck` que va al salón sí: `npm run game:pack` de xrcade saca el kit de
+ese tag y no del checkout, y `hub:build` y `godot:quest` no lo llevan si salió con otro. Para usar
+algo nuevo del kit, se sube `kit` a un tag de xrcade que lo traiga antes de publicar el juego
+(`xrcade/docs/anadir-un-juego.md`, «La versión del kit»).
 
 Stick Rush está en el catálogo del hub de visor (`targets.godot` en
 `xrcade/registry/games/stick-rush.json`): `npm run godot:test` de xrcade lo empaqueta desde aquí y
