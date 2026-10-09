@@ -35,6 +35,7 @@ import { StickMachine } from './StickMachine'
 import { Ground } from './Ground'
 import { useGameMusic } from './useGameMusic'
 import { useGameSound } from './useGameSound'
+import { useSoltarMallas } from './soltarInstancias'
 import { XRWorldHeight } from '../xr/XRWorldHeight'
 
 /**
@@ -84,6 +85,8 @@ function SceneBackdrop({ scenery }: { scenery: SceneryMode }) {
   // visor puesto. Oculto no se pinta ni da sombra, y se le niegan los punteros,
   // que no miran si algo se ve.
   const soloEnLaPlaza = { visible: !isAR, pointerEvents: isAR ? ('none' as const) : undefined }
+  // El suelo proyectado del HDRI trae geometría y material propios, que fiber no suelta al salir.
+  const delEntorno = useSoltarMallas()
 
   return (
     <>
@@ -108,7 +111,7 @@ function SceneBackdrop({ scenery }: { scenery: SceneryMode }) {
             cambiar entre los dos tiraba la malla del suelo —y su shader— y
             liberaba la textura del HDRI, que había que volver a subir. El
             entorno de reflejos se queda puesto en los dos escenarios. */}
-        <group {...soloEnLaPlaza}>
+        <group ref={delEntorno} {...soloEnLaPlaza}>
           <Environment
             files={assetUrl(HDRI_PATH)}
             background={!isAR}

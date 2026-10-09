@@ -65,6 +65,8 @@ declare global {
       buscar: (nombre: string) => ObjetoDeLaEscena | null
       /** Monta la escena, como al elegir cabina. Solo hace algo con `data-cabina`. */
       entrarEnLaCabina: () => void
+      /** Desmonta la escena, como al volver al salón. */
+      salirDeLaCabina: () => void
       /** Lo que la escena ha contado al acabar cada partida (`onTerminar`), en orden. */
       terminadas: Resultado[]
       /** Deja de pintar ese objeto, o lo vuelve a pintar: para medir lo que cuesta. `false` si no está. */
@@ -78,6 +80,7 @@ declare global {
 let escena: Object3D | null = null
 let camara: Object3D | null = null
 let entrar = () => {}
+let salir = () => {}
 
 window.__stickRushHost = {
   async enterVR() {
@@ -95,6 +98,7 @@ window.__stickRushHost = {
     return { visible, x, y, z }
   },
   entrarEnLaCabina: () => entrar(),
+  salirDeLaCabina: () => salir(),
   terminadas: [],
   esconder(nombre, oculto) {
     const objeto = escena?.getObjectByName(nombre)
@@ -127,8 +131,10 @@ function Cabina() {
   const [dentro, setDentro] = useState(!aLaCarta)
   useEffect(() => {
     entrar = () => setDentro(true)
+    salir = () => setDentro(false)
     return () => {
       entrar = () => {}
+      salir = () => {}
     }
   }, [])
 

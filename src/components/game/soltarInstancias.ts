@@ -1,7 +1,7 @@
 'use client'
 
 import { useLayoutEffect, useRef } from 'react'
-import type { InstancedMesh } from 'three'
+import type { InstancedMesh, Material, Mesh, Object3D } from 'three'
 
 /**
  * Un `ref` para un `<Instances>` de drei que, al desmontarse, suelta de la GPU sus matrices y
@@ -31,4 +31,33 @@ export function useSoltarInstancias() {
     [],
   )
   return malla
+}
+
+/**
+ * Un `ref` para un grupo cuyas mallas fiber no suelta al desmontarse: al salir, se sueltan a mano
+ * la geometría y el material de cada una.
+ *
+ * **La fuga.** Al desmontar, fiber llama al `dispose()` del objeto que quita, y una malla no lo
+ * tiene: sus geometría y material se sueltan solo si se montaron como hijos suyos en JSX. El suelo
+ * proyectado de `<Environment ground>` es un `GroundedSkybox` de three que trae los suyos de
+ * fábrica —un icosaedro de 17 340 vértices—, así que cada visita dejaba en la GPU una geometría y
+ * sus tres búferes, medio mega, y la siguiente subía otra.
+ *
+ * Como en `useSoltarInstancias`, la limpieza del efecto de maquetación del padre corre antes de
+ * quitar sus nodos: desde aquí la malla aún cuelga del grupo.
+ */
+export function useSoltarMallas() {
+  const grupo = useRef<Object3D>(null)
+  useLayoutEffect(
+    () => () => {
+      grupo.current?.traverse((objeto) => {
+        const malla = objeto as Mesh
+        if (malla.isMesh !== true) return
+        malla.geometry.dispose()
+        for (const material of ([] as Material[]).concat(malla.material)) material.dispose()
+      })
+    },
+    [],
+  )
+  return grupo
 }
