@@ -3,20 +3,20 @@ import { XR_EMULATOR_BUNDLE } from './globalSetup'
 
 export type Point = { x: number; y: number; z: number }
 
-/** Convierte una posición de `xrLayout` (tupla) al punto que usa el emulador. */
+/** Converts an `xrLayout` position (tuple) to the point the emulator uses. */
 export function toPoint([x, y, z]: [number, number, number]): Point {
   return { x, y, z }
 }
 type Hand = 'left' | 'right'
 
-/** API que el emulador expone en la página bajo `window.__xrTest`. */
+/** API the emulator exposes on the page under `window.__xrTest`. */
 interface XRTestApi {
   hasSession: () => boolean
   place: (hand: Hand, target: Point) => void
   aim: (hand: Hand, target: Point) => void
   press: (hand: Hand, button: 'squeeze' | 'trigger', value?: number) => void
   seat: (eyeHeight: number) => void
-  /** Gira la cabeza, en grados: a la izquierda y hacia arriba en positivo. */
+  /** Turns the head, in degrees: to the left and upwards as positive. */
   lookAt: (yaw: number, pitch?: number) => void
   useHands: () => void
   placeBareHand: (hand: Hand, target: Point) => void
@@ -31,61 +31,61 @@ declare global {
 }
 
 /**
- * Instala el emulador WebXR. Hay que llamarlo **antes** de `page.goto`: el
- * runtime tiene que existir cuando la app comprueba `navigator.xr`.
+ * Installs the WebXR emulator. It has to be called **before** `page.goto`: the
+ * runtime has to exist when the app checks `navigator.xr`.
  */
 export async function installXREmulator(page: Page) {
   await page.addInitScript({ path: XR_EMULATOR_BUNDLE })
 }
 
 /**
- * Entra en una sesión inmersiva pulsando el botón real del menú.
+ * Enters an immersive session by pressing the real button of the menu.
  *
- * Hay un único botón de entrada: la sesión se abre en `immersive-ar` cuando el
- * visor la admite, porque es la que deja alternar escenario y passthrough sin
- * reabrirla (ver `XRWrapper`).
+ * There is a single entry button: the session opens in `immersive-ar` when the
+ * headset supports it, because it is the one that lets scenery and passthrough be toggled without
+ * reopening it (see `XRWrapper`).
  *
- * Además de esperar a que la sesión exista, espera a que la app haya asentado
- * su estado: `XRSessionController` reacciona a la entrada con un efecto que
- * lleva al menú, y actuar antes de que corra hace que ese efecto cancele
- * después lo que el test acababa de hacer.
+ * Besides waiting for the session to exist, it waits for the app to have settled
+ * its state: `XRSessionController` reacts to the entry with an effect that
+ * leads to the menu, and acting before it runs makes that effect cancel
+ * afterwards what the test had just done.
  */
 export async function enterVR(page: Page) {
   await page.getByRole('button', { name: 'Enter the headset' }).click()
   await expect
     .poll(() => page.evaluate(() => window.__xrTest.hasSession()), {
-      message: 'no arrancó la sesión inmersiva',
+      message: 'the immersive session did not start',
     })
     .toBe(true)
   await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
 }
 
-/** Sale de la sesión inmersiva, como al quitarse el visor. */
+/** Leaves the immersive session, as when taking the headset off. */
 export async function exitXR(page: Page) {
   await page.evaluate(() => window.__xrTest.endSession())
   await expect
     .poll(() => page.evaluate(() => window.__xrTest.hasSession()), {
-      message: 'la sesión inmersiva no se cerró',
+      message: 'the immersive session did not close',
     })
     .toBe(false)
 }
 
-/** Coloca la mano en un punto y la orienta hacia donde mira el jugador. */
+/** Places the hand at a point and orients it towards where the player looks. */
 export async function placeHand(page: Page, hand: Hand, target: Point) {
   await page.evaluate(
     ([h, t]) => window.__xrTest.place(h as Hand, t as Point),
     [hand, target] as const,
   )
-  // Un par de frames para que el runtime propague la pose a la escena.
+  // A couple of frames for the runtime to propagate the pose to the scene.
   await page.waitForTimeout(120)
 }
 
 /**
- * Sienta al jugador: pone su cabeza a esa altura sobre el suelo.
+ * Seats the player: puts their head at that height above the floor.
  *
- * Es lo único que distingue a quien juega de pie de quien juega sentado. Con el
- * mundo «a la altura de mis ojos», el juego mide esta cota y baja la escena
- * hasta ella (ver `XRWorldHeight`).
+ * It is the only thing that tells whoever plays standing from whoever plays seated. With the
+ * world «a la altura de mis ojos», the game measures this height and lowers the scene
+ * down to it (see `XRWorldHeight`).
  */
 export async function seatPlayer(page: Page, eyeHeight: number) {
   await page.evaluate((h) => window.__xrTest.seat(h as number), eyeHeight)
@@ -93,19 +93,19 @@ export async function seatPlayer(page: Page, eyeHeight: number) {
 }
 
 /**
- * Deja los mandos y pasa a manos desnudas.
+ * Puts the controllers down and switches to bare hands.
  *
- * Es el otro modo de entrada del visor: quien no tiene mandos a mano —o no
- * puede sostenerlos— juega así. A partir de aquí `moveBareHand` y `pinchHand`
- * son lo único que mueve al jugador; `placeHand` y `pressAndRelease` mandan
- * sobre unos mandos que ya están desconectados.
+ * It is the headset's other input mode: whoever has no controllers at hand —or cannot
+ * hold them— plays like this. From here on `moveBareHand` and `pinchHand`
+ * are the only thing that moves the player; `placeHand` and `pressAndRelease` command
+ * controllers that are already disconnected.
  */
 export async function useBareHands(page: Page) {
   await page.evaluate(() => window.__xrTest.useHands())
   await page.waitForTimeout(200)
 }
 
-/** Lleva una mano desnuda a un punto del mundo. */
+/** Takes a bare hand to a point of the world. */
 export async function moveBareHand(page: Page, hand: Hand, target: Point) {
   await page.evaluate(
     ([h, t]) => window.__xrTest.placeBareHand(h as Hand, t as Point),
@@ -114,7 +114,7 @@ export async function moveBareHand(page: Page, hand: Hand, target: Point) {
   await page.waitForTimeout(120)
 }
 
-/** Cierra o abre la mano desnuda sobre lo que tenga delante. */
+/** Closes or opens the bare hand on whatever is in front of it. */
 export async function pinchHand(page: Page, hand: Hand, pressed: boolean) {
   await page.evaluate(
     ([h, p]) => window.__xrTest.pinch(h as Hand, p as boolean),
@@ -123,7 +123,7 @@ export async function pinchHand(page: Page, hand: Hand, pressed: boolean) {
   await page.waitForTimeout(120)
 }
 
-/** Apunta el rayo de la mano hacia un punto, sin moverla de sitio. */
+/** Points the hand's ray towards a point, without moving it from its place. */
 export async function aimHandAt(page: Page, hand: Hand, target: Point) {
   await page.evaluate(
     ([h, t]) => window.__xrTest.aim(h as Hand, t as Point),
@@ -132,7 +132,7 @@ export async function aimHandAt(page: Page, hand: Hand, target: Point) {
   await page.waitForTimeout(120)
 }
 
-/** Pulsa y suelta un botón del mando. */
+/** Presses and releases a button of the controller. */
 export async function pressAndRelease(
   page: Page,
   hand: Hand,
@@ -151,15 +151,15 @@ export async function pressAndRelease(
 }
 
 /**
- * Pulsa «empezar» estando ya dentro de la sesión inmersiva.
+ * Presses «empezar» while already inside the immersive session.
  *
- * El canvas inmersivo se traga los clics, así que se usa el teclado sobre el
- * overlay. Se reintenta porque al entrar en sesión el documento puede perder el
- * foco durante un instante y la pulsación se va al vacío.
+ * The immersive canvas swallows the clicks, so the keyboard is used on the
+ * overlay. It is retried because on entering the session the document may lose
+ * focus for an instant and the key press goes into the void.
  *
- * La partida arranca con su cuenta atrás, y la primera vez de este navegador
- * además **con la lección puesta** en cuanto empiezan a caer palos (ver
- * `XRTutorial`): quien quiera la pantalla limpia usa `startGameInsideSession`.
+ * The run starts with its countdown, and the first time in this browser
+ * also **with the lesson on** as soon as sticks start falling (see
+ * `XRTutorial`): whoever wants the screen clean uses `startGameInsideSession`.
  */
 export async function pressPlayInsideSession(page: Page, attempts = 8) {
   const score = page.getByRole('status')
@@ -167,25 +167,25 @@ export async function pressPlayInsideSession(page: Page, attempts = 8) {
     await page.getByRole('button', { name: 'Play', exact: true }).focus()
     await page.keyboard.press('Enter')
 
-    // No basta con que aparezca el marcador: si la partida arranca en el hueco
-    // entre que la sesión existe y que `XRSessionController` registra que hubo
-    // sesión, su efecto la descarta acto seguido (entrar en el visor con una
-    // partida a medias vuelve al menú a propósito). Se confirma que persiste.
+    // It is not enough for the scoreboard to appear: if the run starts in the gap
+    // between the session existing and `XRSessionController` registering that there was a
+    // session, its effect discards it right afterwards (entering the headset with a
+    // run half way through goes back to the menu on purpose). It is confirmed that it persists.
     await page.waitForTimeout(400)
     if (await score.count()) return
 
     await page.waitForTimeout(200)
   }
   throw new Error(
-    `No se pudo arrancar la partida dentro de la sesión en ${attempts} intentos`,
+    `The run could not be started inside the session in ${attempts} attempts`,
   )
 }
 
 /**
- * Los botones de la lección y la frase que explican. Son el reflejo en DOM de
- * lo que pinta el panel 3D: los dos llaman a lo mismo, y estos además se
- * alcanzan con el teclado (los 3D hay que apuntarlos con el mando, que el
- * emulador no sabe hacer).
+ * The lesson's buttons and the phrase they explain. They are the DOM reflection of
+ * what the 3D panel paints: both call the same thing, and these are also
+ * reached with the keyboard (the 3D ones have to be pointed at with the controller, which the
+ * emulator cannot do).
  */
 export function tutorialSkipButton(page: Page) {
   return page.getByRole('button', { name: 'Skip tutorial' })
@@ -200,12 +200,12 @@ export function tutorialPhrase(page: Page) {
 }
 
 /**
- * Quita la lección de en medio si el juego la ha puesto (solo la primera vez).
+ * Takes the lesson out of the way if the game has put it up (only the first time).
  *
- * **Espera a que pueda salir** en vez de mirar si está: no sale hasta que se
- * juega de verdad, y preguntar antes de que caiga el primer palo daría siempre
- * que no hay nada que saltar —y la lección aparecería después, encima de lo que
- * el test estuviera comprobando.
+ * **It waits until it can come out** instead of looking at whether it is there: it does not come out until
+ * real play happens, and asking before the first stick falls would always say
+ * there is nothing to skip —and the lesson would appear later, on top of what
+ * the test was checking.
  */
 export async function skipTutorialIfShown(page: Page) {
   const skip = tutorialSkipButton(page)
@@ -218,8 +218,8 @@ export async function skipTutorialIfShown(page: Page) {
 }
 
 /**
- * Arranca una partida estando ya dentro de la sesión inmersiva y deja la
- * pantalla limpia, quitando la lección si es la primera vez en este navegador.
+ * Starts a run while already inside the immersive session and leaves the
+ * screen clean, taking the lesson away if it is the first time in this browser.
  */
 export async function startGameInsideSession(page: Page, attempts = 8) {
   await pressPlayInsideSession(page, attempts)
@@ -227,10 +227,10 @@ export async function startGameInsideSession(page: Page, attempts = 8) {
 }
 
 /**
- * Gira la cabeza del visor: `yaw` a la izquierda y `pitch` hacia arriba, en grados.
+ * Turns the headset's head: `yaw` to the left and `pitch` upwards, in degrees.
  *
- * El emulador entra siempre mirando al frente, y lo que hay que ver a veces no está ahí: las
- * ayudas del suelo, a los pies.
+ * The emulator always enters looking straight ahead, and what has to be seen is sometimes not there: the
+ * floor hints, at the feet.
  */
 export async function lookAt(page: Page, yaw: number, pitch = 0) {
   await page.evaluate(([y, p]) => window.__xrTest.lookAt(y, p), [yaw, pitch] as const)

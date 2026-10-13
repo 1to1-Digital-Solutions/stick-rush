@@ -16,115 +16,115 @@ import { openGame } from './helpers'
 import { enterVR, installXREmulator } from './support/xr'
 
 /**
- * El escenario lo elige el salón (`xrcade:scenery`), no el tipo de sesión ni un ajuste del juego.
+ * The scenery is chosen by the hall (`xrcade:scenery`), not by the kind of session nor by a setting of the game.
  *
- * Se abre la web del juego y se entra por su botón, que abre realidad aumentada cuando el visor la
- * tiene, como el salón: así se comprueba también que fuera del salón el ajuste funciona igual, en
- * el origen del juego y con el sitio dibujado por defecto. Ahí el tipo de sesión es el mismo con
- * las dos elecciones, así que lo único que puede quitar la plaza es el escenario.
+ * The game's website is opened and it is entered through its button, which opens augmented reality when the headset
+ * has it, like the hall: that way it is also checked that outside the hall the setting works the same, on
+ * the game's origin and with the drawn place by default. There the kind of session is the same with
+ * both choices, so the only thing that can take the square away is the scenery.
  */
 
 /**
- * Cuántas llamadas de dibujo por fotograma, como poco, separan la plaza de la habitación.
+ * How many draw calls per frame, at the least, separate the square from the room.
  *
- * Aquí el margen es más corto que en otros juegos: el recinto va instanciado —una llamada por
- * familia de piezas—, así que la plaza entera, con su suelo y su fondo, se mide en unas
- * dieciséis por fotograma, contando los dos ojos. El selector del escenario no cambia de
- * piezas al cambiar, solo de sitio, y no suma ninguna.
+ * Here the margin is shorter than in other games: the fairground is instanced —one call per
+ * family of parts—, so the whole square, with its ground and its backdrop, measures some
+ * sixteen per frame, counting both eyes. The scenery selector does not change
+ * parts on changing, only place, and adds none.
  */
-const LO_QUE_PINTA_EL_DECORADO = 8
+const WHAT_THE_STAGE_PAINTS = 8
 
 /**
- * Entra por el botón de la web, que abre realidad aumentada si el visor la tiene: el Quest 3
- * del emulador la tiene, así que es la misma sesión en la que entra el salón.
+ * Enters through the website's button, which opens augmented reality if the headset has it: the emulator's
+ * Quest 3 has it, so it is the same session the hall enters.
  */
-async function entrarPorLaWeb(page: Page) {
+async function enterThroughTheWeb(page: Page) {
   await enterVR(page)
 }
 
-async function haySesion(page: Page) {
+async function hasSession(page: Page) {
   return page.evaluate(() => window.__xrTest.hasSession())
 }
 
-test.describe('El escenario lo elige el salón', () => {
+test.describe('The scenery is chosen by the hall', () => {
   test.beforeEach(async ({ page }) => {
     await installDrawCallCounter(page)
     await installXREmulator(page)
   })
 
-  test('con «room» no se pinta la plaza y con «place» sí, sin salir de la sesión', async ({ page }) => {
+  test('with «room» the square is not painted and with «place» it is, without leaving the session', async ({ page }) => {
     await storeBeforeOpen(page, SCENERY_KEY, 'room')
     await openGame(page)
-    await entrarPorLaWeb(page)
+    await enterThroughTheWeb(page)
 
-    const enLaHabitacion = await medianDrawCalls(page)
+    const inTheRoom = await medianDrawCalls(page)
     await chooseInSalon(page, 'place')
-    const conDecorado = await medianDrawCalls(page)
-    console.log(`[escenario] llamadas por fotograma: habitación ${enLaHabitacion}, decorado ${conDecorado}`)
+    const withStage = await medianDrawCalls(page)
+    console.log(`[scenery] calls per frame: room ${inTheRoom}, stage ${withStage}`)
 
-    expect(conDecorado, 'con «place» en realidad aumentada no se pintó la plaza').toBeGreaterThan(
-      enLaHabitacion + LO_QUE_PINTA_EL_DECORADO,
+    expect(withStage, 'with «place» in augmented reality the square was not painted').toBeGreaterThan(
+      inTheRoom + WHAT_THE_STAGE_PAINTS,
     )
-    // Y volver a la habitación lo quita otra vez, en la misma sesión.
+    // And going back to the room takes it away again, in the same session.
     await chooseInSalon(page, 'room')
-    expect(await medianDrawCalls(page), 'con «room» se siguió pintando la plaza').toBeLessThan(
-      conDecorado - LO_QUE_PINTA_EL_DECORADO,
+    expect(await medianDrawCalls(page), 'with «room» the square kept being painted').toBeLessThan(
+      withStage - WHAT_THE_STAGE_PAINTS,
     )
-    expect(await haySesion(page), 'cambiar el escenario cerró la sesión').toBe(true)
+    expect(await hasSession(page), 'changing the scenery closed the session').toBe(true)
   })
 
-  test('la clave propia del juego no manda: en «passthrough» y sin nada del salón, se pinta la plaza', async ({
+  test('the game\'s own key does not rule: on «passthrough» and with nothing from the hall, the square is painted', async ({
     page,
   }) => {
     await storeBeforeOpen(page, OWN_SCENERY_KEY, 'passthrough')
     await openGame(page)
-    await entrarPorLaWeb(page)
+    await enterThroughTheWeb(page)
 
-    const conLaClavePropia = await medianDrawCalls(page)
-    // Se borró al montar la partida, y sin pasar a la del arcade: manda lo que diga el salón.
-    expect(await readKey(page, OWN_SCENERY_KEY), 'la clave propia del juego sigue guardada').toBeNull()
-    expect(await readKey(page, SCENERY_KEY), 'la clave propia del juego se trasladó a la del arcade').toBeNull()
+    const withTheOwnKey = await medianDrawCalls(page)
+    // It was deleted on mounting the run, and without passing over to the hall's one: what the hall says rules.
+    expect(await readKey(page, OWN_SCENERY_KEY), 'the game\'s own key is still stored').toBeNull()
+    expect(await readKey(page, SCENERY_KEY), 'the game\'s own key was moved over to the hall\'s one').toBeNull()
 
     await chooseInSalon(page, 'room')
-    const enLaHabitacion = await medianDrawCalls(page)
-    console.log(`[escenario] llamadas por fotograma: clave propia ${conLaClavePropia}, habitación ${enLaHabitacion}`)
+    const inTheRoom = await medianDrawCalls(page)
+    console.log(`[scenery] calls per frame: own key ${withTheOwnKey}, room ${inTheRoom}`)
 
-    expect(conLaClavePropia, 'la clave propia del juego quitó la plaza').toBeGreaterThan(
-      enLaHabitacion + LO_QUE_PINTA_EL_DECORADO,
+    expect(withTheOwnKey, 'the game\'s own key took the square away').toBeGreaterThan(
+      inTheRoom + WHAT_THE_STAGE_PAINTS,
     )
   })
 
-  test('alternar el escenario no cambia las luces ni recompila ningún shader', async ({ page }) => {
-    // El tirón al cambiar de escenario con el visor puesto. Quitar una luz o la niebla con
-    // la plaza cambia el programa de todo lo que se ilumina, y desmontar el decorado libera
-    // sus shaders, que se vuelven a compilar al volver. Las luces se quedan montadas —apagadas
-    // donde no alumbran—, la niebla se aleja y el decorado se oculta.
+  test('toggling the scenery does not change the lights nor recompile any shader', async ({ page }) => {
+    // The hitch on changing scenery with the headset on. Removing a light or the fog with
+    // the square changes the program of everything that is lit, and unmounting the stage frees
+    // its shaders, which are compiled again on coming back. The lights stay mounted —turned off
+    // where they do not shine—, the fog moves away and the stage is hidden.
     await watchPrograms(page)
     await storeBeforeOpen(page, SCENERY_KEY, 'room')
     await openGame(page)
-    await entrarPorLaWeb(page)
+    await enterThroughTheWeb(page)
     await letSettle(page)
 
-    // Una vuelta entera primero: lo que solo existe en uno de los dos escenarios se compila la
-    // primera vez que se ve, y eso pasa una vez por visita, no a cada cambio.
+    // One whole lap first: what only exists in one of the two sceneries is compiled the
+    // first time it is seen, and that happens once per visit, not on every change.
     await chooseInSalon(page, 'place')
     await letSettle(page)
     await chooseInSalon(page, 'room')
     await letSettle(page)
-    const trasLaPrimeraVuelta = await linkedPrograms(page)
+    const afterTheFirstLap = await linkedPrograms(page)
 
     await chooseInSalon(page, 'place')
     await letSettle(page)
     await chooseInSalon(page, 'room')
     await letSettle(page)
 
-    const luces = await lightCombinations(page)
-    console.log(`[escenario] luces con las que se pinta: ${luces.join(' | ')}`)
-    expect(luces, 'el número de luces cambió con el escenario').toHaveLength(1)
+    const lights = await lightCombinations(page)
+    console.log(`[scenery] lights it is painted with: ${lights.join(' | ')}`)
+    expect(lights, 'the number of lights changed with the scenery').toHaveLength(1)
     expect(
-      (await linkedPrograms(page)) - trasLaPrimeraVuelta,
-      'volver a cambiar de escenario recompiló shaders: eso es un tirón con el visor puesto',
+      (await linkedPrograms(page)) - afterTheFirstLap,
+      'changing scenery again recompiled shaders: that is a hitch with the headset on',
     ).toBe(0)
-    expect(await haySesion(page), 'cambiar el escenario cerró la sesión').toBe(true)
+    expect(await hasSession(page), 'changing the scenery closed the session').toBe(true)
   })
 })

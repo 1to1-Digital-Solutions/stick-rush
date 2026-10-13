@@ -1,25 +1,27 @@
 /**
- * Copia los perfiles de mando de WebXR a `public/webxr-profiles/`.
+ * Copies the WebXR controller profiles to `public/webxr-profiles/`.
  *
- * **Por qué hace falta.** @react-three/xr necesita el perfil del mando para
- * saber qué botón es cuál, y por defecto lo descarga de `cdn.jsdelivr.net`. Ese
- * fetch lo bloquea la CSP del juego (`connect-src 'self'`), y también lo
- * bloquearía un visor sin salida a internet. Cuando falla, la librería se traga
- * el error y **nunca llega a registrar el mando**: no se monta ni el rayo ni el
- * puntero, que en el visor es quedarse sin poder tocar nada.
+ * **Why it is needed.** @react-three/xr needs the controller's profile to
+ * know which button is which, and by default it downloads it from
+ * `cdn.jsdelivr.net`. That fetch is blocked by the game's CSP
+ * (`connect-src 'self'`), and a headset with no way out to the internet would
+ * block it too. When it fails, the library swallows the error and **never gets
+ * to register the controller**: neither the ray nor the pointer is mounted,
+ * which in the headset means being unable to touch anything.
  *
- * De los `profile.json` se copian **todos**: son ficheros pequeños y hace falta
- * el del mando que traiga quien juegue, sea cual sea.
+ * Of the `profile.json` files **all** are copied: they are small files and the
+ * one for the controller whoever plays brings is needed, whichever it is.
  *
- * De los `.glb` con los modelos 3D —los 100 MB largos del paquete— solo se
- * copian los de `MODELOS`. Jugando, el mando lo dibuja el propio juego con
- * geometría suya (`XRController.tsx`); el único sitio donde hace falta el
- * modelo del fabricante es el tutorial, que enseña el botón encendido sobre el
- * mando que se tiene en la mano (`MandoDeVerdad.tsx`), y ahí un mando que no
- * esté en la lista se queda con el dibujo del panel y no se rompe nada.
+ * Of the `.glb` files with the 3D models —the 100-odd MB of the package— only
+ * those in `MODELS` are copied. While playing, the game itself draws the
+ * controller with its own geometry (`XRController.tsx`); the only place where
+ * the manufacturer's model is needed is the tutorial, which shows the button
+ * lit on the controller held in the hand (`RealController.tsx`), and there a
+ * controller that is not in the list keeps the panel's drawing and nothing
+ * breaks.
  *
- * Uso: `npm run sync:xr-profiles`. El resultado se commitea, así que esto solo
- * hay que ejecutarlo al actualizar `@webxr-input-profiles/assets`.
+ * Usage: `npm run sync:xr-profiles`. The result is committed, so this only
+ * has to be run when updating `@webxr-input-profiles/assets`.
  */
 import { copyFile, mkdir, readFile, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -35,40 +37,41 @@ const destination = join(root, 'public/webxr-profiles')
 const LIST = 'profilesList.json'
 
 /**
- * De qué mandos se copia además el modelo 3D.
+ * Which controllers also get their 3D model copied.
  *
- * Los dos de Quest, que es el visor del arcade: `meta-quest-touch-plus` son los
- * del Quest 3 y 3S, y `oculus-touch-v3` los del Quest 2. Entre los cuatro
- * ficheros —las dos manos de cada uno— son 1,7 MB de los 97 del paquete.
+ * The two of Quest, which is the hall's headset: `meta-quest-touch-plus` are
+ * those of the Quest 3 and 3S, and `oculus-touch-v3` those of the Quest 2.
+ * Between the four files —the two hands of each— they are 1.7 MB of the
+ * package's 97.
  *
- * Añadir un mando es escribir aquí su identificador; quitarlo, borrarlo. Lo que
- * no esté no falla: el tutorial se queda con el dibujo.
+ * Adding a controller is writing its identifier here; removing it, deleting
+ * it. What is not here does not fail: the tutorial keeps the drawing.
  */
-const MODELOS = ['meta-quest-touch-plus', 'oculus-touch-v3']
+const MODELS = ['meta-quest-touch-plus', 'oculus-touch-v3']
 
 /**
- * La mano articulada que pinta la escena cuando se juega con las manos
- * desnudas (`PlayerHands.tsx`, ruta en `lib/hands.ts`): 190 KB, sin
- * texturas, servida con el juego porque la CSP bloquea el CDN.
+ * The articulated hand the scene paints when playing with bare hands
+ * (`PlayerHands.tsx`, path in `lib/hands.ts`): 190 KB, without
+ * textures, served with the game because the CSP blocks the CDN.
  *
- * **Va en `public/manos/`, fuera de `webxr-profiles/`**, por dos motivos: el
- * salón de xrcade **borra** los `webxr-profiles/` de cada juego al instalarlo
- * (sirve los suyos, `install-game-assets.ts`), así que ahí dentro la mano no
- * llegaría a donde más se juega; y todo `.glb` de la raíz de los perfiles se
- * toma por un mando con modelo (`mandoDeVerdad.test.ts`).
+ * **It goes in `public/manos/`, outside `webxr-profiles/`**, for two reasons:
+ * xrcade's hall **deletes** the `webxr-profiles/` of each game when installing
+ * it (it serves its own, `install-game-assets.ts`), so in there the hand would
+ * not reach where the game is played the most; and every `.glb` at the root of
+ * the profiles is taken for a controller with a model (`realController.test.ts`).
  */
-const MANO = 'generic-hand'
-const MANOS_DIR = join(root, 'public/manos')
+const HAND = 'generic-hand'
+const HANDS_DIR = join(root, 'public/manos')
 
-/** Las dos manos de cada modelo, tal y como se llaman los ficheros del paquete. */
-const MANOS = ['left.glb', 'right.glb']
+/** The two hands of each model, exactly as the package's files are called. */
+const HANDS = ['left.glb', 'right.glb']
 
 
 async function main() {
   const list = JSON.parse(await readFile(join(source, LIST), 'utf8'))
 
-  // Se rehace desde cero para que al actualizar el paquete no queden perfiles
-  // huérfanos de una versión anterior.
+  // It is redone from scratch so that updating the package leaves no orphan
+  // profiles from a previous version.
   await rm(destination, { recursive: true, force: true })
   await mkdir(destination, { recursive: true })
   await copyFile(join(source, LIST), join(destination, LIST))
@@ -77,7 +80,7 @@ async function main() {
   for (const [id, info] of Object.entries(list)) {
     const path = info?.path
     if (typeof path !== 'string') {
-      throw new Error(`El perfil "${id}" no declara ruta en ${LIST}`)
+      throw new Error(`The profile "${id}" declares no path in ${LIST}`)
     }
     const target = join(destination, path)
     await mkdir(dirname(target), { recursive: true })
@@ -85,26 +88,26 @@ async function main() {
     copied++
   }
 
-  let modelos = 0
-  for (const id of MODELOS) {
-    for (const mano of MANOS) {
-      // Un identificador mal escrito aquí pasaría desapercibido —el tutorial se
-      // quedaría sin modelo y sin decir por qué—, así que se cae al copiar.
-      await copyFile(join(source, id, mano), join(destination, id, mano))
-      modelos++
+  let models = 0
+  for (const id of MODELS) {
+    for (const hand of HANDS) {
+      // A misspelt identifier here would go unnoticed —the tutorial would be
+      // left without a model and without saying why—, so it fails on copy.
+      await copyFile(join(source, id, hand), join(destination, id, hand))
+      models++
     }
   }
 
   console.log(
-    `${copied} perfiles de mando y ${modelos} modelos copiados a public/webxr-profiles/`,
+    `${copied} controller profiles and ${models} models copied to public/webxr-profiles/`,
   )
 
-  await rm(MANOS_DIR, { recursive: true, force: true })
-  await mkdir(join(MANOS_DIR, MANO), { recursive: true })
-  for (const mano of MANOS) {
-    await copyFile(join(source, MANO, mano), join(MANOS_DIR, MANO, mano))
+  await rm(HANDS_DIR, { recursive: true, force: true })
+  await mkdir(join(HANDS_DIR, HAND), { recursive: true })
+  for (const hand of HANDS) {
+    await copyFile(join(source, HAND, hand), join(HANDS_DIR, HAND, hand))
   }
-  console.log(`Mano articulada (${MANO}) copiada a public/manos/`)
+  console.log(`Articulated hand (${HAND}) copied to public/manos/`)
 }
 
 await main()

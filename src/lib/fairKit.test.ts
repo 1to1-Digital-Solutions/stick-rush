@@ -4,16 +4,16 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
-  ALTURAS,
-  BANDEROLA_EN_LA_FAROLA,
-  GIRO_DEL_MODELO,
-  PIEZAS,
-  anclaEnLaBase,
-  colocaciones,
-  escalaPara,
-  rutaDePieza,
-  type Caja,
-  type Pieza,
+  HEIGHTS,
+  BANNER_ON_THE_LAMPPOST,
+  MODEL_TURN,
+  PIECES,
+  anchorAtBase,
+  placements,
+  scaleFor,
+  piecePath,
+  type Box,
+  type Piece,
 } from './fairKit'
 import { GROUND_Y, MACHINE_HEIGHT } from './gameConfig'
 import {
@@ -27,121 +27,121 @@ import {
 } from './sceneryLayout'
 
 /**
- * Las piezas del kit en el recinto: que los modelos sean lo que se cree que son, y que
- * colocados a su tamaño ninguno entre en el hueco del jugador.
+ * The kit pieces in the fairground: that the models are what they are believed to be, and that
+ * placed at their size none gets into the player's gap.
  *
- * Las medidas salen de los `.glb` de verdad, leídos de su cabecera: si el kit rehace una pieza
- * más ancha, esto salta antes de que un puesto se meta donde el jugador mueve los brazos.
+ * The measurements come from the real `.glb` files, read from their header: if the kit remakes a
+ * wider piece, this goes off before a stall gets into where the player moves their arms.
  */
 
 const PUBLIC = join(import.meta.dirname, '../../public')
 
-/** La caja de los vértices de la única malla de un `.glb`, leída de su cabecera JSON. */
-function cajaDe(pieza: Pieza): Caja {
-  const glb = readFileSync(join(PUBLIC, rutaDePieza(pieza)))
-  const largo = glb.readUInt32LE(12)
-  const gltf = JSON.parse(glb.subarray(20, 20 + largo).toString('utf8')) as {
+/** The box of the vertices of the only mesh of a `.glb`, read from its JSON header. */
+function boxOf(piece: Piece): Box {
+  const glb = readFileSync(join(PUBLIC, piecePath(piece)))
+  const length = glb.readUInt32LE(12)
+  const gltf = JSON.parse(glb.subarray(20, 20 + length).toString('utf8')) as {
     meshes: { primitives: { attributes: { POSITION: number } }[] }[]
-    accessors: Caja[]
+    accessors: Box[]
   }
-  expect(gltf.meshes, `${pieza} trae más de una malla`).toHaveLength(1)
-  expect(gltf.meshes[0].primitives, `${pieza} trae más de una primitiva`).toHaveLength(1)
+  expect(gltf.meshes, `${piece} brings more than one mesh`).toHaveLength(1)
+  expect(gltf.meshes[0].primitives, `${piece} brings more than one primitive`).toHaveLength(1)
   return gltf.accessors[gltf.meshes[0].primitives[0].attributes.POSITION]
 }
 
-/** Lo que se aleja la pieza de su punto de apoyo, a su tamaño en el recinto y vista desde arriba. */
-function vueloDe(pieza: Pieza): number {
-  const { min, max } = cajaDe(pieza)
-  const escala = escalaPara(ALTURAS[pieza], max[1] - min[1])
-  return (Math.hypot(max[0] - min[0], max[2] - min[2]) / 2) * escala
+/** How far the piece reaches from its support point, at its size in the fairground and seen from above. */
+function overhangOf(piece: Piece): number {
+  const { min, max } = boxOf(piece)
+  const scale = scaleFor(HEIGHTS[piece], max[1] - min[1])
+  return (Math.hypot(max[0] - min[0], max[2] - min[2]) / 2) * scale
 }
 
-/** Hacia dónde encara el +Z local de una pieza girada `giro`, en el mundo. */
-function frente(giro: number): [number, number] {
-  return [Math.sin(giro), Math.cos(giro)]
+/** Where the local +Z of a piece turned by `turn` faces, in the world. */
+function front(turn: number): [number, number] {
+  return [Math.sin(turn), Math.cos(turn)]
 }
 
-describe('las piezas del kit', () => {
-  it.each(PIEZAS)('%s está en public/ y es una sola malla', (pieza) => {
-    expect(existsSync(join(PUBLIC, rutaDePieza(pieza)))).toBe(true)
-    const { min, max } = cajaDe(pieza)
+describe('the kit pieces', () => {
+  it.each(PIECES)('%s is in public/ and is a single mesh', (piece) => {
+    expect(existsSync(join(PUBLIC, piecePath(piece)))).toBe(true)
+    const { min, max } = boxOf(piece)
     expect(max[1] - min[1]).toBeGreaterThan(0)
   })
 
-  it('la banderola es una tela: fina en X y ancha en Z, que es lo que gira su cuarto de vuelta', () => {
-    const { min, max } = cajaDe('banderola')
+  it('the banner is a cloth: thin in X and wide in Z, which is what its quarter turn rotates', () => {
+    const { min, max } = boxOf('banderola')
     expect(max[0] - min[0]).toBeLessThan((max[2] - min[2]) / 4)
   })
 })
 
-describe('el recinto', () => {
-  const todas = colocaciones()
-  const de = (pieza: Pieza) => todas.filter((c) => c.pieza === pieza)
+describe('the fairground', () => {
+  const all = placements()
+  const of = (piece: Piece) => all.filter((c) => c.piece === piece)
 
-  it('pone un puesto por caseta, y una farola y una banderola por poste', () => {
-    expect(de('puesto')).toHaveLength(STALL_COUNT)
-    expect(de('farol')).toHaveLength(GARLAND_POST_COUNT)
-    expect(de('banderola')).toHaveLength(GARLAND_POST_COUNT)
-    for (const { pieza, altura } of todas) expect(altura).toBe(ALTURAS[pieza])
+  it('puts one stall per booth, and one lamppost and one banner per post', () => {
+    expect(of('puesto')).toHaveLength(STALL_COUNT)
+    expect(of('farol')).toHaveLength(GARLAND_POST_COUNT)
+    expect(of('banderola')).toHaveLength(GARLAND_POST_COUNT)
+    for (const { piece, height } of all) expect(height).toBe(HEIGHTS[piece])
   })
 
-  it('planta los puestos en su anillo y las farolas en el de las guirnaldas', () => {
-    for (const { posicion: [x, y, z] } of de('puesto')) {
+  it('plants the stalls on their ring and the lampposts on the garlands\' one', () => {
+    for (const { position: [x, y, z] } of of('puesto')) {
       expect(Math.hypot(x, z)).toBeCloseTo(STALL_RING_RADIUS, 6)
       expect(y).toBe(GROUND_Y)
     }
-    for (const { posicion: [x, y, z] } of de('farol')) {
+    for (const { position: [x, y, z] } of of('farol')) {
       expect(Math.hypot(x, z)).toBeCloseTo(GARLAND_RING_RADIUS, 6)
       expect(y).toBe(GROUND_Y)
     }
   })
 
-  it('la farola llega justo a donde se cuelgan las guirnaldas', () => {
-    expect(ALTURAS.farol).toBe(GARLAND_POST_HEIGHT)
+  it('the lamppost reaches exactly where the garlands are hung', () => {
+    expect(HEIGHTS.farol).toBe(GARLAND_POST_HEIGHT)
   })
 
-  it('ningún puesto ni farola entra en el hueco del jugador', () => {
-    for (const { pieza, posicion: [x, , z] } of todas) {
-      expect(Math.hypot(x, z) - vueloDe(pieza), pieza).toBeGreaterThanOrEqual(
+  it('no stall nor lamppost gets into the player\'s gap', () => {
+    for (const { piece, position: [x, , z] } of all) {
+      expect(Math.hypot(x, z) - overhangOf(piece), piece).toBeGreaterThanOrEqual(
         SCENERY_CLEARANCE,
       )
     }
   })
 
-  it('cada pieza mira al jugador, con el giro propio de su modelo', () => {
-    for (const { pieza, posicion, giro } of todas) {
-      const [fx, fz] = frente(giro - GIRO_DEL_MODELO[pieza])
-      const [ex, ez] = frente(facingRotationY(posicion))
-      expect(fx * ex + fz * ez, pieza).toBeCloseTo(1, 6)
+  it('each piece looks at the player, with the turn proper to its model', () => {
+    for (const { piece, position, turn } of all) {
+      const [fx, fz] = front(turn - MODEL_TURN[piece])
+      const [ex, ez] = front(facingRotationY(position))
+      expect(fx * ex + fz * ez, piece).toBeCloseTo(1, 6)
     }
   })
 
-  it('cuelga cada banderola de su farola, por delante y por encima de la máquina', () => {
-    const faroles = de('farol')
-    de('banderola').forEach(({ posicion: [x, y, z] }, indice) => {
-      const [fx, , fz] = faroles[indice].posicion
-      // Por delante: entre la farola y el centro, lo que se adelanta.
-      expect(Math.hypot(fx, fz) - Math.hypot(x, z)).toBeCloseTo(BANDEROLA_EN_LA_FAROLA.adelanto, 6)
+  it('hangs each banner from its lamppost, in front and above the machine', () => {
+    const lamps = of('farol')
+    of('banderola').forEach(({ position: [x, y, z] }, index) => {
+      const [fx, , fz] = lamps[index].position
+      // In front: between the lamppost and the centre, by how far it comes forward.
+      expect(Math.hypot(fx, fz) - Math.hypot(x, z)).toBeCloseTo(BANNER_ON_THE_LAMPPOST.forward, 6)
       expect(Math.atan2(x, z)).toBeCloseTo(Math.atan2(fx, fz), 6)
-      // Por encima de la máquina y por debajo de la punta, de donde salen las guirnaldas.
+      // Above the machine and below the tip, where the garlands come out from.
       expect(y).toBeGreaterThan(MACHINE_HEIGHT)
-      expect(y + ALTURAS.banderola).toBeLessThan(GARLAND_POST_HEIGHT)
+      expect(y + HEIGHTS.banderola).toBeLessThan(GARLAND_POST_HEIGHT)
     })
   })
 })
 
-describe('escalaPara', () => {
-  it('lleva la caja del modelo a la altura pedida', () => {
-    expect(escalaPara(2.8, 1.4)).toBeCloseTo(2)
-    expect(escalaPara(0.5, 0.25)).toBeCloseTo(2)
+describe('scaleFor', () => {
+  it('takes the box of the model to the requested height', () => {
+    expect(scaleFor(2.8, 1.4)).toBeCloseTo(2)
+    expect(scaleFor(0.5, 0.25)).toBeCloseTo(2)
   })
 })
 
-describe('anclaEnLaBase', () => {
-  it('lleva el centro de la base de la caja al origen', () => {
-    expect(anclaEnLaBase({ min: [0.375, 0.16, -0.25], max: [0.425, 1, 0.25] })).toEqual([
+describe('anchorAtBase', () => {
+  it('takes the centre of the base of the box to the origin', () => {
+    expect(anchorAtBase({ min: [0.375, 0.16, -0.25], max: [0.425, 1, 0.25] })).toEqual([
       -0.4, -0.16, -0,
     ])
-    expect(anclaEnLaBase({ min: [-0.5, 0, -0.5], max: [0.5, 1, 0.5] })).toEqual([-0, -0, -0])
+    expect(anchorAtBase({ min: [-0.5, 0, -0.5], max: [0.5, 1, 0.5] })).toEqual([-0, -0, -0])
   })
 })

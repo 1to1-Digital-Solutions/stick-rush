@@ -11,13 +11,13 @@ import {
   streakMultiplier,
 } from './scoring'
 
-/** Atrapar un palo en el mejor de los casos posibles. */
+/** Catching a stick in the best of the possible cases. */
 function perfect(difficulty: Difficulty, streak: number) {
   return stickPoints({ difficulty, streak, fallProgress: 0 })
 }
 
-describe('multiplicador de dificultad', () => {
-  it('cubre todos los niveles del juego', () => {
+describe('difficulty multiplier', () => {
+  it('covers all the levels of the game', () => {
     for (const level of DIFFICULTY_ORDER) {
       expect(DIFFICULTY_MULTIPLIERS[level]).toBeGreaterThan(0)
     }
@@ -26,43 +26,43 @@ describe('multiplicador de dificultad', () => {
     )
   })
 
-  it('crece con la dificultad, sin empates', () => {
+  it('grows with the difficulty, with no ties', () => {
     const values = DIFFICULTY_ORDER.map((l) => DIFFICULTY_MULTIPLIERS[l])
     expect(values).toEqual([...values].sort((a, b) => a - b))
     expect(new Set(values).size).toBe(values.length)
   })
 
-  it('elegir difícil renta: una partida corta en Imposible bate a una larga en Fácil', () => {
-    // Si no fuera así, la dificultad sería decorativa y todo el mundo jugaría en
-    // Fácil con 13 palos.
+  it('choosing hard pays off: a short run on Impossible beats a long one on Easy', () => {
+    // If it were not so, the difficulty would be decorative and everybody would play on
+    // Easy with 13 sticks.
     expect(maxScore('impossible', 5)).toBeGreaterThan(maxScore('easy', 13))
   })
 })
 
-describe('racha', () => {
-  it('el primer palo no lleva bonus', () => {
+describe('streak', () => {
+  it('the first stick carries no bonus', () => {
     expect(streakMultiplier(1)).toBe(1)
     expect(streakMultiplier(0)).toBe(1)
   })
 
-  it('cada palo encadenado suma', () => {
+  it('each chained stick adds', () => {
     expect(streakMultiplier(2)).toBeGreaterThan(streakMultiplier(1))
     expect(streakMultiplier(5)).toBeGreaterThan(streakMultiplier(4))
   })
 
-  it('tiene tope: una partida larga en Fácil no puede desbocarse', () => {
+  it('has a cap: a long run on Easy cannot run away', () => {
     expect(streakMultiplier(1000)).toBe(MAX_STREAK_MULTIPLIER)
     expect(streakMultiplier(13)).toBeLessThanOrEqual(MAX_STREAK_MULTIPLIER)
   })
 })
 
-describe('reflejos', () => {
-  it('cogerlo recién soltado vale el doble que a ras de suelo', () => {
+describe('reflexes', () => {
+  it('catching it just released is worth double that of floor level', () => {
     expect(reflexMultiplier(0)).toBe(2)
     expect(reflexMultiplier(1)).toBe(1)
   })
 
-  it('decrece de forma continua conforme el palo cae', () => {
+  it('decreases continuously as the stick falls', () => {
     let previous = Infinity
     for (let i = 0; i <= 10; i++) {
       const value = reflexMultiplier(i / 10)
@@ -71,19 +71,19 @@ describe('reflejos', () => {
     }
   })
 
-  it('un palo cogido mientras cuelga cuenta como el mejor caso', () => {
-    // `fallProgress` es negativo mientras no se ha soltado.
+  it('a stick caught while it hangs counts as the best case', () => {
+    // `fallProgress` is negative while it has not been released.
     expect(reflexMultiplier(-0.5)).toBe(2)
   })
 
-  it('aguanta valores imposibles sin romper la puntuación', () => {
+  it('withstands impossible values without breaking the score', () => {
     expect(reflexMultiplier(4)).toBe(1)
     expect(reflexMultiplier(Number.NaN)).toBe(1)
   })
 })
 
-describe('puntos de un palo', () => {
-  it('siempre son un número entero', () => {
+describe('points of a stick', () => {
+  it('are always an integer', () => {
     for (const level of DIFFICULTY_ORDER) {
       for (const progress of [0, 0.33, 0.5, 0.77, 1]) {
         const points = stickPoints({
@@ -96,14 +96,14 @@ describe('puntos de un palo', () => {
     }
   })
 
-  it('el caso base es el valor de referencia', () => {
-    // Fácil, primer palo, a ras de suelo: sin ningún multiplicador.
+  it('the base case is the reference value', () => {
+    // Easy, first stick, at floor level: with no multiplier at all.
     expect(stickPoints({ difficulty: 'easy', streak: 1, fallProgress: 1 })).toBe(
       BASE_STICK_POINTS,
     )
   })
 
-  it('nunca vale menos que el caso base', () => {
+  it('is never worth less than the base case', () => {
     for (const level of DIFFICULTY_ORDER) {
       expect(
         stickPoints({ difficulty: level, streak: 1, fallProgress: 1 }),
@@ -111,21 +111,21 @@ describe('puntos de un palo', () => {
     }
   })
 
-  it('el mismo palo renta más en una racha viva', () => {
+  it('the same stick pays more in a live streak', () => {
     const cold = stickPoints({ difficulty: 'hard', streak: 1, fallProgress: 0.5 })
     const hot = stickPoints({ difficulty: 'hard', streak: 6, fallProgress: 0.5 })
     expect(hot).toBeGreaterThan(cold)
   })
 })
 
-describe('máximo y proporción', () => {
-  it('el máximo crece con los palos y con la dificultad', () => {
+describe('maximum and ratio', () => {
+  it('the maximum grows with the sticks and with the difficulty', () => {
     expect(maxScore('easy', 13)).toBeGreaterThan(maxScore('easy', 5))
     expect(maxScore('expert', 9)).toBeGreaterThan(maxScore('medium', 9))
   })
 
-  it('una partida perfecta llega al máximo', () => {
-    // Se suman los palos uno a uno como lo haría el juego, con la racha viva.
+  it('a perfect run reaches the maximum', () => {
+    // The sticks are added one by one as the game would do it, with the streak alive.
     let total = 0
     for (let i = 1; i <= 7; i++) {
       total += perfect('hard', i)
@@ -134,11 +134,11 @@ describe('máximo y proporción', () => {
     expect(scoreRatio(total, 'hard', 7)).toBe(1)
   })
 
-  it('la proporción se queda entre 0 y 1 pase lo que pase', () => {
+  it('the ratio stays between 0 and 1 whatever happens', () => {
     expect(scoreRatio(0, 'easy', 5)).toBe(0)
     expect(scoreRatio(-100, 'easy', 5)).toBe(0)
     expect(scoreRatio(999999, 'easy', 5)).toBe(1)
-    // Sin palos no hay partida, y no se puede dividir por cero.
+    // With no sticks there is no run, and one cannot divide by zero.
     expect(scoreRatio(0, 'easy', 0)).toBe(0)
   })
 })

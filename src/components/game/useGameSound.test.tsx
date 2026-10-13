@@ -4,16 +4,16 @@ import {
   COUNTDOWN_SECONDS,
   GameContext,
   type GameStore,
-  type OpcionesDelSalon,
+  type HallOptions,
   useGameStoreValue,
 } from '../../lib/gameStore'
 import { useGameSound } from './useGameSound'
 import { DEFAULT_VOLUMES } from '../../lib/settings'
 import { setVolume } from '../../lib/settingsClient'
 
-// El motor de verdad se prueba en `sound.test.ts` contra un contexto de
-// mentira; aquí lo que se comprueba es el cableado: qué sonido pide el juego
-// en cada momento.
+// The real engine is tested in `sound.test.ts` against a fake
+// context; what is checked here is the wiring: which sound the game asks for
+// at each moment.
 const { play, setEngineVolume } = vi.hoisted(() => ({
   play: vi.fn(),
   setEngineVolume: vi.fn(),
@@ -25,7 +25,7 @@ vi.mock('@/lib/sound', () => ({
   },
 }))
 
-/** Los contextos creados durante el test, para vigilar que no se quedan vivos. */
+/** The contexts created during the test, to watch that they are not left alive. */
 const contexts: FakeAudioContext[] = []
 
 class FakeAudioContext {
@@ -41,13 +41,13 @@ class FakeAudioContext {
 beforeEach(() => {
   vi.useFakeTimers()
   vi.stubGlobal('AudioContext', FakeAudioContext)
-  // El silencio se recuerda entre visitas, y jsdom comparte `localStorage`
-  // entre tests: sin vaciarlo, el que silencia dejaría mudo al siguiente.
+  // Silence is remembered between visits, and jsdom shares `localStorage`
+  // between tests: without emptying it, the one that mutes would leave the next one mute.
   localStorage.clear()
-  // Los volúmenes salen de los ajustes del arcade, que cachean lo leído para
-  // que `useSyncExternalStore` no repinte sin parar: vaciar `localStorage` a
-  // secas dejaría el caché con el valor de la prueba anterior. Se restablecen
-  // por la API, que es la que lo invalida.
+  // The volumes come from the hall's settings, which cache what was read so
+  // that `useSyncExternalStore` does not repaint endlessly: just emptying `localStorage`
+  // would leave the cache with the value of the previous test. They are reset
+  // through the API, which is what invalidates it.
   setVolume('sfx', DEFAULT_VOLUMES.sfx)
   setVolume('ambience', DEFAULT_VOLUMES.ambience)
   contexts.length = 0
@@ -56,22 +56,22 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  // Sin `globals` en la config de Vitest, Testing Library no limpia sola: los
-  // montajes de un test seguirían escuchando la página en el siguiente y
-  // crearían contextos de audio que no son de nadie.
+  // Without `globals` in the Vitest config, Testing Library does not clean up by itself: the
+  // mounts of one test would keep listening to the page in the next one and
+  // would create audio contexts that belong to nobody.
   cleanup()
   vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 
 /**
- * Monta el juego con sonido y devuelve su estado para manejarlo desde fuera.
+ * Mounts the game with sound and returns its state to drive it from outside.
  *
- * Lleva un botón de silenciar de verdad —no basta con llamar a `setMuted`—
- * porque parte de lo que hay que comprobar es cuándo llega ese cambio respecto
- * del clic que desbloquea el audio.
+ * It carries a real mute button —calling `setMuted` is not enough—
+ * because part of what has to be checked is when that change arrives relative
+ * to the click that unlocks the audio.
  */
-function renderGame(opciones?: OpcionesDelSalon) {
+function renderGame(options?: HallOptions) {
   const store = { current: null as GameStore | null }
 
   function Sound() {
@@ -80,7 +80,7 @@ function renderGame(opciones?: OpcionesDelSalon) {
   }
 
   function Harness() {
-    const value = useGameStoreValue(opciones)
+    const value = useGameStoreValue(options)
     store.current = value
     return (
       <GameContext.Provider value={value}>
@@ -96,10 +96,10 @@ function renderGame(opciones?: OpcionesDelSalon) {
   return Object.assign(store as { current: GameStore }, {
     unmount: view.unmount,
     /**
-     * Pulsa el botón de silenciar como lo haría el jugador: con la secuencia
-     * de eventos que manda el navegador, no solo con el clic. El orden importa,
-     * porque es lo que decide si el gesto que desbloquea el audio llega antes o
-     * a la vez que la orden de callar.
+     * Presses the mute button as the player would: with the sequence
+     * of events the browser sends, not only with the click. The order matters,
+     * because it is what decides whether the gesture that unlocks the audio arrives before or
+     * at the same time as the order to go silent.
      */
     clickMute: () => {
       const button = view.getByRole('button', { name: 'Mute' })
@@ -110,7 +110,7 @@ function renderGame(opciones?: OpcionesDelSalon) {
   })
 }
 
-/** El navegador no deja sonar hasta que el usuario interactúa con la página. */
+/** The browser does not let anything play until the user interacts with the page. */
 function interact() {
   act(() => {
     window.dispatchEvent(new Event('pointerdown'))
@@ -118,26 +118,26 @@ function interact() {
   })
 }
 
-/** Un segundo de la cuenta atrás. */
+/** One second of the countdown. */
 function tickSecond() {
   act(() => void vi.advanceTimersByTime(1000))
 }
 
-/** Deja la partida jugando, con la cuenta atrás agotada. */
+/** Leaves the run playing, with the countdown run out. */
 function startPlaying(store: { current: GameStore }) {
   act(() => store.current.startGame())
   for (let second = 0; second < COUNTDOWN_SECONDS; second++) tickSecond()
 }
 
-/** Los sonidos pedidos hasta ahora, en orden. */
+/** The sounds asked for so far, in order. */
 function playedSounds() {
   return play.mock.calls.map(([sound]) => sound)
 }
 
-describe('sonido de la partida', () => {
-  it('no suena nada hasta que el jugador ha interactuado', () => {
-    // Es la política del navegador: un contexto de audio creado sin gesto
-    // previo nace suspendido y el juego se queda mudo el resto de la sesión.
+describe('sound of the run', () => {
+  it('nothing sounds until the player has interacted', () => {
+    // It is the browser's policy: an audio context created without a previous
+    // gesture is born suspended and the game stays mute for the rest of the session.
     const store = renderGame()
     startPlaying(store)
     act(() => store.current.catchStick(0.5))
@@ -145,7 +145,7 @@ describe('sonido de la partida', () => {
     expect(play).not.toHaveBeenCalled()
   })
 
-  it('atrapar un palo suena', () => {
+  it('catching a stick sounds', () => {
     const store = renderGame()
     interact()
     startPlaying(store)
@@ -156,7 +156,7 @@ describe('sonido de la partida', () => {
     expect(playedSounds()).toEqual([{ name: 'catch', streak: 1 }])
   })
 
-  it('la racha viaja en el sonido del acierto', () => {
+  it('the streak travels in the sound of the hit', () => {
     const store = renderGame()
     interact()
     startPlaying(store)
@@ -168,7 +168,7 @@ describe('sonido de la partida', () => {
     expect(playedSounds()).toEqual([{ name: 'catch', streak: 2 }])
   })
 
-  it('perder un palo suena distinto que atraparlo', () => {
+  it('missing a stick sounds different from catching it', () => {
     const store = renderGame()
     interact()
     startPlaying(store)
@@ -179,9 +179,9 @@ describe('sonido de la partida', () => {
     expect(playedSounds()).toEqual([{ name: 'miss' }])
   })
 
-  it('dos palos resueltos en el mismo lote suenan una vez', () => {
-    // Dos copias del mismo sonido a la vez no se oyen como dos, se oyen como
-    // una más fuerte.
+  it('two sticks resolved in the same batch sound once', () => {
+    // Two copies of the same sound at once are not heard as two, they are heard as
+    // one louder one.
     const store = renderGame()
     interact()
     act(() => store.current.setStickCount(9))
@@ -196,7 +196,7 @@ describe('sonido de la partida', () => {
     expect(playedSounds()).toEqual([{ name: 'catch', streak: 2 }])
   })
 
-  it('la cuenta atrás marca cada segundo y remata con la salida', () => {
+  it('the countdown marks each second and finishes off with the go', () => {
     const store = renderGame()
     interact()
 
@@ -211,7 +211,7 @@ describe('sonido de la partida', () => {
     ])
   })
 
-  it('volver al menú durante la cuenta atrás no da la salida', () => {
+  it('going back to the menu during the countdown does not give the go', () => {
     const store = renderGame()
     interact()
 
@@ -223,11 +223,11 @@ describe('sonido de la partida', () => {
     expect(playedSounds()).not.toContainEqual({ name: 'go' })
   })
 
-  it('un acierto y un fallo a la vez se oyen los dos', () => {
-    // Con los mandos del visor el agarre se resuelve en el mismo frame que la
-    // caída, así que las dos cosas pueden llegar en el mismo lote. Tragarse una
-    // dejaría al jugador sin saber qué acaba de pasar, que es justo para lo que
-    // está el sonido.
+  it('a hit and a miss at once are both heard', () => {
+    // With the headset's controllers the grab is resolved in the same frame as the
+    // fall, so both things can arrive in the same batch. Swallowing one
+    // would leave the player without knowing what has just happened, which is exactly what
+    // the sound is there for.
     const store = renderGame()
     interact()
     startPlaying(store)
@@ -241,10 +241,10 @@ describe('sonido de la partida', () => {
     expect(playedSounds().map((sound) => sound.name)).toEqual(['catch', 'miss'])
   })
 
-  it('en silencio ni se crea el contexto de audio', () => {
-    // Silenciar no es bajar el volumen a cero: si se creara el contexto, el
-    // juego seguiría pidiendo permiso de reproducción y programando nodos para
-    // nada.
+  it('in silence the audio context is not even created', () => {
+    // Muting is not turning the volume down to zero: if the context were created, the
+    // game would keep asking for playback permission and scheduling nodes for
+    // nothing.
     const store = renderGame()
     act(() => setVolume('sfx', 0))
     interact()
@@ -255,10 +255,10 @@ describe('sonido de la partida', () => {
     expect(play).not.toHaveBeenCalled()
   })
 
-  it('silenciar con el primer clic de la página tampoco lo abre', () => {
-    // Ese clic es a la vez el gesto que desbloquea el audio y la orden de
-    // callar. Atendidos por separado —el gesto en `pointerdown` y el botón en
-    // el clic— el juego abre un contexto para cerrarlo en el render siguiente.
+  it('muting with the first click of the page does not open it either', () => {
+    // That click is at once the gesture that unlocks the audio and the order to
+    // go silent. Attended to separately —the gesture in `pointerdown` and the button in
+    // the click— the game opens a context to close it in the next render.
     const store = renderGame()
 
     store.clickMute()
@@ -268,7 +268,7 @@ describe('sonido de la partida', () => {
     expect(contexts).toHaveLength(0)
   })
 
-  it('silenciar a media partida cierra el contexto y calla', () => {
+  it('muting mid-run closes the context and goes silent', () => {
     const store = renderGame()
     interact()
     startPlaying(store)
@@ -281,9 +281,9 @@ describe('sonido de la partida', () => {
     expect(play).not.toHaveBeenCalled()
   })
 
-  it('quitar el silencio devuelve el sonido sin esperar otro gesto', () => {
-    // El propio botón es el gesto que el navegador exige, así que volver a
-    // esperar un clic dejaría muda la partida que ya está en marcha.
+  it('unmuting brings the sound back without waiting for another gesture', () => {
+    // The button itself is the gesture the browser demands, so waiting for
+    // a click again would leave the run that is already under way mute.
     const store = renderGame()
     interact()
     startPlaying(store)
@@ -296,10 +296,10 @@ describe('sonido de la partida', () => {
     expect(playedSounds()).toEqual([{ name: 'catch', streak: 1 }])
   })
 
-  it('ir y volver del silencio no deja contextos abiertos', () => {
-    // Cada vuelta abre uno nuevo, y el navegador solo permite unos pocos por
-    // pestaña: si el anterior no se cerrara, unas cuantas idas y venidas
-    // dejarían el juego mudo hasta recargar la página.
+  it('going into silence and back leaves no contexts open', () => {
+    // Each return opens a new one, and the browser only allows a few per
+    // tab: if the previous one were not closed, a few goings and comings
+    // would leave the game mute until the page is reloaded.
     renderGame()
     interact()
 
@@ -315,9 +315,9 @@ describe('sonido de la partida', () => {
     expect(contexts[contexts.length - 1].close).not.toHaveBeenCalled()
   })
 
-  it('al desmontar cierra el contexto de audio', () => {
-    // Sin esto cada montaje deja un contexto vivo, y el navegador solo permite
-    // unos pocos por pestaña antes de negarse a crear más.
+  it('on unmounting it closes the audio context', () => {
+    // Without this each mount leaves a context alive, and the browser only allows
+    // a few per tab before refusing to create more.
     const store = renderGame()
     interact()
 
@@ -327,7 +327,7 @@ describe('sonido de la partida', () => {
     expect(contexts[0].close).toHaveBeenCalled()
   })
 
-  it('empezar otra partida no suena a acierto por el marcador a cero', () => {
+  it('starting another run does not sound like a hit because of the scoreboard at zero', () => {
     const store = renderGame()
     interact()
     startPlaying(store)
@@ -341,8 +341,8 @@ describe('sonido de la partida', () => {
   })
 })
 
-describe('el volumen de los efectos', () => {
-  it('nace en el que dicen los ajustes del arcade', () => {
+describe('the volume of the effects', () => {
+  it('is born at the one the hall settings say', () => {
     setVolume('sfx', 40)
     const game = renderGame()
     interact()
@@ -351,24 +351,24 @@ describe('el volumen de los efectos', () => {
     expect(setEngineVolume).toHaveBeenCalledWith(0.4)
   })
 
-  it('cambiarlo no rehace el audio: se le dice al motor que ya hay', () => {
-    // Recrear el motor cerraba el contexto y abría otro a cada paso del
-    // deslizador, y eso es un corte de sonido por cada empujón.
+  it('changing it does not rebuild the audio: the engine already there is told', () => {
+    // Recreating the engine closed the context and opened another at each step of the
+    // slider, and that is a cut in the sound for every nudge.
     const game = renderGame()
     interact()
     startPlaying(game)
-    const abiertos = contexts.length
+    const openContexts = contexts.length
     setEngineVolume.mockClear()
 
     act(() => setVolume('sfx', 20))
 
     expect(setEngineVolume).toHaveBeenCalledWith(0.2)
-    expect(contexts).toHaveLength(abiertos)
+    expect(contexts).toHaveLength(openContexts)
   })
 
-  it('el motor que llega después nace con lo elegido mientras no había', () => {
-    // En silencio no hay motor. Si al volver el sonido naciera con el volumen
-    // de antes, lo elegido durante el silencio se perdería.
+  it('the engine that arrives later is born with what was chosen while there was none', () => {
+    // In silence there is no engine. If when the sound came back it were born with the volume
+    // from before, what was chosen during the silence would be lost.
     const game = renderGame()
     interact()
     startPlaying(game)
@@ -377,13 +377,13 @@ describe('el volumen de los efectos', () => {
 
     act(() => setVolume('sfx', 60))
 
-    // Volver del silencio crea otro motor, y nace ya con el volumen de ahora.
+    // Coming back from silence creates another engine, and it is born already at the current volume.
     expect(setEngineVolume).toHaveBeenCalledWith(0.6)
   })
 })
 
-describe('el listón de medalla', () => {
-  const objetivo = {
+describe('the medal threshold', () => {
+  const goal = {
     medals: { bronze: 1, silver: 100000, gold: 200000 },
     better: 'higher',
     unit: 'points in challenge',
@@ -391,8 +391,8 @@ describe('el listón de medalla', () => {
     mode: 'challenge',
   } as const
 
-  it('cruzarlo suena una vez por listón, con su medalla, además del atrape', () => {
-    const store = renderGame({ objetivo })
+  it('crossing it sounds once per threshold, with its medal, on top of the catch', () => {
+    const store = renderGame({ goal })
     interact()
     startPlaying(store)
     play.mockClear()
@@ -403,39 +403,39 @@ describe('el listón de medalla', () => {
       { name: 'medal', rank: 0 },
     ])
 
-    // El siguiente palo no cruza nada: solo se oye el atrape.
+    // The next stick crosses nothing: only the catch is heard.
     play.mockClear()
     act(() => store.current.catchStick(0.5))
     expect(playedSounds()).toEqual([{ name: 'catch', streak: 2 }])
 
   })
 
-  it('y suena la medalla a la que se llega: de un salto a la plata, la plata', () => {
-    const store = renderGame({ objetivo: { ...objetivo, medals: { bronze: 1, silver: 2, gold: 200000 } } })
+  it('and the medal reached is the one that sounds: in one jump to silver, silver', () => {
+    const store = renderGame({ goal: { ...goal, medals: { bronze: 1, silver: 2, gold: 200000 } } })
     interact()
     startPlaying(store)
     play.mockClear()
 
     act(() => store.current.catchStick(0.5))
 
-    expect(store.current.medalla).toBe('silver')
+    expect(store.current.medal).toBe('silver')
     expect(playedSounds().filter((sound) => sound.name === 'medal')).toEqual([{ name: 'medal', rank: 1 }])
   })
 
-  it('sin salón no hay listones que cruzar, y en la práctica tampoco', () => {
-    const suelto = renderGame()
+  it('without a hall there are no thresholds to cross, and in practice neither', () => {
+    const standalone = renderGame()
     interact()
-    startPlaying(suelto)
-    act(() => suelto.current.catchStick(0.5))
+    startPlaying(standalone)
+    act(() => standalone.current.catchStick(0.5))
     expect(playedSounds().some((sound) => sound.name === 'medal')).toBe(false)
-    suelto.unmount()
+    standalone.unmount()
 
-    const practica = renderGame({ objetivo })
-    act(() => practica.current.setGameMode('practice'))
+    const practice = renderGame({ goal })
+    act(() => practice.current.setGameMode('practice'))
     interact()
-    startPlaying(practica)
+    startPlaying(practice)
     play.mockClear()
-    act(() => practica.current.catchStick(0.5))
+    act(() => practice.current.catchStick(0.5))
     expect(playedSounds()).toEqual([{ name: 'catch', streak: 1 }])
   })
 })

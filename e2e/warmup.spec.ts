@@ -4,46 +4,46 @@ import { openGame } from './helpers'
 import { enterVR, installXREmulator, pressPlayInsideSession, tutorialSkipButton } from './support/xr'
 
 /**
- * El calentamiento, con el visor emulado y **sin el tutorial visto** (`lib/warmup.ts`).
+ * The warm-up, with the emulated headset and **without the tutorial seen** (`lib/warmup.ts`).
  *
- * El emulador no lleva la mano hasta los palos, así que el gesto fallado es el más fácil de
- * provocar: no atrapar nada y dejar que los palos lleguen al suelo. Con la lección delante, en el
- * reto, eso no cuesta vidas ni acaba la partida; al cerrarla, el reto empieza de cero.
+ * The emulator does not take the hand up to the sticks, so the missed gesture is the easiest one to
+ * provoke: catching nothing and letting the sticks reach the floor. With the lesson in front, in the
+ * challenge, that costs no lives nor ends the run; on closing it, the challenge starts from zero.
  */
-test.describe('El calentamiento', () => {
+test.describe('The warm-up', () => {
   test.beforeEach(async ({ page }) => {
     await installXREmulator(page)
-    // Dónde están los palos y si se pueden coger: el que está en el suelo ya no.
+    // Where the sticks are and whether they can be caught: the one on the floor no longer can.
     await page.addInitScript(() => {
       window.__stickRushSticks = {}
     })
-    // El reto, que es el que da medalla y con el que abre el menú.
+    // The challenge, which is the one that gives a medal and the one the menu opens with.
     await openGame(page, '/', { mode: 'Challenge' })
   })
 
-  test('tres palos al suelo con la lección delante dejan el reto intacto', async ({ page }) => {
+  test('three sticks on the floor with the lesson in front leave the challenge intact', async ({ page }) => {
     await enterVR(page)
     await pressPlayInsideSession(page)
     await expect(tutorialSkipButton(page)).toBeVisible({ timeout: (COUNTDOWN_SECONDS + 5) * 1000 })
 
     await expect
       .poll(
-        () => page.evaluate(() => Object.values(window.__stickRushSticks ?? {}).filter((palo) => !palo.catchable).length),
-        { message: 'no han llegado tres palos al suelo', timeout: 15_000 },
+        () => page.evaluate(() => Object.values(window.__stickRushSticks ?? {}).filter((stick) => !stick.catchable).length),
+        { message: 'three sticks have not reached the floor', timeout: 15_000 },
       )
       .toBeGreaterThanOrEqual(3)
 
-    // Sigue el calentamiento: la lección delante, las tres vidas y ningún final.
+    // The warm-up goes on: the lesson in front, the three lives and no ending.
     await expect(tutorialSkipButton(page)).toBeVisible()
     await expect(page.getByRole('status')).toHaveAttribute('aria-label', /Lives 3 of 3/)
     await expect(page.getByRole('dialog')).toHaveCount(0)
 
-    // Saltar la lección empieza el reto de cero: otra cuenta atrás, ningún palo resuelto.
+    // Skipping the lesson starts the challenge from zero: another countdown, no stick resolved.
     await tutorialSkipButton(page).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('timer')).toBeVisible()
     await expect(page.getByRole('status')).toHaveAttribute('aria-label', /Lives 3 of 3\. Caught 0 of 13/)
-    // Y el cartel lo dice, en su reflejo de la web, durante la cuenta atrás.
+    // And the sign says so, in its reflection on the website, during the countdown.
     await expect(page.getByText('Now it counts for a medal')).toBeVisible()
   })
 })

@@ -3,84 +3,84 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { GAME_MODE_HINTS, GAME_MODE_LABELS } from './gameMode'
 import { DIFFICULTY_LABELS } from './gameConfig'
-import { TEXT_KEYS, formatea, formatoDeCifra, texto, traductor, traductorSuave } from './textos'
+import { TEXT_KEYS, formatText, formatFigure, texto, translator, softTranslator } from './textos'
 import { GOAL_ES } from './goal'
 import { PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS, PLAYER_LABELS } from './duel'
 import { MENU_ES, plural } from './menuWords'
 
 /**
- * El diccionario del juego.
+ * The dictionary of the game.
  *
- * Que las claves existan lo comprueba TypeScript —salen del propio objeto—, así
- * que aquí se mira lo que el tipo no ve: que en inglés se devuelva el original
- * sin guardarlo dos veces, que en español no quede nada sin traducir, y que las
- * etiquetas que vienen de los mapas de configuración estén en el diccionario.
- * Ese último es el que se rompe solo: se añade una dificultad y nadie se acuerda.
+ * That the keys exist is checked by TypeScript —they come from the object itself—, so
+ * here what the type does not see is looked at: that in English the original is returned
+ * without storing it twice, that in Spanish nothing is left untranslated, and that the
+ * labels that come from the configuration maps are in the dictionary.
+ * That last one is the one that breaks on its own: a difficulty is added and nobody remembers.
  */
-describe('los huecos de una frase', () => {
-  it('se rellenan con lo que se da, y lo que no se da se queda como estaba', () => {
-    expect(formatea('{player} wins', { player: 'Player 1' })).toBe('Player 1 wins')
-    expect(formatea('{player}: {points}', { player: 'P' })).toBe('P: {points}')
+describe('the placeholders of a phrase', () => {
+  it('are filled in with what is given, and what is not given stays as it was', () => {
+    expect(formatText('{player} wins', { player: 'Player 1' })).toBe('Player 1 wins')
+    expect(formatText('{player}: {points}', { player: 'P' })).toBe('P: {points}')
   })
 })
 
-describe('el traductor del cartel del objetivo', () => {
-  it('traduce lo que está en el diccionario y rellena los huecos', () => {
-    const es = traductorSuave('es')
+describe('the translator of the goal sign', () => {
+  it('translates what is in the dictionary and fills in the placeholders', () => {
+    const es = softTranslator('es')
     expect(es('Lives')).toBe('Vidas')
     expect(es('{medal} at {target} · you have {score}', { medal: es('Silver'), target: 3750, score: 2100 })).toBe(
       'Plata a 3750 · llevas 2100',
     )
   })
 
-  it('en inglés devuelve la frase, con sus huecos rellenos', () => {
-    const en = traductorSuave('en')
+  it('in English it returns the phrase, with its placeholders filled in', () => {
+    const en = softTranslator('en')
     expect(en('Lives')).toBe('Lives')
     expect(en('Your record {record}', { record: 3100 })).toBe('Your record 3100')
   })
 
-  it('lo que no está en el diccionario sale tal cual: la unidad llega ya traducida del salón', () => {
-    const es = traductorSuave('es')
+  it('what is not in the dictionary comes out as is: the unit arrives already translated from the hall', () => {
+    const es = softTranslator('es')
     expect(es('puntos en el reto')).toBe('puntos en el reto')
-    // Ni lo que solo se parece a una clave por venir de más arriba que el objeto.
+    // Nor what only looks like a key because it comes from higher up than the object.
     expect(es('toString')).toBe('toString')
   })
 
-  it('el diccionario lleva todas las frases comunes del cartel, y las del juego mandan sobre ellas', () => {
-    for (const [clave, frase] of Object.entries(GOAL_ES)) {
-      expect(texto('es', clave as keyof typeof GOAL_ES), clave).toBe(frase)
+  it('the dictionary carries all the common phrases of the sign, and the ones of the game rule over them', () => {
+    for (const [key, phrase] of Object.entries(GOAL_ES)) {
+      expect(texto('es', key as keyof typeof GOAL_ES), key).toBe(phrase)
     }
     expect(texto('es', 'Challenge')).toBe('Reto')
   })
 })
 
-describe('el diccionario', () => {
-  it('en inglés devuelve la propia clave', () => {
+describe('the dictionary', () => {
+  it('in English it returns the key itself', () => {
     expect(texto('en', 'Back to the menu')).toBe('Back to the menu')
     expect(texto('en', 'Points')).toBe('Points')
   })
 
-  it('en español traduce', () => {
+  it('in Spanish it translates', () => {
     expect(texto('es', 'Back to the menu')).toBe('Volver al menú')
-    expect(traductor('es')('Game over!')).toBe('¡Partida terminada!')
+    expect(translator('es')('Game over!')).toBe('¡Partida terminada!')
   })
 
-  it('dice el plural que toca, con uno y con dos, en los dos idiomas', () => {
-    const decir = (lang: 'en' | 'es', n: number, una: string, varias: string) => traductorSuave(lang)(plural(n, una, varias), { n, stars: n })
-    expect(decir('en', 1, '{stars} star', '{stars} stars')).toBe('1 star')
-    expect(decir('en', 2, '{stars} star', '{stars} stars')).toBe('2 stars')
-    expect(decir('es', 1, '{stars} star', '{stars} stars')).toBe('1 estrella')
-    expect(decir('es', 2, '{stars} star', '{stars} stars')).toBe('2 estrellas')
-    expect(decir('en', 1, '≈ {n} stick', '≈ {n} sticks')).toBe('≈ 1 stick')
-    expect(decir('en', 2, '≈ {n} stick', '≈ {n} sticks')).toBe('≈ 2 sticks')
-    expect(decir('es', 1, '≈ {n} stick', '≈ {n} sticks')).toBe('≈ 1 palo')
-    expect(decir('es', 2, '≈ {n} stick', '≈ {n} sticks')).toBe('≈ 2 palos')
+  it('says the right plural, with one and with two, in both languages', () => {
+    const say = (lang: 'en' | 'es', n: number, one: string, many: string) => softTranslator(lang)(plural(n, one, many), { n, stars: n })
+    expect(say('en', 1, '{stars} star', '{stars} stars')).toBe('1 star')
+    expect(say('en', 2, '{stars} star', '{stars} stars')).toBe('2 stars')
+    expect(say('es', 1, '{stars} star', '{stars} stars')).toBe('1 estrella')
+    expect(say('es', 2, '{stars} star', '{stars} stars')).toBe('2 estrellas')
+    expect(say('en', 1, '≈ {n} stick', '≈ {n} sticks')).toBe('≈ 1 stick')
+    expect(say('en', 2, '≈ {n} stick', '≈ {n} sticks')).toBe('≈ 2 sticks')
+    expect(say('es', 1, '≈ {n} stick', '≈ {n} sticks')).toBe('≈ 1 palo')
+    expect(say('es', 2, '≈ {n} stick', '≈ {n} sticks')).toBe('≈ 2 palos')
   })
 
-  it('traduce todas las etiquetas de los mapas de configuración', () => {
-    // Si un modo o una dificultad gana una entrada y no se traduce, esto cae
-    // antes de que nadie vea el juego a medias en español.
-    const etiquetas = [
+  it('translates all the labels of the configuration maps', () => {
+    // If a mode or a difficulty gains an entry and it is not translated, this fails
+    // before anyone sees the game half done in Spanish.
+    const labels = [
       ...Object.values(GAME_MODE_LABELS),
       ...Object.values(GAME_MODE_HINTS),
       ...Object.values(DIFFICULTY_LABELS),
@@ -88,103 +88,103 @@ describe('el diccionario', () => {
       ...Object.values(PLAYER_COUNT_HINTS),
       ...PLAYER_LABELS,
     ]
-    // Las comunes que se dicen igual en los dos idiomas («Solo») no cuentan.
-    const iguales = Object.entries(MENU_ES).filter(([en, es]) => en === es).map(([en]) => en)
-    const sinTraducir = etiquetas.filter((e) => texto('es', e) === e && !iguales.includes(e))
-    expect(sinTraducir).toEqual([])
+    // The common ones that are said the same in both languages («Solo») do not count.
+    const same = Object.entries(MENU_ES).filter(([en, es]) => en === es).map(([en]) => en)
+    const untranslated = labels.filter((e) => texto('es', e) === e && !same.includes(e))
+    expect(untranslated).toEqual([])
   })
 })
 
-/** Dónde vive el código del juego, para leerlo entero. */
+/** Where the code of the game lives, to read it whole. */
 const SRC = join(import.meta.dirname, '..')
 
-/** Todo el código del juego en un solo texto, menos el propio diccionario y los tests. */
-function codigo(carpeta = ''): string {
-  return readdirSync(join(SRC, carpeta), { withFileTypes: true })
-    .map((entrada) => {
-      const ruta = join(carpeta, entrada.name)
-      if (entrada.isDirectory()) return codigo(ruta)
-      if (!/\.tsx?$/.test(entrada.name) || /\.test\.tsx?$/.test(entrada.name)) return ''
-      if (entrada.name === 'textos.ts') return ''
-      return readFileSync(join(SRC, ruta), 'utf8')
+/** All the code of the game in a single text, except the dictionary itself and the tests. */
+function sourceCode(folder = ''): string {
+  return readdirSync(join(SRC, folder), { withFileTypes: true })
+    .map((entry) => {
+      const path = join(folder, entry.name)
+      if (entry.isDirectory()) return sourceCode(path)
+      if (!/\.tsx?$/.test(entry.name) || /\.test\.tsx?$/.test(entry.name)) return ''
+      if (entry.name === 'textos.ts') return ''
+      return readFileSync(join(SRC, path), 'utf8')
     })
     .join('\n')
 }
 
-describe('el diccionario no acumula', () => {
-  it('ni le falta ninguna de las que se dicen', () => {
-    // El reverso del otro, y el que faltaba: aquel caza una clave declarada que ya no usa
-    // nadie —molesta pero inofensiva—, y este una que **se usa y no está declarada**, que es
-    // la que se ve. En bateo, `t('Fastest')` devolvía `undefined` y el marcador del reto
-    // pintaba una fila con su cifra y sin nombre, solo en español.
-    const fuente = codigo()
-    const usadas = [...fuente.matchAll(/\bt\(\s*'([^']+)'/g)].map((m) => m[1])
-    const faltan = [...new Set(usadas)].filter(
-      (clave) => !(TEXT_KEYS as readonly string[]).includes(clave),
+describe('the dictionary does not pile up', () => {
+  it('nor is it missing any of the ones that are said', () => {
+    // The reverse of the other one, and the one that was missing: that one catches a declared
+    // key nobody uses any more —annoying but harmless—, and this one a key that **is used and is
+    // not declared**, which is the one that shows. In batting, `t('Fastest')` returned
+    // `undefined` and the challenge's scoreboard drew a row with its figure and no name, only in Spanish.
+    const source = sourceCode()
+    const used = [...source.matchAll(/\bt\(\s*'([^']+)'/g)].map((m) => m[1])
+    const missing = [...new Set(used)].filter(
+      (key) => !(TEXT_KEYS as readonly string[]).includes(key),
     )
 
-    expect(faltan).toEqual([])
+    expect(missing).toEqual([])
   })
 
-  it('no guarda frases que ya no dice nadie', () => {
-    // Una frase cambia en el componente y la vieja se queda aquí traducida para siempre:
-    // no rompe nada, y por eso nadie la quita nunca. Los otros doce ya lo vigilan; este no.
-    const fuente = codigo()
-    const huerfanas = TEXT_KEYS.filter((clave) => !fuente.includes(clave))
+  it('does not keep phrases that nobody says any more', () => {
+    // A phrase changes in the component and the old one stays here translated forever:
+    // it breaks nothing, and that is why nobody ever removes it. The other twelve already watch it; this one did not.
+    const source = sourceCode()
+    const orphans = TEXT_KEYS.filter((key) => !source.includes(key))
 
-    expect(huerfanas).toEqual([])
+    expect(orphans).toEqual([])
   })
 })
 
 /**
- * Las cifras que se enseñan.
+ * The figures that are shown.
  *
- * Se prueba con números y no con `toLocaleString` delante porque es justo lo contrario
- * de lo que se busca: el formato tiene que salir de aquí, que es lo único que el motor
- * del visor y el del puerto a Godot ejecutan igual.
+ * It is tested with numbers and not with `toLocaleString` in front because it is exactly the
+ * opposite of what is wanted: the format has to come out of here, which is the only thing the
+ * headset's engine and the one of the port to Godot run the same.
  */
-describe('las cifras que enseña el juego', () => {
-  it('separa los miles con punto en español y con coma en inglés', () => {
-    expect(formatoDeCifra(1000, 'en')).toBe('1,000')
-    expect(formatoDeCifra(12400, 'es')).toBe('12.400')
-    expect(formatoDeCifra(12400, 'en')).toBe('12,400')
-    expect(formatoDeCifra(1234567, 'es')).toBe('1.234.567')
-    expect(formatoDeCifra(1234567, 'en')).toBe('1,234,567')
+describe('the figures the game shows', () => {
+  it('separates the thousands with a dot in Spanish and with a comma in English', () => {
+    expect(formatFigure(1000, 'en')).toBe('1,000')
+    expect(formatFigure(12400, 'es')).toBe('12.400')
+    expect(formatFigure(12400, 'en')).toBe('12,400')
+    expect(formatFigure(1234567, 'es')).toBe('1.234.567')
+    expect(formatFigure(1234567, 'en')).toBe('1,234,567')
   })
 
-  it('en español agrupa desde las cinco cifras, como el cartel de objetivo y la cabina del salón', () => {
-    // La regla de la RAE y de CLDR: «2100», no «2.100». El inglés sí agrupa desde las cuatro.
-    expect(formatoDeCifra(1000, 'es')).toBe('1000')
-    expect(formatoDeCifra(2100, 'es')).toBe('2100')
-    expect(formatoDeCifra(9999, 'es')).toBe('9999')
-    expect(formatoDeCifra(9999.6, 'es')).toBe('10.000')
-    expect(formatoDeCifra(10000, 'es')).toBe('10.000')
-    expect(formatoDeCifra(2100, 'en')).toBe('2,100')
+  it('in Spanish it groups from five digits on, like the goal sign and the cabinet of the hall', () => {
+    // The rule of the RAE and of CLDR: «2100», not «2.100». English does group from four on.
+    expect(formatFigure(1000, 'es')).toBe('1000')
+    expect(formatFigure(2100, 'es')).toBe('2100')
+    expect(formatFigure(9999, 'es')).toBe('9999')
+    expect(formatFigure(9999.6, 'es')).toBe('10.000')
+    expect(formatFigure(10000, 'es')).toBe('10.000')
+    expect(formatFigure(2100, 'en')).toBe('2,100')
   })
 
-  it('deja tal cual lo que no llega a mil', () => {
-    expect(formatoDeCifra(0, 'es')).toBe('0')
-    expect(formatoDeCifra(0, 'en')).toBe('0')
-    expect(formatoDeCifra(7, 'es')).toBe('7')
-    expect(formatoDeCifra(7, 'en')).toBe('7')
-    expect(formatoDeCifra(999, 'es')).toBe('999')
-    expect(formatoDeCifra(999, 'en')).toBe('999')
+  it('leaves as is what does not reach a thousand', () => {
+    expect(formatFigure(0, 'es')).toBe('0')
+    expect(formatFigure(0, 'en')).toBe('0')
+    expect(formatFigure(7, 'es')).toBe('7')
+    expect(formatFigure(7, 'en')).toBe('7')
+    expect(formatFigure(999, 'es')).toBe('999')
+    expect(formatFigure(999, 'en')).toBe('999')
   })
 
-  it('conserva el signo de lo que va en negativo', () => {
-    expect(formatoDeCifra(-7, 'es')).toBe('-7')
-    expect(formatoDeCifra(-7, 'en')).toBe('-7')
-    expect(formatoDeCifra(-1234, 'es')).toBe('-1234')
-    expect(formatoDeCifra(-12345, 'es')).toBe('-12.345')
-    expect(formatoDeCifra(-1234, 'en')).toBe('-1,234')
-    // Menos de medio punto por debajo de cero es cero, y no «-0».
-    expect(formatoDeCifra(-0.4, 'es')).toBe('0')
-    expect(formatoDeCifra(-0.4, 'en')).toBe('0')
+  it('keeps the sign of what goes in negative', () => {
+    expect(formatFigure(-7, 'es')).toBe('-7')
+    expect(formatFigure(-7, 'en')).toBe('-7')
+    expect(formatFigure(-1234, 'es')).toBe('-1234')
+    expect(formatFigure(-12345, 'es')).toBe('-12.345')
+    expect(formatFigure(-1234, 'en')).toBe('-1,234')
+    // Less than half a point below zero is zero, and not «-0».
+    expect(formatFigure(-0.4, 'es')).toBe('0')
+    expect(formatFigure(-0.4, 'en')).toBe('0')
   })
 
-  it('cuenta como cero lo que no es un número', () => {
-    // El récord sale del almacenamiento, que cualquiera puede editar a mano.
-    expect(formatoDeCifra(Number.NaN, 'es')).toBe('0')
-    expect(formatoDeCifra(Number.POSITIVE_INFINITY, 'en')).toBe('0')
+  it('counts as zero what is not a number', () => {
+    // The record comes from the storage, which anyone can edit by hand.
+    expect(formatFigure(Number.NaN, 'es')).toBe('0')
+    expect(formatFigure(Number.POSITIVE_INFINITY, 'en')).toBe('0')
   })
 })

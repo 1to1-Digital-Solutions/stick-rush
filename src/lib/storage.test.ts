@@ -4,22 +4,22 @@ import { createStoredPreference, gameStorage } from './storage'
 const KEY = 'stick-rushest-flag'
 
 /**
- * Una preferencia de mentira con la misma forma que las de verdad: se guarda
- * como texto y se lee como otra cosa, para que se vea si el parseador y el
- * serializador se usan.
+ * A fake preference with the same shape as the real ones: it is stored
+ * as text and read as something else, so that it shows whether the parser and the
+ * serialiser are used.
  */
 function flagPreference(key: string = KEY) {
   return createStoredPreference<boolean>({
     key,
-    parse: (raw) => raw === 'sí',
-    serialize: (value) => (value ? 'sí' : 'no'),
+    parse: (raw) => raw === 'yes',
+    serialize: (value) => (value ? 'yes' : 'no'),
   })
 }
 
-/** Deja el almacenamiento lanzando a cada acceso, como en una ventana privada. */
+/** Leaves the storage throwing on each access, as in a private window. */
 function blockStorage(): void {
   const boom = () => {
-    throw new Error('almacenamiento bloqueado')
+    throw new Error('storage blocked')
   }
   vi.spyOn(Storage.prototype, 'getItem').mockImplementation(boom)
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(boom)
@@ -36,15 +36,15 @@ describe('gameStorage', () => {
     if (original) Object.defineProperty(window, 'localStorage', original)
   })
 
-  it('da el almacenamiento del navegador', () => {
+  it('gives the storage of the browser', () => {
     expect(gameStorage()).toBe(window.localStorage)
   })
 
-  it('da null cuando ni siquiera se puede mirar', () => {
+  it('gives null when it cannot even be looked at', () => {
     Object.defineProperty(window, 'localStorage', {
       configurable: true,
       get() {
-        throw new Error('almacenamiento vetado por política')
+        throw new Error('storage banned by policy')
       },
     })
 
@@ -53,22 +53,22 @@ describe('gameStorage', () => {
 })
 
 describe('createStoredPreference', () => {
-  it('recuerda lo elegido, traducido a lo que se guarda', () => {
+  it('remembers what was chosen, translated to what is stored', () => {
     const flag = flagPreference()
     flag.save(true)
 
-    expect(window.localStorage.getItem(KEY)).toBe('sí')
+    expect(window.localStorage.getItem(KEY)).toBe('yes')
     expect(flag.get()).toBe(true)
   })
 
-  it('se entra con lo que el parseador hace sin nada guardado', () => {
+  it('starts with what the parser makes of nothing stored', () => {
     const flag = flagPreference()
 
     expect(flag.get()).toBe(false)
     expect(flag.getServer()).toBe(false)
   })
 
-  it('avisa a quien mira después de escribir', () => {
+  it('notifies whoever looks after writing', () => {
     const flag = flagPreference()
     const listener = vi.fn()
     const unsubscribe = flag.subscribe(listener)
@@ -79,7 +79,7 @@ describe('createStoredPreference', () => {
     expect(listener).toHaveBeenCalled()
   })
 
-  it('avisa también cuando lo cambia otra pestaña', () => {
+  it('also notifies when another tab changes it', () => {
     const flag = flagPreference()
     const listener = vi.fn()
     const unsubscribe = flag.subscribe(listener)
@@ -90,7 +90,7 @@ describe('createStoredPreference', () => {
     expect(listener).toHaveBeenCalled()
   })
 
-  it('deja de avisar a quien se da de baja', () => {
+  it('stops notifying whoever unsubscribes', () => {
     const flag = flagPreference()
     const listener = vi.fn()
 
@@ -101,30 +101,30 @@ describe('createStoredPreference', () => {
     expect(listener).not.toHaveBeenCalled()
   })
 
-  it('guarda cada variante en su clave', () => {
+  it('stores each variant under its key', () => {
     const flag = createStoredPreference<boolean, [string]>({
       key: (variant) => `${KEY}:${variant}`,
-      parse: (raw) => raw === 'sí',
-      serialize: (value) => (value ? 'sí' : 'no'),
+      parse: (raw) => raw === 'yes',
+      serialize: (value) => (value ? 'yes' : 'no'),
     })
 
-    flag.save(true, 'uno')
+    flag.save(true, 'one')
 
-    expect(flag.get('uno')).toBe(true)
-    expect(flag.get('dos')).toBe(false)
+    expect(flag.get('one')).toBe(true)
+    expect(flag.get('two')).toBe(false)
   })
 
-  it('con el almacenamiento bloqueado se entra con el valor de entrada', () => {
+  it('with the storage blocked it starts with the initial value', () => {
     const flag = flagPreference()
     blockStorage()
 
     expect(flag.get()).toBe(false)
   })
 
-  it('con el almacenamiento bloqueado, cambiar una preferencia vale al menos para esta visita', () => {
-    // Antes la escritura fallaba en silencio y la relectura devolvía lo de
-    // antes: pulsar «izquierda» o el silencio no hacía absolutamente nada, y
-    // con el visor puesto el menú es la única forma de cambiarlo.
+  it('with the storage blocked, changing a preference holds at least for this visit', () => {
+    // Before, the write failed silently and the re-read returned what was there
+    // before: pressing «izquierda» or the mute did absolutely nothing, and
+    // with the headset on the menu is the only way of changing it.
     const flag = flagPreference()
     const listener = vi.fn()
     blockStorage()
@@ -137,10 +137,10 @@ describe('createStoredPreference', () => {
     unsubscribe()
   })
 
-  it('en cuanto el almacenamiento vuelve a aceptar, manda él otra vez', () => {
+  it('as soon as the storage accepts again, it rules once more', () => {
     const flag = flagPreference()
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('cuota agotada')
+      throw new Error('quota exhausted')
     })
     flag.save(true)
     expect(flag.get()).toBe(true)
@@ -148,16 +148,16 @@ describe('createStoredPreference', () => {
     setItem.mockRestore()
     flag.save(false)
     expect(flag.get()).toBe(false)
-    // Y lo que dice el almacenamiento es lo que vale: otra pestaña lo cambia.
-    window.localStorage.setItem(KEY, 'sí')
+    // And what the storage says is what counts: another tab changes it.
+    window.localStorage.setItem(KEY, 'yes')
     expect(flag.get()).toBe(true)
   })
 })
 
-describe('sin navegador que preguntar', () => {
-  it('no hay almacenamiento, y eso es lo que mantiene igual el HTML', () => {
-    // Si en el servidor se leyera algo, React avisaría de que el HTML que
-    // prerenderiza y el que hidrata no cuadran.
+describe('with no browser to ask', () => {
+  it('there is no storage, and that is what keeps the HTML the same', () => {
+    // If something were read on the server, React would warn that the HTML it
+    // prerenders and the one it hydrates do not match.
     vi.stubGlobal('window', undefined)
     expect(gameStorage()).toBeNull()
   })

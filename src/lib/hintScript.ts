@@ -9,205 +9,205 @@ import {
 } from './gameConfig'
 
 /**
- * Las ayudas visuales de este juego: qué se enseña al entrar, y qué apaga cada cosa.
+ * The visual hints of this game: what is shown on entering, and what switches each thing off.
  *
- * **Lo que no se ve mirando la máquina** son dos cosas. Dónde ponerse: en el centro del aro,
- * de cara a los palos, que es desde donde se llega a todos sin moverse. Y que un palo **se coge
- * cerrando la mano sobre él mientras cae** —con el botón de agarre—, no apuntándolo con el rayo
- * como un botón del menú, y que se coge **abajo**, a la altura del pecho, por donde pasa al
- * caer, y no arriba, donde cuelga. El tutorial lo cuenta con letras; esto lo enseña antes, sin
- * ninguna.
+ * **What is not seen by looking at the machine** are two things. Where to stand: at the centre of
+ * the hoop, facing the sticks, which is where all of them are reached from without moving. And that
+ * a stick **is caught by closing the hand on it while it falls** —with the grip button—, not by
+ * pointing at it with the ray like a menu button, and that it is caught **down low**, at chest
+ * height, where it passes as it falls, and not up high, where it hangs. The tutorial tells it with
+ * letters; this shows it before, without any.
  *
- * El motor —cuándo se enciende y cuándo se apaga cada una— está en `lib/ayudas.ts`, el mismo
- * fichero en todos los juegos. Aquí está lo de este: el guion y las cotas de lo que se pinta,
- * que salen de aquí y no de dentro de la escena para que el test pueda medir **los mismos
- * números que se pintan** y no una copia suya.
+ * The engine —when each one switches on and when it switches off— is in `lib/hints.ts`, the same
+ * file in all the games. Here is what belongs to this one: the script and the dimensions of what is
+ * painted, which come from here and not from inside the scene so that the test can measure **the
+ * same numbers that are painted** and not a copy of them.
  *
- * Las cotas van en **coordenadas de la máquina**: el centro del aro en el cero, el suelo en
- * `y = 0` y quien juega plantado un paso por detrás del centro, en `z = PLAYER_OFFSET_Z`
- * (`GameWorld` corre el mundo lo contrario). La altura del aro no es fija —sale de los ojos de
- * quien juega (`hoopHeight.ts`)—, así que todo lo que cuelga de ella la recibe.
+ * The dimensions go in **machine coordinates**: the centre of the hoop at zero, the ground at
+ * `y = 0` and whoever plays standing one step behind the centre, at `z = PLAYER_OFFSET_Z`
+ * (`GameWorld` shifts the world the opposite way). The height of the hoop is not fixed —it comes
+ * from the eyes of whoever plays (`hoopHeight.ts`)—, so everything that hangs from it receives it.
  */
 
 /**
- * Lo que una ayuda de este juego puede esperar o dar por hecho.
+ * What a hint of this game can wait for or take for granted.
  *
- * - `grab`: el primer palo atrapado. Es el hito del primer paso del tutorial
- *   (`hitosAtrapando`), y lo apunta la partida.
- * - `cae`: que los palos están a punto de empezar a caer —el último segundo de la cuenta
- *   atrás— o ya caen. **Todo lo que flota se tiene que haber ido antes**: por delante del aro,
- *   a la altura del pecho, es exactamente por donde pasa un palo al caer.
+ * - `grab`: the first stick caught. It is the milestone of the first step of the tutorial
+ *   (`milestonesFromCatches`), and the run notes it.
+ * - `falling`: that the sticks are about to start falling —the last second of the
+ *   countdown— or are already falling. **Everything that floats has to be gone before**: in front
+ *   of the hoop, at chest height, is exactly where a stick passes as it falls.
  *
- * Los dos se quedan hechos una vez hechos: volver al menú no vuelve a encender lo que ya se
- * aprendió.
+ * Both stay done once done: going back to the menu does not switch on again what was already
+ * learned.
  */
-export type HechoDeLasAyudas = 'grab' | 'cae'
+export type HintFact = 'grab' | 'falling'
 
 /**
- * El guion.
+ * The script.
  *
- * - **`suelo`**, las dos huellas de dónde ponerse: en el centro del aro, de frente a la máquina.
- *   Se enseñan **desde que se entra en la cabina** —colocarse es lo único que se puede hacer con
- *   el menú delante— y se van con el primer palo atrapado. Van pintadas en el suelo, y ahí
- *   pueden quedarse mientras se juega: no tapan nada que caiga, que los palos caen en el aro,
- *   lejos de los pies.
- * - **`palo`**, el palo fantasma: sale del palo que cuelga delante, envolviéndolo, cae hasta la
- *   altura del pecho y se queda ahí quieto un momento, que es el atrape. Es a la vez «lo que hay
- *   que coger, resaltado» y «el gesto»: que caen, y dónde se cogen.
- * - **`mando`**, el mando de verdad con el botón de agarre latiendo, **al lado de donde el
- *   fantasma se para** (`mandoJuntoAlPalo`): el fantasma dice qué y dónde; el mando, con qué.
- *   No va en la mano, que es donde lo pone el tutorial, así que no hay dos copias del modelo
- *   pisándose, y sale desde la primera vez.
+ * - **`ground`**, the two footprints of where to stand: at the centre of the hoop, facing the machine.
+ *   They are shown **from the moment the cabinet is entered** —taking position is the only thing
+ *   that can be done with the menu in front— and they go with the first stick caught. They are
+ *   painted on the ground, and there they can stay while playing: they cover nothing that falls,
+ *   since the sticks fall at the hoop, far from the feet.
+ * - **`stick`**, the ghost stick: it comes out of the stick hanging in front, wrapping it, falls to
+ *   chest height and stays still there for a moment, which is the catch. It is at once "what has
+ *   to be caught, highlighted" and "the gesture": that they fall, and where they are caught.
+ * - **`controller`**, the real controller with the grip button throbbing, **next to where the
+ *   ghost stops** (`controllerByTheStick`): the ghost says what and where; the controller, with what.
+ *   It does not go in the hand, which is where the tutorial puts it, so there are no two copies of
+ *   the model stepping on each other, and it comes out from the first time.
  *
- * **El fantasma y el mando se van antes de que caiga nada** (`cae`): los dos flotan donde se
- * juega, y ahí solo valen mientras no hay palos pasando. Con la cuenta atrás en marcha aún se
- * ven dos segundos, que es cuando se está mirando la máquina.
+ * **The ghost and the controller go before anything falls** (`falling`): both float where the
+ * game is played, and there they are only good while no sticks are passing. With the countdown
+ * running they are still seen for two seconds, which is when one is looking at the machine.
  */
-export const GUION_DE_AYUDAS = [
-  { id: 'suelo', until: 'grab', expiresAfter: 14 },
-  { id: 'palo', until: 'cae', expiresAfter: 16 },
-  { id: 'mando', until: 'cae', expiresAfter: 16 },
-] as const satisfies HintScript<HechoDeLasAyudas>
+export const HINT_SCRIPT = [
+  { id: 'ground', until: 'grab', expiresAfter: 14 },
+  { id: 'stick', until: 'falling', expiresAfter: 16 },
+  { id: 'controller', until: 'falling', expiresAfter: 16 },
+] as const satisfies HintScript<HintFact>
 
-/** Cómo se llama cada una, para que la escena no las pinte por un nombre inventado. */
-export type AyudaDeLaMaquina = (typeof GUION_DE_AYUDAS)[number]['id']
+/** What each one is called, so that the scene does not paint them by an invented name. */
+export type MachineHint = (typeof HINT_SCRIPT)[number]['id']
 
 /**
- * Si los palos van a empezar a caer: el último segundo de la cuenta atrás, o ya en juego.
+ * Whether the sticks are going to start falling: the last second of the countdown, or already in play.
  *
- * El último segundo y no el cero porque el fantasma y el mando se desvanecen en medio segundo
- * (`CRUCE`), y el primer palo sale en cuanto se acaba la cuenta: en Imposible, en dos décimas
- * ya está a la altura del pecho.
+ * The last second and not zero because the ghost and the controller fade out in half a second
+ * (`CROSSFADE`), and the first stick comes out as soon as the count ends: on Impossible, in two
+ * tenths it is already at chest height.
  */
-export function vanACaer(gameState: string, countdown: number): boolean {
+export function aboutToFall(gameState: string, countdown: number): boolean {
   return gameState === 'playing' || (gameState === 'countdown' && countdown <= 1)
 }
 
-/* --- Las cotas de lo que se pinta --- */
+/* --- The dimensions of what is painted --- */
 
 /**
- * Las dos huellas, donde se planta quien juega y de cara a la máquina, y lo que mide cada una.
+ * The two footprints, where whoever plays stands and facing the machine, and what each one measures.
  *
- * **De frente y a la par**: los palos caen alrededor, por delante y a los lados, y se cogen
- * sin dar un paso. Van **justo donde el juego planta a quien entra**, así que no piden moverse:
- * dicen «aquí, y mirando a los palos». Separadas el ancho de los hombros.
+ * **Facing forward and side by side**: the sticks fall around, in front and to the sides, and are
+ * caught without taking a step. They go **right where the game places whoever comes in**, so they
+ * do not ask to move: they say "here, and looking at the sticks". Shoulder-width apart.
  */
-export const HUELLA = { largo: 0.26, ancho: 0.1 }
-export const HUELLAS: readonly { x: number; z: number }[] = [
+export const FOOTPRINT = { length: 0.26, width: 0.1 }
+export const FOOTPRINTS: readonly { x: number; z: number }[] = [
   { x: -0.11, z: PLAYER_OFFSET_Z },
   { x: 0.11, z: PLAYER_OFFSET_Z },
 ]
 
-/** A qué altura se pintan las huellas sobre el suelo, antes del sesgo del rasterizado. */
-export const HUELLAS_Y = 0.005
+/** At what height the footprints are painted above the ground, before the rasterisation bias. */
+export const FOOTPRINTS_Y = 0.005
 
 /**
- * Dónde cuelga el palo del que sale el fantasma: **el de delante**, en el centro del arco.
+ * Where the stick the ghost comes out of hangs: **the front one**, at the centre of the arch.
  *
- * Es el que se tiene delante de los ojos al entrar, y con un número impar de palos —los cinco
- * del desafío, los trece— hay uno colgando justo ahí, así que el fantasma sale de un palo de
- * verdad. Con un número par sale del hueco del centro, que dice lo mismo.
+ * It is the one in front of the eyes on entering, and with an odd number of sticks —the five
+ * of the challenge, the thirteen— there is one hanging right there, so the ghost comes out of a
+ * real stick. With an even number it comes out of the gap at the centre, which says the same.
  */
-export function paloDelFantasma(hoopHeight: number): [number, number, number] {
+export function ghostStick(hoopHeight: number): [number, number, number] {
   return [0, hoopHeight - STICK_CORD_LENGTH - STICK_LENGTH / 2, -MACHINE_RADIUS]
 }
 
 /**
- * Lo que el palo fantasma envuelve al de verdad: un poco más por cada lado, para que se lea
- * como el palo encendido y no como otro palo metido dentro de él.
+ * By how much the ghost stick wraps the real one: a little more on each side, so that it reads
+ * as the stick lit up and not as another stick put inside it.
  */
-export const MARGEN_DEL_FANTASMA = 0.006
+export const GHOST_MARGIN = 0.006
 
-/** Radio y largo del palo fantasma: el de verdad más el margen. */
-export const FANTASMA = {
-  radio: STICK_RADIUS + MARGEN_DEL_FANTASMA,
-  largo: STICK_LENGTH + MARGEN_DEL_FANTASMA * 2,
+/** Radius and length of the ghost stick: the real one plus the margin. */
+export const GHOST = {
+  radius: STICK_RADIUS + GHOST_MARGIN,
+  length: STICK_LENGTH + GHOST_MARGIN * 2,
 } as const
 
 /**
- * La caída que enseña el fantasma: cuánto baja, cuánto tarda y cómo se reparte la vuelta.
+ * The fall the ghost shows: how far it drops, how long it takes and how the loop is divided up.
  *
- * **Baja hasta la altura del pecho y se para.** Lo que no se adivina es que el palo se coge
- * por donde pasa y no donde cuelga, así que el tramo que importa es la parada: el fantasma se
- * queda quieto abajo, con el mando al lado latiendo, y solo entonces se desvanece. Vuelve a
- * aparecer arriba en vez de subir, que visto desde los ojos sería un palo trepando.
+ * **It drops to chest height and stops.** What cannot be guessed is that the stick is caught
+ * where it passes and not where it hangs, so the stretch that matters is the stop: the ghost
+ * stays still down low, with the controller throbbing beside it, and only then fades out. It
+ * reappears up high instead of going up, which seen from the eyes would be a stick climbing.
  */
-export const CAIDA = {
-  /** Lo que tarda una vuelta entera, en segundos. */
-  periodo: 2.4,
-  /** Hasta dónde de la vuelta tarda en aparecer, quieto donde cuelga el palo. */
-  aparece: 0.12,
-  /** Hasta dónde dura la caída. */
-  cae: 0.5,
-  /** Y desde dónde se desvanece, ya parado abajo. */
-  seVa: 0.86,
+export const FALL = {
+  /** How long a whole loop takes, in seconds. */
+  period: 2.4,
+  /** Up to what point of the loop it takes to appear, still where the stick hangs. */
+  appears: 0.12,
+  /** Up to what point the fall lasts. */
+  falls: 0.5,
+  /** And from what point it fades out, already stopped down low. */
+  leaves: 0.86,
   /**
-   * Lo que baja: del centro del palo colgado a la altura del pecho. El aro va medio metro por
-   * encima de los ojos (`HOOP_RISE_ABOVE_EYES`), así que el fantasma acaba unos treinta
-   * centímetros por debajo de ellos, donde la mano llega cómoda.
+   * How far it drops: from the centre of the hanging stick to chest height. The hoop goes half a
+   * metre above the eyes (`HOOP_RISE_ABOVE_EYES`), so the ghost ends up some thirty
+   * centimetres below them, where the hand reaches comfortably.
    */
-  recorrido: 0.5,
+  travel: 0.5,
 } as const
 
 /**
- * Por dónde va el fantasma en ese momento de su vuelta: cuánto ha bajado, en metros, y cuánto
- * se ve, de 0 a 1.
+ * Where the ghost is at that moment of its loop: how far it has dropped, in metres, and how
+ * visible it is, from 0 to 1.
  *
- * La caída arranca despacio y acelera, como cae algo de verdad; a velocidad fija se leía como
- * un palo que se desliza por un raíl.
+ * The fall starts slowly and accelerates, the way something really falls; at a fixed speed it read
+ * as a stick sliding along a rail.
  */
-export function caidaDelFantasma(avance: number): { bajada: number; se: number } {
-  const paso = Math.min(1, Math.max(0, avance))
-  if (paso < CAIDA.aparece) return { bajada: 0, se: paso / CAIDA.aparece }
-  if (paso < CAIDA.cae) {
-    const tramo = (paso - CAIDA.aparece) / (CAIDA.cae - CAIDA.aparece)
-    return { bajada: CAIDA.recorrido * tramo * tramo, se: 1 }
+export function ghostFall(progress: number): { drop: number; visible: number } {
+  const step = Math.min(1, Math.max(0, progress))
+  if (step < FALL.appears) return { drop: 0, visible: step / FALL.appears }
+  if (step < FALL.falls) {
+    const stretch = (step - FALL.appears) / (FALL.falls - FALL.appears)
+    return { drop: FALL.travel * stretch * stretch, visible: 1 }
   }
-  if (paso < CAIDA.seVa) return { bajada: CAIDA.recorrido, se: 1 }
-  return { bajada: CAIDA.recorrido, se: 1 - (paso - CAIDA.seVa) / (1 - CAIDA.seVa) }
+  if (step < FALL.leaves) return { drop: FALL.travel, visible: 1 }
+  return { drop: FALL.travel, visible: 1 - (step - FALL.leaves) / (1 - FALL.leaves) }
 }
 
 /**
- * El mando de verdad junto al sitio donde el fantasma se para: del lado de la mano buena de
- * quien juega, un palmo hacia fuera y un poco hacia quien lo mira, y crecido lo justo para que
- * el botón se lea.
+ * The real controller next to the place where the ghost stops: on the side of the good hand of
+ * whoever plays, a hand's breadth outwards and a little towards whoever looks at it, and enlarged
+ * just enough for the button to be read.
  *
- * - **Del lado de la mano buena** (`xrcade:hand`, la del salón): aquí se coge con cualquiera de
- *   las dos, y la que se tiende primero es esa.
- * - **A 13 cm del fantasma**: el mando mide unos 12 cm, y entre los dos queda aire para que se
- *   lean como dos cosas.
- * - **Diez centímetros por delante del aro**, hacia quien juega: por delante de la cortina de
- *   palos y no detrás, que desde los ojos quedaría medio tapado.
+ * - **On the side of the good hand** (`xrcade:hand`, the hall's one): here it is caught with either
+ *   of the two, and the one that is reached out first is that one.
+ * - **13 cm from the ghost**: the controller measures some 12 cm, and between the two there is air
+ *   so that they read as two things.
+ * - **Ten centimetres in front of the hoop**, towards whoever plays: in front of the curtain of
+ *   sticks and not behind, which from the eyes would be half covered.
  *
- * A CALIBRAR CON EL VISOR: las tres cifras.
+ * TO BE CALIBRATED WITH THE HEADSET: the three figures.
  */
-export const MANDO_JUNTO_AL_PALO = {
-  /** Lo que se aparta del fantasma hacia el lado de la mano, en metros. */
-  separacion: 0.13,
-  /** Lo que se adelanta del aro hacia quien juega, en metros. */
-  delante: 0.1,
-  /** El mando mide unos 12 cm: a sesenta centímetros de los ojos se agradece crecerlo. */
-  escala: 1.3,
+export const CONTROLLER_BY_THE_STICK = {
+  /** How far it moves away from the ghost towards the hand's side, in metres. */
+  gap: 0.13,
+  /** How far it comes forward from the hoop towards whoever plays, in metres. */
+  ahead: 0.1,
+  /** The controller measures some 12 cm: at sixty centimetres from the eyes enlarging it is welcome. */
+  scale: 1.3,
 } as const
 
 /**
- * Dónde va el mando, en coordenadas de la máquina, y cuánto se gira sobre la vertical (el
- * `rotation.y` de three): lo que deja **el costado del agarre de cara a quien juega**.
+ * Where the controller goes, in machine coordinates, and how much it is turned about the vertical
+ * (three's `rotation.y`): what leaves **the grip side facing whoever plays**.
  *
- * El modelo se dibuja como un mando en la mano, apuntando a −Z; el agarre del derecho está en su
- * costado izquierdo (−X) y el del izquierdo en el derecho (+X). Girado así se ve de lado, con el
- * botón hacia los ojos, que están sobre las huellas.
+ * The model is drawn as a controller in the hand, pointing at −Z; the grip of the right one is on
+ * its left side (−X) and that of the left one on the right (+X). Turned like this it is seen from
+ * the side, with the button towards the eyes, which are above the footprints.
  */
-export function mandoJuntoAlPalo(
+export function controllerByTheStick(
   hoopHeight: number,
-  mano: Hand,
-): { posicion: [number, number, number]; giro: number } {
-  const [x0, y0, z0] = paloDelFantasma(hoopHeight)
-  const lado = mano === 'left' ? -1 : 1
-  const x = x0 + lado * MANDO_JUNTO_AL_PALO.separacion
-  const y = y0 - CAIDA.recorrido
-  const z = z0 + MANDO_JUNTO_AL_PALO.delante
-  const haciaQuienJuega = PLAYER_OFFSET_Z - z
-  const giro = mano === 'left' ? Math.atan2(-haciaQuienJuega, -x) : Math.atan2(haciaQuienJuega, x)
-  return { posicion: [x, y, z], giro }
+  hand: Hand,
+): { position: [number, number, number]; turn: number } {
+  const [x0, y0, z0] = ghostStick(hoopHeight)
+  const side = hand === 'left' ? -1 : 1
+  const x = x0 + side * CONTROLLER_BY_THE_STICK.gap
+  const y = y0 - FALL.travel
+  const z = z0 + CONTROLLER_BY_THE_STICK.ahead
+  const towardPlayer = PLAYER_OFFSET_Z - z
+  const turn = hand === 'left' ? Math.atan2(-towardPlayer, -x) : Math.atan2(towardPlayer, x)
+  return { position: [x, y, z], turn }
 }

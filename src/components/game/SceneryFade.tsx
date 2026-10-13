@@ -9,25 +9,25 @@ import { DECOR_POINTER_EVENTS } from '../../lib/pointers'
 import type { SceneryMode } from '../../lib/gameStore'
 
 /**
- * Funde entre el escenario y el passthrough.
+ * Fades between the scenery and the passthrough.
  *
- * Cambiar de decorado de golpe es violento: se pasa de una plaza de noche a la
- * habitación del jugador en un fotograma. Aquí se hace en dos tiempos —cerrar,
- * cambiar, abrir— con una cortina que envuelve la cabeza.
+ * Changing the decor all at once is violent: it goes from a square at night to the
+ * player's room in one frame. Here it is done in two beats —close,
+ * change, open— with a curtain that wraps the head.
  *
- * **Por qué una cortina y no un fundido del propio fondo.** El skybox de
- * `<Environment background>` no se puede volver transparente: o está o no está,
- * y quitarlo es justo lo que revela el passthrough. Una esfera alrededor de la
- * cámara sí se puede desvanecer, y de paso tapa el instante del cambio.
+ * **Why a curtain and not a fade of the background itself.** The skybox of
+ * `<Environment background>` cannot be made transparent: it is either there or not,
+ * and removing it is precisely what reveals the passthrough. A sphere around the
+ * camera can be faded out, and along the way it covers the instant of the change.
  *
- * El modo que hay que pintar se entrega a los hijos como render prop, para que
- * el cambio ocurra con la cortina cerrada y no se vea el salto.
+ * The mode that has to be painted is handed to the children as a render prop, so that
+ * the change happens with the curtain closed and the jump is not seen.
  */
 
-/** Cuánto dura cada mitad de la transición, en segundos. */
+/** How long each half of the transition lasts, in seconds. */
 const FADE_SECONDS = 0.32
 
-/** Radio de la cortina: cerca de la cabeza, pero fuera del plano de recorte. */
+/** Radius of the curtain: close to the head, but outside the clipping plane. */
 const CURTAIN_RADIUS = 0.35
 
 export function SceneryFade({
@@ -37,8 +37,8 @@ export function SceneryFade({
   mode: SceneryMode
   children: (applied: SceneryMode) => ReactNode
 }) {
-  // El decorado que se está pintando ahora mismo, que va por detrás de lo que
-  // el jugador ha pedido mientras dura el fundido.
+  // The decor being painted right now, which lags behind what
+  // the player has asked for while the fade lasts.
   const [applied, setApplied] = useState(mode)
   const meshRef = useRef<Mesh>(null)
   const materialRef = useRef<MeshBasicMaterial>(null)
@@ -54,23 +54,23 @@ export function SceneryFade({
     const material = materialRef.current
     if (mesh == null || material == null) return
 
-    // La cortina va pegada a la cabeza. En el visor el jugador se mueve por la
-    // habitación, y una esfera anclada al origen de la escena se le quedaría
-    // detrás justo durante el cambio.
+    // The curtain is stuck to the head. In the headset the player moves around the
+    // room, and a sphere anchored at the origin of the scene would be left
+    // behind precisely during the change.
     //
-    // **Y la posición del mundo se traduce al espacio de su padre.** La cortina cuelga del
-    // decorado, que va corrido hacia delante y —montado en el salón— girado hacia donde
-    // estaba el arco (`HostAnchored`): asignada tal cual, la esfera se planta desplazada
-    // justo lo que se haya movido el mundo, y con 35 cm de radio eso es dejar la cabeza
-    // fuera. `worldToLocal` recorre la cadena entera de padres, que es lo que hay que
-    // deshacer.
+    // **And the world position is translated to its parent's space.** The curtain hangs from the
+    // decor, which is shifted forwards and —mounted in the hall— turned towards where
+    // the arch was (`HostAnchored`): assigned as is, the sphere lands displaced
+    // by exactly what the world has moved, and with a 35 cm radius that is leaving the head
+    // outside. `worldToLocal` walks the whole chain of parents, which is what has to be
+    // undone.
     state.camera.getWorldPosition(mesh.position)
-    const padre = mesh.parent
-    if (padre != null) {
-      // three solo pone al día las matrices al pintar, y el decorado se coloca en su propio
-      // render: sin esto se traduciría con el mundo del fotograma anterior.
-      padre.updateWorldMatrix(true, false)
-      padre.worldToLocal(mesh.position)
+    const parent = mesh.parent
+    if (parent != null) {
+      // three only brings the matrices up to date on painting, and the decor is placed in its own
+      // render: without this it would be translated with the world of the previous frame.
+      parent.updateWorldMatrix(true, false)
+      parent.worldToLocal(mesh.position)
     }
 
     const step = delta / FADE_SECONDS
@@ -78,7 +78,7 @@ export function SceneryFade({
     if (phase.current === 'closing') {
       opacity.current = Math.min(1, opacity.current + step)
       if (opacity.current >= 1) {
-        // Con la cortina cerrada se cambia el decorado: el salto no se ve.
+        // With the curtain closed the decor is changed: the jump is not seen.
         setApplied(mode)
         phase.current = 'opening'
       }
@@ -88,19 +88,19 @@ export function SceneryFade({
     }
 
     material.opacity = opacity.current
-    // Invisible del todo cuando no hace nada: si no, en AR una esfera negra al
-    // 0 % de opacidad seguiría escribiendo en el buffer de profundidad.
+    // Fully invisible when it does nothing: otherwise, in AR a black sphere at
+    // 0 % opacity would keep writing to the depth buffer.
     mesh.visible = opacity.current > 0.001
   })
 
   return (
     <>
-      {/* Y fuera del alcance de los punteros, dicho aquí además de heredarlo del mundo: es una
-          esfera de 35 cm **alrededor de la cabeza**, y una forma que envuelve la mano cuenta
-          como tocada a distancia cero. Estar invisible no la aparta: a la librería de punteros
-          la visibilidad no le dice nada (`lib/pointers.ts`). */}
+      {/* And out of reach of the pointers, said here as well as inheriting it from the world: it is a
+          35 cm sphere **around the head**, and a shape that wraps the hand counts
+          as touched at distance zero. Being invisible does not set it aside: to the pointer library
+          visibility says nothing (`lib/pointers.ts`). */}
       <mesh ref={meshRef} visible={false} pointerEvents={DECOR_POINTER_EVENTS}>
-        {/* Vista desde dentro: la esfera envuelve al jugador. */}
+        {/* Seen from inside: the sphere wraps the player. */}
         <sphereGeometry args={[CURTAIN_RADIUS, 16, 12]} />
         <meshBasicMaterial
           ref={materialRef}

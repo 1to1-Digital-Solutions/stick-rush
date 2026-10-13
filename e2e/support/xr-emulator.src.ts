@@ -1,14 +1,14 @@
 /**
- * Emulador WebXR para los tests, inyectado en la página antes de que cargue.
+ * WebXR emulator for the tests, injected into the page before it loads.
  *
- * Chromium no implementa WebXR, así que sin esto no hay forma de ejercitar el
- * modo inmersivo: los tests de escritorio pasan por el camino del ratón, que es
- * código distinto. IWER (Immersive Web Emulation Runtime, de Meta) instala un
- * `navigator.xr` completo con un Quest 3 y sus dos mandos, que se pueden mover y
- * pulsar desde el test.
+ * Chromium does not implement WebXR, so without this there is no way of exercising the
+ * immersive mode: the desktop tests go through the mouse path, which is
+ * different code. IWER (Immersive Web Emulation Runtime, by Meta) installs a
+ * full `navigator.xr` with a Quest 3 and its two controllers, which can be moved and
+ * pressed from the test.
  *
- * Este fichero se empaqueta a un IIFE en `globalSetup` y se carga con
- * `page.addInitScript`. Es código de test: no entra en el bundle de la app.
+ * This file is bundled into an IIFE in `globalSetup` and loaded with
+ * `page.addInitScript`. It is test code: it does not go into the app's bundle.
  */
 import { XRDevice, directionTo, lookRotation, metaQuest3 } from 'iwer'
 
@@ -16,22 +16,22 @@ type Hand = 'left' | 'right'
 type Point = { x: number; y: number; z: number }
 
 const device = new XRDevice(metaQuest3)
-// `forceInstall` porque Chromium ya trae un `navigator.xr` propio —sin ningún
-// visor detrás— y sin esto IWER se aparta y deja el suyo: el menú preguntaría
-// por el visor, le dirían que no hay, y no habría por dónde entrar.
+// `forceInstall` because Chromium already ships a `navigator.xr` of its own —with no
+// headset behind it— and without this IWER steps aside and leaves that one: the menu would ask
+// for the headset, it would be told there is none, and there would be no way in.
 device.installRuntime({ forceInstall: true })
 
 const controllerOf = (hand: Hand) => {
   const controller = device.controllers[hand]
-  if (!controller) throw new Error(`El emulador no expone el mando ${hand}`)
+  if (!controller) throw new Error(`The emulator does not expose the ${hand} controller`)
   return controller
 }
 
 const api = {
-  /** ¿Hay una sesión inmersiva en curso? */
+  /** Is there an immersive session in progress? */
   hasSession: () => device.activeSession != null,
 
-  /** Coloca la mano en un punto del mundo (metros, mismo sistema que la escena). */
+  /** Places the hand at a point of the world (metres, same system as the scene). */
   place(hand: Hand, target: Point) {
     const controller = controllerOf(hand)
     controller.connected = true
@@ -39,12 +39,12 @@ const api = {
   },
 
   /**
-   * Orienta la mano para que su rayo apunte a un punto.
+   * Orients the hand so that its ray points at a point.
    *
-   * La dirección va del objetivo hacia la mano, no al revés: `lookRotation`
-   * alinea el eje **+Z** con la dirección que se le pasa, mientras que en WebXR
-   * el rayo del mando sale hacia **-Z** de su espacio local. Sin invertirlo, el
-   * mando apunta justo al lado contrario.
+   * The direction goes from the target towards the hand, not the other way round: `lookRotation`
+   * aligns the **+Z** axis with the direction it is given, while in WebXR
+   * the controller's ray leaves towards **-Z** of its local space. Without inverting it, the
+   * controller points right at the opposite side.
    */
   aim(hand: Hand, target: Point) {
     const controller = controllerOf(hand)
@@ -54,55 +54,55 @@ const api = {
   },
 
   /**
-   * Pulsa un botón del mando. `squeeze` es el de agarre (el que coge palos) y
-   * `trigger` el de selección (el del rayo, que maneja el menú).
+   * Presses a button of the controller. `squeeze` is the grip one (the one that catches sticks) and
+   * `trigger` the select one (the ray's, which drives the menu).
    */
   press(hand: Hand, button: 'squeeze' | 'trigger', value = 1) {
-    // `setButtonValueImmediate` y no `updateButtonValue`: el segundo encola el
-    // valor para el siguiente frame del propio emulador, y desde un test se
-    // pierde el pulso. IWER documenta este para control programático.
+    // `setButtonValueImmediate` and not `updateButtonValue`: the second one queues the
+    // value for the next frame of the emulator itself, and from a test the
+    // pulse is lost. IWER documents this one for programmatic control.
     controllerOf(hand).setButtonValueImmediate(button, value)
   },
 
   /**
-   * Pone la cabeza a esa altura, en metros sobre el suelo.
+   * Puts the head at that height, in metres above the floor.
    *
-   * Es lo que separa a quien juega de pie de quien juega sentado, y lo único que el juego
-   * mira para decidir si le baja el mundo. IWER entrega la pose de la cabeza dentro de un
-   * espacio con suelo, así que esta cota es una estatura de verdad.
+   * It is what separates whoever plays standing from whoever plays seated, and the only thing the game
+   * looks at to decide whether it lowers the world for them. IWER delivers the head pose inside a
+   * space with a floor, so this height is a real stature.
    */
   seat(eyeHeight: number) {
     device.position.y = eyeHeight
   },
 
   /**
-   * Gira la cabeza, en **grados**: `yaw` a la izquierda y `pitch` hacia arriba, en positivo. Es el
-   * convenio común de los diecisiete (`mirar` de `support/comun.ts`).
+   * Turns the head, in **degrees**: `yaw` to the left and `pitch` upwards, as positive. It is the
+   * common convention of the seventeen (`lookToward` of `support/common.ts`).
    *
-   * El emulador entra siempre mirando al frente; las ayudas del suelo, por ejemplo, están a los
-   * pies. Primero el rumbo y después la inclinación, que es el orden de una cabeza (el Euler
-   * `'YXZ'` de three).
+   * The emulator always enters looking straight ahead; the floor hints, for example, are at the
+   * feet. First the heading and then the pitch, which is the order of a head (the `'YXZ'`
+   * Euler of three).
    */
   lookAt(yaw: number, pitch = 0) {
-    const medio = Math.PI / 360
-    const cy = Math.cos(yaw * medio)
-    const sy = Math.sin(yaw * medio)
-    const cp = Math.cos(pitch * medio)
-    const sp = Math.sin(pitch * medio)
+    const half = Math.PI / 360
+    const cy = Math.cos(yaw * half)
+    const sy = Math.sin(yaw * half)
+    const cp = Math.cos(pitch * half)
+    const sp = Math.sin(pitch * half)
     device.quaternion.set(cy * sp, sy * cp, -sy * sp, cy * cp)
   },
 
   /**
-   * Cambia a manos desnudas: apaga los mandos y enciende las manos.
+   * Switches to bare hands: turns the controllers off and the hands on.
    *
-   * Es el otro modo de entrada del visor, y el que deja fuera a quien no tiene
-   * mandos a mano o no puede sostenerlos. IWER las trae con sus articulaciones,
-   * así que lo que se prueba con esto es exactamente lo que hace el juego con
-   * una mano de verdad.
+   * It is the headset's other input mode, and the one that leaves out whoever has no
+   * controllers at hand or cannot hold them. IWER ships them with their joints,
+   * so what is tested with this is exactly what the game does with
+   * a real hand.
    */
   useHands() {
-    for (const mando of [device.controllers.left, device.controllers.right]) {
-      if (mando) mando.connected = false
+    for (const controller of [device.controllers.left, device.controllers.right]) {
+      if (controller) controller.connected = false
     }
     device.primaryInputMode = 'hand'
     const { left, right } = device.hands
@@ -116,21 +116,21 @@ const api = {
     }
   },
 
-  /** Lleva una mano desnuda a ese punto del espacio del visor. */
+  /** Takes a bare hand to that point of the headset's space. */
   placeBareHand(hand: Hand, target: Point) {
     device.hands[hand]?.position.set(target.x, target.y, target.z)
   },
 
-  /** Junta o separa el pulgar y el índice: es el «agarrar» de una mano desnuda. */
+  /** Brings the thumb and the index finger together or apart: it is the «grab» of a bare hand. */
   pinch(hand: Hand, pressed: boolean) {
-    const mano = device.hands[hand]
-    if (mano == null) return
-    mano.poseId = pressed ? 'pinch' : 'default'
-    mano.updateHandPose()
-    mano.updatePinchValue(pressed ? 1 : 0)
+    const bareHand = device.hands[hand]
+    if (bareHand == null) return
+    bareHand.poseId = pressed ? 'pinch' : 'default'
+    bareHand.updateHandPose()
+    bareHand.updatePinchValue(pressed ? 1 : 0)
   },
 
-  /** Estado interno del emulador, para diagnosticar tests que no enganchan. */
+  /** Internal state of the emulator, to diagnose tests that do not engage. */
   debug() {
     const session = device.activeSession as unknown as
       | { inputSources?: ArrayLike<unknown> }
@@ -145,7 +145,7 @@ const api = {
     }
   },
 
-  /** Cuenta los frames que entrega la sesión en `ms` milisegundos. */
+  /** Counts the frames the session delivers in `ms` milliseconds. */
   async countSessionFrames(ms: number) {
     const session = device.activeSession
     if (!session) return -1
@@ -161,7 +161,7 @@ const api = {
     return frames
   },
 
-  /** Cierra la sesión, como cuando el jugador se quita el visor. */
+  /** Closes the session, as when the player takes the headset off. */
   async endSession() {
     await device.activeSession?.end()
   },

@@ -1,24 +1,25 @@
 /**
- * Qué suena en Stick Rush y cuándo: la regla de `useGameSound.ts` de la web, sin React, sobre los
- * efectos renderizados de su `sound.ts` (`godot-kit.json`).
+ * What sounds in Stick Rush and when: the rule of the web's `useGameSound.ts`, without React, over
+ * the effects rendered from its `sound.ts` (`godot-kit.json`).
  *
- * La web compara los contadores de la partida con los del render anterior y dispara lo que ha
- * pasado: **atrapar** (su nota sube un semitono por palo de racha, hasta siete: `catchFrequency`),
- * **perder**, cada **segundo de la cuenta atrás** (3, 2 y 1, cada uno en su nota), la **salida** al
- * acabar la cuenta, el **listón de medalla** que se cruza (dos notas cortas, más agudas cuanto mejor
- * es la medalla) y el **final** —ganar, perder o terminar sin más (`roundOutcome`)— con el
- * **récord** por encima si lo hay. Aquí se compara igual, de un fotograma al siguiente. Como en la
- * web, dos palos resueltos a la vez suenan una sola vez: dos copias del mismo sonido a la vez no se
- * oyen como dos.
+ * The web compares the counters of the run with those of the previous render and fires what has
+ * happened: **catching** (its note goes up a semitone per stick of streak, up to seven:
+ * `catchFrequency`), **missing**, each **second of the countdown** (3, 2 and 1, each on its note),
+ * the **start** when the count ends, the **medal threshold** that is crossed (two short notes,
+ * higher the better the medal is) and the **end** —winning, losing or just finishing
+ * (`roundOutcome`)— with the **record** on top if there is one. Here it is compared the same way,
+ * from one frame to the next. As on the web, two sticks resolved at once sound only once: two
+ * copies of the same sound at once are not heard as two.
  *
- * Los efectos son ficheros, uno por disparo distinto de la web: la nota del atrape va en ocho
- * (`catch-1`…`catch-8`, de la racha 1 a la 8 y más), la cuenta atrás en tres y el listón en tres.
+ * The effects are files, one per distinct trigger of the web: the note of the catch comes in eight
+ * (`catch-1`…`catch-8`, from streak 1 to 8 and beyond), the countdown in three and the threshold in
+ * three.
  */
 import { thresholdCrossed, type Medal } from '@/lib/goal'
 
-import type { FaseDeLaPartida } from './run'
+import type { RunPhase } from './run'
 
-/** Todos los ficheros de efectos, los de `godot-kit.json`. */
+/** All the effect files, those of `godot-kit.json`. */
 export const SOUNDS = [
   'catch-1',
   'catch-2',
@@ -42,60 +43,60 @@ export const SOUNDS = [
   'medal-gold',
 ] as const
 
-/** Cómo se llama el efecto de cada listón de medalla (`{ name: 'medal', rank }` de `sound.ts`). */
-export const SONIDO_DEL_LISTON = { bronze: 'medal-bronze', silver: 'medal-silver', gold: 'medal-gold' } as const satisfies Record<Medal, string>
+/** What the effect of each medal threshold is called (`{ name: 'medal', rank }` in `sound.ts`). */
+export const THRESHOLD_SOUND = { bronze: 'medal-bronze', silver: 'medal-silver', gold: 'medal-gold' } as const satisfies Record<Medal, string>
 
-export type Sonido = (typeof SOUNDS)[number]
+export type Sound = (typeof SOUNDS)[number]
 
-/** A partir de esta racha la nota del atrape ya no sube (`CATCH_MAX_SEMITONES` + 1). */
-export const RACHA_MAS_AGUDA = 8
+/** From this streak on the note of the catch no longer goes up (`CATCH_MAX_SEMITONES` + 1). */
+export const HIGHEST_NOTE_STREAK = 8
 
-/** Lo que se compara de un fotograma al siguiente. */
-export interface Pistas {
+/** What is compared from one frame to the next. */
+export interface Cues {
   score: number
   missed: number
   countdown: number
-  gameState: FaseDeLaPartida
+  gameState: RunPhase
   streak: number
   /**
-   * Si el final suena a ganar encima del cierre: el récord batido, o el final de una partida a dos
-   * (`celebra` de la partida).
+   * Whether the end sounds like winning on top of the close: the record beaten, or the end of a
+   * two-player run (`celebrates` of the run).
    */
   isRecord: boolean
-  /** Si lo que acaba es la segunda tanda de una partida a dos: el cierre suena a ganar. */
-  acabaElDuelo?: boolean
-  /** Si el nivel acabado se superó, o `null` fuera de los niveles. */
+  /** Whether what ends is the second round of a two-player run: the close sounds like winning. */
+  duelEnds?: boolean
+  /** Whether the finished level was passed, or `null` outside the levels. */
   levelPassed: boolean | null
   lives: number | null
-  /** La medalla que ya es de quien juega (`medalla` de la partida): cuando sube, suena su listón. */
-  medalla?: Medal | null
+  /** The medal that already belongs to whoever plays (`medal` of the run): when it goes up, its threshold sounds. */
+  medal?: Medal | null
 }
 
-/** Cómo suena el final (`roundOutcome` de `useGameSound.ts`). */
-export function finalQueSuena(levelPassed: boolean | null, lives: number | null): 'win' | 'loss' | 'close' {
+/** How the end sounds (`roundOutcome` in `useGameSound.ts`). */
+export function endingSound(levelPassed: boolean | null, lives: number | null): 'win' | 'loss' | 'close' {
   if (levelPassed != null) return levelPassed ? 'win' : 'loss'
   if (lives != null) return lives > 0 ? 'win' : 'loss'
   return 'close'
 }
 
-/** Lo que tiene que sonar al pasar de `antes` a `ahora`, en orden. */
-export function sonidosDesde(antes: Pistas, ahora: Pistas): Sonido[] {
-  const suenan: Sonido[] = []
-  if (ahora.score > antes.score) suenan.push(`catch-${Math.min(Math.max(1, Math.round(ahora.streak)), RACHA_MAS_AGUDA)}` as Sonido)
-  if (ahora.missed > antes.missed) suenan.push('miss')
-  if (ahora.gameState === 'countdown' && ahora.countdown > 0 && ahora.countdown !== antes.countdown) {
-    suenan.push(`countdown-${Math.min(3, Math.max(1, ahora.countdown))}` as Sonido)
+/** What has to sound when going from `before` to `now`, in order. */
+export function soundsBetween(before: Cues, now: Cues): Sound[] {
+  const sounds: Sound[] = []
+  if (now.score > before.score) sounds.push(`catch-${Math.min(Math.max(1, Math.round(now.streak)), HIGHEST_NOTE_STREAK)}` as Sound)
+  if (now.missed > before.missed) sounds.push('miss')
+  if (now.gameState === 'countdown' && now.countdown > 0 && now.countdown !== before.countdown) {
+    sounds.push(`countdown-${Math.min(3, Math.max(1, now.countdown))}` as Sound)
   }
-  if (ahora.gameState === 'playing' && antes.gameState === 'countdown') suenan.push('go')
-  // El listón de medalla que se acaba de cruzar, además del atrape que lo cruzó.
-  const cruzado = thresholdCrossed(antes.medalla ?? null, ahora.medalla ?? null)
-  if (cruzado != null) suenan.push(SONIDO_DEL_LISTON[cruzado])
-  if (ahora.gameState === 'finished' && antes.gameState !== 'finished') {
-    // El final de una partida a dos suena a ganar: la gana alguien de los que están delante, o
-    // empatan, aunque el segundo se haya quedado sin vidas.
-    suenan.push(`over-${ahora.acabaElDuelo === true ? 'win' : finalQueSuena(ahora.levelPassed, ahora.lives)}` as Sonido)
-    // El récord va por encima del cierre y no en su lugar.
-    if (ahora.isRecord) suenan.push('record')
+  if (now.gameState === 'playing' && before.gameState === 'countdown') sounds.push('go')
+  // The medal threshold that has just been crossed, besides the catch that crossed it.
+  const crossed = thresholdCrossed(before.medal ?? null, now.medal ?? null)
+  if (crossed != null) sounds.push(THRESHOLD_SOUND[crossed])
+  if (now.gameState === 'finished' && before.gameState !== 'finished') {
+    // The end of a two-player run sounds like winning: someone of those in front wins it, or they
+    // tie, even if the second one has run out of lives.
+    sounds.push(`over-${now.duelEnds === true ? 'win' : endingSound(now.levelPassed, now.lives)}` as Sound)
+    // The record goes on top of the close and not instead of it.
+    if (now.isRecord) sounds.push('record')
   }
-  return suenan
+  return sounds
 }

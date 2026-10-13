@@ -6,14 +6,14 @@ import { MEDALS, thresholdCrossed } from '../../lib/goal'
 import { createSoundEngine, type RoundOutcome, type SoundEngine } from '../../lib/sound'
 
 /**
- * Pone sonido a la partida: al atrapar, al perder y en la cuenta atrás.
+ * Puts sound to the run: on catching, on missing and in the countdown.
  *
- * Escucha el estado del juego en vez de engancharse a los componentes, así que
- * suena igual con el ratón que con los mandos del visor —que es donde más falta
- * hace, porque allí no hay marcador que mirar sin apartar la vista de los palos.
+ * It listens to the state of the game instead of hooking onto the components, so
+ * it sounds the same with the mouse as with the headset's controllers —which is where it is most
+ * needed, because there there is no scoreboard to look at without taking the eyes off the sticks.
  *
- * Se monta una sola vez, en `GameScene`. Con los efectos a cero en los ajustes
- * del arcade (`muted` del store) no llega a tocar la Web Audio API.
+ * It is mounted only once, in `GameScene`. With the effects at zero in the hall's
+ * settings (`muted` of the store) it never gets to touch the Web Audio API.
  */
 export function useGameSound() {
   const {
@@ -24,21 +24,21 @@ export function useGameSound() {
     streak,
     muted,
     sfxVolume,
-    celebra,
+    celebrates,
     duel,
     levelResult,
     lives,
-    medalla,
+    medal,
   } = useGame()
   const engineRef = useRef<SoundEngine | null>(null)
-  // El volumen de efectos del arcade, guardado aparte para poder aplicarlo al
-  // motor sin que cambiarlo lo vuelva a crear.
+  // The hall's effects volume, kept apart to be able to apply it to the
+  // engine without changing it creating it again.
   const sfxVolumeRef = useRef(sfxVolume)
-  // El navegador no deja sonar hasta que el jugador ha tocado la página. Es
-  // estado y no un ref porque de él depende crear el audio, y el gesto puede
-  // ser el propio botón de silenciar: apuntarlo en un render deja que el
-  // efecto vea las dos cosas a la vez y no abra un contexto para cerrarlo acto
-  // seguido.
+  // The browser does not let anything play until the player has touched the page. It is
+  // state and not a ref because creating the audio depends on it, and the gesture may
+  // be the mute button itself: noting it in a render lets the
+  // effect see both things at once and not open a context to close it right
+  // afterwards.
   const [interacted, setInteracted] = useState(false)
   const previous = useRef({
     score: 0,
@@ -50,44 +50,44 @@ export function useGameSound() {
   useEffect(() => {
     if (interacted) return
 
-    // El clic y no el `pointerdown`: los botones del juego se activan al hacer
-    // clic, así que atender el gesto en ese mismo evento deja que React vea
-    // «ya ha interactuado» y «quiere silencio» en el mismo render. Con
-    // `pointerdown` llegarían en eventos distintos y silenciar con el primer
-    // clic de la página abriría un contexto de audio para cerrarlo acto
-    // seguido. El teclado también pasa por aquí: activar un botón con Enter
-    // dispara su clic. Y en el visor el gesto es el botón de entrar en la
-    // sesión, que todavía es DOM.
+    // The click and not the `pointerdown`: the game's buttons are activated on
+    // click, so attending to the gesture in that same event lets React see
+    // «has already interacted» and «wants silence» in the same render. With
+    // `pointerdown` they would arrive in different events and muting with the first
+    // click of the page would open an audio context to close it right
+    // afterwards. The keyboard goes through here too: activating a button with Enter
+    // fires its click. And in the headset the gesture is the button to enter the
+    // session, which is still DOM.
     const remember = () => setInteracted(true)
     window.addEventListener('click', remember)
 
     return () => window.removeEventListener('click', remember)
   }, [interacted])
 
-  // Mover el volumen en los ajustes del arcade no rehace el audio: toca el nodo
-  // maestro y ya. Recrearlo cerraba el contexto y abría otro a cada paso del
-  // deslizador, que es un corte de sonido por cada empujón. Y el ref guarda el
-  // valor para el motor que todavía no existe: en silencio no hay ninguno, y
-  // al volver el sonido tiene que nacer al volumen que se eligió mientras.
+  // Moving the volume in the hall's settings does not rebuild the audio: it touches the master
+  // node and that is it. Recreating it closed the context and opened another at each step of the
+  // slider, which is a cut in the sound for every nudge. And the ref keeps the
+  // value for the engine that does not exist yet: in silence there is none, and
+  // when the sound comes back it has to be born at the volume chosen meanwhile.
   useEffect(() => {
     sfxVolumeRef.current = sfxVolume
     engineRef.current?.setVolume(sfxVolume)
   }, [sfxVolume])
 
   useEffect(() => {
-    // En silencio no se toca la Web Audio API: ni contexto, ni nodos, ni
-    // permiso de reproducción que pedir. Y al silenciar a media partida, la
-    // limpieza de este efecto cierra el contexto que hubiera abierto.
+    // In silence the Web Audio API is not touched: no context, no nodes, no
+    // playback permission to ask for. And on muting mid-run, the
+    // clean-up of this effect closes the context it may have opened.
     if (!interacted || muted) return
 
-    // Sin Web Audio (navegador antiguo, entorno de test) se juega en silencio.
+    // Without Web Audio (old browser, test environment) the game is played in silence.
     const AudioContextClass = window.AudioContext
     if (AudioContextClass == null) return
 
     const context = new AudioContextClass()
     engineRef.current = createSoundEngine(context, sfxVolumeRef.current)
-    // Que el navegador se niegue a reanudarlo es un desenlace previsto —su
-    // política de reproducción automática— y significa jugar sin sonido.
+    // The browser refusing to resume it is a foreseen outcome —its
+    // autoplay policy— and it means playing without sound.
     void context.resume().catch(() => {})
 
     return () => {
@@ -105,52 +105,52 @@ export function useGameSound() {
     previous.current = { score, missed, countdown, gameState }
     if (engine == null) return
 
-    // Los contadores solo suben dentro de una partida, así que comparar con el
-    // valor anterior basta para saber qué acaba de pasar. Si dos palos se
-    // resuelven en el mismo lote de React suena una vez: dos copias del mismo
-    // sonido a la vez no se oyen como dos, se oyen como una más fuerte.
+    // The counters only go up inside a run, so comparing with the
+    // previous value is enough to know what has just happened. If two sticks are
+    // resolved in the same React batch it sounds once: two copies of the same
+    // sound at once are not heard as two, they are heard as one louder one.
     if (score > before.score) engine.play({ name: 'catch', streak })
     if (missed > before.missed) engine.play({ name: 'miss' })
 
     if (gameState === 'countdown' && countdown > 0 && countdown !== before.countdown) {
       engine.play({ name: 'countdown', secondsLeft: countdown })
     }
-    // A jugar solo se entra agotando la cuenta atrás; volver al menú por el
-    // camino la corta sin salida.
+    // Playing is only entered by running out the countdown; going back to the menu on the
+    // way cuts it with no go.
     if (gameState === 'playing' && before.gameState === 'countdown') {
       engine.play({ name: 'go' })
     }
 
-    // El final. Se acababa el último palo y no sonaba nada: la pantalla de fin
-    // llegaba sin avisar, y con el visor puesto el marcador está donde uno no
-    // siempre está mirando.
+    // The end. The last stick finished and nothing sounded: the end screen
+    // arrived without warning, and with the headset on the scoreboard is where one is not
+    // always looking.
     if (gameState === 'finished' && before.gameState !== 'finished') {
-      // El final de una partida a dos suena a ganar: la gana alguien de los que están delante, o
-      // empatan, y se celebra aunque el segundo se haya quedado sin vidas.
-      const acabaElDuelo = duel != null && duel.points[1] != null
-      engine.play({ name: 'over', outcome: acabaElDuelo ? 'win' : roundOutcome(levelResult, lives) })
-      // El récord va por encima del cierre y no en su lugar: batir la marca
-      // puede pasar ganando o terminando sin más, y hay que oír las dos cosas.
-      if (celebra) engine.play({ name: 'record' })
+      // The end of a match for two sounds like winning: one of those in front wins it, or
+      // they tie, and it is celebrated even if the second has run out of lives.
+      const duelEnds = duel != null && duel.points[1] != null
+      engine.play({ name: 'over', outcome: duelEnds ? 'win' : roundOutcome(levelResult, lives) })
+      // The record goes on top of the close and not in its place: beating the best
+      // can happen winning or just finishing, and both things have to be heard.
+      if (celebrates) engine.play({ name: 'record' })
     }
-  }, [score, missed, countdown, gameState, streak, celebra, duel, levelResult, lives])
+  }, [score, missed, countdown, gameState, streak, celebrates, duel, levelResult, lives])
 
-  // El listón de medalla que se acaba de cruzar: el sonido corto de la celebración del cartel.
-  // Sale de la misma medalla que el cartel mira, así que suena cuando él cambia de color.
-  const medallaDeAntes = useRef(medalla)
+  // The medal threshold that has just been crossed: the short sound of the sign's celebration.
+  // It comes from the same medal the sign looks at, so it sounds when the sign changes colour.
+  const previousMedal = useRef(medal)
 
   useEffect(() => {
-    const cruzado = thresholdCrossed(medallaDeAntes.current, medalla)
-    medallaDeAntes.current = medalla
-    if (cruzado != null) engineRef.current?.play({ name: 'medal', rank: MEDALS.indexOf(cruzado) as 0 | 1 | 2 })
-  }, [medalla])
+    const crossed = thresholdCrossed(previousMedal.current, medal)
+    previousMedal.current = medal
+    if (crossed != null) engineRef.current?.play({ name: 'medal', rank: MEDALS.indexOf(crossed) as 0 | 1 | 2 })
+  }, [medal])
 }
 
 /**
- * Cómo ha acabado esta partida, para elegir el cierre.
+ * How this run has ended, to choose the close.
  *
- * En Niveles se aprueba o no; en el desafío se pierde quedándose sin vidas; en práctica no
- * hay nada que ganar ni que perder y el cierre solo dice «se acabó».
+ * In Levels you pass or you do not; in the challenge you lose by running out of lives; in practice
+ * there is nothing to win or lose and the close only says «se acabó».
  */
 function roundOutcome(
   levelResult: { passed: boolean } | null,

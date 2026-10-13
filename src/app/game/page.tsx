@@ -2,7 +2,7 @@
 
 import { StickRush } from '@/game'
 
-/** Ruta directa al juego, la misma pantalla que la portada. */
+/** Direct route to the game, the same screen as the home page. */
 export default function GamePage() {
   return (
     <div className="h-dvh w-full">

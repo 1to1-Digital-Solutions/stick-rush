@@ -2,11 +2,11 @@ import { LEVEL_COUNT, clampLevel, nextUnlocked, type Stars } from './levels'
 import { createStoredPreference } from './storage'
 
 /**
- * Lo que el modo Niveles recuerda entre visitas: hasta qué nivel se puede jugar
- * y cuántas estrellas tiene cada uno. Va al almacenamiento del navegador por la
- * misma fontanería que el récord (`createStoredPreference`). Las estrellas van
- * todas en una sola clave, como texto, para que la lectura sea un valor
- * comparable y no un array nuevo cada vez.
+ * What the Levels mode remembers between visits: up to which level can be played
+ * and how many stars each one has. It goes to the browser's storage through the
+ * same plumbing as the record (`createStoredPreference`). The stars all go
+ * in a single key, as text, so that the reading is a comparable value
+ * and not a new array each time.
  */
 
 export const UNLOCKED_LEVEL_KEY = 'stick-rush:levels:unlocked'
@@ -20,9 +20,9 @@ export function parseUnlockedLevel(raw: string | null): number {
 }
 
 export function parseStarsList(raw: string | null): string {
-  const partes = (raw ?? '').split(',').map((s: string) => Number(s.trim()))
+  const parts = (raw ?? '').split(',').map((s: string) => Number(s.trim()))
   return Array.from({ length: LEVEL_COUNT }, (_, i) => {
-    const v = partes[i]
+    const v = parts[i]
     return Number.isInteger(v) && v >= 0 && v <= 3 ? v : 0
   }).join(',')
 }
@@ -54,20 +54,20 @@ export const {
   subscribe: subscribeStarsList,
 } = stars
 
-/** Guarda estrellas (si mejoran) y desbloqueo; devuelve hasta dónde se puede jugar. */
+/** Stores stars (if they improve) and unlocking; returns up to where can be played. */
 export function saveLevelResult(level: number, earned: Stars): number {
-  const nivel = clampLevel(level)
-  const lista = getStarsList().split(',').map(Number)
-  // El `?? 0` es para una lista guardada más corta de lo que debería: se edita
-  // a mano, y sin esto comparar contra `undefined` daría siempre falso.
+  const safeLevel = clampLevel(level)
+  const list = getStarsList().split(',').map(Number)
+  // The `?? 0` is for a stored list shorter than it should be: it is edited
+  // by hand, and without this comparing against `undefined` would always give false.
   /* v8 ignore next */
-  if (earned > (lista[nivel - 1] ?? 0)) {
-    lista[nivel - 1] = earned
-    stars.save(lista.join(','))
+  if (earned > (list[safeLevel - 1] ?? 0)) {
+    list[safeLevel - 1] = earned
+    stars.save(list.join(','))
   }
-  const siguiente = nextUnlocked(getUnlockedLevel(), nivel, earned)
-  if (siguiente > getUnlockedLevel()) unlocked.save(siguiente)
-  return siguiente
+  const next = nextUnlocked(getUnlockedLevel(), safeLevel, earned)
+  if (next > getUnlockedLevel()) unlocked.save(next)
+  return next
 }
 
 export function levelsPassed(list: string): number {

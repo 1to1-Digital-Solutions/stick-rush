@@ -11,45 +11,45 @@ import {
 } from './support/xr'
 
 /**
- * Jugar sentado.
+ * Playing seated.
  *
- * **Era la barrera más grande que tenía el arcade**, y la única que no se podía sortear
- * jugando peor: las cotas de los trece juegos se eligieron con una persona de pie delante,
- * así que sentado —en una silla, en un sofá, en una silla de ruedas— el aro queda por
- * encima de donde llega el brazo y no hay partida. No falla nada, y por eso tampoco había
- * nada que arreglar: simplemente no se podía jugar.
+ * **It was the biggest barrier the hall had**, and the only one that could not be got round
+ * by playing worse: the heights of the thirteen games were chosen with a person standing in front,
+ * so seated —on a chair, on a sofa, in a wheelchair— the hoop ends up
+ * above where the arm reaches and there is no run. Nothing fails, and that is why there was
+ * nothing to fix either: it simply could not be played.
  *
- * Aquí se sienta al jugador de verdad —la cabeza a metro veinte, que es lo que mide alguien
- * sentado— y se comprueba **con un palo del aro** que el mundo baja hasta él. Es lo único
- * que lo dice desde fuera del Canvas: la escena es geometría y no deja rastro en el DOM.
+ * Here the player is really seated —the head at one metre twenty, which is what someone
+ * seated measures— and it is checked **with a stick of the hoop** that the world comes down to them. It is the only
+ * thing that says so from outside the Canvas: the scene is geometry and leaves no trace in the DOM.
  */
 
-/** Dónde está ahora mismo un palo del aro, en metros del mundo. */
-async function alturaDeUnPalo(page: import('@playwright/test').Page) {
-  const encontrado = await page.waitForFunction(
+/** Where a stick of the hoop is right now, in metres of the world. */
+async function stickHeight(page: import('@playwright/test').Page) {
+  const found = await page.waitForFunction(
     () => {
-      // El más alto de los que se pueden coger, que es uno que sigue colgando: el turno de
-      // caída sale de una semilla nueva en cada partida, y el primero de la lista puede ser
-      // justo el que ya está cayendo.
+      // The highest of the ones that can be caught, which is one that still hangs: the falling
+      // turn comes from a new seed in each run, and the first of the list may be
+      // just the one that is already falling.
       const sticks = Object.values(window.__stickRushSticks ?? {}).filter((stick) => stick.catchable)
-      return sticks.length === 0 ? null : sticks.reduce((alto, stick) => (stick.y > alto.y ? stick : alto))
+      return sticks.length === 0 ? null : sticks.reduce((highest, stick) => (stick.y > highest.y ? stick : highest))
     },
     undefined,
     { timeout: 15_000 },
   )
-  return ((await encontrado.jsonValue()) as StickProbe).y
+  return ((await found.jsonValue()) as StickProbe).y
 }
 
-test.describe('el mundo a la altura de quien juega', () => {
+test.describe('the world at the height of whoever plays', () => {
   test.beforeEach(async ({ page }) => {
     await installXREmulator(page)
   })
 
-  test('sentado y de pie, el aro está a la misma altura si nadie pide nada', async ({
+  test('seated and standing, the hoop is at the same height if nobody asks for anything', async ({
     page,
   }) => {
-    // El ajuste no se adivina: a quien está de pie, mover el suelo bajo los pies le
-    // revuelve el estómago, y hay gente baja que prefiere el mundo como es.
+    // The setting is not guessed: for whoever is standing, moving the floor under their feet
+    // turns their stomach, and there are short people who prefer the world as it is.
     await openGame(page)
     await enterVR(page)
     await page.evaluate(() => {
@@ -57,14 +57,14 @@ test.describe('el mundo a la altura de quien juega', () => {
     })
     await startGameInsideSession(page)
 
-    const dePie = await alturaDeUnPalo(page)
+    const standing = await stickHeight(page)
     await seatPlayer(page, 1.2)
     await page.waitForTimeout(1500)
 
-    expect(await alturaDeUnPalo(page)).toBeCloseTo(dePie, 2)
+    expect(await stickHeight(page)).toBeCloseTo(standing, 2)
   })
 
-  test('pedido desde el arcade, el mundo baja hasta los ojos', async ({ page }) => {
+  test('asked for from the hall, the world comes down to the eyes', async ({ page }) => {
     await openGame(page)
     await enterVR(page)
     await page.evaluate(() => {
@@ -72,56 +72,56 @@ test.describe('el mundo a la altura de quien juega', () => {
     })
     await startGameInsideSession(page)
 
-    const dePie = await alturaDeUnPalo(page)
+    const standing = await stickHeight(page)
 
-    // Sentarse y pedirlo, las dos cosas. El ajuste viaja por el navegador desde la portada
-    // del arcade, y el aviso es lo que hace que llegue a un juego ya montado: quien lo
-    // cambia está dentro del salón y recargar cerraría la sesión inmersiva.
+    // Sitting down and asking for it, both things. The setting travels through the browser from the
+    // hall's front page, and the notice is what makes it reach a game already mounted: whoever
+    // changes it is inside the hall and reloading would close the immersive session.
     await seatPlayer(page, 1.2)
-    await pedirElMundoALosOjos(page)
-    // El seguimiento no salta: se acerca a la medida y solo la adopta cuando el cambio se
-    // sostiene, para que agacharse a media partida no mueva la escena.
+    await requestWorldAtEyes(page)
+    // The tracking does not jump: it approaches the measurement and only adopts it when the change
+    // holds, so that crouching in the middle of a run does not move the scene.
     await page.waitForTimeout(2500)
 
-    const sentado = await alturaDeUnPalo(page)
+    const seated = await stickHeight(page)
 
-    // Los cuarenta centímetros que le faltan a quien tiene los ojos a 1,20 para alcanzar
-    // un mundo dibujado para 1,60.
-    expect(dePie - sentado).toBeGreaterThan(0.3)
-    expect(dePie - sentado).toBeLessThan(0.5)
+    // The forty centimetres that whoever has their eyes at 1.20 is short of to reach
+    // a world drawn for 1.60.
+    expect(standing - seated).toBeGreaterThan(0.3)
+    expect(standing - seated).toBeLessThan(0.5)
   })
 
-  test('elegido antes de empezar, el aro no baja dos veces', async ({ page }) => {
-    // Este juego ya acomodaba **su aro** a la estatura de quien juega, medida mientras se
-    // elige la partida (`XRPlayerHeight`). Con el mundo entero bajando además hasta los
-    // ojos, el aro se llevaba las dos correcciones y acababa por debajo de las manos: el
-    // arreglo es que deja de seguir la estatura cuando el decorado ya se acerca solo.
+  test('chosen before starting, the hoop does not come down twice', async ({ page }) => {
+    // This game already accommodated **its hoop** to the stature of whoever plays, measured while the
+    // run is being chosen (`XRPlayerHeight`). With the whole world also coming down to the
+    // eyes, the hoop took both corrections and ended up below the hands: the
+    // fix is that it stops following the stature when the scenery already comes closer by itself.
     await openGame(page)
     await enterVR(page)
     await page.evaluate(() => {
       window.__stickRushSticks = {}
     })
 
-    // Sentado y pedido **desde el menú**, que es el camino de verdad: es ahí donde el aro
-    // se mide, y por eso es ahí donde se notaba el doble descuento.
+    // Seated and asked for **from the menu**, which is the real path: it is there that the hoop
+    // is measured, and that is why it was there that the double discount showed.
     await seatPlayer(page, 1.2)
-    await pedirElMundoALosOjos(page)
+    await requestWorldAtEyes(page)
     await page.waitForTimeout(2000)
     await startGameInsideSession(page)
 
-    // Un palo del aro queda a la altura de un brazo de quien está sentado, ni por encima
-    // de la cabeza ni por los tobillos. Con la doble corrección caía por debajo de 0,8.
-    const alturaDelPalo = await alturaDeUnPalo(page)
+    // A stick of the hoop ends up at an arm's height of whoever is seated, neither above
+    // the head nor down by the ankles. With the double correction it fell below 0.8.
+    const heightOfTheStick = await stickHeight(page)
 
-    expect(alturaDelPalo).toBeGreaterThan(0.9)
-    expect(alturaDelPalo).toBeLessThan(1.5)
+    expect(heightOfTheStick).toBeGreaterThan(0.9)
+    expect(heightOfTheStick).toBeLessThan(1.5)
   })
 })
 
-/** Pide el mundo a la altura de los ojos, como se hace desde los ajustes del arcade. */
-async function pedirElMundoALosOjos(page: import('@playwright/test').Page) {
-  await page.evaluate((clave) => {
-    window.localStorage.setItem(clave, 'eyes')
+/** Asks for the world at eye height, as is done from the hall's settings. */
+async function requestWorldAtEyes(page: import('@playwright/test').Page) {
+  await page.evaluate((key) => {
+    window.localStorage.setItem(key, 'eyes')
     window.dispatchEvent(new Event('xrcade:ajustes'))
   }, PLAY_HEIGHT_KEY)
 }

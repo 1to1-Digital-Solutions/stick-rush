@@ -3,12 +3,12 @@
 import { GROUND_Y } from '../../lib/gameConfig'
 
 /**
- * Suelo de la escena. No pinta nada: el suelo visible es el empedrado de la
- * plaza del HDRI, proyectado por <Environment ground>. Este plano solo existe
- * para recibir la sombra de la máquina, que es lo que la asienta en el sitio en
- * vez de dejarla flotando sobre la foto.
+ * Ground of the scene. It paints nothing: the visible ground is the cobblestones of the
+ * square in the HDRI, projected by <Environment ground>. This plane only exists
+ * to receive the shadow of the machine, which is what settles it in place
+ * instead of leaving it floating over the photo.
  *
- * Está en y=GROUND_Y, la cota a la que un palo se considera perdido.
+ * It is at y=GROUND_Y, the height at which a stick is considered lost.
  */
 export function Ground() {
   return (

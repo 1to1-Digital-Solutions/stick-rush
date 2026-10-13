@@ -1,17 +1,17 @@
 /**
- * Estilos propios del juego: sus colores, su tipografía y las animaciones de
- * sus pantallas.
+ * The game's own styles: its colours, its typography and the animations of
+ * its screens.
  *
- * Todo cuelga de `.stick-rush`, la clase del contenedor que monta el juego, en
- * vez de `:root`: montado dentro de otra aplicación, unas variables globales
- * llamadas `--color-primary` le cambiarían el aspecto a lo que las tuviera
- * puestas. Las clases utilitarias (`flex`, `text-white/40`…) no están aquí: las
- * genera Tailwind escaneando el código del juego, y quien lo monta tiene que
- * incluirlo entre sus fuentes (ver `docs/montar-el-juego.md`).
+ * Everything hangs from `.stick-rush`, the class of the container that mounts
+ * the game, instead of `:root`: mounted inside another application, global
+ * variables called `--color-primary` would change the look of whatever had them
+ * set. The utility classes (`flex`, `text-white/40`…) are not here: Tailwind
+ * generates them by scanning the game's code, and whoever mounts it has to
+ * include it among its sources (see `docs/mounting-the-game.md`).
  *
- * Las dos fuentes se toman de fuera con un respaldo del sistema: en su propia
- * web las define el layout con `next/font`, y quien lo monta puede darle las
- * suyas definiendo esas dos variables.
+ * The two fonts are taken from outside with a system fallback: on its own
+ * website the layout defines them with `next/font`, and whoever mounts it can
+ * give it their own by defining those two variables.
  */
 
 .stick-rush {
@@ -31,7 +31,7 @@
   font-family: var(--font-heading, system-ui), system-ui, sans-serif;
 }
 
-/* Entrada sutil de las pantallas */
+/* Subtle entrance of the screens */
 @keyframes stick-rush-fade-slide-up {
   from {
     opacity: 0;
@@ -47,7 +47,7 @@
   animation: stick-rush-fade-slide-up 0.5s ease-out both;
 }
 
-/* Golpe de cada número de la cuenta atrás: entra grande y se asienta. */
+/* Pop of each number of the countdown: it comes in big and settles. */
 @keyframes stick-rush-countdown-pop {
   from {
     opacity: 0;
@@ -66,14 +66,14 @@
   animation: stick-rush-countdown-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Glow del título */
+/* Glow of the title */
 .stick-rush .text-glow-primary {
   text-shadow:
     0 0 12px rgba(21, 128, 61, 0.55),
     0 0 32px rgba(21, 128, 61, 0.35);
 }
 
-/* Botón CTA con gradiente metálico ámbar/dorado */
+/* CTA button with an amber/gold metallic gradient */
 .stick-rush .cta-gradient {
   background-image: linear-gradient(180deg, #fbbf24 0%, #d97706 55%, #b45309 100%);
   box-shadow:

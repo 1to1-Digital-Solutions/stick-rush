@@ -4,60 +4,60 @@ import { useLayoutEffect, useRef } from 'react'
 import type { InstancedMesh, Material, Mesh, Object3D } from 'three'
 
 /**
- * Un `ref` para un `<Instances>` de drei que, al desmontarse, suelta de la GPU sus matrices y
- * sus colores.
+ * A `ref` for a drei `<Instances>` that, on unmounting, disposes of its matrices and its
+ * colours from the GPU.
  *
- * **La fuga.** drei pone las matrices y los colores de las copias como atributos propios
- * (`<instancedBufferAttribute attach="instanceMatrix">` y `attach="instanceColor"`). Al
- * desmontar, fiber **desengancha** esos atributos —devuelve al mesh los que traía de fábrica,
- * que nunca se subieron— y solo después llama a `dispose()`. three suelta entonces los atributos
- * que el mesh tiene puestos en ese momento, que no son los subidos: los dos búferes de cada
- * `<Instances>` se quedan en la GPU. Son nueve familias en la feria, dieciocho búferes por
- * visita, y el contador de three no los ve porque no son de ninguna geometría. Ni el salón los
- * alcanza: su limpieza mira la escena, y ahí ya no están.
+ * **The leak.** drei puts the matrices and the colours of the copies as attributes of its own
+ * (`<instancedBufferAttribute attach="instanceMatrix">` and `attach="instanceColor"`). On
+ * unmounting, fiber **detaches** those attributes —it gives the mesh back the ones it came with,
+ * which were never uploaded— and only afterwards calls `dispose()`. three then disposes of the
+ * attributes the mesh has on at that moment, which are not the uploaded ones: the two buffers of
+ * each `<Instances>` stay in the GPU. That is nine families in the fairground, eighteen buffers
+ * per visit, and three's counter does not see them because they belong to no geometry. Not even
+ * the hall reaches them: its clean-up looks at the scene, and they are no longer there.
  *
- * **El arreglo.** El componente que monta el `<Instances>` es su padre, y al quitar un árbol
- * React corre la limpieza de los efectos de maquetación de arriba abajo **antes** de quitar sus
- * nodos: desde aquí el mesh todavía lleva sus atributos, y `dispose()` suelta los buenos. El
- * segundo `dispose()`, el de fiber, ya no encuentra nada que soltar. Si el mesh se volviera a
- * pintar —el doble montaje del modo estricto—, three los sube otra vez.
+ * **The fix.** The component that mounts the `<Instances>` is its parent, and on removing a
+ * React tree the clean-up of the layout effects runs from top to bottom **before** removing its
+ * nodes: from here the mesh still carries its attributes, and `dispose()` disposes of the right
+ * ones. The second `dispose()`, fiber's, no longer finds anything to dispose of. If the mesh were
+ * painted again —the double mount of strict mode—, three uploads them again.
  */
-export function useSoltarInstancias() {
-  const malla = useRef<InstancedMesh>(null)
+export function useDisposeInstances() {
+  const mesh = useRef<InstancedMesh>(null)
   useLayoutEffect(
     () => () => {
-      malla.current?.dispose()
+      mesh.current?.dispose()
     },
     [],
   )
-  return malla
+  return mesh
 }
 
 /**
- * Un `ref` para un grupo cuyas mallas fiber no suelta al desmontarse: al salir, se sueltan a mano
- * la geometría y el material de cada una.
+ * A `ref` for a group whose meshes fiber does not dispose of on unmounting: on leaving, the
+ * geometry and the material of each one are disposed of by hand.
  *
- * **La fuga.** Al desmontar, fiber llama al `dispose()` del objeto que quita, y una malla no lo
- * tiene: sus geometría y material se sueltan solo si se montaron como hijos suyos en JSX. El suelo
- * proyectado de `<Environment ground>` es un `GroundedSkybox` de three que trae los suyos de
- * fábrica —un icosaedro de 17 340 vértices—, así que cada visita dejaba en la GPU una geometría y
- * sus tres búferes, medio mega, y la siguiente subía otra.
+ * **The leak.** On unmounting, fiber calls the `dispose()` of the object it removes, and a mesh
+ * does not have one: its geometry and material are disposed of only if they were mounted as its
+ * children in JSX. The projected ground of `<Environment ground>` is a three `GroundedSkybox` that
+ * comes with its own —an icosahedron of 17 340 vertices—, so each visit left in the GPU a geometry
+ * and its three buffers, half a megabyte, and the next one uploaded another.
  *
- * Como en `useSoltarInstancias`, la limpieza del efecto de maquetación del padre corre antes de
- * quitar sus nodos: desde aquí la malla aún cuelga del grupo.
+ * As in `useDisposeInstances`, the clean-up of the parent's layout effect runs before
+ * removing its nodes: from here the mesh still hangs from the group.
  */
-export function useSoltarMallas() {
-  const grupo = useRef<Object3D>(null)
+export function useDisposeMeshes() {
+  const group = useRef<Object3D>(null)
   useLayoutEffect(
     () => () => {
-      grupo.current?.traverse((objeto) => {
-        const malla = objeto as Mesh
-        if (malla.isMesh !== true) return
-        malla.geometry.dispose()
-        for (const material of ([] as Material[]).concat(malla.material)) material.dispose()
+      group.current?.traverse((object) => {
+        const mesh = object as Mesh
+        if (mesh.isMesh !== true) return
+        mesh.geometry.dispose()
+        for (const material of ([] as Material[]).concat(mesh.material)) material.dispose()
       })
     },
     [],
   )
-  return grupo
+  return group
 }

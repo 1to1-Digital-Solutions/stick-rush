@@ -12,27 +12,28 @@ import { StartScreen } from './StartScreen'
 vi.mock('../xr/XRWrapper', () => ({ XRWrapper: () => null }))
 
 /**
- * La versión española no dice nada en inglés: la portada, el marcador jugando el reto y el resumen
- * del final, pintados con el juego en español, pasan por el detector común (`lib/sinIngles.ts`). Es
- * lo que cazaría una frase escrita a mano en un componente sin pasar por `t()`.
+ * The Spanish version says nothing in English: the home page, the scoreboard while playing the
+ * challenge and the final summary, painted with the game in Spanish, go through the shared detector
+ * (`lib/noEnglish.ts`). It is what would catch a phrase written by hand in a component without going
+ * through `t()`.
  */
 
-const CLAVES = TEXT_KEYS.map((clave) => [clave, texto('es', clave)] as const)
+const KEYS = TEXT_KEYS.map((key) => [key, texto('es', key)] as const)
 
-/** Lo que se lee de la página: el texto y lo que dice el lector de pantalla. */
-function loQueSeLee(): string {
-  const etiquetas = [...document.querySelectorAll('[aria-label],[title]')].map(
-    (nodo) => `${nodo.getAttribute('aria-label') ?? ''} ${nodo.getAttribute('title') ?? ''}`,
+/** What is read from the page: the text and what the screen reader says. */
+function whatIsRead(): string {
+  const labels = [...document.querySelectorAll('[aria-label],[title]')].map(
+    (node) => `${node.getAttribute('aria-label') ?? ''} ${node.getAttribute('title') ?? ''}`,
   )
-  return [document.body.textContent ?? '', ...etiquetas].join('\n')
+  return [document.body.textContent ?? '', ...labels].join('\n')
 }
 
-let juego: GameStore | null = null
-/** Lo que hace quien juega, a mano: el store de la partida que pintan la portada y el marcador. */
-function Mando({ alPintar }: { alPintar: (store: GameStore) => void }) {
+let game: GameStore | null = null
+/** What whoever plays does, by hand: the store of the run the home page and the scoreboard paint. */
+function Controls({ onPaint }: { onPaint: (store: GameStore) => void }) {
   const store = useGame()
   useEffect(() => {
-    alPintar(store)
+    onPaint(store)
   })
   return null
 }
@@ -49,33 +50,33 @@ afterEach(() => {
   document.cookie = `${LANG_COOKIE}=; Path=/; Max-Age=0`
 })
 
-describe('en español no se escapa nada en inglés', () => {
-  it('ni en la portada, ni jugando el reto, ni en su final', () => {
+describe('in Spanish nothing in English slips through', () => {
+  it('neither on the home page, nor playing the challenge, nor at its end', () => {
     render(
       <GameProvider>
-        <Mando alPintar={(store) => void (juego = store)} />
+        <Controls onPaint={(store) => void (game = store)} />
         <StartScreen />
         <HUD />
       </GameProvider>,
     )
     expect(document.body.textContent).toContain('Jugar')
-    expect(englishPhrases(loQueSeLee(), CLAVES)).toEqual([])
+    expect(englishPhrases(whatIsRead(), KEYS)).toEqual([])
 
-    // El reto, el modo que da medalla, con la cuenta atrás agotada segundo a segundo.
-    act(() => juego!.setGameMode('challenge'))
-    act(() => juego!.startGame())
-    for (let segundo = 0; segundo < COUNTDOWN_SECONDS; segundo++) {
+    // The challenge, the mode that gives a medal, with the countdown used up second by second.
+    act(() => game!.setGameMode('challenge'))
+    act(() => game!.startGame())
+    for (let second = 0; second < COUNTDOWN_SECONDS; second++) {
       act(() => void vi.advanceTimersByTime(1000))
     }
-    expect(juego!.gameState).toBe('playing')
-    act(() => juego!.catchStick(0.5))
+    expect(game!.gameState).toBe('playing')
+    act(() => game!.catchStick(0.5))
     expect(document.body.textContent).toContain('Puntos')
-    expect(englishPhrases(loQueSeLee(), CLAVES)).toEqual([])
+    expect(englishPhrases(whatIsRead(), KEYS)).toEqual([])
 
-    // Se acaba como en los tests del store: tres palos al suelo.
-    for (let i = 0; i < 3; i++) act(() => juego!.missStick())
-    expect(juego!.gameState).toBe('finished')
+    // It ends as in the store's tests: three sticks to the ground.
+    for (let i = 0; i < 3; i++) act(() => game!.missStick())
+    expect(game!.gameState).toBe('finished')
     expect(document.body.textContent).toContain('Otro reto')
-    expect(englishPhrases(loQueSeLee(), CLAVES)).toEqual([])
+    expect(englishPhrases(whatIsRead(), KEYS)).toEqual([])
   })
 })

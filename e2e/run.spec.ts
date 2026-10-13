@@ -9,16 +9,16 @@ import {
   readPoints,
   readScore,
   startGame,
-  verMasOpciones,
+  showMoreOptions,
   waitForGameOver,
 } from './helpers'
 
-test.describe('Partida', () => {
+test.describe('Run', () => {
   test.beforeEach(async ({ page }) => {
     await openGame(page)
   })
 
-  test('al jugar, el menú deja paso al marcador sobre la escena', async ({
+  test('on playing, the menu gives way to the scoreboard over the scene', async ({
     page,
   }) => {
     await startGame(page, { sticks: 5, difficulty: 'Easy' })
@@ -32,32 +32,32 @@ test.describe('Partida', () => {
     await expect(page.getByText('Easy', { exact: true })).toBeVisible()
   })
 
-  test('la cuenta atrás precede a la partida y no deja atrapar nada', async ({
+  test('the countdown precedes the run and lets nothing be caught', async ({
     page,
   }) => {
     await page.getByRole('button', { name: '13', exact: true }).click()
     await page.getByRole('button', { name: 'Easy', exact: true }).click()
     await page.getByRole('button', { name: 'Play', exact: true }).click()
 
-    // Mientras cuenta, los palos cuelgan quietos: sin esta guarda se podía
-    // vaciar el aro entero a clics antes de que empezara a caer nada.
+    // While it counts, the sticks hang still: without this guard the
+    // whole hoop could be emptied by clicking before anything started falling.
     await expect(page.getByRole('timer')).toBeVisible()
     expect(await findCatchableStick(page)).toBeNull()
 
     await expect(page.getByRole('timer')).toBeHidden()
 
-    // Y al acabar la cuenta, se juega con normalidad.
+    // And when the count ends, it is played normally.
     await catchStick(page)
     expect(await readScore(page)).toBe(1)
   })
 
-  test('al arrancar la partida el cursor ofrece el palo sin mover el ratón', async ({
+  test('on starting the run the cursor offers the stick without moving the mouse', async ({
     page,
   }) => {
-    // Un palo se coge hasta que toca el suelo, colgando incluido, así que quien
-    // deja el ratón sobre un palo mientras cuenta atrás tiene que ver el cursor
-    // encenderse solo: nadie mueve el ratón durante la cuenta, y sin eso el
-    // navegador no vuelve a avisar de que hay un palo debajo.
+    // A stick is caught until it touches the floor, hanging included, so whoever
+    // leaves the mouse over a stick while it counts down has to see the cursor
+    // light up by itself: nobody moves the mouse during the count, and without that the
+    // browser does not report again that there is a stick underneath.
     await startGame(page, { sticks: 13, difficulty: 'Easy' })
     const hanging = await findHangingStick(page)
 
@@ -67,8 +67,8 @@ test.describe('Partida', () => {
     await page.getByRole('button', { name: 'Play', exact: true }).click()
 
     await expect(page.getByRole('timer')).toBeVisible()
-    // Por pasos, como llega un ratón de verdad: con un solo salto la escena no
-    // llega a registrar que hay un palo debajo.
+    // In steps, as a real mouse arrives: with a single jump the scene does not
+    // get to register that there is a stick underneath.
     await page.mouse.move(hanging.x, hanging.y, { steps: 8 })
     expect(await isPointingAtStick(page)).toBe(false)
 
@@ -76,14 +76,14 @@ test.describe('Partida', () => {
     await expect.poll(() => isPointingAtStick(page)).toBe(true)
   })
 
-  test('un palo que todavía cuelga del aro se puede atrapar', async ({
+  test('a stick that still hangs from the hoop can be caught', async ({
     page,
   }) => {
-    // La decisión de producto de la partida: adelantarse al palo es jugar, no
-    // hacer trampa. `canCatchStick` lo fija como regla, pero solo un clic de
-    // verdad sobre un palo que aún cuelga demuestra que el juego la cumple: si
-    // algún día la ventana se cierra a los palos que caen, este test es el que
-    // tiene que ponerse rojo, porque el resto se apoya en el palo que pilla.
+    // The product decision of the run: getting ahead of the stick is playing, not
+    // cheating. `canCatchStick` fixes it as a rule, but only a real
+    // click on a stick that still hangs proves the game complies with it: if
+    // some day the window closes down to the sticks that fall, this test is the one that
+    // has to turn red, because the rest lean on whichever stick they catch.
     await startGame(page, { sticks: 13, difficulty: 'Easy' })
 
     await catchHangingStick(page)
@@ -91,8 +91,8 @@ test.describe('Partida', () => {
     expect(await readScore(page)).toBe(1)
   })
 
-  test('atrapar un palo suma en el marcador', async ({ page }) => {
-    // Muchos palos y caída lenta: siempre hay alguno colgando o cayendo.
+  test('catching a stick adds to the scoreboard', async ({ page }) => {
+    // Many sticks and a slow fall: there is always one hanging or falling.
     await startGame(page, { sticks: 13, difficulty: 'Easy' })
 
     await catchStick(page)
@@ -103,7 +103,7 @@ test.describe('Partida', () => {
     )
   })
 
-  test('atrapar un palo suma puntos', async ({ page }) => {
+  test('catching a stick adds points', async ({ page }) => {
     await startGame(page, { sticks: 13, difficulty: 'Easy' })
     expect(await readPoints(page)).toBe(0)
 
@@ -112,7 +112,7 @@ test.describe('Partida', () => {
     expect(await readPoints(page)).toBeGreaterThan(0)
   })
 
-  test('la racha aparece al encadenar y no antes', async ({ page }) => {
+  test('the streak appears on chaining and not before', async ({ page }) => {
     await startGame(page, { sticks: 13, difficulty: 'Easy' })
 
     const streak = page.getByText(/^Streak ×/)
@@ -123,21 +123,21 @@ test.describe('Partida', () => {
     await expect(streak).toBeVisible()
   })
 
-  test('un palo solo se puede atrapar una vez', async ({ page }) => {
+  test('a stick can only be caught once', async ({ page }) => {
     await startGame(page, { sticks: 13, difficulty: 'Easy' })
 
     const target = await catchStick(page)
     expect(await readScore(page)).toBe(1)
 
-    // Insistir sobre el palo ya atrapado no puede volver a sumar: es el mismo
-    // caso que dos mandos XR apuntando a la vez al mismo palo.
+    // Insisting on the stick already caught cannot add again: it is the same
+    // case as two XR controllers pointing at the same stick at once.
     await page.mouse.click(target.x, target.y)
     await page.mouse.click(target.x, target.y)
 
     expect(await readScore(page)).toBe(1)
   })
 
-  test('atrapar varios palos los cuenta uno a uno', async ({ page }) => {
+  test('catching several sticks counts them one by one', async ({ page }) => {
     await startGame(page, { sticks: 13, difficulty: 'Easy' })
 
     for (let expected = 1; expected <= 3; expected++) {
@@ -146,7 +146,7 @@ test.describe('Partida', () => {
     }
   })
 
-  test('la partida termina sola cuando caen todos los palos', async ({ page }) => {
+  test('the run ends by itself when all the sticks fall', async ({ page }) => {
     await startGame(page, { sticks: 5, difficulty: 'Impossible' })
 
     await waitForGameOver(page)
@@ -155,12 +155,12 @@ test.describe('Partida', () => {
     await expect(dialog).toContainText('Game over!')
     await expect(dialog).toContainText('You caught')
     await expect(dialog).toContainText('Impossible')
-    // El resumen sitúa la puntuación: un número suelto no dice si es buena.
+    // The summary places the score: a lone number does not say whether it is good.
     await expect(dialog).toContainText('possible')
     await expect(dialog).toContainText('Best streak')
   })
 
-  test('desde el fin de partida se vuelve al menú con la selección intacta', async ({
+  test('from the end of run one goes back to the menu with the selection intact', async ({
     page,
   }) => {
     await startGame(page, { sticks: 5, difficulty: 'Impossible' })
@@ -169,8 +169,8 @@ test.describe('Partida', () => {
     await page.getByRole('button', { name: 'Back to the menu' }).click()
 
     await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
-    // El menú vuelve a abrir plegado: lo elegido sigue tras «Más opciones».
-    await verMasOpciones(page)
+    // The menu opens folded again: what was chosen is still behind «Más opciones».
+    await showMoreOptions(page)
     await expect(
       page.getByRole('button', { name: 'Impossible', exact: true }),
     ).toHaveAttribute('aria-pressed', 'true')
@@ -179,7 +179,7 @@ test.describe('Partida', () => {
     ).toHaveAttribute('aria-pressed', 'true')
   })
 
-  test('se puede jugar otra partida con el marcador a cero', async ({ page }) => {
+  test('another run can be played with the scoreboard at zero', async ({ page }) => {
     await startGame(page, { sticks: 5, difficulty: 'Impossible' })
     await waitForGameOver(page)
     await page.getByRole('button', { name: 'Back to the menu' }).click()
@@ -193,7 +193,7 @@ test.describe('Partida', () => {
     await expect(page.getByRole('dialog')).toBeHidden()
   })
 
-  test('la escena no ensucia la consola con errores', async ({ page }) => {
+  test('the scene does not dirty the console with errors', async ({ page }) => {
     const errors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') errors.push(message.text())

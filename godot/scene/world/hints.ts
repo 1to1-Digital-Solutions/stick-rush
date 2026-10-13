@@ -1,16 +1,17 @@
 /**
- * Las ayudas visuales de Stick Rush en Godot (`Hints.tsx` de la web): lo que hay que hacer,
- * enseñado sin una letra. Las **huellas** del suelo dicen dónde plantarse —en el centro del aro, de
- * frente a la máquina—; el **palo fantasma**, un cilindro algo más gordo que el palo, cae una y otra
- * vez desde el palo de delante hasta la altura del pecho, que es por dónde van a pasar; y **el mando
- * de verdad** a su lado, con el botón de agarre latiendo, dice con qué se cogen.
+ * The visual hints of Stick Rush in Godot (`Hints.tsx` of the web): what has to be done, shown
+ * without a single letter. The **footprints** on the ground say where to stand —in the centre of
+ * the hoop, facing the machine—; the **ghost stick**, a cylinder slightly fatter than the stick,
+ * falls again and again from the front stick down to chest height, which is where they are going
+ * to pass; and **the real controller** beside it, with the grab button throbbing, says what they
+ * are grabbed with.
  *
- * **Ninguna se queda puesta.** Cuándo se enciende y se apaga cada una lo decide el guion de la web
- * (`lib/hintScript.ts`) sobre el motor común de los juegos (`lib/ayudas.ts`), los dos tal cual, y
- * las cotas son las suyas (`HUELLAS`, `paloDelFantasma`, `caidaDelFantasma`, `mandoJuntoAlPalo`): aquí
- * solo se pinta. Todo se monta de una vez y se enciende con `visible` y la opacidad.
+ * **None of them stays on.** When each one lights up and goes off is decided by the script of the
+ * web (`lib/hintScript.ts`) on the games' common engine (`lib/hints.ts`), both as they are, and
+ * the dimensions are theirs (`FOOTPRINTS`, `ghostStick`, `ghostFall`, `controllerByTheStick`): here
+ * it is only painted. Everything is mounted at once and lit with `visible` and the opacity.
  *
- * Como en la web, **solo con el visor puesto** (`dando`); `-- --ayudas` las enseña en plano.
+ * As on the web, **only with the headset on** (`showing`); `-- --ayudas` shows them flat.
  */
 import { Node3D, Vector3, type MeshInstance3D, type StandardMaterial3D } from 'godot'
 
@@ -20,164 +21,164 @@ import type { RealController } from '@kit/runtime/ui/controller'
 
 import { HINT_MARK_COLOR, THROB, moveToward, advanceHints, throb, sweepPhase, noHints } from '@/lib/hints'
 import {
-  CAIDA,
-  FANTASMA,
-  GUION_DE_AYUDAS,
-  HUELLA,
-  HUELLAS,
-  HUELLAS_Y,
-  MANDO_JUNTO_AL_PALO,
-  caidaDelFantasma,
-  mandoJuntoAlPalo,
-  paloDelFantasma,
-  type AyudaDeLaMaquina,
-  type HechoDeLasAyudas,
+  FALL,
+  GHOST,
+  HINT_SCRIPT,
+  FOOTPRINT,
+  FOOTPRINTS,
+  FOOTPRINTS_Y,
+  CONTROLLER_BY_THE_STICK,
+  ghostFall,
+  controllerByTheStick,
+  ghostStick,
+  type MachineHint,
+  type HintFact,
 } from '@/lib/hintScript'
 import { TUTORIAL_BUTTONS } from '@/lib/tutorial'
 
 import { cylinder, mesh, flatMesh, opacidad, withoutShadow, translucent } from '@kit/runtime/scene/parts'
 
-/** Lo transparente que llega a ponerse cada ayuda encendida del todo (`OPACIDAD` de `Hints.tsx`). */
-export const OPACIDAD_DE_LA_AYUDA = { suelo: 0.75, palo: 0.6 } as const
+/** How transparent each hint gets when fully lit (`OPACITY` of `Hints.tsx`). */
+export const HINT_OPACITY = { ground: 0.75, stick: 0.6 } as const
 
-/** Por debajo de esto, una ayuda que se apaga ya no se pinta (el `0.004` de la web). */
-const APAGADA = 0.004
+/** Below this, a hint that is going off is no longer painted (the `0.004` of the web). */
+const OFF_OPACITY = 0.004
 
 /**
- * Lo que se levantan las huellas sobre el suelo: la web las separa sesgando la profundidad
- * (`polygonOffset`), que en Godot no hay; van por encima con la prioridad de su material y, por si
- * la profundidad se pelea, dos milímetros arriba.
+ * How much the footprints are raised above the ground: the web separates them by biasing the depth
+ * (`polygonOffset`), which Godot does not have; they go on top with the priority of their material
+ * and, in case the depth fights, two millimetres up.
  */
-const CALCO = 0.002
+const DECAL_LIFT = 0.002
 
-/** Lo que las ayudas necesitan saber cada fotograma. */
-export interface MomentoDeLasAyudas {
-  /** Con el visor puesto (o forzadas en plano): sin eso, no se enseñan ni corren sus plazos. */
-  dando: boolean
-  /** Lo que ya ha pasado: un palo atrapado, palos a punto de caer. Se acumula aquí. */
-  hechos: Readonly<Record<HechoDeLasAyudas, boolean>>
-  /** La altura del aro, de la que cuelga el palo de delante. */
-  aro: number
-  mano: HandSide
-  /** Sin movimiento (`prefers-reduced-motion` en la web): no late ni cae. */
-  quieto?: boolean
+/** What the hints need to know each frame. */
+export interface HintsMoment {
+  /** With the headset on (or forced flat): without that, they are not shown and their deadlines do not run. */
+  showing: boolean
+  /** What has already happened: a stick caught, sticks about to fall. It accumulates here. */
+  facts: Readonly<Record<HintFact, boolean>>
+  /** The height of the hoop, from which the front stick hangs. */
+  hoop: number
+  hand: HandSide
+  /** Without motion (`prefers-reduced-motion` on the web): it neither throbs nor falls. */
+  still?: boolean
 }
 
-interface Pieza {
-  nodo: MeshInstance3D
+interface Part {
+  node: MeshInstance3D
   material: StandardMaterial3D
 }
 
-export class AyudasDelJuego {
-  readonly nodo = new Node3D()
-  private readonly estado = noHints()
-  private readonly fuerzas: Record<AyudaDeLaMaquina, number> = { suelo: 0, palo: 0, mando: 0 }
-  private readonly hechos: Record<HechoDeLasAyudas, boolean> = { grab: false, cae: false }
-  private readonly huellas: Pieza[] = []
-  private readonly palo: Pieza
-  private readonly sitioDelMando = new Node3D()
-  private reloj = 0
-  private colocado = ''
-  /** Si en el último fotograma no se veía ninguna. */
-  private apagadas = false
+export class GameHints {
+  readonly node = new Node3D()
+  private readonly state = noHints()
+  private readonly strengths: Record<MachineHint, number> = { ground: 0, stick: 0, controller: 0 }
+  private readonly facts: Record<HintFact, boolean> = { grab: false, falling: false }
+  private readonly footprints: Part[] = []
+  private readonly ghost: Part
+  private readonly controllerPlacement = new Node3D()
+  private clock = 0
+  private placed = ''
+  /** Whether none of them was visible in the last frame. */
+  private allOff = false
 
   constructor(
-    /** El espacio de la máquina: el guion está escrito respecto del centro del aro. */
-    maquina: Node3D,
-    /** El mando de verdad de cada mano, junto al palo fantasma (los del kit), o ninguno. */
-    readonly mandos: readonly RealController[] = [],
+    /** The space of the machine: the script is written relative to the centre of the hoop. */
+    machine: Node3D,
+    /** The real controller of each hand, beside the ghost stick (the kit's), or none. */
+    readonly controllers: readonly RealController[] = [],
   ) {
-    this.nodo.set_name('Ayudas')
-    maquina.add_child(this.nodo)
-    HUELLAS.forEach((h, i) => {
-      // Una huella es un óvalo: el círculo de doce lados estirado a lo largo del pie.
+    this.node.set_name('Hints')
+    machine.add_child(this.node)
+    FOOTPRINTS.forEach((h, i) => {
+      // A footprint is an oval: the twelve-sided circle stretched along the foot.
       const material = translucent(HINT_MARK_COLOR, 0, 3)
-      const nodo = mesh(flatMesh(arcTriangles(0, 1, 0, Math.PI * 2, 12)), material)
-      nodo.set_name(`Huella${i}`)
-      nodo.position = new Vector3(h.x, HUELLAS_Y + CALCO, h.z)
-      nodo.rotation = new Vector3(-Math.PI / 2, 0, 0)
-      nodo.scale = new Vector3(HUELLA.ancho / 2, HUELLA.largo / 2, 1)
-      nodo.visible = false
-      this.nodo.add_child(nodo)
-      this.huellas.push({ nodo, material })
+      const node = mesh(flatMesh(arcTriangles(0, 1, 0, Math.PI * 2, 12)), material)
+      node.set_name(`Footprint${i}`)
+      node.position = new Vector3(h.x, FOOTPRINTS_Y + DECAL_LIFT, h.z)
+      node.rotation = new Vector3(-Math.PI / 2, 0, 0)
+      node.scale = new Vector3(FOOTPRINT.width / 2, FOOTPRINT.length / 2, 1)
+      node.visible = false
+      this.node.add_child(node)
+      this.footprints.push({ node, material })
     })
     const material = translucent(HINT_MARK_COLOR, 0, 4)
-    const palo = cylinder(FANTASMA.radio, FANTASMA.radio, FANTASMA.largo, material, undefined, 12)
-    palo.set_name('PaloFantasma')
-    palo.visible = false
-    this.nodo.add_child(palo)
-    this.palo = { nodo: palo, material }
-    this.sitioDelMando.set_name('MandoJuntoAlPalo')
-    this.nodo.add_child(this.sitioDelMando)
-    for (const mando of mandos) this.sitioDelMando.add_child(mando.nodo)
-    // Una ayuda no es decorado: no echa sombra, como en la web.
-    withoutShadow(this.nodo)
+    const stick = cylinder(GHOST.radius, GHOST.radius, GHOST.length, material, undefined, 12)
+    stick.set_name('GhostStick')
+    stick.visible = false
+    this.node.add_child(stick)
+    this.ghost = { node: stick, material }
+    this.controllerPlacement.set_name('ControllerByTheStick')
+    this.node.add_child(this.controllerPlacement)
+    for (const controller of controllers) this.controllerPlacement.add_child(controller.nodo)
+    // A hint is not scenery: it casts no shadow, as on the web.
+    withoutShadow(this.node)
   }
 
-  /** Lo que se ve de cada ayuda ahora mismo, de 0 a 1. */
-  get fuerza(): Readonly<Record<AyudaDeLaMaquina, number>> {
-    return this.fuerzas
+  /** How much of each hint is visible right now, from 0 to 1. */
+  get strength(): Readonly<Record<MachineHint, number>> {
+    return this.strengths
   }
 
-  /** Coloca el mando al lado de donde se para el fantasma, del lado de la mano. */
-  private colocar(aro: number, mano: HandSide): void {
-    const clave = `${aro}:${mano}`
-    if (clave === this.colocado) return
-    this.colocado = clave
-    const { posicion, giro } = mandoJuntoAlPalo(aro, mano)
-    this.sitioDelMando.position = new Vector3(posicion[0], posicion[1], posicion[2])
-    this.sitioDelMando.rotation = new Vector3(0, giro, 0)
-    const k = MANDO_JUNTO_AL_PALO.escala
-    this.sitioDelMando.scale = new Vector3(k, k, k)
+  /** Places the controller beside where the ghost stops, on the side of the hand. */
+  private place(hoop: number, hand: HandSide): void {
+    const key = `${hoop}:${hand}`
+    if (key === this.placed) return
+    this.placed = key
+    const { position, turn } = controllerByTheStick(hoop, hand)
+    this.controllerPlacement.position = new Vector3(position[0], position[1], position[2])
+    this.controllerPlacement.rotation = new Vector3(0, turn, 0)
+    const k = CONTROLLER_BY_THE_STICK.scale
+    this.controllerPlacement.scale = new Vector3(k, k, k)
   }
 
-  actualizar(delta: number, momento: MomentoDeLasAyudas): void {
-    this.reloj += delta
-    const { dando } = momento
-    this.colocar(momento.aro, momento.mano)
-    // Se acumulan: hacer algo no se deshace.
-    for (const h of Object.keys(this.hechos) as HechoDeLasAyudas[]) this.hechos[h] = this.hechos[h] || momento.hechos[h]
-    const paso = advanceHints(GUION_DE_AYUDAS, this.hechos, this.estado, dando ? delta : 0)
-    const pulso = momento.quieto ? 1 : throb(this.reloj, THROB.strength)
-    let alguna = false
-    for (const ayuda of GUION_DE_AYUDAS) {
-      const quiere = dando && paso.lit.has(ayuda.id) ? 1 : 0
-      this.fuerzas[ayuda.id] = moveToward(this.fuerzas[ayuda.id], quiere, delta)
-      if (this.fuerzas[ayuda.id] > APAGADA) alguna = true
+  update(delta: number, moment: HintsMoment): void {
+    this.clock += delta
+    const { showing } = moment
+    this.place(moment.hoop, moment.hand)
+    // They accumulate: doing something is not undone.
+    for (const h of Object.keys(this.facts) as HintFact[]) this.facts[h] = this.facts[h] || moment.facts[h]
+    const step = advanceHints(HINT_SCRIPT, this.facts, this.state, showing ? delta : 0)
+    const pulse = moment.still ? 1 : throb(this.clock, THROB.strength)
+    let anyLit = false
+    for (const hint of HINT_SCRIPT) {
+      const wanted = showing && step.lit.has(hint.id) ? 1 : 0
+      this.strengths[hint.id] = moveToward(this.strengths[hint.id], wanted, delta)
+      if (this.strengths[hint.id] > OFF_OPACITY) anyLit = true
     }
-    // Todas apagadas y ya escondidas: nada que pintar, y no se toca el motor.
-    if (!alguna && this.apagadas) return
-    this.apagadas = !alguna
-    const f = this.fuerzas
+    // All off and already hidden: nothing to paint, and the engine is not touched.
+    if (!anyLit && this.allOff) return
+    this.allOff = !anyLit
+    const f = this.strengths
 
-    // Las huellas, latiendo: es lo que las separa de una losa más de la plaza.
-    for (const h of this.huellas) {
-      h.nodo.visible = f.suelo > APAGADA
-      opacidad(h.material, f.suelo * OPACIDAD_DE_LA_AYUDA.suelo * pulso)
+    // The footprints, throbbing: it is what sets them apart from one more paving stone of the square.
+    for (const h of this.footprints) {
+      h.node.visible = f.ground > OFF_OPACITY
+      opacidad(h.material, f.ground * HINT_OPACITY.ground * pulse)
     }
-    // El palo fantasma, cayendo desde el de delante. No late: ya se mueve.
-    const vuelta = momento.quieto ? { bajada: CAIDA.recorrido / 2, se: 1 } : caidaDelFantasma(sweepPhase(this.reloj, CAIDA.periodo).progress)
-    const [x, y, z] = paloDelFantasma(momento.aro)
-    this.palo.nodo.position = new Vector3(x, y - vuelta.bajada, z)
-    this.palo.nodo.visible = f.palo > APAGADA
-    opacidad(this.palo.material, f.palo * OPACIDAD_DE_LA_AYUDA.palo * vuelta.se)
+    // The ghost stick, falling from the front one. It does not throb: it already moves.
+    const sweep = moment.still ? { drop: FALL.travel / 2, visible: 1 } : ghostFall(sweepPhase(this.clock, FALL.period).progress)
+    const [x, y, z] = ghostStick(moment.hoop)
+    this.ghost.node.position = new Vector3(x, y - sweep.drop, z)
+    this.ghost.node.visible = f.stick > OFF_OPACITY
+    opacidad(this.ghost.material, f.stick * HINT_OPACITY.stick * sweep.visible)
 
-    // El mando de verdad de la mano buena, con el agarre latiendo.
-    for (const mando of this.mandos) {
-      if (f.mando > APAGADA && mando.mano === momento.mano) {
-        mando.encender(TUTORIAL_BUTTONS.grab)
-        mando.actualizar(delta)
-      } else mando.apagar()
+    // The real controller of the dominant hand, with the grab throbbing.
+    for (const controller of this.controllers) {
+      if (f.controller > OFF_OPACITY && controller.mano === moment.hand) {
+        controller.encender(TUTORIAL_BUTTONS.grab)
+        controller.actualizar(delta)
+      } else controller.apagar()
     }
   }
 
-  /** Lo que de verdad se ve: las ayudas con algo pintado ahora mismo. */
-  visibles(): AyudaDeLaMaquina[] {
-    const visible: Record<AyudaDeLaMaquina, boolean> = {
-      suelo: this.huellas.some((h) => h.nodo.visible),
-      palo: this.palo.nodo.visible,
-      mando: this.mandos.some((m) => m.visible),
+  /** What is really seen: the hints with something painted right now. */
+  visible(): MachineHint[] {
+    const visible: Record<MachineHint, boolean> = {
+      ground: this.footprints.some((h) => h.node.visible),
+      stick: this.ghost.node.visible,
+      controller: this.controllers.some((m) => m.visible),
     }
-    return GUION_DE_AYUDAS.map((a) => a.id).filter((id) => visible[id])
+    return HINT_SCRIPT.map((a) => a.id).filter((id) => visible[id])
   }
 }

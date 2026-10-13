@@ -3,153 +3,153 @@ import { join } from 'node:path'
 
 import { expect, test, type Page } from '@playwright/test'
 import { openGame, startGame } from './helpers'
-import { PIEZAS as PIEZAS_DEL_KIT } from '../src/lib/fairKit'
+import { PIECES as KIT_PIECES } from '../src/lib/fairKit'
 import { MAX_STICKS } from '../src/lib/gameConfig'
 import { drawCallBudget } from './support/budget'
 
 /**
- * Lo que cuesta pintar el recinto de feria, medido sobre la escena de verdad.
+ * What it costs to paint the fairground, measured on the real scene.
  *
- * Es la parte de "validar el recinto en el visor" que no necesita visor: lo que
- * se paga en unas gafas no son los triángulos sino las **llamadas de dibujo**, y
- * esas son las mismas aquí que allí (allí, eso sí, por ojo). Los fps de un
- * escritorio no dirían nada del visor; el número de llamadas sí.
+ * It is the part of "validating the fairground in the headset" that needs no headset: what
+ * is paid for in goggles is not the triangles but the **draw calls**, and
+ * those are the same here as there (there, mind, per eye). The fps of a
+ * desktop would say nothing about the headset; the number of calls does.
  *
- * Se mide desde fuera, envolviendo el contexto WebGL, para no meter contadores
- * en el código del juego. El fotograma se cierra con un `requestAnimationFrame`
- * registrado antes que el de la escena, así que cada vuelta cuenta lo que se
- * dibujó en el fotograma anterior.
+ * It is measured from outside, wrapping the WebGL context, so as not to put counters
+ * in the game's code. The frame is closed with a `requestAnimationFrame`
+ * registered before the scene's one, so each lap counts what was
+ * drawn in the previous frame.
  */
 
 /**
- * Instancias que tiene que dibujar cada familia de piezas del recinto —tablas,
- * postes y bombillas, que son la noria y las guirnaldas—, tal y como las suma
- * `FAIR_PIECES` en `Fairground.tsx`: 119 piezas entre las tres. Y las 42 figuras del público (`CROWD_COUNT` en
- * `lib/crowdLayout.ts`), que son una familia aparte.
+ * Instances each family of parts of the fairground has to draw —boards,
+ * poles and bulbs, which are the Ferris wheel and the garlands—, just as
+ * `FAIR_PIECES` adds them up in `Fairground.tsx`: 119 parts among the three. And the 42 figures of the crowd (`CROWD_COUNT` in
+ * `lib/crowdLayout.ts`), which are a separate family.
  *
- * Este es el aviso que drei no da: `<Instances limit={n}>` pinta
- * `min(limit, piezas)` **sin decir nada**, así que un límite corto no se ve como
- * un error sino como decorado que falta. Al añadir o quitar piezas del recinto
- * hay que traer aquí los números nuevos.
+ * This is the warning drei does not give: `<Instances limit={n}>` paints
+ * `min(limit, parts)` **without saying anything**, so a short limit is not seen as
+ * an error but as stage that is missing. On adding or removing parts of the fairground
+ * the new numbers have to be brought here.
  */
 const FAIR_INSTANCES = { boards: 12, poles: 27, bulbs: 80, figures: 42 }
 
 /**
- * Familias instanciadas que dibuja la escena entera: las del recinto
- * (`FairPieces`, el público y una por pieza del kit, `FeriaKit`) más las de la
- * máquina (`MachinePieces`).
+ * Instanced families the whole scene draws: the fairground's
+ * (`FairPieces`, the crowd and one per piece of the kit, `FairKit`) plus the
+ * machine's (`MachinePieces`).
  *
- * Es la señal de que ya está todo montado. La máquina cuelga de un `Suspense`
- * propio esperando las texturas de la madera, así que llega bastante después
- * que el recinto: sus familias son lo último en aparecer.
+ * It is the signal that everything is already mounted. The machine hangs from a `Suspense`
+ * of its own waiting for the wood textures, so it arrives quite a while after
+ * the fairground: its families are the last to appear.
  *
- * Se CUENTA del código en vez de escribirse a mano. Escrito, había que acordarse
- * de recontarlo cada vez que una de las dos familias creciera o menguara, y el
- * día que no te acuerdes el test no falla: espera de menos, la muestra sale con
- * la escena a medio montar y el techo de llamadas pasa midiendo una escena que
- * no es la que ve el jugador. Un guardián que se relaja solo es peor que no
- * tenerlo, porque nadie vuelve a mirarlo.
+ * It is COUNTED from the code instead of being written by hand. Written, one had to remember
+ * to recount it every time one of the two families grew or shrank, and the
+ * day you do not remember the test does not fail: it waits for less, the sample comes out with
+ * the scene half mounted and the ceiling of calls passes measuring a scene that
+ * is not the one the player sees. A guard that relaxes by itself is worse than not
+ * having it, because nobody looks at it again.
  */
-function contarFamiliasInstanciadas(): number {
-  const fuentes = ['FairPieces.tsx', 'Crowd.tsx', 'MachinePieces.tsx'].map((archivo) =>
-    readFileSync(join('src', 'components', 'game', archivo), 'utf8'),
+function countInstancedFamilies(): number {
+  const sources = ['FairPieces.tsx', 'Crowd.tsx', 'MachinePieces.tsx'].map((file) =>
+    readFileSync(join('src', 'components', 'game', file), 'utf8'),
   )
-  const total = fuentes.reduce(
-    (suma, fuente) => suma + (fuente.match(/createInstances\(/g)?.length ?? 0),
+  const total = sources.reduce(
+    (sum, source) => sum + (source.match(/createInstances\(/g)?.length ?? 0),
     0,
   )
-  // Si esto sale a cero es que los ficheros se han movido o renombrado, y el test
-  // pasaría a no esperar a nada: mejor romperse aquí, con el motivo delante.
+  // If this comes out at zero it is because the files have been moved or renamed, and the test
+  // would go on to wait for nothing: better to break here, with the reason in front.
   if (total === 0) {
     throw new Error(
-      'No encuentro ninguna familia instanciada en src/components/game/: ' +
-        '¿se han movido FairPieces.tsx o MachinePieces.tsx?',
+      'I find no instanced family in src/components/game/: ' +
+        'have FairPieces.tsx or MachinePieces.tsx been moved?',
     )
   }
-  // Las piezas del kit no van con `createInstances`: cada una es un `InstancedMesh` suelto, que
-  // llega cuando bajan los modelos. Contarlas hace esperar también a que estén.
-  return total + PIEZAS_DEL_KIT.length
+  // The kit's pieces do not go with `createInstances`: each one is a loose `InstancedMesh`, which
+  // arrives when the models come down. Counting them makes it wait for them to be there too.
+  return total + KIT_PIECES.length
 }
 
-const SCENE_INSTANCED_FAMILIES = contarFamiliasInstanciadas()
+const SCENE_INSTANCED_FAMILIES = countInstancedFamilies()
 
 /**
- * Espera de las dos partes del muestreo. Más que los 15 s de `expect`: en CI la
- * escena va por software y un fotograma puede costar cientos de milisegundos,
- * así que tanto montarla como juntar la muestra llevan su tiempo aunque todo
- * esté bien.
+ * Wait of the two parts of the sampling. More than the 15 s of `expect`: in CI the
+ * scene runs in software and a frame can cost hundreds of milliseconds,
+ * so both mounting it and gathering the sample take their time even if everything
+ * is fine.
  */
 const SAMPLE_TIMEOUT = 45_000
 
 /**
- * Llamadas por fotograma que cuesta la escena **en el menú**, que es el estado con
- * medidas comparables: arranca siempre con los mismos cinco palos colgando.
+ * Calls per frame the scene costs **in the menu**, which is the state with
+ * comparable measurements: it always starts with the same five sticks hanging.
  *
- * Medidas 33, y este es el sitio donde vive el desglose entero —`ESTADO.md` y
- * `TODO.md` citan el total y remiten aquí, que es el único de los tres que se
- * ejecuta—:
+ * Measured 33, and this is the place where the whole breakdown lives —`ESTADO.md` and
+ * `TODO.md` quote the total and refer here, which is the only one of the three that is
+ * run—:
  *
- * - **9 el recinto**: sus tres familias instanciadas, el público (una familia
- *   más, `Crowd.tsx`), los dos aros de la noria y una por pieza del kit
- *   (puestos, farolas y banderolas, `FairKit.tsx`).
- * - **5 la máquina**: tres familias de tubos (comparten geometría pero no material)
- *   y dos de bombillas.
- * - **15 los cinco palos**, a tres cada uno mientras cuelgan: la cuerda, el palo y
- *   su gancho. Al caer pasan a dos.
- * - **4 las bases de los postes**: la del pie y la del tirante, por cada uno de los
- *   dos postes.
+ * - **9 the fairground**: its three instanced families, the crowd (one family
+ *   more, `Crowd.tsx`), the two rings of the Ferris wheel and one per piece of the kit
+ *   (stalls, lamp posts and bunting, `FairKit.tsx`).
+ * - **5 the machine**: three families of tubes (they share geometry but not material)
+ *   and two of bulbs.
+ * - **15 the five sticks**, at three each while they hang: the rope, the stick and
+ *   its hook. On falling they go to two.
+ * - **4 the bases of the poles**: the foot's and the brace's, for each of the
+ *   two poles.
  *
- * Los palos y sus ganchos van sueltos a propósito —un palo se coge con la mano y una
- * instancia no se puede apuntar ni mover por su cuenta—, así que el total es lo único
- * que se mueve con la partida: 56 con trece palos colgando, y bajando según se
- * resuelven. El recinto y la máquina no cambian nunca.
+ * The sticks and their hooks are loose on purpose —a stick is caught with the hand and an
+ * instance cannot be pointed at nor moved on its own—, so the total is the only thing
+ * that moves with the run: 56 with thirteen sticks hanging, and going down as they are
+ * resolved. The fairground and the machine never change.
  *
- * Lo que el test comprueba es el total, no el reparto: si la escena cambia de coste,
- * las cuatro líneas de arriba hay que rehacerlas aquí a mano, y quien avisa de que
- * toca es esta cifra clavada. Un techo holgado no lo haría: la escena podría
- * encarecerse la mitad sin que saltara nada y el desglose se quedaría desfasado en
- * silencio, que es justo lo que no puede pasar con una cuenta que nadie recalcula.
+ * What the test checks is the total, not the split: if the scene changes in cost,
+ * the four lines above have to be redone here by hand, and what warns that it is
+ * time is this pinned figure. A roomy ceiling would not: the scene could
+ * get half as expensive again without anything going off and the breakdown would go stale in
+ * silence, which is just what cannot happen with a sum nobody recalculates.
  */
 const MENU = drawCallBudget('menu')
 
 /*
- * Cuánto se le deja moverse a la medida antes de exigir que se rehaga el desglose (el `margin`
- * de las dos fases en el manifiesto).
+ * How much the measurement is let move before demanding that the breakdown be redone (the `margin`
+ * of the two phases in the manifest).
  *
- * Da para un palo colgando de más o de menos —tres llamadas cada uno— y poco más:
- * quedarse sin la máquina son cinco de golpe, y sin el recinto nueve: saltan. Lo gordo
- * salta con muchísimo margen: dejar de instanciar devolvería la escena a las ~110 de
- * cuando la máquina iba con cada tubo suelto.
+ * It allows for one stick hanging more or less —three calls each— and little more:
+ * being left without the machine is five at once, and without the fairground nine: they go off. The big
+ * stuff goes off with a huge margin: ceasing to instance would return the scene to the ~110 of
+ * when the machine went with each tube loose.
  */
 
 /**
- * Y lo que cuesta **en partida**, con los trece palos colgando: el máximo del juego.
+ * And what it costs **in a run**, with the thirteen sticks hanging: the game's maximum.
  *
- * Sale del mismo desglose: lo único que cambia entre el menú y la partida son los palos, a
- * tres llamadas cada uno mientras cuelgan. Cinco palos son 33; trece son ocho más, a tres:
- * `33 + 8 × 3 = 57`. Medido sale 56, uno menos, porque en cuanto arranca la cuenta atrás ya
- * hay un palo resuelto y baja a dos.
+ * It comes from the same breakdown: the only thing that changes between the menu and the run are the sticks, at
+ * three calls each while they hang. Five sticks are 33; thirteen are eight more, at three:
+ * `33 + 8 × 3 = 57`. Measured it comes out 56, one less, because as soon as the countdown starts there is
+ * already one stick resolved and it goes down to two.
  *
- * **Faltaba medirlo.** El menú se comprobaba desde siempre y la partida no, que es donde de
- * verdad se paga: era el único de los trece juegos sin presupuesto de partida.
+ * **Measuring it was missing.** The menu was checked from the start and the run was not, which is where it is
+ * really paid for: it was the only one of the thirteen games with no run budget.
  */
-const PARTIDA = drawCallBudget('run')
+const RUN = drawCallBudget('run')
 
 interface DrawFrame {
-  /** Llamadas de dibujo del fotograma. */
+  /** Draw calls of the frame. */
   calls: number
-  /** Instancias pedidas en cada llamada instanciada del fotograma. */
+  /** Instances requested in each instanced call of the frame. */
   instanced: number[]
 }
 
 declare global {
   interface Window {
-    /** Solo existe con el contador puesto (`countDrawCalls`), como `__audioSpy`. */
+    /** Only exists with the counter on (`countDrawCalls`), like `__audioSpy`. */
     __drawFrames?: DrawFrame[]
   }
 }
 
-/** Envuelve el contexto WebGL para contar llamadas. Antes de `page.goto`. */
+/** Wraps the WebGL context to count calls. Before `page.goto`. */
 async function countDrawCalls(page: Page) {
   await page.addInitScript(() => {
     const frames: DrawFrame[] = []
@@ -174,7 +174,7 @@ async function countDrawCalls(page: Page) {
 
     const closeFrame = () => {
       frames.push({ calls, instanced })
-      // Solo interesan los últimos: la muestra se toma con la escena asentada.
+      // Only the last ones matter: the sample is taken with the scene settled.
       if (frames.length > 240) frames.shift()
       calls = 0
       instanced = []
@@ -185,20 +185,20 @@ async function countDrawCalls(page: Page) {
 }
 
 /**
- * Fotogramas seguidos con la escena ya montada entera.
+ * Consecutive frames with the scene already mounted whole.
  *
- * Que el canvas tenga tamaño (`openGame`) solo dice que R3F ha empezado a
- * pintar. La máquina tarda más —sus texturas—, y en un arranque en frío la
- * muestra entera cabe en ese hueco: ahí el fotograma vale 6 llamadas, que no
- * son el coste de nada, y cualquier medida sobre ellas miente. Así que primero
- * se espera a que aparezcan todas las familias instanciadas y solo entonces se
- * cuenta.
+ * The canvas having a size (`openGame`) only says that R3F has started
+ * painting. The machine takes longer —its textures—, and on a cold start the
+ * whole sample fits in that gap: there the frame is worth 6 calls, which
+ * are the cost of nothing, and any measurement on them lies. So first
+ * it waits for all the instanced families to appear and only then
+ * counts.
  */
 async function sampleFrames(page: Page, count = 30): Promise<DrawFrame[]> {
-  // Sin contador no hay fotogramas que contar, y las esperas de abajo tardarían
-  // 45 s en decirlo culpando a la escena de lo que falta aquí.
+  // With no counter there are no frames to count, and the waits below would take
+  // 45 s to say so blaming the scene for what is missing here.
   const counting = await page.evaluate(() => Boolean(window.__drawFrames))
-  expect(counting, 'falta countDrawCalls(page) antes de abrir la página').toBe(
+  expect(counting, 'countDrawCalls(page) is missing before opening the page').toBe(
     true,
   )
 
@@ -207,56 +207,56 @@ async function sampleFrames(page: Page, count = 30): Promise<DrawFrame[]> {
       () =>
         page.evaluate(() => window.__drawFrames!.at(-1)?.instanced.length ?? 0),
       {
-        message: 'la escena no llegó a montarse entera',
+        message: 'the scene never got mounted whole',
         timeout: SAMPLE_TIMEOUT,
       },
     )
     .toBeGreaterThanOrEqual(SCENE_INSTANCED_FAMILIES)
 
-  // Lo contado durante el montaje ya no sirve: la muestra empieza aquí.
+  // What was counted during the mounting is no longer of use: the sample starts here.
   await page.evaluate(() => {
     window.__drawFrames!.length = 0
   })
   await expect
     .poll(() => page.evaluate(() => window.__drawFrames!.length), {
-      message: 'la escena no llegó a pintar fotogramas',
+      message: 'the scene never got to paint frames',
       timeout: SAMPLE_TIMEOUT,
     })
     .toBeGreaterThanOrEqual(count)
   return page.evaluate(() => window.__drawFrames!.slice())
 }
 
-test.describe('Coste de dibujo del recinto', () => {
+test.describe('Draw cost of the fairground', () => {
   test.beforeEach(async ({ page }) => {
     await countDrawCalls(page)
     await openGame(page)
   })
 
-  test('pinta las 119 piezas del recinto y su público, sin recortes silenciosos', async ({
+  test('paints the 119 parts of the fairground and its crowd, with no silent clipping', async ({
     page,
   }) => {
     const frames = await sampleFrames(page)
     const expected = Object.values(FAIR_INSTANCES)
-    // Basta con que un fotograma las traiga todas: si un límite se quedara
-    // corto, el recorte saldría en todos.
+    // It is enough for one frame to bring them all: if a limit fell
+    // short, the clipping would show in all of them.
     const complete = frames.some((frame) =>
       expected.every((count) => frame.instanced.includes(count)),
     )
 
     expect(
       complete,
-      `ningún fotograma dibujó ${expected.join(' + ')} instancias; el último trajo ${
-        frames.at(-1)?.instanced.join(' + ') || 'ninguna'
+      `no frame drew ${expected.join(' + ')} instances; the last one brought ${
+        frames.at(-1)?.instanced.join(' + ') || 'none'
       }`,
     ).toBe(true)
   })
 
-  test('y la partida entera, con los trece palos, cuesta lo que dice también', async ({
+  test('and the whole run, with the thirteen sticks, costs what it says too', async ({
     page,
   }) => {
-    // El máximo del juego: más palos no hay. Si esto se dispara, el desglose de arriba se ha
-    // quedado desfasado y hay que rehacerlo, que es de lo que avisa una cifra clavada y no
-    // avisaría un techo holgado.
+    // The game's maximum: there are no more sticks. If this shoots up, the breakdown above has
+    // gone stale and has to be redone, which is what a pinned figure warns of and a
+    // roomy ceiling would not.
     await startGame(page, { sticks: MAX_STICKS })
 
     const calls = (await sampleFrames(page))
@@ -264,23 +264,23 @@ test.describe('Coste de dibujo del recinto', () => {
       .sort((a, b) => a - b)
     const median = calls[Math.floor(calls.length / 2)]
 
-    const medido = `llamadas por fotograma en partida (el desglose dice ${PARTIDA.measured})`
-    expect(median, medido).toBeGreaterThanOrEqual(PARTIDA.min)
-    expect(median, medido).toBeLessThanOrEqual(PARTIDA.max)
+    const measured = `calls per frame in a run (the breakdown says ${RUN.measured})`
+    expect(median, measured).toBeGreaterThanOrEqual(RUN.min)
+    expect(median, measured).toBeLessThanOrEqual(RUN.max)
   })
 
-  test('el menú cuesta las llamadas de dibujo que dice el desglose', async ({
+  test('the menu costs the draw calls the breakdown says', async ({
     page,
   }) => {
-    // Mediana: el fotograma en el que entra la máquina cuenta de más, y un pico
-    // suelto no puede mover la cifra que se compara con el desglose.
+    // Median: the frame in which the machine comes in counts extra, and a lone
+    // spike cannot move the figure that is compared with the breakdown.
     const calls = (await sampleFrames(page))
       .map((frame) => frame.calls)
       .sort((a, b) => a - b)
     const median = calls[Math.floor(calls.length / 2)]
 
     const measured =
-      `llamadas por fotograma en el menú (el desglose dice ${MENU.measured})`
+      `calls per frame in the menu (the breakdown says ${MENU.measured})`
     expect(median, measured).toBeGreaterThanOrEqual(MENU.min)
     expect(median, measured).toBeLessThanOrEqual(MENU.max)
   })

@@ -1,92 +1,92 @@
-# Estado — Stick Rush
+# Status — Stick Rush
 
-> **Cómo continuar:** «lee `ESTADO.md` y sigue con el siguiente paso». Aquí solo lo que hace
-> falta para trabajar hoy; lo cerrado, en `docs/historial.md`. Se actualiza con **`/estado`**.
-> El backlog (qué falta) vive en `TODO.md`.
+> **How to continue:** "read `ESTADO.md` and go on with the next step". Only what is needed to
+> work today is here; what is closed, in `docs/historial.md`. It is updated with **`/estado`**.
+> The backlog (what is missing) lives in `TODO.md`.
 
 ---
 
-## ⏭️ Siguiente paso
+## ⏭️ Next step
 
-**Probar con el visor.** La última versión es **v0.24.0** (los palos caen desde el reposo y
-aceleran). En `develop`, sin versión todavía: el **port entero a Godot** sobre el kit común
-(`godot/`, `npm run godot:*`), el **duelo a dos** pasándose el mando, las **tres hazañas** para
-los logros de Steam y seguir la altura fina del salón.
+**Try it with the headset.** The latest version is **v0.24.0** (the sticks fall from rest and
+accelerate). In `develop`, without a version yet: the **whole port to Godot** on the common kit
+(`godot/`, `npm run godot:*`), the **two-player duel** passing the controller, the **three feats**
+for the Steam achievements and following the hall's fine height.
 
-Qué mirar con las gafas, y dónde se toca:
+What to look at with the goggles, and where it is changed:
 
-| Qué mirar | Dónde se toca |
+| What to look at | Where it is changed |
 |---|---|
-| ¿El paso atrás es el justo? ¿Se llega al palo del frente? | `PLAYER_OFFSET_Z` (`src/lib/gameConfig.ts`) |
-| ¿Máquina a buena altura? ¿Cuelgan por encima de la cara? | `HOOP_RISE_ABOVE_EYES` (`src/lib/hoopHeight.ts`) |
-| Columna de ajustes (30° a la izquierda, 1,5 m; antes a 55°): ¿se ve al entrar sin girarse? En el menú, los palos de delante y de ese lado se atenúan y vuelven al pulsar Jugar: ¿se lee limpio y la máquina sigue pareciendo entera? Web y Godot | `PALO_TRAS_EL_MENU`, `paloTapaElMenu`, `XR_COLUMN` (`src/lib/xrLayout.ts`) |
-| Menú de la plantilla común: «Modo: Reto», «Jugadores» y lo demás tras «Más opciones» (abajo a la izquierda). Con el reto no se ven el aro ni «Alrededor»: ¿se echa de menos ajustar el aro sentado? | `gameMenu.ts`, `XR_MENU_OPCIONES_OFFSET` |
-| El nombre de la cabina arriba a la izquierda del menú (antes solo en la portada web): ¿se lee sin buscarlo, sin estorbar a «Aro»? Web y Godot | `MENU_TITLE` (`src/lib/xrLayout.ts`) |
-| **El calentamiento** (`src/lib/warmup.ts`): la primera partida con el visor, en el reto y con la lección delante, los palos perdidos no quitan vidas; al cerrarla, el reto empieza de cero con «Ahora cuenta para medalla» en el cartel. ¿Se entiende? Web y Godot | `enCalentamiento`, `partidaDelCartel` |
-| Los rótulos bajo los botones del final (Otra partida / Compartir / Menú): ¿se leen sin estorbar? | `ROTULOS_DEL_FINAL` (`XRHud.tsx`; Godot, `scoreboard.ts`) |
-| ¿Se lee el guante como mano y se ve cerrarse? En el salón va sin mando debajo | `src/components/xr/Glove.tsx`, `src/lib/glove.ts` |
-| Manos desnudas, en la web y en el salón | `src/components/xr/PlayerHands.tsx` |
-| ¿Se nota el atrape y el in extremis distinto? | `src/lib/haptics.ts`, `src/lib/hapticFeedback.ts` |
-| ¿La caída acelerando se lee como una caída? | `fallAcceleration` (`src/lib/gameConfig.ts`) |
-| **Pendiente de visor — el cartel del objetivo** (encima del marcador, 27° bajo la mirada; el menú abre en el reto): ¿se entiende la misión en los tres primeros segundos?, ¿se lee sin buscarlo?, ¿molesta al jugar? | `XR_CARTEL_POSITION` (`src/lib/xrLayout.ts`), `MISION_DEL_RETO` (`src/lib/machineSign.ts`) |
-| Cartel: la letra (la misión sale a 1°); el marcador sin barra ni vidas, ¿se echan de menos? | `LETRA_DEL_CARTEL` (`CartelDeObjetivo.tsx`), `XR_HUD_WITH_SIGN`; en Godot, `CARTEL` (`godot/scene/ui/sign.ts`) |
-| Cartel: el listón cruzado (color, pulso, dos notas y un toque en la mano buena tras el atrape), ¿se nota sin distraer? | `medalVoices` (`src/lib/sound.ts`), `RETARDO_DEL_LISTON`, `tactoDelListon` |
+| Is the step back the right one? Can the front stick be reached? | `PLAYER_OFFSET_Z` (`src/lib/gameConfig.ts`) |
+| Machine at a good height? Do they hang above the face? | `HOOP_RISE_ABOVE_EYES` (`src/lib/hoopHeight.ts`) |
+| Settings column (30° to the left, 1.5 m; it used to be at 55°): is it seen on entering without turning? In the menu, the sticks in front and on that side are dimmed and come back on pressing Play: does it read clean and does the machine still look whole? Web and Godot | `STICK_BEHIND_MENU`, `stickCoversMenu`, `XR_COLUMN` (`src/lib/xrLayout.ts`) |
+| Menu of the common template: «Modo: Reto», «Jugadores» and the rest behind «Más opciones» (bottom left). With the challenge neither the hoop nor «Alrededor» is shown: is adjusting the hoop while seated missed? | `gameMenu.ts`, `XR_MENU_OPTIONS_OFFSET` |
+| The cabinet's name at the top left of the menu (it used to be only on the web front page): is it read without looking for it, without getting in the way of «Aro»? Web and Godot | `MENU_TITLE` (`src/lib/xrLayout.ts`) |
+| **The warm-up** (`src/lib/warmup.ts`): in the first run with the headset, in the challenge and with the lesson in front, lost sticks take no lives; on closing it, the challenge starts from zero with «Ahora cuenta para medalla» on the sign. Is it understood? Web and Godot | `inWarmup`, `signRun` |
+| The labels under the final buttons (Otra partida / Compartir / Menú): are they read without getting in the way? | `FINAL_LABELS` (`XRHud.tsx`; Godot, `scoreboard.ts`) |
+| Does the glove read as a hand and is it seen closing? In the hall it goes without a controller underneath | `src/components/xr/Glove.tsx`, `src/lib/glove.ts` |
+| Bare hands, on the web and in the hall | `src/components/xr/PlayerHands.tsx` |
+| Are the catch and the in extremis felt as different? | `src/lib/haptics.ts`, `src/lib/hapticFeedback.ts` |
+| Does the accelerating fall read as a fall? | `fallAcceleration` (`src/lib/gameConfig.ts`) |
+| **Pending in the headset — the goal sign** (above the scoreboard, 27° below the gaze; the menu opens on the challenge): is the mission understood in the first three seconds? is it read without looking for it? does it bother while playing? | `XR_SIGN_POSITION` (`src/lib/xrLayout.ts`), `CHALLENGE_MISSION` (`src/lib/machineSign.ts`) |
+| Sign: the font (the mission comes out at 1°); the scoreboard without bar or lives, are they missed? | `SIGN_FONT` (`GoalSign.tsx`), `XR_HUD_WITH_SIGN`; in Godot, `SIGN` (`godot/scene/ui/sign.ts`) |
+| Sign: the crossed threshold (colour, pulse, two notes and a tap on the good hand after the catch), is it noticed without distracting? | `medalVoices` (`src/lib/sound.ts`), `THRESHOLD_DELAY`, `thresholdHaptic` |
 
-Lo que solo puede decir el visor del port de Godot está en «Lo que se sabe y lo que falta» de
-`godot/README.md`. La lista común de todos los juegos: `organizate/docs/pendiente-de-visor.md`.
+What only the headset can say about the Godot port is in "What is known and what is missing" of
+`godot/README.md`. The common list for every game: `organizate/docs/pendiente-de-visor.md`.
 
-Después: cortar versión de lo que hay en `develop` (procedimiento en «Publicar una versión
-nueva» de `docs/mounting-the-game.md`) y que xrcade la suba con `npm run game:update`.
+Afterwards: cut a version of what is in `develop` (procedure in "Publishing a new version" of
+`docs/mounting-the-game.md`) and have xrcade bump it with `npm run game:update`.
 
-## 🚧 Lo que bloquea o espera
+## 🚧 What blocks or waits
 
-1. **Nada está probado con las gafas** desde hace varias tandas: todo lo de la tabla de arriba
-   y lo del port de Godot, que solo se ha jugado en plano y con visor simulado.
-2. **En el salón, con manos desnudas no se atrapa**: el salón lleva `hand.grabPointer: false` a
-   propósito y el agarre de stick-rush es ese puntero. Activarlo es decisión del salón, mirando
-   los otros dieciséis juegos.
-3. **`main` va 31 commits por detrás de `develop`.** Publicar en `main` es del usuario, después
-   de probar con el visor.
-4. **¿El repo se hace público?** Sin bloqueo por datos personales; falta decidir si se enseñan
-   `.claude/` y `.organizate/install-state.json` (`TODO.md`, «Producto»).
-5. **`TODO.md` va atrasado**: aún marca Godot como «congelado» y ya está portado.
+1. **Nothing has been tried with the goggles** for several rounds: everything in the table above
+   and the Godot port, which has only been played flat and with a simulated headset.
+2. **In the hall, nothing is caught with bare hands**: the hall sets `hand.grabPointer: false` on
+   purpose and stick-rush's grab is that pointer. Turning it on is the hall's decision, looking
+   at the other sixteen games.
+3. **`main` is 31 commits behind `develop`.** Publishing to `main` is the user's, after trying
+   it with the headset.
+4. **Does the repo go public?** No blocker from personal data; whether `.claude/` and
+   `.organizate/install-state.json` are shown is still to be decided (`TODO.md`, «Producto»).
+5. **`TODO.md` is behind**: it still marks Godot as "frozen" and it is already ported.
 
-## ▶️ Cómo arrancar
+## ▶️ How to start
 
 ```
-npm run dev            # http://localhost:3000 (o la IP de la máquina)
-npm run dev:https      # para el visor, contra la IP de esta máquina
+npm run dev            # http://localhost:3000 (or the machine's IP)
+npm run dev:https      # for the headset, against this machine's IP
 npm run lint && npm run typecheck && npm test
-npm run coverage       # dominio (src/lib) al 100 %; el mínimo es 100
-npm run test:e2e       # Playwright sobre el build; puerto E2E_PORT (3100 por defecto)
+npm run coverage       # domain (src/lib) at 100 %; the minimum is 100
+npm run test:e2e       # Playwright on the build; port E2E_PORT (3100 by default)
 ```
 
-- **Godot**: el editor 4.7.1 con GodotJS en `$GODOT` y `../xrcade` al lado.
-  `GODOT=$GODOT npm run godot:test` (todo lo del motor), `npm run godot:build -- --tests`,
-  `godot:sfx` y `godot:controllers`. Detalle en `godot/README.md`, «Cómo se usa».
-- La suite e2e tarda ~1 min y tiene partes sensibles al tiempo: si algo falla de forma
-  intermitente, repetirla antes de «arreglar» nada.
-- `build` fija `NODE_ENV=production` porque el entorno exporta `development`, que rompe la
-  prerenderización de `/_global-error`.
-- Node se fija en `.nvmrc` (24.19.0) y el CI la lee de ahí; subirla es a mano, comprobando que
-  `npm install` deja el lock intacto.
-- El emulador IWER solo aparece con el hostname exacto `localhost`.
-- Nada de worktrees anidados dentro del repo: `npm run lint` recorre su `.next/`.
+- **Godot**: the 4.7.1 editor with GodotJS in `$GODOT` and `../xrcade` next to this repo.
+  `GODOT=$GODOT npm run godot:test` (everything in the engine), `npm run godot:build -- --tests`,
+  `godot:sfx` and `godot:controllers`. Detail in `godot/README.md`, "How it is used".
+- The e2e suite takes ~1 min and has time-sensitive parts: if something fails intermittently,
+  run it again before "fixing" anything.
+- `build` sets `NODE_ENV=production` because the environment exports `development`, which
+  breaks the prerendering of `/_global-error`.
+- Node is pinned in `.nvmrc` and CI reads it from there; bumping it is done by hand, checking
+  that `npm install` leaves the lock intact.
+- The IWER emulator only shows up with the exact hostname `localhost`.
+- No nested worktrees inside the repo: `npm run lint` walks their `.next/`.
 
-## 📌 Reglas que rigen y no se deducen del repo
+## 📌 Rules that apply and cannot be deduced from the repo
 
-- **Un palo se coge hasta que toca el suelo, colgando incluido.** La regla vive en
-  `canCatchStick` (`src/lib/xrInteraction.ts`) y la fijan unitarios y un e2e.
-- **La lógica es una sola**: Godot ejecuta `src/lib` con GodotJS; no se reescribe en el port.
-- Commits manuales; nada de `push` ni tocar `main` sin permiso explícito.
-- Hay un backup del historial previo a la reescritura en `refs/backup/main-antes-de-reescribir`.
+- **A stick can be caught until it touches the ground, hanging included.** The rule lives in
+  `canCatchStick` (`src/lib/xrInteraction.ts`) and is pinned by unit tests and an e2e.
+- **There is a single logic**: Godot runs `src/lib` with GodotJS; it is not rewritten in the port.
+- Manual commits; no `push` and no touching `main` without explicit permission.
+- There is a backup of the history before the rewrite in `refs/backup/main-antes-de-reescribir`.
 
-## 🗺️ Dónde está lo demás
+## 🗺️ Where the rest is
 
-| Para… | Mirar |
+| For… | Look at |
 |---|---|
-| Por qué está algo así | `docs/historial.md` (no se lee al empezar) |
-| Qué falta (backlog) | `TODO.md` |
-| El port a Godot, y lo que falta en él | `godot/README.md` |
-| Montar el juego en el salón y publicar versión | `docs/mounting-the-game.md` |
-| Reglas comunes | `.claude/rules/` |
+| Why something is the way it is | `docs/historial.md` (not read at the start) |
+| What is missing (backlog) | `TODO.md` |
+| The Godot port, and what is missing in it | `godot/README.md` |
+| Mounting the game in the hall and publishing a version | `docs/mounting-the-game.md` |
+| Common rules | `.claude/rules/` |

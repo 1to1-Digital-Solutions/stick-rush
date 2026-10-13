@@ -1,16 +1,16 @@
 /**
- * El cartel del objetivo en Godot: de frente y bajo la máquina, encima del marcador
- * (`components/xr/CartelDeObjetivo.tsx` y `components/xr/MachineSign.tsx`).
+ * The goal sign in Godot: facing the player and under the machine, above the scoreboard
+ * (`components/xr/GoalSign.tsx` and `components/xr/MachineSign.tsx`).
  *
- * **Dice lo mismo que el de la web** porque los dos leen de `lib/objetivo.ts` —la misión y los
- * listones hasta el primer palo, el listón que falta con su barra, las vidas y los palos que quedan
- * mientras se juega, y lo que faltó al acabar— y **cuelga en el mismo sitio**, que sale de
- * `lib/machineSign.ts`. Está pintado para leerse a `CARTEL.distancia` y se agranda con la
- * distancia de verdad, así que ocupa los mismos grados que en la web.
+ * **It says the same as the web's** because both read from `lib/goal.ts` —the mission and the
+ * thresholds until the first stick, the threshold still missing with its bar, the lives and the sticks
+ * left while playing, and what was missing at the end— and **it hangs in the same place**, which comes
+ * from `lib/machineSign.ts`. It is painted to be read at `SIGN.distance` and is enlarged with the
+ * real distance, so it takes up the same degrees as on the web.
  *
- * La celebración de un listón es suya: el título dice la medalla («¡Bronce!»), se pone de su color
- * con la barra y el cartel crece y vuelve (`pulsoDelFestejo`). El sonido corto y el pulso en la mano los pone la
- * escena, con la medalla que devuelve `actualizar`.
+ * The celebration of a threshold is its own: the title says the medal («¡Bronce!»), it takes its colour
+ * along with the bar and the sign grows and comes back (`celebrationPulse`). The short sound and the pulse in the hand are added by the
+ * scene, with the medal that `update` returns.
  */
 import { Node3D, Vector3, type MeshInstance3D } from 'godot'
 
@@ -18,146 +18,146 @@ import { plate } from '@kit/runtime/ui/mesh'
 import { Panel } from '@kit/runtime/ui/panel'
 import { RENDER_ORDER } from '@kit/runtime/ui/text3d'
 
-import type { SitioDelCartel } from '@/lib/machineSign'
+import type { SignPlacement } from '@/lib/machineSign'
 import { CELEBRATION_SECONDS, thresholdCrossed, celebrationPulse, type Medal, type GoalSignView } from '@/lib/goal'
 import { COMMON_PALETTE } from '@/lib/commonPalette'
 
-/** Lo que miden esos grados de ángulo visual a esa distancia (`grados` de `CartelDeObjetivo.tsx`, con el `altoMinimo` de `legibilidad.ts`). */
-function grados(angulo: number, distancia: number): number {
-  return (2 * distancia * Math.tan((0.75 * Math.PI) / 180 / 2) * angulo) / 0.75
+/** What those degrees of visual angle measure at that distance (`degrees` of `GoalSign.tsx`, with the `minTextHeight` of `legibility.ts`). */
+function degrees(angle: number, distance: number): number {
+  return (2 * distance * Math.tan((0.75 * Math.PI) / 180 / 2) * angle) / 0.75
 }
 
 /**
- * El cartel del objetivo (`CartelDeObjetivo.tsx`): pintado para leerse a dos metros
- * (`DISTANCIA_DE_DIBUJO`), 24° de ancho por 4,5° de alto (`PANEL_DEL_CARTEL`), con la letra del
- * título a 1,4° y la del detalle a 1,2° (`LETRA_DEL_CARTEL`), y su margen, su aire y su barra.
+ * The goal sign (`GoalSign.tsx`): painted to be read at two metres
+ * (`DRAW_DISTANCE`), 24° wide by 4.5° high (`SIGN_PANEL`), with the type of the
+ * title at 1.4° and that of the detail at 1.2° (`SIGN_FONT`), and its margin, its spacing and its bar.
  */
-export const CARTEL = {
-  distancia: 2,
-  ancho: grados(24, 2),
-  alto: grados(4.5, 2),
-  titulo: grados(1.4, 2),
-  detalle: grados(1.2, 2),
-  aire: grados(0.35, 2),
-  barra: grados(0.35, 2),
-  anchoUtil: grados(24, 2) - 2 * grados(0.5, 2),
-  /** Con tres líneas (el final con su `pie`), la letra de `LETRA_CON_PIE`. */
-  conPie: { titulo: grados(1.2, 2), detalle: grados(1.0, 2), aire: grados(0.25, 2) },
+export const SIGN = {
+  distance: 2,
+  width: degrees(24, 2),
+  height: degrees(4.5, 2),
+  title: degrees(1.4, 2),
+  detail: degrees(1.2, 2),
+  spacing: degrees(0.35, 2),
+  bar: degrees(0.35, 2),
+  usableWidth: degrees(24, 2) - 2 * degrees(0.5, 2),
+  /** With three lines (the end with its `footer`), the type of `SIGN_FONT_WITH_FOOTER`. */
+  withFooter: { title: degrees(1.2, 2), detail: degrees(1.0, 2), spacing: degrees(0.25, 2) },
 } as const
 
-/** Lo que mide el cartel por cada metro de distancia de lectura (`proporcionDelCartel`). */
-export const PROPORCION_DEL_CARTEL = { width: CARTEL.ancho / CARTEL.distancia, height: CARTEL.alto / CARTEL.distancia } as const
+/** What the sign measures per metre of reading distance (`signAspect`). */
+export const SIGN_ASPECT = { width: SIGN.width / SIGN.distance, height: SIGN.height / SIGN.distance } as const
 
-export class Cartel {
+export class Sign {
   readonly panel: Panel
-  readonly nodo: Node3D
-  private readonly barra = new Node3D()
-  private pintado = ''
-  private escala = 1
-  /** La medalla que tenía quien juega en el fotograma anterior: `undefined` hasta el primero. */
-  private medalla: Medal | null | undefined = undefined
-  /** El listón que se está celebrando y desde cuándo, en segundos. */
-  private festejo: { medalla: Medal; lleva: number } | null = null
+  readonly node: Node3D
+  private readonly bar = new Node3D()
+  private painted = ''
+  private scale = 1
+  /** The medal the player had in the previous frame: `undefined` until the first one. */
+  private medal: Medal | null | undefined = undefined
+  /** The threshold being celebrated and since when, in seconds. */
+  private celebration: { medal: Medal; elapsed: number } | null = null
 
   constructor() {
-    this.panel = new Panel({ ancho: CARTEL.ancho, alto: CARTEL.alto, fondo: COMMON_PALETTE.background, opacidad: 0.88 })
-    this.nodo = this.panel.nodo
-    this.nodo.set_name('CartelDeObjetivo')
-    this.nodo.add_child(this.barra)
-    this.nodo.visible = false
+    this.panel = new Panel({ ancho: SIGN.width, alto: SIGN.height, fondo: COMMON_PALETTE.background, opacidad: 0.88 })
+    this.node = this.panel.nodo
+    this.node.set_name('GoalSign')
+    this.node.add_child(this.bar)
+    this.node.visible = false
   }
 
-  /** Lo cuelga donde dice `sitioDelCartel`, del tamaño que pide su distancia. */
-  colocar(sitio: SitioDelCartel): void {
-    const [x, y, z] = sitio.position
-    this.nodo.position = new Vector3(x, y, z)
-    this.nodo.rotation = new Vector3(sitio.rotation[0], sitio.rotation[1], sitio.rotation[2])
-    this.escalar(sitio.distancia / CARTEL.distancia)
+  /** Hangs it where `signPlacement` says, at the size its distance asks for. */
+  place(placement: SignPlacement): void {
+    const [x, y, z] = placement.position
+    this.node.position = new Vector3(x, y, z)
+    this.node.rotation = new Vector3(placement.rotation[0], placement.rotation[1], placement.rotation[2])
+    this.setScale(placement.distance / SIGN.distance)
   }
 
-  /** Cuánto se agranda sobre su tamaño de dibujo: lo que pide la distancia a la que se lee. */
-  escalar(escala: number): void {
-    this.escala = escala
-    this.nodo.scale = new Vector3(escala, escala, escala)
+  /** How much it is enlarged over its drawing size: what the distance it is read at asks for. */
+  setScale(scale: number): void {
+    this.scale = scale
+    this.node.scale = new Vector3(scale, scale, scale)
   }
 
-  /** La medalla cuyo listón se celebra ahora mismo, o `null`. */
-  get celebrando(): Medal | null {
-    return this.festejo?.medalla ?? null
+  /** The medal whose threshold is being celebrated right now, or `null`. */
+  get celebrating(): Medal | null {
+    return this.celebration?.medal ?? null
   }
 
   /**
-   * Pinta lo que dice (`dibujarElCartel`) y lleva la celebración. Sin vista, se esconde.
+   * Paints what it says (`drawSign`) and runs the celebration. With no view, it hides.
    *
-   * @returns La medalla cuyo listón se acaba de cruzar en este fotograma, para que la escena la
-   *   haga sonar y sentir; `null` casi siempre.
+   * @returns The medal whose threshold has just been crossed in this frame, so that the scene makes
+   *   it sound and be felt; `null` almost always.
    */
-  actualizar(vista: GoalSignView | null, medalla: Medal | null, idioma: string, delta: number): Medal | null {
-    // Recién montado no hay nada que celebrar: no se ha visto cruzar el listón.
-    const cruzada = this.medalla === undefined ? null : thresholdCrossed(this.medalla, medalla)
-    if (cruzada != null) this.festejo = { medalla: cruzada, lleva: 0 }
-    else if (medalla == null || (this.festejo != null && this.festejo.lleva >= CELEBRATION_SECONDS)) this.festejo = null
-    this.medalla = medalla
+  update(view: GoalSignView | null, medal: Medal | null, lang: string, delta: number): Medal | null {
+    // Freshly mounted there is nothing to celebrate: the threshold has not been seen being crossed.
+    const crossed = this.medal === undefined ? null : thresholdCrossed(this.medal, medal)
+    if (crossed != null) this.celebration = { medal: crossed, elapsed: 0 }
+    else if (medal == null || (this.celebration != null && this.celebration.elapsed >= CELEBRATION_SECONDS)) this.celebration = null
+    this.medal = medal
 
-    this.nodo.visible = vista != null
-    const pulso = this.festejo == null ? 1 : celebrationPulse(this.festejo.lleva)
-    this.nodo.scale = new Vector3(this.escala * pulso, this.escala * pulso, this.escala * pulso)
-    if (this.festejo != null) this.festejo.lleva += delta
-    if (vista != null) this.pintar(vista, idioma, this.celebrando)
-    return cruzada
+    this.node.visible = view != null
+    const pulse = this.celebration == null ? 1 : celebrationPulse(this.celebration.elapsed)
+    this.node.scale = new Vector3(this.scale * pulse, this.scale * pulse, this.scale * pulse)
+    if (this.celebration != null) this.celebration.elapsed += delta
+    if (view != null) this.paint(view, lang, this.celebrating)
+    return crossed
   }
 
-  private pintar(vista: GoalSignView, idioma: string, festejo: Medal | null): void {
-    const clave = `${idioma}|${festejo}|${JSON.stringify(vista)}`
-    if (clave === this.pintado) return
-    this.pintado = clave
+  private paint(view: GoalSignView, lang: string, celebration: Medal | null): void {
+    const key = `${lang}|${celebration}|${JSON.stringify(view)}`
+    if (key === this.painted) return
+    this.painted = key
     const { panel } = this
     panel.borrarTextos()
-    for (let i = this.barra.get_child_count() - 1; i >= 0; i--) {
-      const hijo = this.barra.get_child(i)!
-      this.barra.remove_child(hijo)
-      hijo.queue_free()
+    for (let i = this.bar.get_child_count() - 1; i >= 0; i--) {
+      const child = this.bar.get_child(i)!
+      this.bar.remove_child(child)
+      child.queue_free()
     }
 
-    // Lo que hay se reparte centrado: una línea sola queda en medio, no colgada de arriba. Con el
-    // pie del final son tres líneas, con la letra un poco más baja (`LETRA_CON_PIE` en la web).
-    const pie = vista.footer ?? null
-    const letra = pie == null ? CARTEL : CARTEL.conPie
-    const filas = [
-      letra.titulo,
-      ...(vista.detail == null ? [] : [letra.detalle]),
-      ...(pie == null ? [] : [letra.detalle]),
-      ...(vista.bar == null ? [] : [CARTEL.barra]),
+    // What there is gets laid out centred: a single line sits in the middle, not hanging from the top. With the
+    // footer of the end there are three lines, with the type a little lower (`SIGN_FONT_WITH_FOOTER` on the web).
+    const footer = view.footer ?? null
+    const font = footer == null ? SIGN : SIGN.withFooter
+    const rows = [
+      font.title,
+      ...(view.detail == null ? [] : [font.detail]),
+      ...(footer == null ? [] : [font.detail]),
+      ...(view.bar == null ? [] : [SIGN.bar]),
     ]
-    let y = (filas.reduce((suma, fila) => suma + fila, 0) + letra.aire * (filas.length - 1)) / 2
+    let y = (rows.reduce((sum, row) => sum + row, 0) + font.spacing * (rows.length - 1)) / 2
 
-    // Mientras se celebra, el título dice la medalla: el color solo no se entiende.
-    panel.escribir(festejo != null && vista.cheer != null ? vista.cheer : vista.title, 0, y - letra.titulo / 2, {
-      alto: letra.titulo,
-      color: festejo != null ? COMMON_PALETTE[festejo] : vista.subdued ? COMMON_PALETTE.mutedText : COMMON_PALETTE.text,
-      anchoMax: CARTEL.anchoUtil,
+    // While celebrating, the title says the medal: the colour alone is not understood.
+    panel.escribir(celebration != null && view.cheer != null ? view.cheer : view.title, 0, y - font.title / 2, {
+      alto: font.title,
+      color: celebration != null ? COMMON_PALETTE[celebration] : view.subdued ? COMMON_PALETTE.mutedText : COMMON_PALETTE.text,
+      anchoMax: SIGN.usableWidth,
     })
-    y -= letra.titulo + letra.aire
+    y -= font.title + font.spacing
 
-    for (const linea of [vista.detail, pie]) {
-      if (linea == null) continue
-      panel.escribir(linea, 0, y - letra.detalle / 2, { alto: letra.detalle, color: COMMON_PALETTE.mutedText, anchoMax: CARTEL.anchoUtil })
-      y -= letra.detalle + letra.aire
+    for (const line of [view.detail, footer]) {
+      if (line == null) continue
+      panel.escribir(line, 0, y - font.detail / 2, { alto: font.detail, color: COMMON_PALETTE.mutedText, anchoMax: SIGN.usableWidth })
+      y -= font.detail + font.spacing
     }
 
-    if (vista.bar != null) {
-      const centro = y - CARTEL.barra / 2
-      this.anadir(plate(CARTEL.anchoUtil, CARTEL.barra, COMMON_PALETTE.border, 1, RENDER_ORDER.placa), 0, centro)
-      const lleno = CARTEL.anchoUtil * vista.bar
-      const acento = festejo ?? vista.medal
-      if (lleno > 0) {
-        this.anadir(plate(lleno, CARTEL.barra, acento == null ? COMMON_PALETTE.accent : COMMON_PALETTE[acento], 1, RENDER_ORDER.dibujo), -CARTEL.anchoUtil / 2 + lleno / 2, centro)
+    if (view.bar != null) {
+      const centre = y - SIGN.bar / 2
+      this.add(plate(SIGN.usableWidth, SIGN.bar, COMMON_PALETTE.border, 1, RENDER_ORDER.placa), 0, centre)
+      const filled = SIGN.usableWidth * view.bar
+      const accent = celebration ?? view.medal
+      if (filled > 0) {
+        this.add(plate(filled, SIGN.bar, accent == null ? COMMON_PALETTE.accent : COMMON_PALETTE[accent], 1, RENDER_ORDER.dibujo), -SIGN.usableWidth / 2 + filled / 2, centre)
       }
     }
   }
 
-  private anadir(nodo: MeshInstance3D, x: number, y: number): void {
-    nodo.position = new Vector3(x, y, 0)
-    this.barra.add_child(nodo)
+  private add(node: MeshInstance3D, x: number, y: number): void {
+    node.position = new Vector3(x, y, 0)
+    this.bar.add_child(node)
   }
 }

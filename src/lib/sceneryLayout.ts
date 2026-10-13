@@ -1,89 +1,89 @@
 import { GROUND_Y } from './gameConfig'
 
 /**
- * Recinto de feria que rodea al jugador cuando el escenario está puesto.
+ * Fairground that surrounds the player when the scenery is on.
  *
- * Hasta aquí el decorado era solo el HDRI: una foto de una plaza de noche
- * envolviendo la escena. De lejos funciona, pero en el visor se delata en
- * cuanto el jugador mueve la cabeza —una foto no tiene paralaje— y la máquina
- * queda plantada en mitad de la nada. Esto añade volumen alrededor: puestos,
- * guirnaldas de bombillas y una noria al fondo, con la foto detrás haciendo de
- * cielo y de luz.
+ * Up to here the scenery was only the HDRI: a photo of a square at night
+ * wrapping the scene. From afar it works, but in the headset it gives itself away as
+ * soon as the player moves their head —a photo has no parallax— and the machine
+ * ends up planted in the middle of nowhere. This adds volume around: stalls,
+ * garlands of bulbs and a Ferris wheel at the back, with the photo behind acting as
+ * sky and as light.
  *
- * Aquí vive **dónde** va cada cosa, que es lo que puede estropear la partida
- * (decorado dentro del alcance del brazo, bombillas a la altura de la cara), y
- * por eso se prueba aparte. Los componentes solo pintan.
+ * Here lives **where** each thing goes, which is what can spoil the run
+ * (scenery inside the arm's reach, bulbs at face height), and
+ * that is why it is tested apart. The components only draw.
  */
 
 export type Vec3 = [number, number, number]
 
 /**
- * Radio libre alrededor del jugador: ahí dentro no entra ni una pieza del
- * decorado. La máquina, con sus postes abiertos y sus riostras, llega a ~1.7 m
- * (el pie del tirante, ver `legs` en `StickMachine`); el resto es sitio para
- * moverse y para que nada aparezca pegado a la cara al girarse.
+ * Free radius around the player: not a single part of the
+ * scenery goes in there. The machine, with its splayed posts and its braces, reaches ~1.7 m
+ * (the foot of the strut, see `legs` in `StickMachine`); the rest is room to
+ * move and so that nothing appears right up against the face on turning round.
  */
 export const SCENERY_CLEARANCE = 3
 
 /**
- * Puestos del recinto, repartidos en círculo mirando al jugador. Cuánto miden
- * lo dice su pieza del kit (`fairKit.ts`).
+ * Stalls of the fairground, laid out in a circle looking at the player. How much they measure
+ * is said by their kit piece (`fairKit.ts`).
  */
 export const STALL_COUNT = 6
 export const STALL_RING_RADIUS = 6.4
 
 /**
- * Guirnaldas de bombillas: farolas en círculo, más cerca que los puestos, con un
- * tramo colgando entre cada dos. Son lo que convierte un descampado con puestos
- * en un recinto: cierran el espacio por arriba sin tapar el cielo.
+ * Garlands of bulbs: lamp posts in a circle, nearer than the stalls, with a
+ * span hanging between each two. They are what turns a vacant lot with stalls
+ * into a fairground: they close the space from above without covering the sky.
  */
 export const GARLAND_POST_COUNT = 8
 export const GARLAND_RING_RADIUS = 4.6
 export const GARLAND_POST_HEIGHT = 3.4
-/** Cuánto baja el punto medio del tramo respecto a los postes. */
+/** How much the midpoint of the span drops relative to the posts. */
 export const GARLAND_SAG = 0.5
 export const GARLAND_BULBS_PER_SPAN = 7
 
 /**
- * Noria al fondo, fuera del recinto: da escala y profundidad, que es justo lo
- * que una foto de fondo no puede dar. Va desviada del frente para no quedar
- * detrás de la máquina, y lo bastante alta como para asomar por encima de las
- * casetas.
+ * Ferris wheel at the back, outside the fairground: it gives scale and depth, which is exactly
+ * what a background photo cannot give. It goes offset from the front so as not to end up
+ * behind the machine, and high enough to peek over the
+ * booths.
  */
 export const WHEEL_CENTER: Vec3 = [-7.4, 7.4, -10.6]
 export const WHEEL_RADIUS = 5.6
 export const WHEEL_CABIN_COUNT = 12
 /**
- * Cuánto baja el **centro** de una cabina por debajo del punto del aro del que
- * cuelga. Lo que roza el suelo es su fondo, media góndola más abajo.
+ * How much the **centre** of a cabin drops below the point of the ring it
+ * hangs from. What grazes the floor is its bottom, half a gondola further down.
  */
 export const WHEEL_CABIN_DROP = 1.05
-/** Alto de la góndola de una cabina. */
+/** Height of the gondola of a cabin. */
 export const WHEEL_CABIN_HEIGHT = 0.6
-/** Velocidad de giro en radianes por segundo: una vuelta cada ~85 s. */
+/** Turning speed in radians per second: one turn every ~85 s. */
 export const WHEEL_SPEED = 0.074
 
-/** Giro en Y que deja mirando al centro del recinto a lo que esté en `position`. */
+/** Turn in Y that leaves whatever is at `position` looking at the centre of the fairground. */
 export function facingRotationY([x, , z]: Vec3): number {
-  // El frente de una pieza es su +Z local, y un giro de `angle` lo lleva a
-  // (sin, cos). Media vuelta más y apunta al revés: hacia el centro.
+  // The front of a part is its local +Z, and a turn of `angle` takes it to
+  // (sin, cos). Half a turn more and it points the other way: towards the centre.
   return Math.atan2(x, z) + Math.PI
 }
 
-/** Sitio de una pieza del recinto: dónde se planta y hacia dónde encara. */
+/** Slot of a part of the fairground: where it is planted and which way it faces. */
 export interface RingSlot {
-  /** Punto del anillo, a ras de suelo. */
+  /** Point of the ring, at floor level. */
   position: Vec3
-  /** Giro en Y que deja la pieza mirando al jugador. */
+  /** Turn in Y that leaves the part looking at the player. */
   rotationY: number
 }
 
 /**
- * Reparte `count` piezas en un anillo alrededor del jugador, todas encarándole.
+ * Lays out `count` parts in a ring around the player, all facing them.
  *
- * El anillo se recorre desde `startAngle`, que es lo que permite girar las
- * casetas respecto a los postes de las guirnaldas y que no queden unas justo
- * detrás de otros.
+ * The ring is travelled from `startAngle`, which is what allows turning the
+ * booths relative to the posts of the garlands so that they do not end up right
+ * behind one another.
  */
 export function ringSlots(
   count: number,
@@ -102,12 +102,12 @@ export function ringSlots(
 }
 
 /**
- * Bombillas de un tramo de guirnalda colgado entre dos postes.
+ * Bulbs of a span of garland hung between two posts.
  *
- * La curva es una parábola y no una catenaria de verdad: a esta distancia no se
- * distingue una de otra, y la parábola se lee de un vistazo. Los extremos no
- * llevan bombilla —ahí está la punta del poste— así que se reparten por dentro
- * del vano.
+ * The curve is a parabola and not a real catenary: at this distance one cannot be
+ * told from the other, and the parabola is read at a glance. The ends carry
+ * no bulb —the tip of the post is there— so they are laid out inside
+ * the span.
  */
 export function garlandBulbs({
   from,
@@ -122,7 +122,7 @@ export function garlandBulbs({
 }): Vec3[] {
   return Array.from({ length: Math.max(count, 0) }, (_, index) => {
     const t = (index + 1) / (count + 1)
-    // 4t(1−t) vale 0 en los postes y 1 en el centro del vano.
+    // 4t(1−t) is worth 0 at the posts and 1 at the centre of the span.
     const drop = sag * 4 * t * (1 - t)
     return [
       from[0] + (to[0] - from[0]) * t,

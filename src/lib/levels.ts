@@ -1,24 +1,24 @@
 import { DIFFICULTY_ORDER, type Difficulty } from './gameConfig'
 
 /**
- * El modo Niveles: una escalera de quince partidas sueltas.
+ * The Levels mode: a ladder of fifteen separate runs.
  *
- * El desafío de este juego no sube solo —la dificultad la elige el jugador y
- * las vidas son lo que cambia—, así que los niveles traen su propia escalera:
- * dentro de una velocidad, más palos; agotados los palos, más velocidad. Cada
- * nivel se juega entero y sin vidas, se puntúa con estrellas por los palos
- * atrapados, y con una basta para desbloquear el siguiente. Lo desbloqueado se
- * recuerda entre visitas (`progress.ts`).
+ * The challenge of this game does not rise on its own —the difficulty is chosen by the player
+ * and the lives are what changes—, so the levels bring their own ladder:
+ * within one speed, more sticks; with the sticks used up, more speed. Each
+ * level is played whole and without lives, is scored with stars for the sticks
+ * caught, and one is enough to unlock the next. What is unlocked is
+ * remembered between visits (`progress.ts`).
  */
 
-/** Palos de cada nivel dentro de una misma velocidad, de menos a más. */
+/** Sticks of each level within one same speed, from fewer to more. */
 export const LEVEL_STICK_STEPS = [5, 9, 13] as const
 
 export const LEVEL_COUNT = DIFFICULTY_ORDER.length * LEVEL_STICK_STEPS.length
 
 export type Stars = 0 | 1 | 2 | 3
 
-/** Qué parte de los palos hay que atrapar para cada estrella. */
+/** What share of the sticks has to be caught for each star. */
 export const STAR_THRESHOLDS: readonly [number, number, number] = [0.6, 0.8, 1]
 
 export interface LevelSpec {
@@ -27,13 +27,13 @@ export interface LevelSpec {
   stickCount: number
 }
 
-/** Recorta un nivel al rango que existe; lo raro cae al primero. */
+/** Trims a level to the range that exists; anything odd falls to the first. */
 export function clampLevel(level: number): number {
   if (!Number.isFinite(level)) return 1
   return Math.min(LEVEL_COUNT, Math.max(1, Math.floor(level)))
 }
 
-/** Lo que cuelga de la máquina en ese nivel. */
+/** What hangs from the machine in that level. */
 export function levelSpec(level: number): LevelSpec {
   const safe = clampLevel(level)
   const index = safe - 1
@@ -45,7 +45,7 @@ export function levelSpec(level: number): LevelSpec {
   }
 }
 
-/** Las estrellas de una partida: cuántos palos se atraparon de los que cayeron. */
+/** The stars of a run: how many sticks were caught out of those that fell. */
 export function levelStars(caught: number, stickCount: number): Stars {
   if (!Number.isFinite(stickCount) || stickCount <= 0) return 0
   const ratio = Math.min(1, Math.max(0, caught / stickCount))
@@ -58,9 +58,9 @@ export function levelPassed(stars: Stars): boolean {
   return stars >= 1
 }
 
-/** Hasta qué nivel se puede jugar tras esta partida. No baja nunca. */
+/** Up to which level can be played after this run. It never goes down. */
 export function nextUnlocked(unlocked: number, level: number, stars: Stars): number {
-  const actual = clampLevel(unlocked)
-  if (!levelPassed(stars)) return actual
-  return Math.max(actual, clampLevel(level + 1))
+  const current = clampLevel(unlocked)
+  if (!levelPassed(stars)) return current
+  return Math.max(current, clampLevel(level + 1))
 }

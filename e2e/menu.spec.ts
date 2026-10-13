@@ -2,12 +2,12 @@ import { expect, test, type Page } from '@playwright/test'
 import { openGame } from './helpers'
 
 /**
- * Deja la máquina a la vista y espera a que esté pintada.
+ * Leaves the machine in view and waits for it to be painted.
  *
- * El menú de escritorio es un panel opaco que tapa el canvas entero, así que
- * para mirar la escena hay que apartarlo. Y hay que esperar: hasta que llegan el
- * HDRI y las texturas de la madera, el canvas es un rectángulo de color, y una
- * captura de eso pesa unos pocos kilobytes frente a los cientos de la plaza.
+ * The desktop menu is an opaque panel that covers the whole canvas, so
+ * to look at the scene it has to be moved aside. And one has to wait: until the
+ * HDRI and the wood textures arrive, the canvas is a rectangle of colour, and a
+ * screenshot of that weighs a few kilobytes against the hundreds of the square.
  */
 async function revealScene(page: Page) {
   await page.evaluate(() => {
@@ -22,21 +22,21 @@ async function revealScene(page: Page) {
     .toBeGreaterThan(100_000)
 }
 
-/** Cuánto se deja pasar entre las dos capturas que se comparan. */
+/** How long is let pass between the two screenshots that are compared. */
 const MOVEMENT_WINDOW = 600
 
 async function canvasBox(page: Page) {
   const box = await page.locator('canvas').boundingBox()
-  if (box == null) throw new Error('la escena 3D no está montada')
+  if (box == null) throw new Error('the 3D scene is not mounted')
   return box
 }
 
 /**
- * Recorte centrado en la máquina, en coordenadas de página.
+ * Clip centred on the machine, in page coordinates.
  *
- * Las cotas van en proporción al **alto** del canvas —el `fov` de la cámara es
- * vertical— para que el recorte siga cayendo sobre la máquina aunque cambie la
- * relación de aspecto.
+ * The measurements go in proportion to the **height** of the canvas —the camera's `fov` is
+ * vertical— so that the clip keeps falling on the machine even if the
+ * aspect ratio changes.
  */
 function machineClip({ x, y, width, height }: Awaited<ReturnType<typeof canvasBox>>) {
   return {
@@ -48,14 +48,14 @@ function machineClip({ x, y, width, height }: Awaited<ReturnType<typeof canvasBo
 }
 
 /**
- * Si la escena cambia entre dos instantes.
+ * Whether the scene changes between two instants.
  *
- * Con el panel del menú apartado y las animaciones del DOM congeladas, en el
- * menú solo pueden moverse dos cosas: los palos meciéndose y la noria del
- * recinto, que gira despacio en la periferia. Mirando el canvas entero, un
- * cambio puede venir de cualquiera de las dos; con `onlyMachine` la captura se
- * recorta a la máquina, muy lejos de la noria, y entonces solo puede ser el
- * balanceo.
+ * With the menu's panel moved aside and the DOM animations frozen, in the
+ * menu only two things can move: the sticks swaying and the fairground's Ferris
+ * wheel, which turns slowly on the periphery. Looking at the whole canvas, a
+ * change can come from either of the two; with `onlyMachine` the screenshot is
+ * clipped to the machine, very far from the Ferris wheel, and then it can only be the
+ * swaying.
  */
 async function sceneMoves(
   page: Page,
@@ -69,12 +69,12 @@ async function sceneMoves(
   return !before.equals(after)
 }
 
-test.describe('Menú de inicio', () => {
+test.describe('Start menu', () => {
   test.beforeEach(async ({ page }) => {
     await openGame(page)
   })
 
-  test('presenta el juego sobre la escena 3D ya montada', async ({ page }) => {
+  test('presents the game over the 3D scene already mounted', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
     await expect(
       page.getByText('Catch the sticks before they hit the ground.'),
@@ -82,7 +82,7 @@ test.describe('Menú de inicio', () => {
     await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible()
   })
 
-  test('ofrece de 5 a 13 palos, con 5 preseleccionado', async ({ page }) => {
+  test('offers from 5 to 13 sticks, with 5 preselected', async ({ page }) => {
     const section = page.getByRole('region', { name: 'Number of sticks' })
     const options = section.getByRole('button')
     await expect(options).toHaveCount(9)
@@ -91,7 +91,7 @@ test.describe('Menú de inicio', () => {
     await expect(options.first()).toHaveAttribute('aria-pressed', 'true')
   })
 
-  test('cambia el número de palos y lo refleja en el estado del botón', async ({
+  test('changes the number of sticks and reflects it in the state of the button', async ({
     page,
   }) => {
     const nine = page.getByRole('button', { name: '9', exact: true })
@@ -104,7 +104,7 @@ test.describe('Menú de inicio', () => {
     )
   })
 
-  test('ofrece las cinco dificultades, con Fácil preseleccionada', async ({
+  test('offers the five difficulties, with Easy preselected', async ({
     page,
   }) => {
     const section = page.getByRole('region', { name: 'Difficulty' })
@@ -122,7 +122,7 @@ test.describe('Menú de inicio', () => {
     )
   })
 
-  test('solo hay una dificultad activa a la vez', async ({ page }) => {
+  test('only one difficulty is active at a time', async ({ page }) => {
     await page.getByRole('button', { name: 'Hard', exact: true }).click()
 
     await expect(
@@ -133,7 +133,7 @@ test.describe('Menú de inicio', () => {
     ).toHaveAttribute('aria-pressed', 'false')
   })
 
-  test('los palos colgados se mecen, así que la máquina no parece congelada', async ({
+  test('the hanging sticks sway, so the machine does not look frozen', async ({
     page,
   }) => {
     await revealScene(page)
@@ -141,26 +141,26 @@ test.describe('Menú de inicio', () => {
     expect(await sceneMoves(page, { onlyMachine: true })).toBe(true)
   })
 
-  test('con el movimiento reducido, no se mueve nada de la escena', async ({
+  test('with reduced motion, nothing of the scene moves', async ({
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await revealScene(page)
-    // Los palos que ya se mecían tardan un instante en enderezarse.
+    // The sticks that were already swaying take an instant to straighten up.
     await page.waitForTimeout(MOVEMENT_WINDOW)
 
-    // Aquí sí se mira el canvas entero: la preferencia tiene que parar tanto el
-    // balanceo de los palos como la noria del recinto.
+    // Here the whole canvas is looked at: the preference has to stop both the
+    // swaying of the sticks and the fairground's Ferris wheel.
     expect(await sceneMoves(page)).toBe(false)
   })
 
-  test('esconde la entrada al visor en un navegador sin WebXR', async ({
+  test('hides the entry to the headset in a browser with no WebXR', async ({
     page,
   }) => {
     await expect(page.getByRole('button', { name: /Enter/ })).toHaveCount(0)
   })
 
-  test('no pide nada a dominios externos', async ({ page }) => {
+  test('requests nothing from external domains', async ({ page }) => {
     const external: string[] = []
     page.on('request', (request) => {
       const url = new URL(request.url())
@@ -177,12 +177,12 @@ test.describe('Menú de inicio', () => {
     expect(external).toEqual([])
   })
 
-  test('la ruta /game abre la misma escena', async ({ page }) => {
+  test('the /game route opens the same scene', async ({ page }) => {
     await openGame(page, '/game')
     await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible()
   })
 
-  test('se puede recorrer y jugar solo con el teclado', async ({ page }) => {
+  test('it can be walked through and played with the keyboard alone', async ({ page }) => {
     await page.getByRole('button', { name: '5', exact: true }).focus()
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: '6', exact: true })).toBeFocused()

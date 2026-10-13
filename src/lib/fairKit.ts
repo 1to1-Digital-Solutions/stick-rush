@@ -9,134 +9,134 @@ import {
 } from './sceneryLayout'
 
 /**
- * Las piezas del kit de xrcade que forman el recinto: los puestos del anillo, las farolas de
- * las que cuelgan las guirnaldas y una banderola en cada farola.
+ * The pieces of the xrcade kit that make up the fairground: the stalls of the ring, the lampposts
+ * the garlands hang from and a banner on each lamppost.
  *
- * Son del Fantasy Town Kit de Kenney (CC0; ver `public/CREDITS.md`), preparadas en el kit
- * compartido del salón, y se pintan con un `InstancedMesh` por tipo: una llamada de dibujo por
- * pieza y no una por puesto. Aquí solo está **dónde** va cada una, sin three, para poder
- * probar sin escena lo que importa al jugar: que nada entra en el hueco del jugador ni en la
- * máquina.
+ * They are from Kenney's Fantasy Town Kit (CC0; see `public/CREDITS.md`), prepared in the hall's
+ * shared kit, and they are painted with one `InstancedMesh` per type: one draw call per
+ * piece and not one per stall. Here there is only **where** each one goes, without three, so that
+ * what matters when playing can be tested without a scene: that nothing gets into the player's
+ * gap nor into the machine.
  *
- * Los sitios son los del recinto (`sceneryLayout.ts`): los puestos, en el anillo de casetas y
- * mirando al jugador; las farolas, donde estaban los postes de las guirnaldas, que siguen
- * tendiéndose de punta a punta.
+ * The places are the fairground's (`sceneryLayout.ts`): the stalls, on the booth ring and
+ * looking at the player; the lampposts, where the garland posts used to be, and the garlands
+ * are still strung from tip to tip.
  */
 
-/** Las piezas del kit que usa el recinto; cada una es `public/models/kit/<pieza>.glb`. */
-export const PIEZAS = ['puesto', 'farol', 'banderola'] as const
+/** The kit pieces the fairground uses; each one is `public/models/kit/<piece>.glb`. */
+export const PIECES = ['puesto', 'farol', 'banderola'] as const
 
-export type Pieza = (typeof PIEZAS)[number]
+export type Piece = (typeof PIECES)[number]
 
-/** Ruta de una pieza dentro de `public/`, para `assetUrl`. */
-export function rutaDePieza(pieza: Pieza): string {
-  return `models/kit/${pieza}.glb`
+/** Path of a piece inside `public/`, for `assetUrl`. */
+export function piecePath(piece: Piece): string {
+  return `models/kit/${piece}.glb`
 }
 
 /**
- * Lo que mide de alto cada pieza en el recinto, en metros.
+ * How tall each piece is in the fairground, in metres.
  *
- * - **Puesto**, 2,8 m hasta la punta del toldo: lo bastante para leerse como una caseta a
- *   seis metros y medio, y bajo para que la noria asome por encima.
- * - **Farol**, la altura de los postes de las guirnaldas: los tramos de bombillas se cuelgan
- *   de su punta, así que tiene que llegar justo ahí.
- * - **Banderola**, un metro: se lee desde el centro sin tapar la farola ni las bombillas.
+ * - **Stall** (`puesto`), 2.8 m up to the tip of the awning: enough to read as a booth at
+ *   six and a half metres, and low so that the Ferris wheel shows above it.
+ * - **Lamp** (`farol`), the height of the garland posts: the stretches of bulbs hang
+ *   from its tip, so it has to reach exactly there.
+ * - **Banner** (`banderola`), one metre: it reads from the centre without covering the lamppost nor the bulbs.
  */
-export const ALTURAS: Record<Pieza, number> = {
+export const HEIGHTS: Record<Piece, number> = {
   puesto: 2.8,
   farol: GARLAND_POST_HEIGHT,
   banderola: 1,
 }
 
 /**
- * Cuánto hay que girar cada modelo para que su frente quede en +Z, que es hacia donde el
- * anillo encara las piezas (ver `ringSlots`). La banderola es una tela fina en X y ancha en Z:
- * sin el cuarto de vuelta, el jugador la vería de canto.
+ * How much each model has to be turned so that its front ends up at +Z, which is where the
+ * ring faces the pieces (see `ringSlots`). The banner is a cloth thin in X and wide in Z:
+ * without the quarter turn, the player would see it edge-on.
  */
-export const GIRO_DEL_MODELO: Record<Pieza, number> = {
+export const MODEL_TURN: Record<Piece, number> = {
   puesto: 0,
   farol: 0,
   banderola: -Math.PI / 2,
 }
 
 /**
- * Dónde cuelga la banderola de su farola: cuánto se adelanta hacia el centro del recinto
- * —lo justo para no meterse en el poste— y a qué altura queda su borde de abajo: por encima
- * de la máquina, para que no se lea como algo del juego, y por debajo del farol.
+ * Where the banner hangs from its lamppost: how far it comes forward towards the centre of the
+ * fairground —just enough not to get into the post— and at what height its bottom edge ends up:
+ * above the machine, so that it does not read as something of the game, and below the lamp.
  */
-export const BANDEROLA_EN_LA_FAROLA = { adelanto: 0.2, bajo: 2 } as const
+export const BANNER_ON_THE_LAMPPOST = { forward: 0.2, below: 2 } as const
 
-/** Una pieza ya colocada. */
-export interface Colocacion {
-  pieza: Pieza
-  /** Dónde va el centro de la base de su caja, en metros del mundo. */
-  posicion: Vec3
-  /** Alto de la caja, de abajo arriba, en metros. */
-  altura: number
-  /** Giro sobre el eje vertical, en radianes, que deja el frente del modelo mirando al jugador. */
-  giro: number
+/** A piece already placed. */
+export interface Placement {
+  piece: Piece
+  /** Where the centre of the base of its box goes, in world metres. */
+  position: Vec3
+  /** Height of the box, from bottom to top, in metres. */
+  height: number
+  /** Turn about the vertical axis, in radians, that leaves the front of the model looking at the player. */
+  turn: number
 }
 
-/** El recinto entero: seis puestos, ocho farolas y sus ocho banderolas. */
-export function colocaciones(): Colocacion[] {
-  const puestos = ringSlots(STALL_COUNT, STALL_RING_RADIUS).map(
-    ({ position, rotationY }): Colocacion => ({
-      pieza: 'puesto',
-      posicion: position,
-      altura: ALTURAS.puesto,
-      giro: rotationY + GIRO_DEL_MODELO.puesto,
+/** The whole fairground: six stalls, eight lampposts and their eight banners. */
+export function placements(): Placement[] {
+  const stalls = ringSlots(STALL_COUNT, STALL_RING_RADIUS).map(
+    ({ position, rotationY }): Placement => ({
+      piece: 'puesto',
+      position,
+      height: HEIGHTS.puesto,
+      turn: rotationY + MODEL_TURN.puesto,
     }),
   )
 
-  // Desfasadas medio hueco respecto a los puestos, como iban los postes, para que no queden
-  // unas justo delante de otros.
-  const farolas = ringSlots(GARLAND_POST_COUNT, GARLAND_RING_RADIUS, Math.PI / GARLAND_POST_COUNT)
-  const faroles = farolas.map(
-    ({ position, rotationY }): Colocacion => ({
-      pieza: 'farol',
-      posicion: position,
-      altura: ALTURAS.farol,
-      giro: rotationY + GIRO_DEL_MODELO.farol,
+  // Offset half a gap with respect to the stalls, as the posts were, so that they do not end up
+  // right in front of one another.
+  const lamppostSlots = ringSlots(GARLAND_POST_COUNT, GARLAND_RING_RADIUS, Math.PI / GARLAND_POST_COUNT)
+  const lamps = lamppostSlots.map(
+    ({ position, rotationY }): Placement => ({
+      piece: 'farol',
+      position,
+      height: HEIGHTS.farol,
+      turn: rotationY + MODEL_TURN.farol,
     }),
   )
-  const banderolas = farolas.map(({ position: [x, y, z], rotationY }): Colocacion => {
-    // Hacia el centro: la farola está a `GARLAND_RING_RADIUS` y el centro, en el origen.
-    const haciaDentro = BANDEROLA_EN_LA_FAROLA.adelanto / GARLAND_RING_RADIUS
+  const banners = lamppostSlots.map(({ position: [x, y, z], rotationY }): Placement => {
+    // Towards the centre: the lamppost is at `GARLAND_RING_RADIUS` and the centre, at the origin.
+    const inward = BANNER_ON_THE_LAMPPOST.forward / GARLAND_RING_RADIUS
     return {
-      pieza: 'banderola',
-      posicion: [x - x * haciaDentro, y + BANDEROLA_EN_LA_FAROLA.bajo, z - z * haciaDentro],
-      altura: ALTURAS.banderola,
-      giro: rotationY + GIRO_DEL_MODELO.banderola,
+      piece: 'banderola',
+      position: [x - x * inward, y + BANNER_ON_THE_LAMPPOST.below, z - z * inward],
+      height: HEIGHTS.banderola,
+      turn: rotationY + MODEL_TURN.banderola,
     }
   })
 
-  return [...puestos, ...faroles, ...banderolas]
+  return [...stalls, ...lamps, ...banners]
 }
 
 /**
- * La escala que deja una pieza a la altura pedida, dado lo que mide su caja en el modelo.
+ * The scale that leaves a piece at the requested height, given what its box measures in the model.
  *
- * Se mide la caja del modelo que llega y no se apunta un número aquí: si el kit rehace una
- * pieza con otro tamaño, el recinto sigue midiendo lo mismo.
+ * The box of the model that arrives is measured and no number is noted here: if the kit remakes a
+ * piece with another size, the fairground still measures the same.
  */
-export function escalaPara(altura: number, altoDeLaCaja: number): number {
-  return altura / altoDeLaCaja
+export function scaleFor(height: number, boxHeight: number): number {
+  return height / boxHeight
 }
 
-/** La caja de los vértices de un modelo, en sus unidades. */
-export interface Caja {
+/** The box of a model's vertices, in its units. */
+export interface Box {
   min: Vec3
   max: Vec3
 }
 
 /**
- * Lo que hay que mover el modelo, en sus unidades, para que el centro de la base de su caja
- * quede en su origen.
+ * How much the model has to be moved, in its units, so that the centre of the base of its box
+ * ends up at its origin.
  *
- * Las piezas de rejilla de Kenney no están centradas: la banderola está pegada al borde de su
- * casilla (x ≈ 0,4). Sin esto colgaría a medio metro de su farola, y a otro lado según el
- * giro.
+ * Kenney's grid pieces are not centred: the banner is stuck to the edge of its
+ * cell (x ≈ 0.4). Without this it would hang half a metre from its lamppost, and on a different
+ * side depending on the turn.
  */
-export function anclaEnLaBase({ min, max }: Caja): Vec3 {
+export function anchorAtBase({ min, max }: Box): Vec3 {
   return [-(min[0] + max[0]) / 2, -min[1], -(min[2] + max[2]) / 2]
 }

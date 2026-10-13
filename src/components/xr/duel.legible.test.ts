@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dibujarElDuelo } from './XRHud'
+import { drawDuel } from './XRHud'
 import { LINE_HEIGHT } from './canvasPanel'
 import { DUEL_TEXT, XR_DUEL_POSITION, XR_DUEL_SIZE, xrPanelViews } from '../../lib/xrLayout'
 import { recordingCanvas, legibilityProblems, type DrawnText } from './legibility'
@@ -7,64 +7,64 @@ import { MIN_READING_DEGREES, sizesOffList, unreadableTexts, worstReadingDistanc
 import { createDuel, duelSummary, recordTurn, type Duel } from '../../lib/duel'
 
 /**
- * El final de una tanda a dos dentro del visor, medido en vez de mirado: el aviso de pasar el
- * mando, una partida ganada y un empate, con las cifras más anchas y la pareja llevando muchas.
+ * The end of a two-player round inside the headset, measured instead of looked at: the notice to pass the
+ * controller, a match won and a tie, with the widest figures and the pair having many so far.
  *
- * En los dos idiomas —el español es más largo y es donde el texto se sale— y desde donde se juega:
- * delante de los ojos, a tres alturas.
+ * In the two languages —Spanish is longer and is where the text runs off— and from where it is played:
+ * in front of the eyes, at three heights.
  */
 
-const IDIOMAS = ['en', 'es'] as const
-const VISTAS = xrPanelViews(XR_DUEL_POSITION)
-const PAREJA = { wins: [128, 99] as const, ties: 17 }
-const DUELOS: Record<string, Duel> = {
-  pasa: recordTurn(createDuel(1), 18888),
-  gana: recordTurn(recordTurn(createDuel(1), 18888), 29999),
-  empate: recordTurn(recordTurn(createDuel(1), 20000), 20000),
+const LANGUAGES = ['en', 'es'] as const
+const VIEWS = xrPanelViews(XR_DUEL_POSITION)
+const PAIR = { wins: [128, 99] as const, ties: 17 }
+const DUELS: Record<string, Duel> = {
+  passes: recordTurn(createDuel(1), 18888),
+  wins: recordTurn(recordTurn(createDuel(1), 18888), 29999),
+  tie: recordTurn(recordTurn(createDuel(1), 20000), 20000),
 }
 
-function momentos(): { donde: string; escritos: DrawnText[] }[] {
-  return IDIOMAS.flatMap((lang) =>
-    Object.entries(DUELOS).map(([nombre, duel]) => {
-      const { ctx, drawnTexts: escritos } = recordingCanvas()
-      dibujarElDuelo(ctx, duelSummary(duel, PAREJA, lang))
-      return { donde: `${lang} ${nombre}`, escritos }
+function moments(): { where: string; drawnTexts: DrawnText[] }[] {
+  return LANGUAGES.flatMap((lang) =>
+    Object.entries(DUELS).map(([name, duel]) => {
+      const { ctx, drawnTexts } = recordingCanvas()
+      drawDuel(ctx, duelSummary(duel, PAIR, lang))
+      return { where: `${lang} ${name}`, drawnTexts }
     }),
   )
 }
 
-describe('el final de una tanda a dos', () => {
-  it('se lee: nada se pisa ni se sale del panel', () => {
-    for (const { donde, escritos } of momentos()) {
-      expect(escritos.length, 'no se ha medido nada').toBeGreaterThan(1)
+describe('the end of a two-player round', () => {
+  it('reads: nothing overlaps or runs off the panel', () => {
+    for (const { where, drawnTexts } of moments()) {
+      expect(drawnTexts.length, 'nothing was measured').toBeGreaterThan(1)
       const panel = { width: XR_DUEL_SIZE[0], height: XR_DUEL_SIZE[1] }
-      const distancia = Math.max(...VISTAS.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, LINE_HEIGHT)))
-      expect(legibilityProblems(escritos, { panel, distance: distancia }), donde).toEqual([])
+      const distance = Math.max(...VIEWS.map(({ pose, eyes }) => worstReadingDistance(drawnTexts, pose, eyes, LINE_HEIGHT)))
+      expect(legibilityProblems(drawnTexts, { panel, distance }), where).toEqual([])
     }
   })
 
-  it(`ninguna letra baja de ${MIN_READING_DEGREES}°, a ninguna altura de ojos`, () => {
-    for (const { donde, escritos } of momentos()) {
-      for (const vista of VISTAS) {
-        expect(unreadableTexts(escritos, vista.pose, vista.ojos, LINE_HEIGHT), `${donde}, ${vista.donde}`).toEqual([])
+  it(`no letter drops below ${MIN_READING_DEGREES}°, at any eye height`, () => {
+    for (const { where, drawnTexts } of moments()) {
+      for (const view of VIEWS) {
+        expect(unreadableTexts(drawnTexts, view.pose, view.eyes, LINE_HEIGHT), `${where}, ${view.where}`).toEqual([])
       }
     }
   })
 
-  it('y todas se escriben con un tamaño de la lista, sin encogerse', () => {
-    for (const { donde, escritos } of momentos()) {
-      expect(sizesOffList(escritos, LINE_HEIGHT, Object.values(DUEL_TEXT)), donde).toEqual([])
+  it('and all of them are written with a size from the list, without shrinking', () => {
+    for (const { where, drawnTexts } of moments()) {
+      expect(sizesOffList(drawnTexts, LINE_HEIGHT, Object.values(DUEL_TEXT)), where).toEqual([])
     }
   })
 
-  it('dice lo que toca: a quién pasarle el mando, y luego quién gana y lo que llevan', () => {
-    const pasa = recordingCanvas()
-    dibujarElDuelo(pasa.ctx, duelSummary(DUELOS.pasa, PAREJA, 'es'))
-    expect(pasa.drawnTexts.map((e) => e.text)).toEqual(['Jugador 1: 18.888 puntos', 'Pásale el mando a Jugador 2.'])
+  it('says what it should: who to pass the controller to, and then who wins and what they have so far', () => {
+    const passes = recordingCanvas()
+    drawDuel(passes.ctx, duelSummary(DUELS.passes, PAIR, 'es'))
+    expect(passes.drawnTexts.map((e) => e.text)).toEqual(['Jugador 1: 18.888 puntos', 'Pásale el mando a Jugador 2.'])
 
-    const gana = recordingCanvas()
-    dibujarElDuelo(gana.ctx, duelSummary(DUELOS.gana, PAREJA, 'en'))
-    expect(gana.drawnTexts.map((e) => e.text)).toEqual([
+    const wins = recordingCanvas()
+    drawDuel(wins.ctx, duelSummary(DUELS.wins, PAIR, 'en'))
+    expect(wins.drawnTexts.map((e) => e.text)).toEqual([
       'Player 2 wins',
       'Player 1: 18,888 points',
       'Player 2: 29,999 points',

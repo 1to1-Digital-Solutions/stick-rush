@@ -9,13 +9,13 @@ import {
 import { LINE_HEIGHT } from './canvasPanel'
 import { MIN_ANGLE, recordingCanvas, legibilityProblems, type DrawnText } from './legibility'
 import {
-  VISTA_SIN_GIRAR,
-  apartadoDeLaMirada,
-  esquinasDelCartel,
-  partidaDelCartel,
-  poseDelCartel,
-  sitioDelCartel,
-  type LoQueSeJuega,
+  VIEW_WITHOUT_TURNING,
+  angleFromGaze,
+  signCorners,
+  signRun,
+  signPose,
+  signPlacement,
+  type WhatIsPlayed,
 } from '../../lib/machineSign'
 import { MACHINE_RADIUS, PLAYER_OFFSET_Z } from '../../lib/gameConfig'
 import { CHALLENGE_LIVES, CHALLENGE_SETUP, GAME_MODE_ORDER } from '../../lib/gameMode'
@@ -23,211 +23,211 @@ import { REFERENCE_EYE_HEIGHT } from '../../lib/hoopHeight'
 import { goalSign, type Goal, type GoalSignView } from '../../lib/goal'
 import { EYE_HEIGHTS, eyesAt, letterAngle } from '../../lib/panelReading'
 import { maxScore } from '../../lib/scoring'
-import { traductorSuave } from '../../lib/textos'
+import { softTranslator } from '../../lib/textos'
 import { xrUiRise } from '../../lib/xrLayout'
 
 /**
- * El cartel de encima del marcador, medido donde se lee de verdad.
+ * The sign above the scoreboard, measured where it is really read.
  *
- * `cartel.legible.test.ts` mide las frases comunes a todos los juegos; aquí van las de Stick
- * Rush —la misión del reto, las vidas con los palos que quedan, el nombre de cada modo— con sus
- * cifras de cuatro dígitos, y lo que solo se sabe con la máquina delante: cuántos grados ocupa
- * cada letra a su distancia real (97 cm, por debajo de la mirada) y que el cartel entero cabe en
- * lo que se ve sin girar la cabeza, más lejos que cualquier palo.
+ * `goalSign.legible.test.ts` measures the phrases common to all the games; here go those of Stick
+ * Rush —the challenge's mission, the lives with the sticks that are left, the name of each mode— with their
+ * four-digit figures, and what is only known with the machine in front: how many degrees each
+ * letter takes up at its real distance (97 cm, below the gaze) and that the whole sign fits in
+ * what is seen without turning the head, farther away than any stick.
  */
 
-const IDIOMAS = ['en', 'es'] as const
+const LANGUAGES = ['en', 'es'] as const
 
-/** Lo más que se puede sacar en el reto: la cifra más larga que llega al cartel. */
-const TECHO = maxScore(CHALLENGE_SETUP.difficulty, CHALLENGE_SETUP.stickCount)
+/** The most that can be scored in the challenge: the longest figure that reaches the sign. */
+const CEILING = maxScore(CHALLENGE_SETUP.difficulty, CHALLENGE_SETUP.stickCount)
 
-/** Los listones de Stick Rush en el salón, con un récord por encima del oro. */
-const OBJETIVO: Goal = {
+/** The thresholds of Stick Rush in the hall, with a record above gold. */
+const GOAL: Goal = {
   medals: { bronze: 1900, silver: 3750, gold: 5200 },
   better: 'higher',
   unit: 'points in challenge',
-  record: TECHO - 1,
+  record: CEILING - 1,
   mode: 'challenge',
 }
 
-function juego(cambios: Partial<LoQueSeJuega>): LoQueSeJuega {
+function game(changes: Partial<WhatIsPlayed>): WhatIsPlayed {
   return {
-    objetivo: OBJETIVO,
+    goal: GOAL,
     gameMode: 'challenge',
-    aDos: false,
+    twoPlayers: false,
     gameState: 'playing',
     points: 0,
     lives: CHALLENGE_LIVES,
     resolved: 0,
     stickCount: CHALLENGE_SETUP.stickCount,
-    record: TECHO - 1,
-    ...cambios,
+    record: CEILING - 1,
+    ...changes,
   }
 }
 
-/** Todo lo que el cartel llega a decir en este juego, en ese idioma. */
-function vistas(lang: (typeof IDIOMAS)[number]): GoalSignView[] {
-  const t = traductorSuave(lang)
-  const todas: GoalSignView[] = []
-  const decir = (cambios: Partial<LoQueSeJuega>) => {
-    const partida = partidaDelCartel(juego(cambios), t)
-    if (partida != null) todas.push(goalSign(partida, t))
+/** Everything the sign gets to say in this game, in that language. */
+function views(lang: (typeof LANGUAGES)[number]): GoalSignView[] {
+  const t = softTranslator(lang)
+  const all: GoalSignView[] = []
+  const say = (changes: Partial<WhatIsPlayed>) => {
+    const run = signRun(game(changes), t)
+    if (run != null) all.push(goalSign(run, t))
   }
-  for (const objetivo of [OBJETIVO, { ...OBJETIVO, record: 2400 }, { ...OBJETIVO, record: null }, null]) {
-    for (const record of [0, 2400, TECHO - 1]) {
-      decir({ objetivo, record, gameState: 'countdown' })
-      for (const points of [0, 150, 1899, 1900, 3749, 3750, 5199, 5200, TECHO - 1, TECHO]) {
+  for (const goal of [GOAL, { ...GOAL, record: 2400 }, { ...GOAL, record: null }, null]) {
+    for (const record of [0, 2400, CEILING - 1]) {
+      say({ goal, record, gameState: 'countdown' })
+      for (const points of [0, 150, 1899, 1900, 3749, 3750, 5199, 5200, CEILING - 1, CEILING]) {
         for (const [lives, resolved] of [[3, 1], [2, 7], [1, 12], [0, 13]]) {
-          decir({ objetivo, record, points, lives, resolved })
-          decir({ objetivo, record, points, lives, resolved, gameState: 'finished' })
+          say({ goal, record, points, lives, resolved })
+          say({ goal, record, points, lives, resolved, gameState: 'finished' })
         }
       }
     }
   }
-  // Lo que no cuenta para medalla: los otros modos, y el reto a dos.
-  for (const gameMode of GAME_MODE_ORDER) decir({ gameMode, lives: gameMode === 'challenge' ? 3 : null, aDos: gameMode === 'challenge' })
-  return todas
+  // What does not count for a medal: the other modes, and the two-player challenge.
+  for (const gameMode of GAME_MODE_ORDER) say({ gameMode, lives: gameMode === 'challenge' ? 3 : null, twoPlayers: gameMode === 'challenge' })
+  return all
 }
 
-function medir(vista: GoalSignView): DrawnText[] {
-  const { ctx, drawnTexts: escritos } = recordingCanvas()
-  drawSign(ctx, vista)
-  return escritos
+function measure(view: GoalSignView): DrawnText[] {
+  const { ctx, drawnTexts } = recordingCanvas()
+  drawSign(ctx, view)
+  return drawnTexts
 }
 
-const SITIO = sitioDelCartel()
+const PLACEMENT = signPlacement()
 
 /**
- * Los grados que ocupa cada letra del cartel colgado en su sitio, vista desde esos ojos.
+ * The degrees each letter of the sign takes up hung in its place, seen from those eyes.
  *
- * @param subida cuánto ha subido la interfaz con quien juega (`xrUiRise`).
+ * @param rise how much the UI has risen with whoever plays (`xrUiRise`).
  */
-function gradosDesde(escritos: readonly DrawnText[], ojos: number = REFERENCE_EYE_HEIGHT, subida = 0): number[] {
-  const escala = signScale(SITIO.distancia)
-  const pose = poseDelCartel({ ...SITIO, position: [SITIO.position[0], SITIO.position[1] + subida, SITIO.position[2]] })
-  return escritos.map((escrito) =>
-    letterAngle(pose, eyesAt(ojos), escrito.x * escala, escrito.y * escala, (escrito.height / LINE_HEIGHT) * escala),
+function degreesFrom(drawnTexts: readonly DrawnText[], eyes: number = REFERENCE_EYE_HEIGHT, rise = 0): number[] {
+  const scale = signScale(PLACEMENT.distance)
+  const pose = signPose({ ...PLACEMENT, position: [PLACEMENT.position[0], PLACEMENT.position[1] + rise, PLACEMENT.position[2]] })
+  return drawnTexts.map((drawn) =>
+    letterAngle(pose, eyesAt(eyes), drawn.x * scale, drawn.y * scale, (drawn.height / LINE_HEIGHT) * scale),
   )
 }
 
-describe('el cartel de encima del marcador se lee', () => {
-  it('todo lo que dice cabe y no se pisa, en los dos idiomas', () => {
-    for (const lang of IDIOMAS) {
-      const todas = vistas(lang)
-      expect(todas.length, 'no se ha medido nada').toBeGreaterThan(100)
-      for (const vista of todas) {
-        const escritos = medir(vista)
-        expect(escritos.length, 'no se ha medido nada').toBeGreaterThan(0)
+describe('the sign above the scoreboard reads', () => {
+  it('everything it says fits and does not overlap, in the two languages', () => {
+    for (const lang of LANGUAGES) {
+      const all = views(lang)
+      expect(all.length, 'nothing was measured').toBeGreaterThan(100)
+      for (const view of all) {
+        const drawnTexts = measure(view)
+        expect(drawnTexts.length, 'nothing was measured').toBeGreaterThan(0)
         expect(
-          legibilityProblems(escritos, { panel: SIGN_PANEL, distance: DRAW_DISTANCE }),
-          `${lang}: ${vista.title} / ${vista.detail}`,
+          legibilityProblems(drawnTexts, { panel: SIGN_PANEL, distance: DRAW_DISTANCE }),
+          `${lang}: ${view.title} / ${view.detail}`,
         ).toEqual([])
       }
     }
   })
 
-  it('a su distancia real cada letra ocupa lo mismo que dibujada, y por encima de lo que se lee', () => {
-    expect(SITIO.distancia).toBeGreaterThan(0.9)
-    expect(SITIO.distancia).toBeLessThan(1)
-    for (const lang of IDIOMAS) {
-      for (const vista of vistas(lang)) {
-        const escritos = medir(vista)
-        const grados = gradosDesde(escritos)
-        grados.forEach((angulo, i) => {
-          const dibujada = (2 * Math.atan(escritos[i].height / LINE_HEIGHT / (2 * DRAW_DISTANCE)) * 180) / Math.PI
-          expect(angulo, `${lang}: «${escritos[i].text}»`).toBeGreaterThan(MIN_ANGLE)
-          expect(angulo, `${lang}: «${escritos[i].text}»`).toBeCloseTo(dibujada, 1)
+  it('at its real distance each letter takes up the same as drawn, and above what is readable', () => {
+    expect(PLACEMENT.distance).toBeGreaterThan(0.9)
+    expect(PLACEMENT.distance).toBeLessThan(1)
+    for (const lang of LANGUAGES) {
+      for (const view of views(lang)) {
+        const drawnTexts = measure(view)
+        const degrees = degreesFrom(drawnTexts)
+        degrees.forEach((angle, i) => {
+          const asDrawn = (2 * Math.atan(drawnTexts[i].height / LINE_HEIGHT / (2 * DRAW_DISTANCE)) * 180) / Math.PI
+          expect(angle, `${lang}: «${drawnTexts[i].text}»`).toBeGreaterThan(MIN_ANGLE)
+          expect(angle, `${lang}: «${drawnTexts[i].text}»`).toBeCloseTo(asDrawn, 1)
         })
       }
     }
   })
 
-  it('lo que se mira mientras se juega —el listón, las vidas y los palos— se lee de un vistazo', () => {
-    const t = traductorSuave('es')
-    const partida = partidaDelCartel(juego({ points: 2100, lives: 2, resolved: 6 }), t)
-    const escritos = medir(goalSign(partida!, t))
+  it('what is looked at while playing —the threshold, the lives and the sticks— reads at a glance', () => {
+    const t = softTranslator('es')
+    const run = signRun(game({ points: 2100, lives: 2, resolved: 6 }), t)
+    const drawnTexts = measure(goalSign(run!, t))
 
-    expect(escritos.map((escrito) => escrito.text)).toEqual(['Plata a 3750 · llevas 2100', 'Vidas ♥♥♡ · Palos 7'])
-    const [liston, queda] = gradosDesde(escritos)
-    // Cuatro cifras en español van sin punto, como en la chapa del salón: la línea no encoge de su 1,4°.
-    expect(liston).toBeGreaterThan(1.39)
-    expect(queda).toBeGreaterThan(1.15)
+    expect(drawnTexts.map((drawn) => drawn.text)).toEqual(['Plata a 3750 · llevas 2100', 'Vidas ♥♥♡ · Palos 7'])
+    const [threshold, remaining] = degreesFrom(drawnTexts)
+    // Four figures in Spanish go without a dot, as on the hall's plate: the line does not shrink from its 1.4°.
+    expect(threshold).toBeGreaterThan(1.39)
+    expect(remaining).toBeGreaterThan(1.15)
   })
 
-  it('la misión encoge para caber y se queda en un grado, como los listones de debajo', () => {
-    for (const lang of IDIOMAS) {
-      const t = traductorSuave(lang)
-      const partida = partidaDelCartel(juego({ gameState: 'countdown' }), t)
-      const [mision, listones] = gradosDesde(medir(goalSign(partida!, t)))
-      expect(mision, lang).toBeGreaterThan(0.95)
-      // Los listones, en inglés con sus comas, se quedan en 0,9°: por encima del mínimo (0,75°).
-      expect(listones, lang).toBeGreaterThan(0.9)
+  it('the mission shrinks to fit and stays at one degree, like the thresholds underneath', () => {
+    for (const lang of LANGUAGES) {
+      const t = softTranslator(lang)
+      const run = signRun(game({ gameState: 'countdown' }), t)
+      const [mission, thresholds] = degreesFrom(measure(goalSign(run!, t)))
+      expect(mission, lang).toBeGreaterThan(0.95)
+      // The thresholds, in English with their commas, stay at 0.9°: above the minimum (0.75°).
+      expect(thresholds, lang).toBeGreaterThan(0.9)
     }
   })
 
-  it('la primera vez, el bronce en palos, legible con los ojos a 1,4 y a 1,9 m sin que la interfaz suba', () => {
-    for (const lang of IDIOMAS) {
-      const t = traductorSuave(lang)
-      const partida = partidaDelCartel(juego({ gameState: 'countdown', objetivo: { ...OBJETIVO, record: null }, record: 0 }), t)
-      const vista = goalSign(partida!, t)
-      expect(vista.detail, lang).toBe(lang === 'es' ? 'Bronce ≈ 13 palos · Oro 5200' : 'Bronze ≈ 13 sticks · Gold 5,200')
-      const escritos = medir(vista)
-      expect(legibilityProblems(escritos, { panel: SIGN_PANEL, distance: DRAW_DISTANCE }), lang).toEqual([])
-      for (const ojos of [1.4, 1.9]) {
-        for (const angulo of gradosDesde(escritos, ojos)) expect(angulo, `${lang}, ojos a ${ojos}`).toBeGreaterThan(MIN_ANGLE)
+  it('the first time, the bronze in sticks, legible with the eyes at 1.4 and at 1.9 m without the UI rising', () => {
+    for (const lang of LANGUAGES) {
+      const t = softTranslator(lang)
+      const run = signRun(game({ gameState: 'countdown', goal: { ...GOAL, record: null }, record: 0 }), t)
+      const view = goalSign(run!, t)
+      expect(view.detail, lang).toBe(lang === 'es' ? 'Bronce ≈ 13 palos · Oro 5200' : 'Bronze ≈ 13 sticks · Gold 5,200')
+      const drawnTexts = measure(view)
+      expect(legibilityProblems(drawnTexts, { panel: SIGN_PANEL, distance: DRAW_DISTANCE }), lang).toEqual([])
+      for (const eyes of [1.4, 1.9]) {
+        for (const angle of degreesFrom(drawnTexts, eyes)) expect(angle, `${lang}, eyes at ${eyes}`).toBeGreaterThan(MIN_ANGLE)
       }
     }
   })
 
-  it('el control: la misión larga, con sus artículos y su «se acaba», no llegaba a leerse', () => {
-    const larga = { title: 'Catch all 13 sticks. Three on the floor and it is over', detail: null, bar: null, medal: null, subdued: false }
-    expect(gradosDesde(medir(larga))[0]).toBeLessThan(MIN_ANGLE)
-    expect(legibilityProblems(medir(larga), { panel: SIGN_PANEL, distance: DRAW_DISTANCE })).not.toEqual([])
+  it('the control: the long mission, with its articles and its «it is over», could not be read', () => {
+    const long = { title: 'Catch all 13 sticks. Three on the floor and it is over', detail: null, bar: null, medal: null, subdued: false }
+    expect(degreesFrom(measure(long))[0]).toBeLessThan(MIN_ANGLE)
+    expect(legibilityProblems(measure(long), { panel: SIGN_PANEL, distance: DRAW_DISTANCE })).not.toEqual([])
   })
 
-  it('juegue quien juegue: la interfaz sube con los ojos y la letra ocupa lo mismo', () => {
-    const escritos = medir(vistas('es')[3])
-    const deReferencia = gradosDesde(escritos)
-    for (const ojos of EYE_HEIGHTS) {
-      gradosDesde(escritos, ojos, xrUiRise(ojos)).forEach((angulo, i) => expect(angulo).toBeCloseTo(deReferencia[i], 5))
+  it('whoever plays: the UI rises with the eyes and the letter takes up the same', () => {
+    const drawnTexts = measure(views('es')[3])
+    const reference = degreesFrom(drawnTexts)
+    for (const eyes of EYE_HEIGHTS) {
+      degreesFrom(drawnTexts, eyes, xrUiRise(eyes)).forEach((angle, i) => expect(angle).toBeCloseTo(reference[i], 5))
     }
   })
 
-  it('y si el visor no dice la altura y la interfaz no sube, más alto o más bajo se sigue leyendo', () => {
-    for (const lang of IDIOMAS) {
-      for (const vista of vistas(lang)) {
-        const escritos = medir(vista)
-        for (const ojos of [1.4, 1.9]) {
-          for (const angulo of gradosDesde(escritos, ojos)) expect(angulo, `${lang}: ${vista.title}`).toBeGreaterThan(MIN_ANGLE)
+  it('and if the headset does not say the height and the UI does not rise, taller or shorter it still reads', () => {
+    for (const lang of LANGUAGES) {
+      for (const view of views(lang)) {
+        const drawnTexts = measure(view)
+        for (const eyes of [1.4, 1.9]) {
+          for (const angle of degreesFrom(drawnTexts, eyes)) expect(angle, `${lang}: ${view.title}`).toBeGreaterThan(MIN_ANGLE)
         }
       }
     }
   })
 })
 
-describe('el cartel de verdad, en su sitio', () => {
-  it('entero dentro de lo que se ve sin girar la cabeza desde la postura de juego', () => {
-    for (const esquina of esquinasDelCartel(signAspect())) {
-      expect(apartadoDeLaMirada(esquina)).toBeLessThanOrEqual(VISTA_SIN_GIRAR)
-      // Y por debajo de la mirada: no tapa el aro ni los palos que cuelgan de él.
-      expect(esquina.y).toBeLessThan(REFERENCE_EYE_HEIGHT - 0.35)
+describe('the real sign, in its place', () => {
+  it('whole within what is seen without turning the head from the playing posture', () => {
+    for (const corner of signCorners(signAspect())) {
+      expect(angleFromGaze(corner)).toBeLessThanOrEqual(VIEW_WITHOUT_TURNING)
+      // And below the gaze: it does not cover the hoop or the sticks hanging from it.
+      expect(corner.y).toBeLessThan(REFERENCE_EYE_HEIGHT - 0.35)
     }
   })
 
-  it('no tapa el blanco: ninguna esquina queda más cerca que el palo más lejano', () => {
-    const elPaloMasLejano = MACHINE_RADIUS + PLAYER_OFFSET_Z
-    for (const esquina of esquinasDelCartel(signAspect())) {
-      expect(Math.hypot(esquina.x, esquina.z)).toBeGreaterThan(elPaloMasLejano + 0.1)
+  it('does not cover the target: no corner is nearer than the farthest stick', () => {
+    const farthestStick = MACHINE_RADIUS + PLAYER_OFFSET_Z
+    for (const corner of signCorners(signAspect())) {
+      expect(Math.hypot(corner.x, corner.z)).toBeGreaterThan(farthestStick + 0.1)
     }
   })
 
-  it('mide a esa distancia lo que mide en el ojo: 24° de ancho por 4,5° de alto', () => {
-    const { width: ancho, height: alto } = signAspect()
-    const angulo = (metros: number) => (2 * Math.atan(metros / 2) * 180) / Math.PI
-    // El ancho se cuenta como la letra, en grados pequeños sumados: de punta a punta son 23,7°.
-    expect(angulo(ancho)).toBeGreaterThan(23.5)
-    expect(angulo(ancho)).toBeLessThanOrEqual(24)
-    expect(angulo(alto)).toBeCloseTo(4.5, 1)
-    expect(SIGN_PANEL.width * signScale(SITIO.distancia)).toBeCloseTo(ancho * SITIO.distancia)
+  it('at that distance it measures what it measures in the eye: 24° wide by 4.5° tall', () => {
+    const { width, height } = signAspect()
+    const angle = (metres: number) => (2 * Math.atan(metres / 2) * 180) / Math.PI
+    // The width is counted like the letter, in small degrees added up: from end to end it is 23.7°.
+    expect(angle(width)).toBeGreaterThan(23.5)
+    expect(angle(width)).toBeLessThanOrEqual(24)
+    expect(angle(height)).toBeCloseTo(4.5, 1)
+    expect(SIGN_PANEL.width * signScale(PLACEMENT.distance)).toBeCloseTo(width * PLACEMENT.distance)
   })
 })

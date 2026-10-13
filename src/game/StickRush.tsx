@@ -5,62 +5,65 @@ import { GameProvider } from '../components/GameProvider'
 import { GameScene } from '../components/game/GameScene'
 import { endXrSession } from '../components/xr/xrStore'
 import { setAssetsBase } from '../lib/assets'
-import type { ResultadoConHazanas } from '../lib/feats'
+import type { ResultWithFeats } from '../lib/feats'
 import type { Challenge } from '../lib/seed'
 import { ExitProvider } from './exit'
 
 export interface StickRushProps {
   /**
-   * De dónde cuelgan los ficheros estáticos del juego (el HDRI, las texturas y
-   * los perfiles de mando que se copian de `public/`). Por defecto la raíz del
-   * sitio, que es donde los sirve su propia web.
+   * Where the game's static files hang from (the HDRI, the textures and the
+   * controller profiles copied from `public/`). By default the root of the
+   * site, which is where its own website serves them.
    */
   assetsBase?: string
   /**
-   * Jugar un reto concreto del salón: el reto del día, o el código de «reta mi puntuación».
+   * Play a specific challenge of the hall: the challenge of the day, or the code of «reta mi puntuación».
    *
-   * Con él la escena entra **directamente en una partida del desafío** —el modo del récord de
-   * la cabina—, con Medio y trece palos (`CHALLENGE_SETUP`) y sin lección, y el turno y el
-   * titubeo de cada palo salen de la semilla: misma semilla, mismos palos cayendo en el mismo
-   * orden y al mismo tiempo. Se lee al montar: para otro reto, se vuelve a montar.
+   * With it the scene goes **straight into a run of the challenge mode** —the mode of the
+   * cabinet's record—, with Medium and thirteen sticks (`CHALLENGE_SETUP`) and without a lesson,
+   * and the turn and the hesitation of each stick come from the seed: same seed, same sticks
+   * falling in the same order and at the same time. It is read on mount: for another challenge,
+   * mount it again.
    */
   challenge?: Challenge
   /**
-   * Se llama **una vez** al acabar cada partida con puntuación, en cualquier modo, con sus
-   * puntos aunque no sean récord. Dejar la partida a medias o salir no la acaba. Lleva `hazanas`
-   * con los nombres de API estrenados en la partida, si hay alguno (`lib/feats.ts`).
+   * Called **once** when each scored run ends, in any mode, with its points even if they are
+   * not a record. Leaving the run halfway or exiting does not end it. It carries `feats` with
+   * the API names first earned in the run, if there are any (`lib/feats.ts`).
    */
-  onFinish?: (resultado: ResultadoConHazanas) => void
+  onFinish?: (result: ResultWithFeats) => void
 }
 
 /**
- * El juego entero **con su Canvas y su sesión**, listo para montar dentro de
- * cualquier aplicación de React que quiera una página de juego.
+ * The whole game **with its Canvas and its session**, ready to mount inside
+ * any React application that wants a game page.
  *
- * Ocupa lo que mida su contenedor —dale una altura— y no sabe nada de rutas,
- * layout ni metadatos: quien lo monta decide dónde vive y qué hay alrededor.
+ * It takes up whatever its container measures —give it a height— and knows nothing
+ * about routes, layout or metadata: whoever mounts it decides where it lives and
+ * what is around it.
  *
- * Para montarlo DENTRO de un Canvas y una sesión que ya existen —lo que hace el
- * salón inmersivo de xrcade, y lo que permite volver sin quitarse el visor— hay
- * que usar `<StickRushScene>`. Este de aquí abre su propia sesión, y en un
- * documento solo cabe una. El contrato completo está en
+ * To mount it INSIDE a Canvas and a session that already exist —what xrcade's
+ * immersive hall does, and what allows coming back without taking the headset
+ * off— `<StickRushScene>` has to be used. This one opens its own session, and
+ * only one fits in a document. The full contract is in
  * `docs/mounting-the-game.md`.
  */
-export function StickRush({ assetsBase, challenge: reto, onFinish }: StickRushProps) {
-  // Durante el render y no en un efecto: la escena pide el HDRI y las texturas
-  // en cuanto se monta, es decir, antes de que corra ningún efecto. Escribir la
-  // misma base dos veces no cambia nada, así que repetir el render es inocuo.
+export function StickRush({ assetsBase, challenge, onFinish }: StickRushProps) {
+  // During the render and not in an effect: the scene asks for the HDRI and the
+  // textures as soon as it mounts, that is, before any effect runs. Writing the
+  // same base twice changes nothing, so repeating the render is harmless.
   if (assetsBase !== undefined) setAssetsBase(assetsBase)
 
-  // Quitar el juego tiene que devolver el visor a quien lo montó: la sesión no
-  // se cierra sola al desmontar el árbol (ver `xr/xrStore.ts`). Aquí y no en la
-  // escena porque es el borde del montaje, lo mismo que promete `unmount()`.
+  // Removing the game has to give the headset back to whoever mounted it: the
+  // session does not close by itself when the tree unmounts (see `xr/xrStore.ts`).
+  // Here and not in the scene because it is the edge of the mount, the same thing
+  // `unmount()` promises.
   useEffect(() => () => endXrSession(), [])
 
   return (
-    <GameProvider reto={reto} onFinish={onFinish}>
-      {/* Aquí salir es cerrar la sesión: esta web es el juego y no hay ningún
-          sitio al que volver. En el salón significa lo contrario. */}
+    <GameProvider challenge={challenge} onFinish={onFinish}>
+      {/* Here exiting is closing the session: this website is the game and there is
+          nowhere to go back to. In the hall it means the opposite. */}
       <ExitProvider onExit={endXrSession}>
         <GameScene />
       </ExitProvider>

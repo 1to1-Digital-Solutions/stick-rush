@@ -1,11 +1,11 @@
 /**
- * Los iconos del visor de Stick Rush en mallas de Godot: los de `XRUi.tsx` de la web, con las formas
- * de `lib/xrIcons.ts` tal cual (la casa, el corazón, la estrella, el visto, las montañas del
- * escenario) y las piezas que la web dibuja con geometría (los triángulos de jugar y de subir y
- * bajar, el marco de la habitación, el aro de la partida sin fin, las flechas de repetir).
+ * Stick Rush's headset icons as Godot meshes: the ones of the web's `XRUi.tsx`, with the shapes
+ * of `lib/xrIcons.ts` as they are (the house, the heart, the star, the check mark, the mountains of
+ * the scenery) and the parts the web draws with geometry (the triangles for play and for raising
+ * and lowering, the frame of the room, the ring of the endless run, the repeat arrows).
  *
- * Todo sale plano y sin luz, con la `figura` del kit (`@kit/runtime/ui/mesh`), así que se enciende
- * y se apaga con el botón que lo lleva.
+ * Everything comes out flat and unlit, with the kit's `shape` (`@kit/runtime/ui/mesh`), so it lights
+ * up and goes dark with the button that carries it.
  */
 import { Geometry2D, PackedVector2Array, Vector2, Vector3, type MeshInstance3D } from 'godot'
 
@@ -24,154 +24,155 @@ import {
   type IconShape,
 } from '@/lib/xrIcons'
 
-/** Los triángulos de un contorno sin agujeros, por el `triangulate_polygon` del motor. */
-function triangulosDelContorno(contorno: readonly IconPoint[], escala: number): Point2[] {
-  const puntos = new PackedVector2Array()
-  for (const [x, y] of contorno) puntos.append(new Vector2(x * escala, y * escala))
-  const indices = Geometry2D.triangulate_polygon(puntos)
-  const salida: Point2[] = []
+/** The triangles of an outline with no holes, through the engine's `triangulate_polygon`. */
+function outlineTriangles(outline: readonly IconPoint[], scale: number): Point2[] {
+  const points = new PackedVector2Array()
+  for (const [x, y] of outline) points.append(new Vector2(x * scale, y * scale))
+  const indices = Geometry2D.triangulate_polygon(points)
+  const output: Point2[] = []
   for (let i = 0; i < indices.size(); i++) {
-    const [x, y] = contorno[indices.get(i)]
-    salida.push([x * escala, y * escala])
+    const [x, y] = outline[indices.get(i)]
+    output.push([x * scale, y * scale])
   }
-  return salida
+  return output
 }
 
 /**
- * Una forma de `xrIcons.ts` a `tamano` metros por unidad. Los agujeros (la puerta de la casa) se
- * pintan encima con `hueco`, el color de lo que queda detrás: con un solo color por figura, es lo
- * que la deja ver.
+ * A shape of `xrIcons.ts` at `size` metres per unit. The holes (the door of the house) are
+ * painted on top with `hole`, the colour of what lies behind: with a single colour per shape, that
+ * is what lets it show.
  */
-export function iconoDeForma(forma: IconShape, tamano: number, color: string): MeshInstance3D {
-  const triangulos = forma.flatMap((camino) => triangulosDelContorno(camino.outline, tamano))
-  return shape(triangulos, color)
+export function shapeIcon(iconShape: IconShape, size: number, color: string): MeshInstance3D {
+  const triangles = iconShape.flatMap((path) => outlineTriangles(path.outline, size))
+  return shape(triangles, color)
 }
 
-/** Los agujeros de una forma, para pintarlos del color de la placa encima de ella. */
-export function huecosDeForma(forma: IconShape, tamano: number, color: string): MeshInstance3D | null {
-  const triangulos = forma.flatMap((camino) => (camino.holes ?? []).flatMap((h) => triangulosDelContorno(h, tamano)))
-  if (triangulos.length === 0) return null
-  // Por encima de la forma que agujerea: los dibujos de un botón van todos a la misma distancia.
-  return shape(triangulos, color, 1, RENDER_ORDER.texto)
+/** The holes of a shape, to paint them in the colour of the plate on top of it. */
+export function shapeHoles(iconShape: IconShape, size: number, color: string): MeshInstance3D | null {
+  const triangles = iconShape.flatMap((path) => (path.holes ?? []).flatMap((h) => outlineTriangles(h, size)))
+  if (triangles.length === 0) return null
+  // Above the shape it pierces: the drawings of a button all sit at the same distance.
+  return shape(triangles, color, 1, RENDER_ORDER.texto)
 }
 
-export function iconoDeCasa(tamano: number, color: string): MeshInstance3D {
-  return iconoDeForma(XR_HOME_ICON, tamano, color)
+export function homeIcon(size: number, color: string): MeshInstance3D {
+  return shapeIcon(XR_HOME_ICON, size, color)
 }
 
-export function iconoDeCorazon(tamano: number, color: string): MeshInstance3D {
-  return iconoDeForma(XR_HEART_ICON, tamano, color)
+export function heartIcon(size: number, color: string): MeshInstance3D {
+  return shapeIcon(XR_HEART_ICON, size, color)
 }
 
-export function iconoDeEstrella(tamano: number, color: string): MeshInstance3D {
-  return iconoDeForma(XR_STAR_ICON, tamano, color)
+export function starIcon(size: number, color: string): MeshInstance3D {
+  return shapeIcon(XR_STAR_ICON, size, color)
 }
 
-export function iconoDeVisto(tamano: number, color: string): MeshInstance3D {
-  return iconoDeForma(XR_CHECK_ICON, tamano, color)
+export function checkIcon(size: number, color: string): MeshInstance3D {
+  return shapeIcon(XR_CHECK_ICON, size, color)
 }
 
 /**
- * Un triángulo de lado a lado `2·radio` con la punta hacia `punta` (el `cylinderGeometry` de tres
- * lados de `XRTriangleIcon`), centrado en su dibujo como la web (`XR_TRIANGLE_CENTER`).
+ * A triangle `2·radius` from side to side with its tip towards `tip` (the three-sided
+ * `cylinderGeometry` of `XRTriangleIcon`), centred on its drawing like the web (`XR_TRIANGLE_CENTER`).
  */
-export function triangulosDeFlecha(radio: number, punta: 'up' | 'down' | 'right'): Point2[] {
+export function arrowTriangles(radius: number, tip: 'up' | 'down' | 'right'): Point2[] {
   const a = Math.sqrt(3) / 2
-  // Un triángulo equilátero inscrito en `radio`, con la punta arriba, corrido para centrar el dibujo.
-  const arriba: Point2[] = [
-    [0, radio * 0.75],
-    [-a * radio, -radio * 0.75],
-    [a * radio, -radio * 0.75],
+  // An equilateral triangle inscribed in `radius`, tip up, shifted to centre the drawing.
+  const up: Point2[] = [
+    [0, radius * 0.75],
+    [-a * radius, -radius * 0.75],
+    [a * radius, -radius * 0.75],
   ].map(([x, y]) => [x, y] as Point2)
-  if (punta === 'up') return arriba
-  if (punta === 'down') return arriba.map(([x, y]) => [x, -y] as Point2)
-  return arriba.map(([x, y]) => [y, -x] as Point2)
+  if (tip === 'up') return up
+  if (tip === 'down') return up.map(([x, y]) => [x, -y] as Point2)
+  return up.map(([x, y]) => [y, -x] as Point2)
 }
 
-export function iconoDeFlecha(radio: number, punta: 'up' | 'down' | 'right', color: string): MeshInstance3D {
-  return shape(triangulosDeFlecha(radio, punta), color)
+export function arrowIcon(radius: number, tip: 'up' | 'down' | 'right', color: string): MeshInstance3D {
+  return shape(arrowTriangles(radius, tip), color)
 }
 
-/** Dos montañas sobre el mismo suelo y la luna: el escenario (`XRSceneIcon`, `sceneMountains`). */
-export function iconoDeEscenario(tamano: number, color: string): MeshInstance3D {
-  const montanas = sceneMountains(tamano).flatMap(({ radio, x, y }) => offset(triangulosDeFlecha(radio, 'up'), x, y + radio * 0.25))
-  const luna = offset(arcTriangles(0, tamano * 0.2, 0, Math.PI * 2, 12), tamano * 0.75, tamano * 0.85)
-  return shape([...montanas, ...luna], color)
+/** Two mountains on the same ground and the moon: the scenery (`XRSceneIcon`, `sceneMountains`). */
+export function sceneryIcon(size: number, color: string): MeshInstance3D {
+  const mountains = sceneMountains(size).flatMap(({ radius, x, y }) => offset(arrowTriangles(radius, 'up'), x, y + radius * 0.25))
+  const moon = offset(arcTriangles(0, size * 0.2, 0, Math.PI * 2, 12), size * 0.75, size * 0.85)
+  return shape([...mountains, ...moon], color)
 }
 
-/** Un marco vacío: la habitación de verdad, sin decorado encima (`XRPassthroughIcon`). */
-export function iconoDeHabitacion(tamano: number, color: string): MeshInstance3D {
-  const g = tamano * 0.16
-  const barra = (x: number, y: number, ancho: number, alto: number): Point2[] => [
-    [x - ancho / 2, y - alto / 2],
-    [x + ancho / 2, y - alto / 2],
-    [x + ancho / 2, y + alto / 2],
-    [x - ancho / 2, y - alto / 2],
-    [x + ancho / 2, y + alto / 2],
-    [x - ancho / 2, y + alto / 2],
+/** An empty frame: the real room, with no scenery on top (`XRPassthroughIcon`). */
+export function roomIcon(size: number, color: string): MeshInstance3D {
+  const g = size * 0.16
+  const bar = (x: number, y: number, width: number, height: number): Point2[] => [
+    [x - width / 2, y - height / 2],
+    [x + width / 2, y - height / 2],
+    [x + width / 2, y + height / 2],
+    [x - width / 2, y - height / 2],
+    [x + width / 2, y + height / 2],
+    [x - width / 2, y + height / 2],
   ]
   return shape(
     [
-      ...barra(0, tamano * 0.9, tamano * 2, g),
-      ...barra(0, -tamano * 0.9, tamano * 2, g),
-      ...barra(-tamano, 0, g, tamano * 1.8),
-      ...barra(tamano, 0, g, tamano * 1.8),
+      ...bar(0, size * 0.9, size * 2, g),
+      ...bar(0, -size * 0.9, size * 2, g),
+      ...bar(-size, 0, g, size * 1.8),
+      ...bar(size, 0, g, size * 1.8),
     ],
     color,
   )
 }
 
-/** El aro de la partida sin fin: entero si se recarga, medio si se acaba (`EndlessToggle`). */
-export function triangulosDelAroSinFin(entero: boolean): Point2[] {
-  return arcTriangles(0.016, 0.028, 0, entero ? Math.PI * 2 : Math.PI, 24)
+/** The ring of the endless run: whole if it reloads, half if it ends (`EndlessToggle`). */
+export function endlessRingTriangles(whole: boolean): Point2[] {
+  return arcTriangles(0.016, 0.028, 0, whole ? Math.PI * 2 : Math.PI, 24)
 }
 
-/** Repetir partida: un anillo abierto con su punta (`XRRepeatIcon`). */
-export function iconoDeRepetir(tamano: number, color: string): MeshInstance3D {
-  const anillo = arcTriangles(tamano * 0.7, tamano, Math.PI * 0.35, Math.PI * 1.6, 20)
-  const fin = Math.PI * 0.35
-  const cx = Math.cos(fin) * tamano * 0.85
-  const cy = Math.sin(fin) * tamano * 0.85
-  const punta = offset(triangulosDeFlecha(tamano * 0.4, 'down'), cx, cy)
-  return shape([...anillo, ...punta], color)
+/** Repeat the run: an open ring with its tip (`XRRepeatIcon`). */
+export function repeatIcon(size: number, color: string): MeshInstance3D {
+  const ring = arcTriangles(size * 0.7, size, Math.PI * 0.35, Math.PI * 1.6, 20)
+  const end = Math.PI * 0.35
+  const cx = Math.cos(end) * size * 0.85
+  const cy = Math.sin(end) * size * 0.85
+  const tip = offset(arrowTriangles(size * 0.4, 'down'), cx, cy)
+  return shape([...ring, ...tip], color)
 }
 
-/** Un trazo del plano, del grosor dado: las barras que no son cajas. */
-export function iconoDeTrazo(camino: readonly Point2[], grosor: number, color: string): MeshInstance3D {
-  return shape(strokeTriangles(camino, grosor), color)
+/** A stroke on the plane, of the given thickness: the bars that are not boxes. */
+export function strokeIcon(path: readonly Point2[], thickness: number, color: string): MeshInstance3D {
+  return shape(strokeTriangles(path, thickness), color)
 }
 
-/** Un rectángulo de `ancho × alto` centrado en `(x, y)`: las placas de la web que no son botón. */
-export function rectangulo(ancho: number, alto: number, color: string, x = 0, y = 0, prioridad: number = RENDER_ORDER.dibujo): MeshInstance3D {
+/** A rectangle of `width × height` centred on `(x, y)`: the web's plates that are not a button. */
+export function rectangle(width: number, height: number, color: string, x = 0, y = 0, priority: number = RENDER_ORDER.dibujo): MeshInstance3D {
   return shape(
     [
-      [x - ancho / 2, y - alto / 2],
-      [x + ancho / 2, y - alto / 2],
-      [x + ancho / 2, y + alto / 2],
-      [x - ancho / 2, y - alto / 2],
-      [x + ancho / 2, y + alto / 2],
-      [x - ancho / 2, y + alto / 2],
+      [x - width / 2, y - height / 2],
+      [x + width / 2, y - height / 2],
+      [x + width / 2, y + height / 2],
+      [x - width / 2, y - height / 2],
+      [x + width / 2, y + height / 2],
+      [x - width / 2, y + height / 2],
     ],
     color,
     1,
-    prioridad,
+    priority,
   )
 }
 
 /**
- * El icono de contra quién (`XRPlayersIcon` de `XRUi.tsx`): la mesa entre las dos fichas, la de
- * este lado (el jugador 1) abajo y la de enfrente (el 2) arriba, o ninguna si se juega solo. Es el
- * de los hermanos (tower-tumble lo dibuja igual en su port). Devuelve una malla por pieza: la mesa y
- * cada ficha, centrada en su sitio, para que la de quien tiene el mando pueda crecer sin moverse.
+ * The icon of against whom (`XRPlayersIcon` of `XRUi.tsx`): the table between the two tokens, the
+ * one on this side (player 1) below and the one opposite (player 2) above, or none if playing alone.
+ * It is the siblings' one (tower-tumble draws it the same in its port). Returns one mesh per part:
+ * the table and each token, centred on its place, so that the one of whoever holds the controller can
+ * grow without moving.
  */
-export function iconoDeJugadores(lado: number, mesa: string, cerca: string, lejos: string | null): MeshInstance3D[] {
-  const hueco = lado * 1.6
-  const piezas = [rectangulo(lado * 2.6, lado * 0.3, mesa)]
-  for (const [color, y] of [[cerca, -hueco], [lejos, hueco]] as const) {
+export function playersIcon(side: number, table: string, near: string, far: string | null): MeshInstance3D[] {
+  const gap = side * 1.6
+  const parts = [rectangle(side * 2.6, side * 0.3, table)]
+  for (const [color, y] of [[near, -gap], [far, gap]] as const) {
     if (color == null) continue
-    const ficha = rectangulo(lado * 1.2, lado * 1.2, color)
-    ficha.position = new Vector3(0, y, 0)
-    piezas.push(ficha)
+    const token = rectangle(side * 1.2, side * 1.2, color)
+    token.position = new Vector3(0, y, 0)
+    parts.push(token)
   }
-  return piezas
+  return parts
 }

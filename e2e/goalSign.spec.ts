@@ -1,23 +1,23 @@
 import { expect, test } from '@playwright/test'
 
-import { XR_CARTEL_POSITION } from '../src/lib/xrLayout'
+import { XR_SIGN_POSITION } from '../src/lib/xrLayout'
 import type { Goal } from '../src/lib/goal'
 import { installDrawCallCounter, medianDrawCalls } from './support/scenery'
-import { buscarEnLaEscena, esconderEnLaEscena, mirarEnLaEscena, openHost, partidasTerminadas } from './support/host'
+import { findInScene, hideInScene, lookAtInScene, openHost, finishedRuns } from './support/host'
 import { drawCallBudget } from './support/budget'
 
 /**
- * El cartel del objetivo, montado como lo monta el salón: la escena dentro de un Canvas ajeno,
- * con el `reto` y los listones de medalla (`objetivo`).
+ * The goal sign, mounted as the hall mounts it: the scene inside someone else's Canvas,
+ * with the `challenge` and the medal thresholds (`goal`).
  *
- * Lo que dice y si se lee lo miden los unitarios (`machineSign.legible.test.ts`); aquí se
- * comprueba lo que solo se ve con la escena pintando: que está colgado donde dice el reparto
- * desde la cuenta atrás hasta el final, y **lo que cuesta**: una llamada de dibujo, dos como
- * mucho (`xrcade.budget.drawCalls` del manifiesto).
+ * What it says and whether it can be read is measured by the unit tests (`machineSign.legible.test.ts`); here
+ * what is checked is what is only seen with the scene painting: that it hangs where the layout says
+ * from the countdown to the end, and **what it costs**: one draw call, two at
+ * most (`xrcade.budget.drawCalls` of the manifest).
  */
 
-/** Los listones de Stick Rush en el salón. */
-const OBJETIVO: Goal = {
+/** Stick Rush's thresholds in the hall. */
+const GOAL: Goal = {
   medals: { bronze: 1900, silver: 3750, gold: 5200 },
   better: 'higher',
   unit: 'points in challenge',
@@ -25,59 +25,59 @@ const OBJETIVO: Goal = {
   mode: 'challenge',
 }
 
-const CARTEL = drawCallBudget('goal-sign')
-const NOMBRE = 'cartel-de-objetivo'
+const SIGN = drawCallBudget('goal-sign')
+const NAME = 'cartel-de-objetivo'
 
 /**
- * Dónde queda el cartel sin visor: la interfaz se planta delante de la cámara del anfitrión
- * (`XRGazeAnchor`), que está 60 cm por detrás del origen.
+ * Where the sign ends up with no headset: the ui is planted in front of the host's camera
+ * (`XRGazeAnchor`), which is 60 cm behind the origin.
  */
-const CAMARA_Z = 0.6
-const DONDE: readonly [number, number, number] = [XR_CARTEL_POSITION[0], XR_CARTEL_POSITION[1], CAMARA_Z + XR_CARTEL_POSITION[2]]
+const CAMERA_Z = 0.6
+const WHERE: readonly [number, number, number] = [XR_SIGN_POSITION[0], XR_SIGN_POSITION[1], CAMERA_Z + XR_SIGN_POSITION[2]]
 
-test('con el reto del salón, el cartel cuelga encima del marcador y cuesta una llamada de dibujo', async ({ page }) => {
-  // Una partida entera en tiempo real: con WebGL por software la caída se alarga.
+test('with the hall\'s challenge, the sign hangs above the scoreboard and costs one draw call', async ({ page }) => {
+  // A whole run in real time: with software WebGL the fall stretches.
   test.setTimeout(180_000)
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
 
   await installDrawCallCounter(page)
-  await openHost(page, undefined, { reto: 20260925, goal: OBJETIVO })
+  await openHost(page, undefined, { challenge: 20260925, goal: GOAL })
 
-  // Desde la cuenta atrás: la misión se lee antes de que caiga el primer palo.
+  // From the countdown: the mission is read before the first stick falls.
   await expect
-    .poll(() => buscarEnLaEscena(page, NOMBRE), { message: 'el cartel del objetivo no llegó a colgarse' })
+    .poll(() => findInScene(page, NAME), { message: 'the goal sign never got hung' })
     .toMatchObject({ visible: true })
-  const cartel = await buscarEnLaEscena(page, NOMBRE)
-  expect(cartel!.x).toBeCloseTo(DONDE[0], 2)
-  expect(cartel!.y).toBeCloseTo(DONDE[1], 2)
-  expect(cartel!.z).toBeCloseTo(DONDE[2], 2)
+  const sign = await findInScene(page, NAME)
+  expect(sign!.x).toBeCloseTo(WHERE[0], 2)
+  expect(sign!.y).toBeCloseTo(WHERE[1], 2)
+  expect(sign!.z).toBeCloseTo(WHERE[2], 2)
 
-  // Sin tocar nada el reto se acaba solo con la tercera vida, y el cartel sigue ahí para decir
-  // lo que faltó. Con la partida acabada la escena está quieta: es donde se mide.
+  // Without touching anything the challenge ends by itself with the third life, and the sign is still there to say
+  // what was missing. With the run over the scene is still: that is where it is measured.
   await expect
-    .poll(() => partidasTerminadas(page), { timeout: 90_000, message: 'la escena no avisó del final del reto' })
-    .toEqual([{ modo: 'challenge', puntos: 0, reto: true }])
-  await expect.poll(() => buscarEnLaEscena(page, NOMBRE)).toMatchObject({ visible: true })
+    .poll(() => finishedRuns(page), { timeout: 90_000, message: 'the scene did not report the end of the challenge' })
+    .toEqual([{ mode: 'challenge', points: 0, challenge: true }])
+  await expect.poll(() => findInScene(page, NAME)).toMatchObject({ visible: true })
 
-  // Lo que cuesta el cartel: las llamadas con él menos las llamadas sin él, mirándolo de frente
-  // para que no lo descarte el recorte de la cámara.
-  await mirarEnLaEscena(page, DONDE)
-  const conCartel = await medianDrawCalls(page)
-  expect(await esconderEnLaEscena(page, NOMBRE, true)).toBe(true)
-  const sinCartel = await medianDrawCalls(page)
-  expect(await esconderEnLaEscena(page, NOMBRE, false)).toBe(true)
+  // What the sign costs: the calls with it minus the calls without it, looking at it head on
+  // so that the camera's culling does not discard it.
+  await lookAtInScene(page, WHERE)
+  const withSign = await medianDrawCalls(page)
+  expect(await hideInScene(page, NAME, true)).toBe(true)
+  const withoutSign = await medianDrawCalls(page)
+  expect(await hideInScene(page, NAME, false)).toBe(true)
 
-  console.log(`[cartel] el cartel del objetivo: ${conCartel - sinCartel} llamadas (${sinCartel} sin él, ${conCartel} con él)`)
-  expect(conCartel - sinCartel).toBeGreaterThanOrEqual(CARTEL.min)
-  expect(conCartel - sinCartel).toBeLessThanOrEqual(CARTEL.max)
+  console.log(`[sign] the goal sign: ${withSign - withoutSign} calls (${withoutSign} without it, ${withSign} with it)`)
+  expect(withSign - withoutSign).toBeGreaterThanOrEqual(SIGN.min)
+  expect(withSign - withoutSign).toBeLessThanOrEqual(SIGN.max)
   expect(errors).toEqual([])
 })
 
-test('sin reto ni partida, en el menú, no hay cartel', async ({ page }) => {
-  await openHost(page, undefined, { goal: OBJETIVO })
+test('with no challenge nor run, in the menu, there is no sign', async ({ page }) => {
+  await openHost(page, undefined, { goal: GOAL })
 
-  // El menú es lo primero que monta la escena; el cartel solo cuelga con la partida en marcha.
-  await expect.poll(() => buscarEnLaEscena(page, 'world-anchor')).not.toBeNull()
-  expect(await buscarEnLaEscena(page, NOMBRE)).toBeNull()
+  // The menu is the first thing the scene mounts; the sign only hangs with the run under way.
+  await expect.poll(() => findInScene(page, 'world-anchor')).not.toBeNull()
+  expect(await findInScene(page, NAME)).toBeNull()
 })

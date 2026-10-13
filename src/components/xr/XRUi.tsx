@@ -30,16 +30,16 @@ import {
 } from '../../lib/xrIcons'
 
 /**
- * Piezas de interfaz para las sesiones inmersivas.
+ * UI parts for immersive sessions.
  *
- * En VR/AR no hay DOM, así que menú, marcador y botones son geometría. Todo lo
- * de aquí es local: ni fuentes, ni texturas, ni nada que salga a la red.
+ * In VR/AR there is no DOM, so menu, scoreboard and buttons are geometry. Everything
+ * here is local: no fonts, no textures, nothing that goes out to the network.
  */
 
-/** Fondo de los paneles: oscuro y semitransparente, legible sobre passthrough. */
+/** Background of the panels: dark and semi-transparent, legible over passthrough. */
 export const PANEL_COLOR = '#0f1f2b'
 
-/** Panel de fondo. En AR es lo que despega la interfaz de la pared real. */
+/** Background panel. In AR it is what lifts the UI off the real wall. */
 export function XRPanel({
   width,
   height,
@@ -53,11 +53,11 @@ export function XRPanel({
 }) {
   return (
     /*
-      **Sin escribir profundidad, y con su sitio en el orden.** Es un plano transparente de
-      un panel, y a milímetros de los botones que lleva encima la ordenación por profundidad
-      no decide nada fiable: basta inclinar la cabeza hacia un botón del borde para que el
-      fondo se pinte DESPUÉS de él y, escribiendo profundidad, se lo lleve por delante
-      (ver `buttonHighlight.tsx`).
+      **Without writing depth, and with its place in the order.** It is a transparent plane of
+      a panel, and millimetres from the buttons it carries on top the depth sorting
+      decides nothing reliable: it is enough to tilt the head towards a button on the edge for the
+      background to be painted AFTER it and, writing depth, to wipe it out
+      (see `buttonHighlight.tsx`).
     */
     <mesh position={[0, 0, -0.02]} renderOrder={PANEL_ORDER.back}>
       <planeGeometry args={[width, height]} />
@@ -72,56 +72,56 @@ export function XRPanel({
   )
 }
 
-/** Color del halo que marca el botón apuntado. */
+/** Colour of the halo that marks the pointed-at button. */
 const HOVER_COLOR = '#7dd3fc'
 
 /**
- * Y con el que se enciende al apretarlo, que es otra cosa que apuntarlo.
+ * And the one it lights up with when squeezed, which is something other than pointing at it.
  *
- * El botón **se hunde y cambia de color** en vez de desaparecer: encoge por debajo de su
- * tamaño de reposo —que a un metro se lee como que se mete hacia dentro— y el halo pasa de
- * este azul a blanco y sube de intensidad. Reportado con el visor puesto: «cuando se pulsa el
- * botón, el botón debería de seguir ahí (reaccionar bien, como hundiéndose, cambiando de
- * color y eso bien, pero no desapareciendo)».
+ * The button **sinks and changes colour** instead of disappearing: it shrinks below its
+ * resting size —which at one metre reads as it going inwards— and the halo goes from
+ * this blue to white and rises in intensity. Reported with the headset on: «when the button is
+ * pressed, the button should still be there (react well, as if sinking, changing
+ * colour and so on, fine, but not disappearing)».
  */
 const PRESSED_COLOR = '#ffffff'
 
-/** Lo que encoge un botón apretado, desde el 1,08 que crece al apuntarlo. */
+/** What a squeezed button shrinks to, from the 1.08 it grows to when pointed at. */
 const PRESSED_SCALE = 0.98
-/** El claro con el que se pintan los iconos sobre placa oscura. */
-const ICONO_COLOR = '#e2e8f0'
+/** The light colour the icons are painted with on a dark plate. */
+const ICON_COLOR = '#e2e8f0'
 
 /**
- * Ventana, en milisegundos, durante la que se ignora una segunda pulsación.
- * Los dos mandos pueden cruzarse sobre el mismo botón, y un agarre suele
- * registrar el puntero de rayo y el de contacto casi a la vez.
+ * Window, in milliseconds, during which a second press is ignored.
+ * The two controllers can cross over the same button, and a grab usually
+ * registers the ray pointer and the touch one almost at once.
  */
 const DEBOUNCE_MS = 300
 
 /**
- * Botón 3D.
+ * 3D button.
  *
- * Acepta cualquier puntero —el rayo del mando, la mano o el ratón—, al revés
- * que los palos, que solo se dejan coger con la mano: un menú que hubiera que
- * tocar físicamente sería incómodo de manejar.
+ * It accepts any pointer —the controller's ray, the hand or the mouse—, unlike
+ * the sticks, which can only be caught with the hand: a menu that had to be
+ * physically touched would be awkward to handle.
  *
- * Dos decisiones que vienen de probarlo en el visor:
+ * Two decisions that come from testing it in the headset:
  *
- * - **Se resuelve al pulsar, no al soltar.** `onClick` exige pulsar y soltar
- *   sobre el mismo objeto; apuntando a pulso a un metro de distancia, el rayo
- *   se sale del botón entre una cosa y la otra y la pulsación se pierde. Es el
- *   mismo motivo por el que `Stick` escucha `onPointerDown`.
- * - **El foco se ve.** Sin modelo de mando el jugador no tenía forma de saber
- *   a qué apuntaba. Ahora el botón apuntado crece *y* se enciende con un halo:
- *   forma y color, nunca solo color.
- * - **La pulsación se nota.** Apuntando desde lejos la mano no toca nada, así
- *   que el mando da un toque corto al activarse el botón (`PRESS_PULSE`). Es la
- *   única confirmación que no depende de mirar el sitio donde ha cambiado algo.
+ * - **It resolves on press, not on release.** `onClick` demands pressing and releasing
+ *   on the same object; aiming freehand from one metre away, the ray
+ *   leaves the button between one thing and the other and the press is lost. It is the
+ *   same reason why `Stick` listens to `onPointerDown`.
+ * - **The focus shows.** Without a controller model the player had no way of knowing
+ *   what they were pointing at. Now the pointed-at button grows *and* lights up with a halo:
+ *   shape and colour, never colour alone.
+ * - **The press is felt.** Pointing from afar the hand touches nothing, so
+ *   the controller gives a short tap when the button is activated (`PRESS_PULSE`). It is the
+ *   only confirmation that does not depend on looking at the place where something has changed.
  *
- * La zona sensible es una caja invisible más grande que el dibujo del botón:
- * apuntando en el aire, un objetivo del tamaño exacto del icono se falla
- * constantemente. Que sea invisible no la excluye del raycasting —los punteros
- * de @pmndrs/pointer-events no miran `visible`, solo si hay listeners.
+ * The sensitive area is an invisible box bigger than the button's drawing:
+ * pointing in the air, a target of the exact size of the icon is missed
+ * constantly. Being invisible does not exclude it from raycasting —the pointers
+ * of @pmndrs/pointer-events do not look at `visible`, only at whether there are listeners.
  */
 export function XRPressable({
   position,
@@ -133,10 +133,10 @@ export function XRPressable({
 }: {
   position: [number, number, number]
   /**
-   * Giro del botón entero. Los botones apartados a un lado tienen que encarar
-   * al jugador, y el giro va aquí y no en el dibujo para que la placa, el
-   * icono, el halo de foco y la zona sensible se muevan juntos: girar solo la
-   * placa deja el icono cruzado con ella y medio dibujo se pierde dentro.
+   * Turn of the whole button. The buttons set aside to one side have to face
+   * the player, and the turn goes here and not on the drawing so that the plate, the
+   * icon, the focus halo and the sensitive area move together: turning only the
+   * plate leaves the icon crossed with it and half the drawing is lost inside.
    */
   rotation?: [number, number, number]
   onSelect: () => void
@@ -158,11 +158,11 @@ export function XRPressable({
     if (now - lastFired.current < DEBOUNCE_MS) return
     lastFired.current = now
 
-    // El toque va antes de la acción y no después: hay botones que cierran la
-    // sesión o cambian la escena entera, y con la sesión ya terminada el mando
-    // no vibra. `pulseHaptics` nunca lanza, así que adelantarlo no puede
-    // llevarse por delante la pulsación. Solo cuando el botón se activa de
-    // verdad: uno apagado o una pulsación repetida no confirman nada.
+    // The tap goes before the action and not after: there are buttons that close the
+    // session or change the whole scene, and with the session already ended the controller
+    // does not vibrate. `pulseHaptics` never throws, so bringing it forward cannot
+    // take the press down with it. Only when the button is really
+    // activated: a disabled one or a repeated press confirm nothing.
     pulseHaptics(event, PRESS_PULSE)
     onSelect()
   }
@@ -188,15 +188,15 @@ export function XRPressable({
     >
       {children}
 
-      {/* Halo de foco: por detrás del dibujo, para enmarcarlo sin taparlo.
-          **Sin escribir profundidad y con su sitio en el orden.** Un plano transparente
-          de un panel sí apunta su profundidad salvo que se le diga que no, y a
-          milímetros de sus vecinos la ordenación por profundidad se da la vuelta en
-          cuanto se inclina la cabeza hacia un botón del borde: entonces el halo se
-          pintaba antes que el fondo del panel y lo borraba, y el botón se veía como un
-          agujero a la escena. El porqué entero, en `buttonHighlight.tsx`.
-          Apretado se enciende más y cambia de color: es lo único que dice, desde
-          dentro, que el botón ha oído. */}
+      {/* Focus halo: behind the drawing, to frame it without covering it.
+          **Without writing depth and with its place in the order.** A transparent plane
+          of a panel does write its depth unless it is told not to, and
+          millimetres from its neighbours the depth sorting flips as
+          soon as the head is tilted towards a button on the edge: then the halo was
+          painted before the panel's background and erased it, and the button looked like a
+          hole to the scene. The whole why, in `buttonHighlight.tsx`.
+          Squeezed it lights up more and changes colour: it is the only thing that says, from
+          inside, that the button has heard. */}
       <mesh position={[0, 0, -0.014]} visible={active || pressed} renderOrder={PANEL_ORDER.behind}>
         <planeGeometry args={[hitWidth * 0.98, hitHeight * 0.94]} />
         <meshBasicMaterial
@@ -216,9 +216,9 @@ export function XRPressable({
 }
 
 /**
- * Firma común de los iconos. `size` es la medida característica del dibujo en
- * metros —radio en los que salen de una primitiva, semilado en las siluetas—,
- * y cada icono trae la suya, elegida para pesar lo mismo dentro de su botón.
+ * Common signature of the icons. `size` is the characteristic measurement of the drawing in
+ * metres —radius in the ones that come out of a primitive, half-side in the silhouettes—,
+ * and each icon brings its own, chosen to weigh the same inside its button.
  */
 type IconProps = {
   position?: [number, number, number]
@@ -227,23 +227,23 @@ type IconProps = {
 }
 
 /**
- * Semilado de las siluetas, en metros: unos cinco centímetros y medio de icono.
- * Uno solo para todas, porque comparten cuadro y así no se descuadran entre
- * ellas; con menos, la casa quedaba visiblemente más pequeña que el aro de
- * repetir en la misma fila de botones.
+ * Half-side of the silhouettes, in metres: about five and a half centimetres of icon.
+ * A single one for all of them, because they share a frame and that way they do not fall out of line
+ * with each other; with less, the house was visibly smaller than the repeat
+ * ring in the same row of buttons.
  */
 const ICON_SIZE = 0.028
 
-/** Grosor de los triángulos, en metros: son placas, no cuñas. */
+/** Thickness of the triangles, in metres: they are plates, not wedges. */
 const TRIANGLE_THICKNESS = 0.01
 
 /**
- * Triángulo lleno, de frente al jugador y con la punta hacia donde se pida.
+ * Filled triangle, facing the player and with the tip towards wherever asked.
  *
- * El giro y el recentrado salen de `@/lib/xrIcons`, donde se comprueban sin
- * navegador: acertar el giro es todo lo que hay que hacer bien aquí —una
- * composición equivocada deja el prisma de canto y el símbolo desaparece— y a
- * ojo no se distingue de la buena hasta que uno se pone las gafas.
+ * The turn and the recentring come from `@/lib/xrIcons`, where they are checked without a
+ * browser: getting the turn right is all there is to do well here —a wrong
+ * composition leaves the prism edge on and the symbol disappears— and by
+ * eye it cannot be told from the good one until one puts the headset on.
  */
 function XRTriangleIcon({
   tip,
@@ -266,19 +266,19 @@ function XRTriangleIcon({
 }
 
 /**
- * Triángulo de «reproducir»: el símbolo de empezar, sin idioma.
+ * «Play» triangle: the symbol for starting, without a language.
  *
- * `size` es el radio del prisma, así que el dibujo sale algo más alto que ancho
- * (1,7 × 1,5 veces esa medida). Con los 0,05 de cuando se veía de canto, el
- * triángulo ocuparía ahora casi toda la placa del botón.
+ * `size` is the radius of the prism, so the drawing comes out somewhat taller than wide
+ * (1.7 × 1.5 times that measurement). With the 0.05 of when it was seen edge on, the
+ * triangle would now take up almost the whole plate of the button.
  */
 export function XRPlayIcon({ size = 0.032, ...props }: IconProps) {
   return <XRTriangleIcon tip="right" size={size} {...props} />
 }
 
 /**
- * Dos triángulos y un tope: saltarse lo que se está viendo e ir al final. Es el
- * mismo símbolo que cualquier reproductor, así que no hace falta explicarlo.
+ * Two triangles and a stop: skip what is being watched and go to the end. It is the
+ * same symbol as any player's, so it needs no explaining.
  */
 export function XRSkipIcon({
   position = [0, 0, 0],
@@ -288,9 +288,9 @@ export function XRSkipIcon({
   const [x, y, z] = position
 
   return (
-    // Recolocado a la izquierda: los dos triángulos y el tope ocupan de −1,55 a
-    // 1,95 veces `size`, así que sin esto el dibujo quedaría descentrado en su
-    // placa frente a los iconos de una sola pieza.
+    // Moved to the left: the two triangles and the stop take up from −1.55 to
+    // 1.95 times `size`, so without this the drawing would be off-centre on its
+    // plate compared with the one-piece icons.
     <group position={[x - size * 0.2, y, z]}>
       <XRPlayIcon position={[-size * 0.8, 0, 0]} size={size} color={color} />
       <XRPlayIcon position={[size * 0.7, 0, 0]} size={size} color={color} />
@@ -303,12 +303,12 @@ export function XRSkipIcon({
 }
 
 /**
- * Las barras de un nivel: tantas como su puesto en la escala y cada una más
- * alta que la anterior, en el color que ese nivel tiene en todo el juego.
+ * The bars of a level: as many as its place on the scale and each one
+ * taller than the previous, in the colour that level has throughout the game.
  *
- * Crecen desde `y = 0` hacia arriba, así que quien la coloca decide desde dónde.
- * La comparten el selector del menú y el tutorial: el nivel tiene que verse
- * igual donde se elige y donde se recuerda, o serían dos cosas distintas.
+ * They grow from `y = 0` upwards, so whoever places it decides from where.
+ * It is shared by the menu's picker and the tutorial: the level has to look
+ * the same where it is chosen and where it is recalled, or they would be two different things.
  */
 export function XRDifficultyBars({
   difficulty,
@@ -317,7 +317,7 @@ export function XRDifficultyBars({
   scale = 1,
 }: {
   difficulty: Difficulty
-  /** Encendidas (nivel elegido) o apagadas en el color del nivel. */
+  /** Lit (chosen level) or dimmed in the level's colour. */
   lit: boolean
   position?: [number, number, number]
   scale?: number
@@ -349,8 +349,8 @@ export function XRDifficultyBars({
 }
 
 /**
- * Triángulo apuntando arriba o abajo: subir o bajar el aro. Hacia dónde cae la
- * punta es lo único que distingue un botón del otro.
+ * Triangle pointing up or down: raise or lower the hoop. Where the tip
+ * falls is the only thing that tells one button from the other.
  */
 export function XRArrowIcon({
   size = 0.026,
@@ -361,14 +361,14 @@ export function XRArrowIcon({
 }
 
 /**
- * Icono dibujado a partir de una silueta de `@/lib/xrIcons`.
+ * Icon drawn from a silhouette of `@/lib/xrIcons`.
  *
- * Apilar primitivas (un prisma triangular junto a una caja) no funcionó en el
- * visor: a un metro de distancia dos piezas próximas se ven como dos objetos y
- * no como una figura. Una silueta cerrada se lee de un vistazo.
+ * Stacking primitives (a triangular prism next to a box) did not work in the
+ * headset: from one metre away two nearby pieces are seen as two objects and
+ * not as one figure. A closed silhouette reads at a glance.
  *
- * `size` es la mitad del lado del icono, porque las siluetas vienen
- * normalizadas al cuadro [-1, 1].
+ * `size` is half the side of the icon, because the silhouettes come
+ * normalised to the [-1, 1] frame.
  */
 function XRShapeIcon({
   icon,
@@ -396,73 +396,73 @@ function XRShapeIcon({
   )
 }
 
-/** Casa: volver al menú del juego, sin salir de la sesión. */
+/** House: back to the game's menu, without leaving the session. */
 export function XRHomeIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_HOME_ICON} {...props} />
 }
 
-/** La flecha de salir, como forma plana: la misma que se pinta en los lienzos. */
-const FORMA_DE_SALIR = (() => {
-  const { tip: punta, shaft: cuerpo, thickness: grosor, elbow: codo, wings: alas } = EXIT_ARROW
-  const forma = new Shape()
-  forma.moveTo(punta, 0)
-  forma.lineTo(codo, alas)
-  forma.lineTo(codo, grosor / 2)
-  forma.lineTo(cuerpo, grosor / 2)
-  forma.lineTo(cuerpo, -grosor / 2)
-  forma.lineTo(codo, -grosor / 2)
-  forma.lineTo(codo, -alas)
-  forma.closePath()
-  return forma
+/** The exit arrow, as a flat shape: the same one that is painted on the canvases. */
+const EXIT_SHAPE = (() => {
+  const { tip, shaft, thickness, elbow, wings } = EXIT_ARROW
+  const shape = new Shape()
+  shape.moveTo(tip, 0)
+  shape.lineTo(elbow, wings)
+  shape.lineTo(elbow, thickness / 2)
+  shape.lineTo(shaft, thickness / 2)
+  shape.lineTo(shaft, -thickness / 2)
+  shape.lineTo(elbow, -thickness / 2)
+  shape.lineTo(elbow, -wings)
+  shape.closePath()
+  return shape
 })()
 
 /**
- * La flecha de **salir del juego**: volver al arcade.
+ * The arrow for **exiting the game**: back to the hall.
  *
- * **Una sola forma para los trece.** Cada juego decía «salir» a su manera —la palabra
- * «Exit», un aspa, una puerta, una puerta con flecha— y el aspa, además, significa «cerrar
- * esto» en varios paneles. Reportado con el visor puesto: «no se entiende cuál es el botón de
- * salir del juego: a veces aparece un cuadrado, otras veces pone "leave"… habría que
- * unificarlo». La forma sale de `FLECHA_DE_SALIR`, la misma que pintan en su lienzo los
- * juegos que dibujan el menú con texto.
+ * **A single shape for the thirteen.** Each game said «exit» in its own way —the word
+ * «Exit», a cross, a door, a door with an arrow— and the cross, besides, means «close
+ * this» on several panels. Reported with the headset on: «it is not clear which one is the button to
+ * exit the game: sometimes a square appears, other times it says "leave"… it should be
+ * unified». The shape comes from `EXIT_ARROW`, the same one painted on their canvas by the
+ * games that draw the menu with text.
  */
-export function XRSalirIcon({
+export function XRExitIcon({
   size = 0.05,
-  color = ICONO_COLOR,
+  color = ICON_COLOR,
 }: {
   size?: number
   color?: string
 }) {
   return (
     <mesh scale={size} raycast={NO_RAYCAST}>
-      <shapeGeometry args={[FORMA_DE_SALIR]} />
+      <shapeGeometry args={[EXIT_SHAPE]} />
       <meshBasicMaterial color={color} toneMapped={false} />
     </mesh>
   )
 }
 
-/** Altavoz con ondas: el juego suena. */
+/** Loudspeaker with waves: the game has sound. */
 export function XRSoundIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_SOUND_ICON} {...props} />
 }
 
-/** Corazón: una vida, en el selector de modo y en el marcador. */
+/** Heart: a life, in the mode picker and on the scoreboard. */
 export function XRHeartIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_HEART_ICON} {...props} />
 }
 
-/** Estrella de nivel. */
+/** Level star. */
 export function XRStarIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_STAR_ICON} {...props} />
 }
 
-/** Color de la estrella ganada y de la que falta. */
+/** Colour of the earned star and of the missing one. */
 export const XR_STAR_COLOR = '#fbbf24'
 export const XR_STAR_SPENT_COLOR = '#3f4a5a'
 
 /**
- * Tres estrellas en fila, llenas las ganadas. Las que faltan se apagan y
- * encogen: el estado se distingue por tamaño y no solo por color.
+ * Three stars in a row, the earned ones filled. The missing ones are dimmed and
+ * shrink: the state is told by size and not only by colour.
  */
 export function XRStarsRow({
   stars,
@@ -491,37 +491,37 @@ export function XRStarsRow({
     </group>
   )
 }
-/** Marca de verificación: hecho. */
+/** Check mark: done. */
 export function XRCheckIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_CHECK_ICON} {...props} />
 }
 
-/** Altavoz con un aspa: el juego está en silencio. */
+/** Loudspeaker with a cross: the game is muted. */
 export function XRMutedIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_MUTED_ICON} {...props} />
 }
 
-/** Nota musical: la música de fondo suena. */
+/** Musical note: the background music is playing. */
 export function XRMusicIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_MUSIC_ICON} {...props} />
 }
 
-/** Nota musical con un aspa: la música está apagada. */
+/** Musical note with a cross: the music is off. */
 export function XRMusicOffIcon(props: IconProps) {
   return <XRShapeIcon icon={XR_MUSIC_OFF_ICON} {...props} />
 }
 
 /**
- * Dos montañas y una luna: el escenario del juego.
+ * Two mountains and a moon: the game's scenery.
  *
- * Las montañas usan el giro `up` de la tabla de triángulos, no uno propio: el que tenían
- * dejaba la cara de frente pero con el vértice abajo, así que se veían dos cuñas invertidas
- * y una luna en vez de un paisaje. Esa tabla está comprobada contra la geometría real de
- * three, que es lo único que distingue «apunta arriba» de «apunta abajo» sin gafas puestas.
+ * The mountains use the `up` turn from the triangles' table, not one of their own: the one they had
+ * left the face to the front but with the vertex down, so two inverted wedges
+ * and a moon were seen instead of a landscape. That table is checked against the real geometry of
+ * three, which is the only thing that tells «points up» from «points down» without the headset on.
  *
- * Lo que NO se reutiliza es `XR_TRIANGLE_CENTER`: sirve para centrar un icono en su placa, y
- * aquí lo que tiene que coincidir es el SUELO de las dos montañas. Alinearlas por su centro
- * las dejaría flotando a alturas distintas, que es medio paisaje.
+ * What is NOT reused is `XR_TRIANGLE_CENTER`: it serves to centre an icon on its plate, and
+ * here what has to coincide is the GROUND of the two mountains. Aligning them by their centre
+ * would leave them floating at different heights, which is half a landscape.
  */
 export function XRSceneIcon({
   position = [0, 0, 0],
@@ -530,13 +530,13 @@ export function XRSceneIcon({
 }: IconProps) {
   return (
     <group position={position}>
-      {sceneMountains(size).map(({ radio, x, y }, index) => (
+      {sceneMountains(size).map(({ radius, x, y }, index) => (
         <mesh
           key={index}
           position={[x, y, 0]}
           rotation={XR_TRIANGLE_ROTATION.up}
         >
-          <cylinderGeometry args={[radio, radio, TRIANGLE_THICKNESS, 3]} />
+          <cylinderGeometry args={[radius, radius, TRIANGLE_THICKNESS, 3]} />
           <meshBasicMaterial color={color} toneMapped={false} />
         </mesh>
       ))}
@@ -548,7 +548,7 @@ export function XRSceneIcon({
   )
 }
 
-/** Un marco vacío: la habitación de verdad, sin decorado encima. */
+/** An empty frame: the real room, with no scenery on top. */
 export function XRPassthroughIcon({
   position = [0, 0, 0],
   size = 0.04,
@@ -558,7 +558,7 @@ export function XRPassthroughIcon({
 
   return (
     <group position={position}>
-      {/* Cuatro barras que dejan el centro despejado. */}
+      {/* Four bars that leave the centre clear. */}
       {[
         [0, size * 0.9, size * 2, thickness],
         [0, -size * 0.9, size * 2, thickness],
@@ -574,7 +574,7 @@ export function XRPassthroughIcon({
   )
 }
 
-/** Dos flechas girando: repetir partida. Un anillo abierto con su punta. */
+/** Two arrows turning: repeat the run. An open ring with its tip. */
 export function XRRepeatIcon({
   position = [0, 0, 0],
   size = 0.04,
@@ -594,21 +594,21 @@ export function XRRepeatIcon({
   )
 }
 
-/** Una ficha del icono de jugadores: su color y lo que crece. */
+/** A chip of the players icon: its colour and how much it grows. */
 export interface Chip {
   color: string
-  /** Lo que crece la ficha: la de quien tiene el mando va más grande. */
+  /** How much the chip grows: the one of whoever has the controller is bigger. */
   scale?: number
 }
 
 /**
- * Quién juega: una ficha de este lado de la mesa, y otra enfrente si hay alguien más.
+ * Who is playing: a chip on this side of the table, and another one opposite if there is someone else.
  *
- * Es el icono de contra quién de los hermanos (`XRPlayersIcon` de tower-tumble): la mesa entre las
- * dos fichas y la de enfrente arriba, que es donde está quien juega contra ti. En el menú dice
- * **cuántos juegan**: una ficha o dos; en el marcador, **de quién es la tanda**: la misma pareja,
- * con la de quien tiene el mando encendida y crecida —color y tamaño a la vez, para que el color no
- * sea la única señal (WCAG 1.4.1)—.
+ * It is the siblings' "against whom" icon (`XRPlayersIcon` of tower-tumble): the table between the
+ * two chips and the one opposite on top, which is where whoever plays against you is. In the menu it says
+ * **how many play**: one chip or two; on the scoreboard, **whose round it is**: the same pair,
+ * with the one of whoever has the controller lit and grown —colour and size at once, so that colour is
+ * not the only signal (WCAG 1.4.1)—.
  */
 export function XRPlayersIcon({
   size,
@@ -617,13 +617,13 @@ export function XRPlayersIcon({
   far,
   position,
 }: {
-  /** Medida de una ficha, en metros. */
+  /** Measurement of a chip, in metres. */
   size: number
-  /** Color de la línea que hace de mesa entre las dos. */
+  /** Colour of the line that acts as the table between the two. */
   table: string
-  /** La ficha de este lado: el jugador 1. */
+  /** The chip on this side: player 1. */
   near: Chip
-  /** La de enfrente, el jugador 2, o `null` cuando se juega solo. */
+  /** The one opposite, player 2, or `null` when playing alone. */
   far: Chip | null
   position?: [number, number, number]
 }) {
@@ -631,8 +631,8 @@ export function XRPlayersIcon({
 
   return (
     <group position={position}>
-      {/* La mesa entre las dos: sin ella, dos cuadrados sueltos no se leen como dos personas
-          enfrentadas. */}
+      {/* The table between the two: without it, two loose squares do not read as two people
+          facing each other. */}
       <mesh>
         <boxGeometry args={[size * 2.6, size * 0.3, 0.005]} />
         <meshStandardMaterial color={table} emissive={table} emissiveIntensity={0.3} />

@@ -6,46 +6,46 @@ import { useGame } from '../../lib/gameStore'
 import { useBareHands } from './useBareHands'
 
 /**
- * Puente entre el estado de la sesión WebXR y el estado del juego.
+ * Bridge between the state of the WebXR session and the state of the game.
  *
- * Al entrar en VR/AR se lleva al jugador **al menú**, no a una partida: en el
- * visor manda `XRMenu`, que es donde elige palos y dificultad. Antes la sesión
- * arrancaba una partida sola y encadenaba la siguiente al acabar, de modo que
- * nunca se podía elegir nada ni volver atrás sin quitarse el visor.
+ * On entering VR/AR the player is taken **to the menu**, not to a run: in the
+ * headset `XRMenu` rules, which is where they choose sticks and difficulty. Before, the session
+ * started a run by itself and chained the next one when it ended, so that
+ * nothing could ever be chosen nor could one go back without taking the headset off.
  *
- * Debe montarse dentro de <XR> para poder leer el estado de la sesión.
+ * It must be mounted inside <XR> to be able to read the session's state.
  */
 export function XRSessionController() {
   const mode = useXR((state) => state.mode)
   const bareHanded = useBareHands()
   const { gameState, resetGame, setImmersive, setBareHanded } = useGame()
 
-  // Con qué se juega solo se sabe dentro de la sesión, y hace falta fuera: el
-  // reflejo del tutorial en el overlay es DOM y no alcanza este estado. Va en su
-  // propio efecto porque cambia por su cuenta —los mandos se dejan en la mesa a
-  // media partida— y no al entrar o salir de la sesión.
+  // What the game is played with is only known inside the session, and it is needed outside: the
+  // tutorial's reflection in the overlay is DOM and does not reach this state. It goes in its
+  // own effect because it changes by itself —the controllers are left on the table
+  // mid-run— and not on entering or leaving the session.
   useEffect(() => {
     setBareHanded(bareHanded)
   }, [bareHanded, setBareHanded])
 
-  // Recordar que hubo sesión es imprescindible: en escritorio `mode` es null
-  // siempre, y sin esta guarda cualquier partida iniciada con el ratón se
-  // cancelaría sola nada más empezar.
+  // Remembering that there was a session is essential: on desktop `mode` is always
+  // null, and without this guard any run started with the mouse would
+  // cancel itself as soon as it began.
   //
-  // Se parte de lo que haya al montar: montado ya dentro de una sesión —lo que hace el salón al
-  // elegir cabina— no hay partida de escritorio que descartar, y la que haya es la del reto del
-  // salón, que arranca jugando (ver `OpcionesDelSalon`). Partiendo de `false`, la tomaba por una
-  // de escritorio a medias y devolvía el reto al menú.
+  // It starts from whatever there is on mount: mounted already inside a session —what the hall does on
+  // choosing a cabinet— there is no desktop run to discard, and the one there is is the hall's
+  // challenge, which starts playing (see `HallOptions`). Starting from `false`, it took it for a
+  // half-played desktop one and sent the challenge back to the menu.
   const immersive = useRef(mode != null)
 
   useEffect(() => {
-    // El juego necesita saber si hay gafas puestas para decidir a quién le
-    // enseña cómo se juega (ver `startGame`). Se apunta antes que nada: aunque
-    // la sesión no cambie de estado, el dato tiene que estar al día.
+    // The game needs to know whether the headset is on to decide who it
+    // shows how to play (see `startGame`). It is noted before anything else: even if
+    // the session does not change state, the datum has to be up to date.
     setImmersive(mode != null)
 
-    // Entrada: si se llega con una partida de escritorio a medias, se descarta.
-    // En el visor el punto de partida es siempre el menú.
+    // Entry: if one arrives with a half-played desktop run, it is discarded.
+    // In the headset the starting point is always the menu.
     if (mode != null) {
       if (immersive.current) return
       immersive.current = true
@@ -53,7 +53,7 @@ export function XRSessionController() {
       return
     }
 
-    // Salida: se vuelve al menú de escritorio.
+    // Exit: back to the desktop menu.
     if (!immersive.current) return
     immersive.current = false
     resetGame()

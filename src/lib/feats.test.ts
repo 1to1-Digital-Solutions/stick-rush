@@ -1,185 +1,185 @@
 import { describe, expect, it } from 'vitest'
 import { MAX_STICKS } from './gameConfig'
 import {
-  GIRO_DE_ESPALDAS,
-  HAZANAS,
-  HAZANAS_KEY,
-  SIN_HAZANAS,
-  aroAlMinimo,
-  conHazanas,
-  contarAtrape,
-  contarTanda,
-  deEspaldas,
-  estrenarHazanas,
-  leerHazanas,
+  BEHIND_BACK_TURN,
+  FEATS,
+  FEATS_KEY,
+  NO_FEATS,
+  hoopAtMinimum,
+  withFeats,
+  countCatch,
+  countRound,
+  isBehindBack,
+  earnFeats,
+  readFeats,
 } from './feats'
 import { HOOP_ADJUST_RANGE, HOOP_ADJUST_STEP } from './hoopHeight'
 
-/** Un almacenamiento en memoria: el motor de Godot no tiene `localStorage` ni `vi`. */
-function almacen(inicial: Record<string, string> = {}): Storage & { datos: Map<string, string> } {
-  const datos = new Map(Object.entries(inicial))
+/** An in-memory storage: the Godot engine has neither `localStorage` nor `vi`. */
+function memoryStorage(initial: Record<string, string> = {}): Storage & { data: Map<string, string> } {
+  const data = new Map(Object.entries(initial))
   return {
-    datos,
+    data,
     get length() {
-      return datos.size
+      return data.size
     },
-    clear: () => datos.clear(),
-    getItem: (clave) => datos.get(clave) ?? null,
-    key: (i) => [...datos.keys()][i] ?? null,
-    removeItem: (clave) => void datos.delete(clave),
-    setItem: (clave, valor) => void datos.set(clave, valor),
+    clear: () => data.clear(),
+    getItem: (key) => data.get(key) ?? null,
+    key: (i) => [...data.keys()][i] ?? null,
+    removeItem: (key) => void data.delete(key),
+    setItem: (key, value) => void data.set(key, value),
   }
 }
 
-/** La cabeza en el centro mirando hacia `−z` (hacia la máquina), y el palo en el ángulo pedido. */
-function paloA(grados: number, distancia = 0.65) {
-  const a = (grados * Math.PI) / 180
+/** The head at the centre looking towards `−z` (towards the machine), and the stick at the requested angle. */
+function stickAt(degrees: number, distance = 0.65) {
+  const a = (degrees * Math.PI) / 180
   return {
-    cabeza: { x: 0, z: 0 },
-    mirada: { x: 0, z: -1 },
-    palo: { x: Math.sin(a) * distancia, z: -Math.cos(a) * distancia },
+    head: { x: 0, z: 0 },
+    gaze: { x: 0, z: -1 },
+    stick: { x: Math.sin(a) * distance, z: -Math.cos(a) * distance },
   }
 }
 
-describe('deEspaldas', () => {
-  it('de frente, de lado o de reojo no es de espaldas', () => {
-    for (const grados of [0, 45, -60, 90, -90, 115]) expect(deEspaldas(paloA(grados))).toBe(false)
+describe('isBehindBack', () => {
+  it('from the front, from the side or out of the corner of the eye is not behind the back', () => {
+    for (const degrees of [0, 45, -60, 90, -90, 115]) expect(isBehindBack(stickAt(degrees))).toBe(false)
   })
 
-  it('con el palo detrás del hombro sí, por los dos lados', () => {
-    for (const grados of [125, -125, 180]) expect(deEspaldas(paloA(grados))).toBe(true)
+  it('with the stick behind the shoulder it is, on both sides', () => {
+    for (const degrees of [125, -125, 180]) expect(isBehindBack(stickAt(degrees))).toBe(true)
   })
 
-  it('el umbral es el giro de espaldas: un grado antes no, un grado después sí', () => {
-    const umbral = (GIRO_DE_ESPALDAS * 180) / Math.PI
-    expect(deEspaldas(paloA(umbral - 1))).toBe(false)
-    expect(deEspaldas(paloA(umbral + 1))).toBe(true)
+  it('the threshold is the behind-the-back turn: one degree before no, one degree after yes', () => {
+    const threshold = (BEHIND_BACK_TURN * 180) / Math.PI
+    expect(isBehindBack(stickAt(threshold - 1))).toBe(false)
+    expect(isBehindBack(stickAt(threshold + 1))).toBe(true)
   })
 
-  it('cuenta en el suelo: la cabeza girada con la máquina detrás, estando en cualquier sitio', () => {
-    // De cara a +x, en (2, 3), con el palo a su espalda en −x.
-    expect(deEspaldas({ cabeza: { x: 2, z: 3 }, mirada: { x: 5, z: 0 }, palo: { x: 1.4, z: 3.1 } })).toBe(true)
-    expect(deEspaldas({ cabeza: { x: 2, z: 3 }, mirada: { x: 5, z: 0 }, palo: { x: 2.6, z: 3.1 } })).toBe(false)
+  it('it counts on the ground: the head turned with the machine behind, standing anywhere', () => {
+    // Facing +x, at (2, 3), with the stick behind their back at −x.
+    expect(isBehindBack({ head: { x: 2, z: 3 }, gaze: { x: 5, z: 0 }, stick: { x: 1.4, z: 3.1 } })).toBe(true)
+    expect(isBehindBack({ head: { x: 2, z: 3 }, gaze: { x: 5, z: 0 }, stick: { x: 2.6, z: 3.1 } })).toBe(false)
   })
 
-  it('con el palo justo encima de la cabeza, o mirando al cielo, no hay espalda que valga', () => {
-    expect(deEspaldas({ cabeza: { x: 0, z: 0 }, mirada: { x: 0, z: -1 }, palo: { x: 0.01, z: 0.02 } })).toBe(false)
-    expect(deEspaldas({ cabeza: { x: 0, z: 0 }, mirada: { x: 0, z: 0 }, palo: { x: 0, z: 0.6 } })).toBe(false)
-  })
-})
-
-describe('contarAtrape', () => {
-  it('el atrape de espaldas da SR_BEHIND_BACK', () => {
-    expect(contarAtrape(SIN_HAZANAS, { espaldas: true }).logradas).toEqual([HAZANAS.deEspaldas])
-  })
-
-  it('uno de frente no da nada, y no toca la cuenta', () => {
-    expect(contarAtrape(SIN_HAZANAS, { espaldas: false })).toBe(SIN_HAZANAS)
-  })
-
-  it('dos de espaldas en la misma partida son una sola hazaña', () => {
-    const una = contarAtrape(SIN_HAZANAS, { espaldas: true })
-    expect(contarAtrape(una, { espaldas: true })).toBe(una)
+  it('with the stick right above the head, or looking at the sky, there is no back to speak of', () => {
+    expect(isBehindBack({ head: { x: 0, z: 0 }, gaze: { x: 0, z: -1 }, stick: { x: 0.01, z: 0.02 } })).toBe(false)
+    expect(isBehindBack({ head: { x: 0, z: 0 }, gaze: { x: 0, z: 0 }, stick: { x: 0, z: 0.6 } })).toBe(false)
   })
 })
 
-describe('contarTanda', () => {
-  it('los trece de una tanda sin que se escape ninguno dan SR_CLEAN_SWEEP', () => {
-    const cuenta = contarTanda(SIN_HAZANAS, { palos: MAX_STICKS, atrapados: MAX_STICKS, ajusteDelAro: 0 })
-    expect(cuenta.logradas).toEqual([HAZANAS.tandaLimpia])
+describe('countCatch', () => {
+  it('the catch behind the back gives SR_BEHIND_BACK', () => {
+    expect(countCatch(NO_FEATS, { behind: true }).earned).toEqual([FEATS.behindBack])
   })
 
-  it('doce de trece no: uno escapado basta para perderla', () => {
-    expect(contarTanda(SIN_HAZANAS, { palos: MAX_STICKS, atrapados: MAX_STICKS - 1, ajusteDelAro: 0 })).toBe(SIN_HAZANAS)
+  it('one from the front gives nothing, and does not touch the count', () => {
+    expect(countCatch(NO_FEATS, { behind: false })).toBe(NO_FEATS)
   })
 
-  it('una tanda limpia de menos palos no es la máquina llena', () => {
-    expect(contarTanda(SIN_HAZANAS, { palos: MAX_STICKS - 1, atrapados: MAX_STICKS - 1, ajusteDelAro: 0 })).toBe(SIN_HAZANAS)
-  })
-
-  it('con el aro al mínimo, una tanda entera sin escaparse ninguno da SR_LOW_HOOP, sea de los que sea', () => {
-    const cuenta = contarTanda(SIN_HAZANAS, { palos: 5, atrapados: 5, ajusteDelAro: -HOOP_ADJUST_RANGE })
-    expect(cuenta.logradas).toEqual([HAZANAS.aroAlMinimo])
-  })
-
-  it('con el aro un paso por encima del mínimo no, ni con el mínimo y uno escapado', () => {
-    const unPasoArriba = -HOOP_ADJUST_RANGE + HOOP_ADJUST_STEP
-    expect(contarTanda(SIN_HAZANAS, { palos: 5, atrapados: 5, ajusteDelAro: unPasoArriba })).toBe(SIN_HAZANAS)
-    expect(contarTanda(SIN_HAZANAS, { palos: 5, atrapados: 4, ajusteDelAro: -HOOP_ADJUST_RANGE })).toBe(SIN_HAZANAS)
-  })
-
-  it('la máquina llena con el aro al mínimo da las dos, una sola vez cada una', () => {
-    const tanda = { palos: MAX_STICKS, atrapados: MAX_STICKS, ajusteDelAro: -HOOP_ADJUST_RANGE }
-    const una = contarTanda(SIN_HAZANAS, tanda)
-    expect(una.logradas).toEqual([HAZANAS.tandaLimpia, HAZANAS.aroAlMinimo])
-    expect(contarTanda(una, tanda)).toBe(una)
-  })
-
-  it('una tanda sin palos no cuenta', () => {
-    expect(contarTanda(SIN_HAZANAS, { palos: 0, atrapados: 0, ajusteDelAro: -HOOP_ADJUST_RANGE })).toBe(SIN_HAZANAS)
-  })
-
-  it('el mínimo admite el redondeo de sumar pasos de 5 cm', () => {
-    const sumado = [1, 2, 3, 4].reduce((ajuste) => ajuste - HOOP_ADJUST_STEP, 0)
-    expect(aroAlMinimo(sumado)).toBe(true)
-    expect(aroAlMinimo(0)).toBe(false)
+  it('two behind the back in the same run are a single feat', () => {
+    const one = countCatch(NO_FEATS, { behind: true })
+    expect(countCatch(one, { behind: true })).toBe(one)
   })
 })
 
-describe('lo guardado', () => {
-  it('se estrena una vez: se guarda y la segunda partida ya no la cuenta', () => {
-    const storage = almacen()
-    expect(estrenarHazanas([HAZANAS.deEspaldas], storage)).toEqual([HAZANAS.deEspaldas])
-    expect(JSON.parse(storage.datos.get(HAZANAS_KEY)!)).toEqual([HAZANAS.deEspaldas])
-    expect(estrenarHazanas([HAZANAS.deEspaldas], storage)).toEqual([])
-    expect(leerHazanas(storage)).toEqual([HAZANAS.deEspaldas])
+describe('countRound', () => {
+  it('the thirteen of a round without any getting away give SR_CLEAN_SWEEP', () => {
+    const count = countRound(NO_FEATS, { sticks: MAX_STICKS, caught: MAX_STICKS, hoopAdjustment: 0 })
+    expect(count.earned).toEqual([FEATS.cleanSweep])
   })
 
-  it('suma a lo que ya había sin repetir, y sin nada nuevo no escribe', () => {
-    const storage = almacen({ [HAZANAS_KEY]: JSON.stringify([HAZANAS.tandaLimpia]) })
-    expect(estrenarHazanas([HAZANAS.tandaLimpia, HAZANAS.aroAlMinimo], storage)).toEqual([HAZANAS.aroAlMinimo])
-    expect(leerHazanas(storage)).toEqual([HAZANAS.tandaLimpia, HAZANAS.aroAlMinimo])
-    const antes = storage.datos.get(HAZANAS_KEY)
-    expect(estrenarHazanas([HAZANAS.aroAlMinimo], storage)).toEqual([])
-    expect(storage.datos.get(HAZANAS_KEY)).toBe(antes)
+  it('twelve of thirteen does not: one that got away is enough to lose it', () => {
+    expect(countRound(NO_FEATS, { sticks: MAX_STICKS, caught: MAX_STICKS - 1, hoopAdjustment: 0 })).toBe(NO_FEATS)
   })
 
-  it('lo que no es una hazaña de este juego no se estrena ni se lee', () => {
-    const storage = almacen({ [HAZANAS_KEY]: JSON.stringify(['GH_SHUTOUT', HAZANAS.deEspaldas]) })
-    expect(leerHazanas(storage)).toEqual([HAZANAS.deEspaldas])
-    expect(estrenarHazanas(['GH_SHUTOUT'], storage)).toEqual([])
+  it('a clean round of fewer sticks is not the full machine', () => {
+    expect(countRound(NO_FEATS, { sticks: MAX_STICKS - 1, caught: MAX_STICKS - 1, hoopAdjustment: 0 })).toBe(NO_FEATS)
   })
 
-  it('lo ilegible o lo que no es una lista cuenta como nada', () => {
-    expect(leerHazanas(almacen({ [HAZANAS_KEY]: '{roto' }))).toEqual([])
-    expect(leerHazanas(almacen({ [HAZANAS_KEY]: '"SR_LOW_HOOP"' }))).toEqual([])
-    expect(leerHazanas(almacen())).toEqual([])
+  it('with the hoop at the minimum, a whole round without any getting away gives SR_LOW_HOOP, however many it has', () => {
+    const count = countRound(NO_FEATS, { sticks: 5, caught: 5, hoopAdjustment: -HOOP_ADJUST_RANGE })
+    expect(count.earned).toEqual([FEATS.lowHoop])
   })
 
-  it('sin almacenamiento todas parecen nuevas, y no se rompe nada', () => {
-    expect(leerHazanas(null)).toEqual([])
-    expect(estrenarHazanas([HAZANAS.deEspaldas], null)).toEqual([HAZANAS.deEspaldas])
+  it('with the hoop one step above the minimum it does not, nor with the minimum and one that got away', () => {
+    const oneStepUp = -HOOP_ADJUST_RANGE + HOOP_ADJUST_STEP
+    expect(countRound(NO_FEATS, { sticks: 5, caught: 5, hoopAdjustment: oneStepUp })).toBe(NO_FEATS)
+    expect(countRound(NO_FEATS, { sticks: 5, caught: 4, hoopAdjustment: -HOOP_ADJUST_RANGE })).toBe(NO_FEATS)
   })
 
-  it('con la escritura prohibida se dan igual y se vuelven a dar la próxima vez', () => {
-    const storage = almacen()
+  it('the full machine with the hoop at the minimum gives both, only once each', () => {
+    const round = { sticks: MAX_STICKS, caught: MAX_STICKS, hoopAdjustment: -HOOP_ADJUST_RANGE }
+    const one = countRound(NO_FEATS, round)
+    expect(one.earned).toEqual([FEATS.cleanSweep, FEATS.lowHoop])
+    expect(countRound(one, round)).toBe(one)
+  })
+
+  it('a round with no sticks does not count', () => {
+    expect(countRound(NO_FEATS, { sticks: 0, caught: 0, hoopAdjustment: -HOOP_ADJUST_RANGE })).toBe(NO_FEATS)
+  })
+
+  it('the minimum accepts the rounding of adding 5 cm steps', () => {
+    const summed = [1, 2, 3, 4].reduce((adjustment) => adjustment - HOOP_ADJUST_STEP, 0)
+    expect(hoopAtMinimum(summed)).toBe(true)
+    expect(hoopAtMinimum(0)).toBe(false)
+  })
+})
+
+describe('what is stored', () => {
+  it('it is first earned once: it is stored and the second run no longer counts it', () => {
+    const storage = memoryStorage()
+    expect(earnFeats([FEATS.behindBack], storage)).toEqual([FEATS.behindBack])
+    expect(JSON.parse(storage.data.get(FEATS_KEY)!)).toEqual([FEATS.behindBack])
+    expect(earnFeats([FEATS.behindBack], storage)).toEqual([])
+    expect(readFeats(storage)).toEqual([FEATS.behindBack])
+  })
+
+  it('it adds to what was already there without repeating, and with nothing new it does not write', () => {
+    const storage = memoryStorage({ [FEATS_KEY]: JSON.stringify([FEATS.cleanSweep]) })
+    expect(earnFeats([FEATS.cleanSweep, FEATS.lowHoop], storage)).toEqual([FEATS.lowHoop])
+    expect(readFeats(storage)).toEqual([FEATS.cleanSweep, FEATS.lowHoop])
+    const before = storage.data.get(FEATS_KEY)
+    expect(earnFeats([FEATS.lowHoop], storage)).toEqual([])
+    expect(storage.data.get(FEATS_KEY)).toBe(before)
+  })
+
+  it('what is not a feat of this game is neither first earned nor read', () => {
+    const storage = memoryStorage({ [FEATS_KEY]: JSON.stringify(['GH_SHUTOUT', FEATS.behindBack]) })
+    expect(readFeats(storage)).toEqual([FEATS.behindBack])
+    expect(earnFeats(['GH_SHUTOUT'], storage)).toEqual([])
+  })
+
+  it('what is unreadable or is not a list counts as nothing', () => {
+    expect(readFeats(memoryStorage({ [FEATS_KEY]: '{broken' }))).toEqual([])
+    expect(readFeats(memoryStorage({ [FEATS_KEY]: '"SR_LOW_HOOP"' }))).toEqual([])
+    expect(readFeats(memoryStorage())).toEqual([])
+  })
+
+  it('without storage they all look new, and nothing breaks', () => {
+    expect(readFeats(null)).toEqual([])
+    expect(earnFeats([FEATS.behindBack], null)).toEqual([FEATS.behindBack])
+  })
+
+  it('with writing forbidden they are given all the same and given again next time', () => {
+    const storage = memoryStorage()
     storage.setItem = () => {
       throw new Error('QuotaExceededError')
     }
-    expect(estrenarHazanas([HAZANAS.aroAlMinimo], storage)).toEqual([HAZANAS.aroAlMinimo])
-    expect(estrenarHazanas([HAZANAS.aroAlMinimo], storage)).toEqual([HAZANAS.aroAlMinimo])
+    expect(earnFeats([FEATS.lowHoop], storage)).toEqual([FEATS.lowHoop])
+    expect(earnFeats([FEATS.lowHoop], storage)).toEqual([FEATS.lowHoop])
   })
 })
 
-describe('conHazanas', () => {
-  const resultado = { mode: 'practice', points: 120, challenge: false }
+describe('withFeats', () => {
+  const result = { mode: 'practice', points: 120, challenge: false }
 
-  it('con alguna estrenada, el resultado la lleva', () => {
-    expect(conHazanas(resultado, [HAZANAS.tandaLimpia])).toEqual({ ...resultado, feats: [HAZANAS.tandaLimpia] })
+  it('with one first earned, the result carries it', () => {
+    expect(withFeats(result, [FEATS.cleanSweep])).toEqual({ ...result, feats: [FEATS.cleanSweep] })
   })
 
-  it('sin ninguna, el resultado es el de siempre, sin el campo', () => {
-    expect(conHazanas(resultado, [])).toBe(resultado)
-    expect('feats' in conHazanas(resultado, [])).toBe(false)
+  it('with none, the result is the usual one, without the field', () => {
+    expect(withFeats(result, [])).toBe(result)
+    expect('feats' in withFeats(result, [])).toBe(false)
   })
 })

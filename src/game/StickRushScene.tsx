@@ -4,7 +4,7 @@ import { GameProvider } from '../components/GameProvider'
 import { GameWorld } from '../components/game/GameWorld'
 import { setAssetsBase } from '../lib/assets'
 import type { HostAnchor } from '../lib/hostAnchor'
-import type { ResultadoConHazanas } from '../lib/feats'
+import type { ResultWithFeats } from '../lib/feats'
 import type { Goal } from '../lib/goal'
 import { setGameName } from '../lib/menuTemplate'
 import type { Challenge } from '../lib/seed'
@@ -12,79 +12,82 @@ import { ExitProvider } from './exit'
 
 export interface StickRushSceneProps {
   /**
-   * De dónde cuelgan los ficheros estáticos del juego (el HDRI, las texturas y
-   * los perfiles de mando que se copian de `public/`). Los sirve el anfitrión,
-   * bajo su propio prefijo: dos juegos en el mismo origen se pisarían.
+   * Where the game's static files hang from (the HDRI, the textures and the
+   * controller profiles copied from `public/`). The host serves them, under
+   * its own prefix: two games on the same origin would step on each other.
    */
   assetsBase?: string
   /**
-   * Dónde y con qué rumbo plantar el mundo del juego, si quien monta la escena
-   * lo sabe: el salón de xrcade presta el anclaje con el que tiene plantado su
-   * arco de cabinas.
+   * Where and with what heading to plant the game's world, if whoever mounts
+   * the scene knows it: xrcade's hall lends the anchor it has its arc of
+   * cabinets planted with.
    *
-   * **Sin él, el mundo se planta delante de donde se mire al entrar**, que es
-   * lo único que se sabe en la web propia del juego. Dentro del salón eso
-   * descoloca: leer las cabinas de la izquierda obliga a girar la cabeza, y el
-   * juego salía girado hacia allí.
+   * **Without it, the world is planted in front of wherever one is looking on
+   * entering**, which is the only thing known on the game's own website. Inside
+   * the hall that is disorienting: reading the cabinets on the left forces a
+   * turn of the head, and the game came out turned that way.
    */
   anchor?: HostAnchor
   /**
-   * Devolver al jugador a donde estaba. Lo llama el juego desde su interfaz
-   * inmersiva; qué significa volver lo decide quien monta.
+   * Take the player back to where they were. The game calls it from its
+   * immersive UI; what going back means is decided by whoever mounts.
    */
   onExit: () => void
   /**
-   * Jugar un reto concreto del salón: el reto del día, o el código de «reta mi puntuación».
+   * Play a specific challenge of the hall: the challenge of the day, or the code of «reta mi puntuación».
    *
-   * Con él la escena entra **directamente en una partida del desafío** —el modo del récord de
-   * la cabina—, con Medio y trece palos (`CHALLENGE_SETUP`) y sin lección, y el turno y el
-   * titubeo de cada palo salen de la semilla: misma semilla, mismos palos cayendo en el mismo
-   * orden y al mismo tiempo. Se lee al montar: para otro reto, se vuelve a montar.
+   * With it the scene goes **straight into a run of the challenge mode** —the mode of the
+   * cabinet's record—, with Medium and thirteen sticks (`CHALLENGE_SETUP`) and without a lesson,
+   * and the turn and the hesitation of each stick come from the seed: same seed, same sticks
+   * falling in the same order and at the same time. It is read on mount: for another challenge,
+   * mount it again.
    */
   challenge?: Challenge
   /**
-   * Se llama **una vez** al acabar cada partida con puntuación, en cualquier modo, con sus
-   * puntos aunque no sean récord. Dejar la partida a medias o salir no la acaba. Lleva `hazanas`
-   * con los nombres de API estrenados en la partida, si hay alguno (`lib/feats.ts`).
+   * Called **once** when each scored run ends, in any mode, with its points even if they are
+   * not a record. Leaving the run halfway or exiting does not end it. It carries `feats` with
+   * the API names first earned in the run, if there are any (`lib/feats.ts`).
    */
-  onFinish?: (resultado: ResultadoConHazanas) => void
+  onFinish?: (result: ResultWithFeats) => void
   /**
-   * Qué hay que superar: los tres listones de medalla del juego, la marca de quien juega y el
-   * modo en que cuentan. Con él, el cartel de encima del marcador dice qué listón falta y cuánto
-   * queda; sin él, la misión y el récord guardado en este navegador.
+   * What has to be beaten: the game's three medal thresholds, the best of whoever plays and the
+   * mode in which they count. With it, the sign above the scoreboard says which threshold is
+   * missing and how much is left; without it, the mission and the record saved in this browser.
    */
   goal?: Goal
   /**
-   * Cómo se llama el juego en su menú: el `name` del manifiesto del catálogo, el de la cabina del
-   * salón. Sin él, el del `package.json` con mayúsculas, que es el mismo (`plantillaDelMenu.ts`).
+   * What the game is called in its menu: the `name` of the catalogue manifest, the one of the
+   * hall's cabinet. Without it, the one in `package.json` capitalised, which is the same
+   * (`menuTemplate.ts`).
    */
   name?: string
 }
 
 /**
- * Stick Rush como ESCENA: lo que se pinta dentro del Canvas de otro.
+ * Stick Rush as a SCENE: what is painted inside someone else's Canvas.
  *
- * Es el contrato con el que xrcade monta un juego dentro de su salón. No crea
- * Canvas, no abre ni cierra la sesión inmersiva y no pinta una sola etiqueta de
- * DOM: solo objetos de three. Así, entrar en el juego y volver al salón son
- * montar y desmontar un trozo de escena, y la sesión ni se entera — que es lo
- * que permite pasar de un juego al salón sin quitarse el visor.
+ * It is the contract with which xrcade mounts a game inside its hall. It creates
+ * no Canvas, neither opens nor closes the immersive session and paints not a
+ * single DOM tag: only three objects. That way, entering the game and going back
+ * to the hall are mounting and unmounting a piece of scene, and the session does
+ * not even notice — which is what allows going from a game to the hall without
+ * taking the headset off.
  *
- * Para montarlo con su interfaz 2D y su propia sesión —lo que quiere una página
- * web normal— está `<StickRush>`, que es esta escena con un Canvas alrededor.
+ * To mount it with its 2D UI and its own session —what a normal web page
+ * wants— there is `<StickRush>`, which is this scene with a Canvas around it.
  *
- * El contrato completo, en `docs/mounting-the-game.md`.
+ * The full contract, in `docs/mounting-the-game.md`.
  */
-export function StickRushScene({ assetsBase, anchor, onExit, challenge: reto, onFinish, goal: objetivo, name: nombre }: StickRushSceneProps) {
-  // Durante el render y no en un efecto: la escena pide el HDRI y las texturas
-  // en cuanto se monta, es decir, antes de que corra ningún efecto. Escribir la
-  // misma base dos veces no cambia nada, así que repetir el render es inocuo.
+export function StickRushScene({ assetsBase, anchor, onExit, challenge, onFinish, goal, name }: StickRushSceneProps) {
+  // During the render and not in an effect: the scene asks for the HDRI and the
+  // textures as soon as it mounts, that is, before any effect runs. Writing the
+  // same base twice changes nothing, so repeating the render is harmless.
   if (assetsBase !== undefined) setAssetsBase(assetsBase)
-  // Lo mismo con el nombre: el menú lo lee desde el primer fotograma.
-  setGameName(nombre)
+  // The same with the name: the menu reads it from the first frame.
+  setGameName(name)
 
   return (
-    <GameProvider reto={reto} onFinish={onFinish} objetivo={objetivo}>
+    <GameProvider challenge={challenge} onFinish={onFinish} goal={goal}>
       <ExitProvider onExit={onExit}>
         <GameWorld anchor={anchor} />
       </ExitProvider>

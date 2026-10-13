@@ -5,7 +5,7 @@ import {
   hangingSwing,
 } from './stickSwing'
 
-/** Un muestreo denso de una fase concreta, para medir el recorrido. */
+/** A dense sampling of one particular phase, to measure the travel. */
 function sample(phase: number, seconds = 20, step = 1 / 60) {
   const tilts = []
   for (let time = 0; time <= seconds; time += step) {
@@ -17,9 +17,9 @@ function sample(phase: number, seconds = 20, step = 1 / 60) {
 const PHASES = [0, 0.13, 0.37, 0.5, 0.62, 0.88, 0.999]
 
 describe('hangingSwing', () => {
-  it('mece el palo unos pocos grados, no lo tumba', () => {
-    // El palo cuelga de un gancho fijo: si el vaivén se pasa de ahí, se separa
-    // de sus vecinos o se cruza con ellos.
+  it('rocks the stick a few degrees, it does not knock it over', () => {
+    // The stick hangs from a fixed hook: if the swing goes beyond that, it separates
+    // from its neighbours or crosses them.
     expect(SWING_AMPLITUDE).toBeLessThan((6 * Math.PI) / 180)
 
     for (const phase of PHASES) {
@@ -32,19 +32,19 @@ describe('hangingSwing', () => {
     }
   })
 
-  it('se mueve de verdad: recorre casi toda su amplitud en unos segundos', () => {
-    // Es lo que la máquina no hacía: quedarse quieta. Un vaivén demasiado corto
-    // (o parado) no arregla nada aunque el código lo llame balanceo.
+  it('really moves: it covers almost all its amplitude in a few seconds', () => {
+    // It is what the machine did not do: staying still. A swing that is too short
+    // (or stopped) fixes nothing even if the code calls it a sway.
     for (const phase of PHASES) {
       const zs = sample(phase, 4).map((tilt) => tilt.z)
-      const recorrido = Math.max(...zs) - Math.min(...zs)
-      expect(recorrido).toBeGreaterThan(SWING_AMPLITUDE * 1.8)
+      const travel = Math.max(...zs) - Math.min(...zs)
+      expect(travel).toBeGreaterThan(SWING_AMPLITUDE * 1.8)
     }
   })
 
-  it('no da tirones entre fotogramas', () => {
-    // A 60 fps el salto de un fotograma al siguiente tiene que ser
-    // imperceptible: un vaivén a saltos se lee como un fallo, no como inercia.
+  it('does not jerk between frames', () => {
+    // At 60 fps the jump from one frame to the next has to be
+    // imperceptible: a swing in jumps reads as a bug, not as inertia.
     for (const phase of PHASES) {
       const tilts = sample(phase, 5)
       tilts.slice(1).forEach((tilt, index) => {
@@ -55,30 +55,30 @@ describe('hangingSwing', () => {
     }
   })
 
-  it('no mueve todos los palos a la vez', () => {
-    // Trece palos con la misma receta y el mismo reloj se moverían como un
-    // bloque, que es peor que no moverse: se ve mecánico.
-    const separados = PHASES.slice(1).filter((phase) => {
-      const propio = sample(phase, 6).map((tilt) => tilt.z)
-      const otro = sample(PHASES[0], 6).map((tilt) => tilt.z)
-      const mayorDiferencia = Math.max(
-        ...propio.map((z, index) => Math.abs(z - otro[index])),
+  it('does not move all the sticks at once', () => {
+    // Thirteen sticks with the same recipe and the same clock would move as one
+    // block, which is worse than not moving: it looks mechanical.
+    const apart = PHASES.slice(1).filter((phase) => {
+      const own = sample(phase, 6).map((tilt) => tilt.z)
+      const other = sample(PHASES[0], 6).map((tilt) => tilt.z)
+      const largestDifference = Math.max(
+        ...own.map((z, index) => Math.abs(z - other[index])),
       )
-      return mayorDiferencia > SWING_AMPLITUDE
+      return largestDifference > SWING_AMPLITUDE
     })
-    expect(separados).toEqual(PHASES.slice(1))
+    expect(apart).toEqual(PHASES.slice(1))
   })
 
-  it('describe una elipse, no una línea', () => {
-    // Los dos ejes van a ritmos distintos, así que el palo no repite siempre el
-    // mismo trazo: en unos instantes se inclina hacia el mismo lado en ambos
-    // ejes y en otros hacia lados contrarios.
-    const signos = sample(0.4, 20).map((tilt) => Math.sign(tilt.x * tilt.z))
-    expect(signos).toContain(1)
-    expect(signos).toContain(-1)
+  it('describes an ellipse, not a line', () => {
+    // The two axes go at different paces, so the stick does not always repeat the
+    // same stroke: at some instants it tilts towards the same side on both
+    // axes and at others towards opposite sides.
+    const signs = sample(0.4, 20).map((tilt) => Math.sign(tilt.x * tilt.z))
+    expect(signs).toContain(1)
+    expect(signs).toContain(-1)
   })
 
-  it('es puro: mismo instante y misma fase, misma inclinación', () => {
+  it('is pure: same instant and same phase, same tilt', () => {
     expect(hangingSwing(3.5, 0.42)).toEqual(hangingSwing(3.5, 0.42))
   })
 })

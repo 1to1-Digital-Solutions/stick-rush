@@ -19,7 +19,7 @@ import {
 import { useGame } from '../../lib/gameStore'
 import { hoopFallSpeed } from '../../lib/hoopHeight'
 import { buildStickLayout } from '../../lib/stickLayout'
-import { paloTapaElMenu } from '../../lib/xrLayout'
+import { stickCoversMenu } from '../../lib/xrLayout'
 import {
   BulbGlass,
   BulbSocket,
@@ -37,9 +37,9 @@ type Point = [number, number, number]
 const UP = new Vector3(0, 1, 0)
 
 /**
- * Barra recta entre dos puntos cualesquiera. Es la pieza con la que se monta
- * toda la estructura: los aros (por tramos), los montantes, las diagonales de
- * la celosía y las riostras de los postes.
+ * Straight bar between any two points. It is the part the whole structure is
+ * built with: the rings (in segments), the uprights, the diagonals of
+ * the truss and the braces of the posts.
  */
 function Strut({
   from,
@@ -52,7 +52,7 @@ function Strut({
   to: Point
   radius: number
   color: string
-  /** Familia de instancias, que es lo que decide el material. Por defecto, la celosía. */
+  /** Family of instances, which is what decides the material. By default, the truss. */
   Piece?: typeof TrussTube
 }) {
   const { position, quaternion, scale } = useMemo(() => {
@@ -61,13 +61,13 @@ function Strut({
     const direction = b.clone().sub(a)
     return {
       position: a.clone().add(b).multiplyScalar(0.5),
-      // El cilindro nace vertical; se gira hasta apuntar de `from` a `to`.
+      // The cylinder is born vertical; it is turned until it points from `from` to `to`.
       quaternion: new Quaternion().setFromUnitVectors(
         UP,
         direction.clone().normalize(),
       ),
-      // La geometría instanciada es unitaria (1 m de alto, 1 de diámetro), así que la escala
-      // son directamente las medidas del tubo. El grosor va en X y Z, el largo en Y.
+      // The instanced geometry is unit-sized (1 m tall, 1 in diameter), so the scale
+      // is directly the measurements of the tube. The thickness goes in X and Z, the length in Y.
       scale: new Vector3(radius * 2, direction.length(), radius * 2),
     }
   }, [from, to, radius])
@@ -77,39 +77,39 @@ function Strut({
   )
 }
 
-/** Tramos del aro principal, a rayas alternas como el toldo de una caseta. */
+/** Segments of the main hoop, in alternating stripes like the awning of a fair stall. */
 const ARC_SEGMENTS = 24
-/** Montantes verticales que unen el aro principal con el superior. */
+/** Vertical uprights that join the main hoop to the upper ring. */
 const TRUSS_POSTS = 9
 const TUBE_RADIUS = 0.032
 /**
- * Separación entre el aro de los palos y el aro superior de la celosía.
+ * Gap between the hoop of the sticks and the upper ring of the truss.
  *
- * Es lo único que crece cuando la máquina «se ve baja»: el aro de los palos no se puede
- * subir —lo manda la estatura de quien juega, porque de él cuelga lo que hay que coger— pero
- * la celosía de encima sí, y es la que le da el porte. Reportado con el visor puesto: «hacer
- * que la máquina sea un pelín más alta».
+ * It is the only thing that grows when the machine «looks low»: the hoop of the sticks cannot be
+ * raised —the height of whoever plays decides it, because what has to be caught hangs from it— but
+ * the truss above it can, and that is what gives it its bearing. Reported with the headset on: «make
+ * the machine a tiny bit taller».
  */
 const TRUSS_RISE = 0.34
 
-/** Sube un punto del aro una altura dada. */
+/** Raises a point of the hoop by a given height. */
 function raise([x, y, z]: Point, dy: number): Point {
   return [x, y + dy, z]
 }
 
 /**
- * La máquina: un aro semicircular horizontal del que cuelgan los palos, montado
- * sobre una celosía y sostenido por dos postes arriostrados. El jugador se pone
- * en el centro.
+ * The machine: a horizontal semicircular hoop the sticks hang from, mounted
+ * on a truss and held up by two braced posts. The player stands
+ * in the centre.
  *
- * La estructura es deliberadamente redundante —doble aro, montantes, diagonales
- * en zigzag y tirantes en los postes— porque con un solo tubo la máquina parecía
- * que se fuera a venir abajo. Es la misma lógica que una viga de celosía real:
- * lo que da sensación de rigidez son las diagonales.
+ * The structure is deliberately redundant —double ring, uprights, zigzag
+ * diagonals and stays on the posts— because with a single tube the machine looked
+ * as if it were about to come down. It is the same logic as a real truss beam:
+ * what gives the feeling of stiffness is the diagonals.
  */
 export function StickMachine() {
-  // Lo que cuelga es lo del modo: los palos y la velocidad del nivel en
-  // Niveles, y una tanda nueva por semilla en la partida sin fin.
+  // What hangs is what the mode says: the sticks and the speed of the level in
+  // Levels, and a new round per seed in the endless run.
   const {
     activeStickCount: stickCount,
     activeDifficulty: difficulty,
@@ -120,31 +120,31 @@ export function StickMachine() {
     catchStick,
     missStick,
   } = useGame()
-  // Corregida para la altura del aro: acomodarlo al jugador no puede cambiar
-  // cuánto dura la caída (ver `hoopHeight.ts`).
+  // Corrected for the height of the hoop: fitting it to the player cannot change
+  // how long the fall lasts (see `hoopHeight.ts`).
   const speed = hoopFallSpeed(DIFFICULTY_SPEEDS[difficulty], hoopHeight)
-  // Fuera de la partida los palos se quedan colgando, a la vista, mientras el
-  // jugador elige opciones. Meciéndose: es lo único que se mueve hasta que cae
-  // el primero, y sin ello la máquina parece congelada.
-  // También con la pregunta de salir en pantalla: un palo que siguiera cayendo se perdería
-  // mientras se decide, y eso es un punto que cuesta pensárselo.
+  // Outside the run the sticks stay hanging, in sight, while the
+  // player chooses options. Swaying: it is the only thing that moves until the
+  // first one falls, and without it the machine looks frozen.
+  // Also with the exit question on screen: a stick that kept falling would be lost
+  // while deciding, and that is a point that thinking it over costs.
   const paused = gameState !== 'playing' || prompt !== null
   const reducedMotion = useReducedMotion()
-  // En el menú del visor la columna queda detrás de los palos de ese lado: se atenúan mientras
-  // se elige (`paloTapaElMenu`). Sin visor el menú va en la web o delante, y no se toca nada.
-  const enElMenuDelVisor = useXR((state) => state.mode) != null && gameState === 'menu'
+  // In the headset's menu the column sits behind the sticks on that side: they are dimmed while
+  // choosing (`stickCoversMenu`). Without a headset the menu goes on the web or in front, and nothing is touched.
+  const inHeadsetMenu = useXR((state) => state.mode) != null && gameState === 'menu'
 
-  // Con el ratón quieto, lo que hay debajo se vuelve a mirar en cada fotograma.
+  // With the mouse still, what is underneath is looked at again on every frame.
   //
-  // R3F solo lanza su rayo cuando llega un evento de puntero, y aquí lo que se mueve son los
-  // palos: se mecen unos píxeles colgados y luego caen. Con el ratón parado junto al borde de uno
-  // —nadie lo mueve durante la cuenta atrás—, que el palo estuviera o no debajo dependía de en
-  // qué punto del vaivén pilló al último movimiento, y si no estaba, el cursor ya no se encendía
-  // aunque el palo volviera a pasar por debajo. `events.update()` repite el último evento de
-  // puntero contra la escena de ahora, y de ahí salen los `pointerover` y `pointerout` de siempre.
+  // R3F only casts its ray when a pointer event arrives, and here what moves is the
+  // sticks: they sway a few pixels while hanging and then fall. With the mouse stopped next to the edge of one
+  // —nobody moves it during the countdown—, whether the stick was underneath or not depended on
+  // which point of the swing the last movement caught it at, and if it was not, the cursor no longer lit up
+  // even if the stick passed underneath again. `events.update()` repeats the last pointer
+  // event against the scene as it is now, and from there come the usual `pointerover` and `pointerout`.
   //
-  // Solo desde la cuenta atrás hasta el final (en el menú y al acabar no hay nada que coger) y
-  // solo en pantalla: con el visor se coge con la mano, y ahí no hay ratón que repasar.
+  // Only from the countdown to the end (in the menu and when it is over there is nothing to catch) and
+  // only on screen: with the headset you catch with the hand, and there is no mouse to go over there.
   const events = useThree((state) => state.events)
   const gl = useThree((state) => state.gl)
   useFrame(() => {
@@ -158,9 +158,9 @@ export function StickMachine() {
     assetUrl(WOOD_TEXTURES.roughnessMap),
   ])
 
-  // El grano corre a lo largo del palo, que es mucho más largo que ancho. Se
-  // ajusta en el render del padre para que los materiales de los palos, que se
-  // crean después, ya nazcan con la textura configurada.
+  // The grain runs along the stick, which is much longer than it is wide. It is
+  // set in the parent's render so that the materials of the sticks, which are
+  // created afterwards, are already born with the texture configured.
   useMemo(() => {
     for (const texture of [normalMap, roughnessMap]) {
       texture.wrapS = RepeatWrapping
@@ -169,8 +169,8 @@ export function StickMachine() {
     }
   }, [normalMap, roughnessMap])
 
-  // Tramos de los dos aros. El de abajo lleva las rayas y los palos; el de
-  // arriba cierra la celosía.
+  // Segments of the two rings. The lower one carries the stripes and the sticks; the
+  // upper one closes the truss.
   const arcs = useMemo(() => {
     const lower: { key: number; from: Point; to: Point; color: string }[] = []
     const upper: { key: number; from: Point; to: Point }[] = []
@@ -188,7 +188,7 @@ export function StickMachine() {
     return { lower, upper }
   }, [hoopHeight])
 
-  // Celosía: montantes verticales y diagonales en zigzag entre ellos.
+  // Truss: vertical uprights and zigzag diagonals between them.
   const truss = useMemo(() => {
     const posts: { key: number; from: Point; to: Point }[] = []
     const braces: { key: number; from: Point; to: Point }[] = []
@@ -197,7 +197,7 @@ export function StickMachine() {
       posts.push({ key: i, from: base, to: raise(base, TRUSS_RISE) })
       if (i < TRUSS_POSTS - 1) {
         const next = machinePoint((i + 1) / (TRUSS_POSTS - 1), hoopHeight)
-        // Alterna el sentido de la diagonal para formar el zigzag.
+        // Alternates the direction of the diagonal to form the zigzag.
         braces.push(
           i % 2 === 0
             ? { key: i, from: base, to: raise(next, TRUSS_RISE) }
@@ -208,7 +208,7 @@ export function StickMachine() {
     return { posts, braces }
   }, [hoopHeight])
 
-  // Bombillas sobre el aro superior, cada una con su casquillo.
+  // Bulbs on the upper ring, each with its socket.
   const bulbs = useMemo(
     () =>
       Array.from({ length: TRUSS_POSTS - 1 }, (_, index) => {
@@ -222,19 +222,19 @@ export function StickMachine() {
     [hoopHeight],
   )
 
-  // Anclajes y retardos escalonados. Se recalculan en cada tanda (su semilla),
-  // cuando cambia el número de palos y cuando el aro cambia de altura —lo que
-  // solo pasa en el menú, con los palos colgando quietos.
+  // Anchors and staggered delays. They are recomputed on every round (its seed),
+  // when the number of sticks changes and when the hoop changes height —which
+  // only happens in the menu, with the sticks hanging still.
   const sticks = useMemo(
     () => buildStickLayout(stickCount, stickSeed, hoopHeight),
     [stickCount, stickSeed, hoopHeight],
   )
 
-  // Postes de los extremos, arriostrados hacia fuera como los de un escenario.
+  // Posts at the ends, braced outwards like those of a stage.
   //
-  // El pie se abre hacia fuera y hacia atrás en vez de caer a plomo: con el aro
-  // al alcance del brazo, unos postes verticales quedarían pegados a los
-  // hombros del jugador y le cerrarían el paso.
+  // The foot opens outwards and backwards instead of dropping plumb: with the hoop
+  // within arm's reach, vertical posts would end up stuck to the
+  // player's shoulders and would block their way.
   const legs = useMemo(() => {
     return [0, 1].map((side) => {
       const top = raise(machinePoint(side, hoopHeight), TRUSS_RISE)
@@ -251,9 +251,9 @@ export function StickMachine() {
     })
   }, [hoopHeight])
 
-  // El recuento EXACTO de lo que va a colgar de cada familia. Sale de lo que se pinta —y no
-  // de un número escrito a mano— porque depende de la altura del aro: pasarse por abajo hace
-  // que drei deje de pintar las que sobran sin decir nada, y la máquina saldría a trozos.
+  // The EXACT count of what is going to hang from each family. It comes from what is painted —and not
+  // from a number written by hand— because it depends on the height of the hoop: falling short makes
+  // drei stop painting the surplus ones without saying anything, and the machine would come out in bits.
   const limits = useMemo<MachinePieceCounts>(
     () => ({
       matte: arcs.lower.length,
@@ -266,7 +266,7 @@ export function StickMachine() {
 
   return (
     <MachinePieces limits={limits}>
-      {/* Aro de los palos, a rayas */}
+      {/* Hoop of the sticks, striped */}
       {arcs.lower.map((segment) => (
         <Strut
           key={`low-${segment.key}`}
@@ -278,7 +278,7 @@ export function StickMachine() {
         />
       ))}
 
-      {/* Aro superior y celosía */}
+      {/* Upper ring and truss */}
       {arcs.upper.map((segment) => (
         <Strut
           key={`up-${segment.key}`}
@@ -307,7 +307,7 @@ export function StickMachine() {
         />
       ))}
 
-      {/* Bombillas */}
+      {/* Bulbs */}
       {bulbs.map((bulb) => (
         <group key={`bulb-${bulb.key}`}>
           <BulbSocket position={bulb.socket} />
@@ -315,7 +315,7 @@ export function StickMachine() {
         </group>
       ))}
 
-      {/* Ganchos: cada palo cuelga de una anilla sujeta al aro. */}
+      {/* Hooks: each stick hangs from a ring fastened to the hoop. */}
       {sticks.map((stick) => (
         <mesh
           key={`hook-${stick.key}`}
@@ -335,7 +335,7 @@ export function StickMachine() {
         </mesh>
       ))}
 
-      {/* Postes con base y tirante */}
+      {/* Posts with base and stay */}
       {legs.map((leg) => (
         <group key={`leg-${leg.key}`}>
           <Strut
@@ -383,7 +383,7 @@ export function StickMachine() {
           swingPhase={stick.swingPhase}
           swaying={!reducedMotion}
           paused={paused}
-          atenuado={enElMenuDelVisor && paloTapaElMenu(stick.anchor)}
+          dimmed={inHeadsetMenu && stickCoversMenu(stick.anchor)}
           onCatch={catchStick}
           onMiss={missStick}
         />

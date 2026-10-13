@@ -3,20 +3,20 @@ import { ENDLESS_STREAK_KEY, HIGH_SCORE_KEYS } from '@/lib/highScore'
 import { openGame, startGame, waitForGameOver } from './helpers'
 
 /**
- * Práctica sin fin.
+ * Endless practice.
  *
- * Los palos se crean de golpe con la partida, así que «sin fin» funciona por
- * tandas: al resolverse la que cuelga, la máquina se recarga con otra y la
- * partida sigue hasta que el jugador la termina. Lo que se guarda no son los
- * puntos —crecen sin tope— sino la racha más larga.
+ * The sticks are created all at once with the run, so «sin fin» works by
+ * rounds: when the one hanging is resolved, the machine reloads with another and the
+ * run goes on until the player ends it. What is saved is not the
+ * points —they grow with no cap— but the longest streak.
  */
 
-test.describe('Práctica sin fin', () => {
+test.describe('Endless practice', () => {
   test.beforeEach(async ({ page }) => {
     await openGame(page)
   })
 
-  test('la duración solo se elige en práctica, y por defecto es una tanda', async ({
+  test('the length is only chosen in practice, and by default it is one round', async ({
     page,
   }) => {
     const section = page.getByRole('region', { name: 'Length' })
@@ -33,11 +33,11 @@ test.describe('Práctica sin fin', () => {
     await expect(section).toBeHidden()
   })
 
-  test('al vaciar la tanda la máquina se recarga en vez de acabar, y termina el jugador', async ({
+  test('on emptying the round the machine reloads instead of ending, and the player ends it', async ({
     page,
   }) => {
-    // Con la caída más rápida los cinco palos se estrellan en segundos: ahí una
-    // tanda normal habría terminado, y esta sigue con palos nuevos.
+    // With the fastest fall the five sticks crash in seconds: there a
+    // normal round would have ended, and this one goes on with new sticks.
     await startGame(page, { sticks: 5, difficulty: 'Impossible', mode: 'Practice', endless: true })
 
     const status = page.getByRole('status')
@@ -50,11 +50,11 @@ test.describe('Práctica sin fin', () => {
     const dialog = page.getByRole('dialog')
     await expect(dialog).toContainText('Game over!')
     await expect(dialog).toContainText('endless')
-    // Sin techo no hay «de N posibles» que enseñar.
+    // With no ceiling there is no «de N posibles» to show.
     await expect(dialog).not.toContainText(/of [\d,]+ possible/)
   })
 
-  test('lo que se guarda es la racha, y el menú la enseña como tal', async ({ page }) => {
+  test('what is saved is the streak, and the menu shows it as such', async ({ page }) => {
     await page.addInitScript(
       ([streakKey, pointsKey]) => {
         window.localStorage.setItem(streakKey, '7')
@@ -68,7 +68,7 @@ test.describe('Práctica sin fin', () => {
 
     await page.getByRole('button', { name: /^Endless/ }).click()
 
-    // La marca de sin fin es la suya: la de la práctica por tandas no se le presta.
+    // The endless best is its own: the one of the practice by rounds is not lent to it.
     await expect(page.getByText(/^Best endless streak/)).toContainText('×7')
     await expect(page.getByText(/^Best score/)).toHaveCount(0)
   })

@@ -1,11 +1,12 @@
 /**
- * La partida de Stick Rush en Godot contra las reglas del `gameStore` de la web: las fases y la
- * cuenta atrás, los puntos y la racha, las vidas del desafío, los niveles con sus estrellas, la
- * partida sin fin por tandas, el récord, la altura del aro, la lección que se aprende atrapando y el
- * contrato del reto con el salón (entrar jugando con su semilla y contar cada partida una sola vez),
- * con las hazañas estrenadas en el resultado, que es lo que va en el JSON de `report_result`.
+ * The Stick Rush run in Godot against the rules of the web's `gameStore`: the phases and the
+ * countdown, the points and the streak, the lives of the challenge, the levels with their stars,
+ * the endless run by rounds, the record, the hoop height, the lesson that is learnt by catching and
+ * the contract of the challenge with the hall (entering already playing with its seed and reporting
+ * each run only once), with the feats first earned in the result, which is what goes in the JSON of
+ * `report_result`.
  *
- * Corre dentro del motor, con los tests de dominio: guarda en el guardado del kit.
+ * It runs inside the engine, with the domain tests: it saves in the kit's save.
  */
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -18,50 +19,50 @@ import { getUnlockedLevel } from '@/lib/progress'
 import { stickPoints } from '@/lib/scoring'
 import { deriveSeed, type GameResult } from '@/lib/seed'
 import { gameStorage } from '@/lib/storage'
-import { formatoDeCifra } from '@/lib/textos'
+import { formatFigure } from '@/lib/textos'
 import { getDuelTally } from '@/lib/duelTally'
-import { HAZANAS, HAZANAS_KEY, leerHazanas, type ResultadoConHazanas } from '@/lib/feats'
-import { PLAZO_DEL_PASO, tutorialSeen } from '@/lib/tutorial'
+import { FEATS, FEATS_KEY, readFeats, type ResultWithFeats } from '@/lib/feats'
+import { STEP_DEADLINE, tutorialSeen } from '@/lib/tutorial'
 
 import type { Goal } from '@/lib/goal'
 
-import { COUNTDOWN_SECONDS, MODO_DEL_RETO, Partida, acotarPalos, type OpcionesDeLaPartida } from './run'
-import { SONIDO_DEL_LISTON, SOUNDS, sonidosDesde, type Pistas } from './sound'
+import { COUNTDOWN_SECONDS, CHALLENGE_MODE, Run, clampStickCount, type RunOptions } from './run'
+import { THRESHOLD_SOUND, SOUNDS, soundsBetween, type Cues } from './sound'
 
 /**
- * Una partida con **la práctica** elegida, que es lo que juegan casi todos estos tests: ahí se
- * eligen los palos y la velocidad. El menú abre en el reto (lo comprueba el primero).
+ * A run with **practice** chosen, which is what almost all these tests play: that is where the
+ * sticks and the speed are chosen. The menu opens on the challenge (the first one checks it).
  */
-function enPractica(opciones?: OpcionesDeLaPartida): Partida {
-  const p = new Partida(opciones)
+function inPractice(options?: RunOptions): Run {
+  const p = new Run(options)
   p.setGameMode('practice')
   return p
 }
 
-/** Una partida con la cuenta atrás ya pasada. */
-function jugando(p: Partida, opciones?: { tutorial?: boolean }): Partida {
-  p.startGame(opciones)
+/** A run with the countdown already over. */
+function playing(p: Run, options?: { tutorial?: boolean }): Run {
+  p.startGame(options)
   p.tick(COUNTDOWN_SECONDS)
   return p
 }
 
-/** Resuelve `n` palos: atrapados recién soltados, o perdidos. */
-function resolver(p: Partida, n: number, atrapado = true): void {
+/** Resolves `n` sticks: caught just released, or missed. */
+function resolve(p: Run, n: number, caught = true): void {
   for (let i = 0; i < n; i++) {
-    if (atrapado) p.catchStick(0)
+    if (caught) p.catchStick(0)
     else p.missStick()
   }
 }
 
-describe('la partida de la web, sin React', () => {
+describe('the run of the web, without React', () => {
   beforeEach(() => gameStorage()?.clear())
 
-  it('empieza en el menú con el reto elegido: jugar sin tocar nada empieza la partida que da medalla', () => {
-    const p = new Partida()
+  it('starts in the menu with the challenge chosen: playing without touching anything starts the run that gives a medal', () => {
+    const p = new Run()
     expect(DEFAULT_GAME_MODE).toBe('challenge')
-    expect([p.gameState, p.gameMode, p.lives, p.cartel('en'), p.faseDelCartel]).toEqual(['menu', 'challenge', CHALLENGE_LIVES, null, null])
+    expect([p.gameState, p.gameMode, p.lives, p.sign('en'), p.signPhase]).toEqual(['menu', 'challenge', CHALLENGE_LIVES, null, null])
     p.startGame()
-    expect([p.gameState, p.gameMode, p.activeDifficulty, p.activeStickCount, p.faseDelCartel]).toEqual([
+    expect([p.gameState, p.gameMode, p.activeDifficulty, p.activeStickCount, p.signPhase]).toEqual([
       'countdown',
       'challenge',
       CHALLENGE_SETUP.difficulty,
@@ -70,20 +71,20 @@ describe('la partida de la web, sin React', () => {
     ])
   })
 
-  it('la práctica queda a un toque: a Fácil, con cinco palos y sin vidas', () => {
-    const p = enPractica()
+  it('practice is one tap away: on Easy, with five sticks and no lives', () => {
+    const p = inPractice()
     expect([p.gameState, p.gameMode, p.difficulty, p.stickCount, p.endless, p.lives]).toEqual(['menu', 'practice', 'easy', MIN_STICKS, false, null])
   })
 
-  it('los palos se quedan entre cinco y trece', () => {
-    expect([acotarPalos(2), acotarPalos(20), acotarPalos(7.4), acotarPalos(Number.NaN)]).toEqual([MIN_STICKS, MAX_STICKS, 7, MIN_STICKS])
+  it('the sticks stay between five and thirteen', () => {
+    expect([clampStickCount(2), clampStickCount(20), clampStickCount(7.4), clampStickCount(Number.NaN)]).toEqual([MIN_STICKS, MAX_STICKS, 7, MIN_STICKS])
   })
 
-  it('jugar cuenta atrás tres segundos, con una semilla nueva; la pregunta de salir la para y para los palos', () => {
-    let semilla = 100
-    const p = enPractica({ semillas: () => ++semilla })
+  it('playing counts down three seconds, with a new seed; the question about leaving stops it and stops the sticks', () => {
+    let seed = 100
+    const p = inPractice({ seeds: () => ++seed })
     p.startGame()
-    expect([p.gameState, p.countdown, p.semilla, p.runId, p.paused]).toEqual(['countdown', 3, 101, 1, true])
+    expect([p.gameState, p.countdown, p.seed, p.runId, p.paused]).toEqual(['countdown', 3, 101, 1, true])
     p.tick(1.2)
     expect(p.countdown).toBe(2)
     p.askToQuit()
@@ -97,60 +98,60 @@ describe('la partida de la web, sin React', () => {
     p.resetGame()
     expect(p.gameState).toBe('menu')
     p.startGame()
-    expect([p.semilla, p.runId]).toEqual([102, 2])
+    expect([p.seed, p.runId]).toEqual([102, 2])
   })
 
-  it('cada palo atrapado puntúa con la dificultad, la racha y los reflejos de la web', () => {
-    const p = enPractica()
+  it('each caught stick scores with the difficulty, the streak and the reflexes of the web', () => {
+    const p = inPractice()
     p.setDifficulty('hard')
-    jugando(p)
+    playing(p)
     p.catchStick(0.2)
     p.catchStick(0.9)
     p.missStick()
     p.catchStick(0)
-    const esperado =
+    const expected =
       stickPoints({ difficulty: 'hard', streak: 1, fallProgress: 0.2 }) +
       stickPoints({ difficulty: 'hard', streak: 2, fallProgress: 0.9 }) +
       stickPoints({ difficulty: 'hard', streak: 1, fallProgress: 0 })
-    expect([p.score, p.resolved, p.misses, p.streak, p.bestStreak, p.points]).toEqual([3, 4, 1, 1, 2, esperado])
+    expect([p.score, p.resolved, p.misses, p.streak, p.bestStreak, p.points]).toEqual([3, 4, 1, 1, 2, expected])
   })
 
-  it('la práctica acaba con el último palo, se guarda el récord y se le cuenta al salón una vez', () => {
-    const contados: GameResult[] = []
-    const p = enPractica({ alTerminar: (r) => contados.push(r) })
-    jugando(p)
-    resolver(p, 4)
+  it('practice ends with the last stick, the record is saved and the hall is told once', () => {
+    const reported: GameResult[] = []
+    const p = inPractice({ onFinish: (r) => reported.push(r) })
+    playing(p)
+    resolve(p, 4)
     expect(p.gameState).toBe('playing')
-    resolver(p, 1, false)
+    resolve(p, 1, false)
     expect([p.gameState, p.outcome, p.isRecord]).toEqual(['finished', 'cleared', true])
     expect(getBestPoints('practice')).toBe(p.points)
     p.tick(1)
     p.tick(1)
-    expect(contados).toEqual([{ mode: 'practice', points: p.points, challenge: false }])
-    // Otra igual no bate la marca: la iguala.
-    const otra = enPractica()
-    jugando(otra)
-    resolver(otra, 4)
-    resolver(otra, 1, false)
-    expect(otra.isRecord).toBe(false)
+    expect(reported).toEqual([{ mode: 'practice', points: p.points, challenge: false }])
+    // Another identical one does not beat the best: it equals it.
+    const other = inPractice()
+    playing(other)
+    resolve(other, 4)
+    resolve(other, 1, false)
+    expect(other.isRecord).toBe(false)
   })
 
-  it('el desafío va fijo, con tres vidas: la tercera que se escapa lo acaba', () => {
-    const p = enPractica()
+  it('the challenge is fixed, with three lives: the third one that gets away ends it', () => {
+    const p = inPractice()
     p.setGameMode('challenge')
     p.setDifficulty('impossible')
     p.setStickCount(5)
-    jugando(p)
+    playing(p)
     expect([p.activeDifficulty, p.activeStickCount, p.lives]).toEqual([CHALLENGE_SETUP.difficulty, CHALLENGE_SETUP.stickCount, CHALLENGE_LIVES])
-    resolver(p, 2, false)
+    resolve(p, 2, false)
     expect([p.lives, p.gameState]).toEqual([1, 'playing'])
-    resolver(p, 1, false)
+    resolve(p, 1, false)
     expect([p.lives, p.gameState, p.outcome]).toEqual([0, 'finished', 'failed'])
   })
 
-  it('el modo solo cambia entre partidas', () => {
-    const p = enPractica()
-    jugando(p)
+  it('the mode only changes between runs', () => {
+    const p = inPractice()
+    playing(p)
     p.setGameMode('challenge')
     expect(p.gameMode).toBe('practice')
     p.resetGame()
@@ -158,21 +159,21 @@ describe('la partida de la web, sin React', () => {
     expect(p.gameMode).toBe('levels')
   })
 
-  it('los niveles juegan lo del nivel, dan estrellas y abren el siguiente', () => {
-    const p = enPractica()
+  it('the levels play what the level says, give stars and open the next one', () => {
+    const p = inPractice()
     p.setGameMode('levels')
     expect(p.activeLevel).toBe(getUnlockedLevel())
-    jugando(p)
-    const nivel = levelSpec(1)
-    expect([p.activeDifficulty, p.activeStickCount]).toEqual([nivel.difficulty, LEVEL_STICK_STEPS[0]])
-    resolver(p, nivel.stickCount)
+    playing(p)
+    const level = levelSpec(1)
+    expect([p.activeDifficulty, p.activeStickCount]).toEqual([level.difficulty, LEVEL_STICK_STEPS[0]])
+    resolve(p, level.stickCount)
     expect(p.levelResult).toEqual({ stars: 3, passed: true, unlocked: 2 })
     expect(p.isRecord).toBe(false)
     p.tick(0.1)
     expect(getUnlockedLevel()).toBe(2)
-    // Durante el resumen el nivel sigue siendo el jugado, aunque ya esté abierto el siguiente.
+    // During the summary the level is still the one played, even though the next one is already open.
     expect(p.activeLevel).toBe(1)
-    // Sin elegir, el más alto abierto; lo elegido se recorta a lo abierto.
+    // Without choosing, the highest open one; what is chosen is clamped to what is open.
     p.resetGame()
     expect(p.activeLevel).toBe(2)
     expect(p.levelStars[0]).toBe(3)
@@ -182,23 +183,23 @@ describe('la partida de la web, sin React', () => {
     expect(p.activeLevel).toBe(1)
   })
 
-  it('sin fin, la máquina se recarga con otra semilla y la cierra quien juega; se guarda la racha', () => {
-    const p = enPractica({ semillas: () => 7 })
+  it('endless, the machine reloads with another seed and whoever plays closes it; the streak is saved', () => {
+    const p = inPractice({ seeds: () => 7 })
     p.setEndless(true)
-    jugando(p)
-    const primera = p.stickSeed
-    expect(primera).toBe(deriveSeed(7, 0))
-    resolver(p, 5)
+    playing(p)
+    const first = p.stickSeed
+    expect(first).toBe(deriveSeed(7, 0))
+    resolve(p, 5)
     expect([p.wave, p.waveScore, p.waveResolved, p.score, p.gameState]).toEqual([1, 0, 0, 5, 'playing'])
     expect(p.stickSeed).toBe(deriveSeed(7, 1))
-    resolver(p, 3)
+    resolve(p, 3)
     p.endRun()
     expect([p.gameState, p.outcome, p.isRecord]).toEqual(['finished', 'cleared', true])
     expect(getBestEndlessStreak()).toBe(8)
   })
 
-  it('el aro sube y baja por pasos, con topes, y se guarda', () => {
-    const p = enPractica()
+  it('the hoop goes up and down in steps, with limits, and is saved', () => {
+    const p = inPractice()
     for (let i = 0; i < 10; i++) p.adjustHoop(1)
     expect(p.hoopAdjustment).toBeCloseTo(HOOP_ADJUST_RANGE)
     expect(getHoopAdjustment()).toBeCloseTo(HOOP_ADJUST_RANGE)
@@ -206,13 +207,13 @@ describe('la partida de la web, sin React', () => {
     expect(p.hoopAdjustment).toBeCloseTo(HOOP_ADJUST_RANGE - HOOP_ADJUST_STEP)
     p.setPlayerEyeHeight(1.5)
     expect(p.hoopHeight).toBeCloseTo(1.5 + HOOP_RISE_ABOVE_EYES + HOOP_ADJUST_RANGE - HOOP_ADJUST_STEP)
-    expect(enPractica().hoopAdjustment).toBeCloseTo(HOOP_ADJUST_RANGE - HOOP_ADJUST_STEP)
+    expect(inPractice().hoopAdjustment).toBeCloseTo(HOOP_ADJUST_RANGE - HOOP_ADJUST_STEP)
   })
 
-  it('con el visor y sin haberla visto, la partida enseña; se aprende atrapando y se anota vista', () => {
-    const p = enPractica()
+  it('with the headset and without having seen it, the run teaches; it is learnt by catching and is marked as seen', () => {
+    const p = inPractice()
     p.setImmersive(true)
-    jugando(p)
+    playing(p)
     expect([p.teaching, p.tutorialStep]).toEqual([true, 'grab'])
     p.catchStick(0)
     expect(p.tutorialStep).toBe('around')
@@ -220,211 +221,211 @@ describe('la partida de la web, sin React', () => {
     p.tick(0.01)
     expect(p.tutorialStep).toBe(null)
     expect(tutorialSeen()).toBe(true)
-    // Vista, la siguiente partida ya no enseña.
+    // Once seen, the next run no longer teaches.
     p.resetGame()
-    jugando(p)
+    playing(p)
     expect(p.teaching).toBe(false)
   })
 
-  it('cada paso tiene su plazo, que solo corre jugando; siguiente lo pasa y saltar la da por vista', () => {
-    const p = enPractica()
-    jugando(p, { tutorial: true })
+  it('each step has its deadline, which only runs while playing; next passes it and skipping counts it as seen', () => {
+    const p = inPractice()
+    playing(p, { tutorial: true })
     p.askToQuit()
-    p.tick(PLAZO_DEL_PASO.grab + 1)
+    p.tick(STEP_DEADLINE.grab + 1)
     expect(p.tutorialStep).toBe('grab')
     p.keepPlaying()
-    p.tick(PLAZO_DEL_PASO.grab / 2)
-    p.tick(PLAZO_DEL_PASO.grab / 2 + 0.01)
+    p.tick(STEP_DEADLINE.grab / 2)
+    p.tick(STEP_DEADLINE.grab / 2 + 0.01)
     expect(p.tutorialStep).toBe('around')
     p.nextTutorialStep()
     expect(p.tutorialStep).toBe(null)
     p.resetGame()
-    jugando(p, { tutorial: true })
+    playing(p, { tutorial: true })
     p.finishTutorial()
     expect([p.teaching, p.tutorialSeen, tutorialSeen()]).toEqual([false, true, true])
   })
 
-  it('el reto del salón entra jugando el desafío con su semilla, y otra partida ya no es el reto', () => {
-    const contados: GameResult[] = []
-    const p = enPractica({ reto: { seed: 4242 }, alTerminar: (r) => contados.push(r), semillas: () => 1 })
-    expect([p.gameState, p.gameMode, p.enReto, p.semilla, p.countdown]).toEqual(['countdown', MODO_DEL_RETO, true, 4242, 3])
+  it('the hall challenge enters already playing the challenge mode with its seed, and another run is no longer the challenge', () => {
+    const reported: GameResult[] = []
+    const p = inPractice({ challenge: { seed: 4242 }, onFinish: (r) => reported.push(r), seeds: () => 1 })
+    expect([p.gameState, p.gameMode, p.inChallenge, p.seed, p.countdown]).toEqual(['countdown', CHALLENGE_MODE, true, 4242, 3])
     p.tick(COUNTDOWN_SECONDS)
-    resolver(p, CHALLENGE_LIVES, false)
-    expect(contados).toEqual([{ mode: 'challenge', points: 0, challenge: true }])
+    resolve(p, CHALLENGE_LIVES, false)
+    expect(reported).toEqual([{ mode: 'challenge', points: 0, challenge: true }])
     p.startGame()
-    expect([p.enReto, p.semilla]).toEqual([false, 1])
+    expect([p.inChallenge, p.seed]).toEqual([false, 1])
   })
 })
 
-describe('la partida a dos, sin React', () => {
+describe('the two-player run, without React', () => {
   beforeEach(() => gameStorage()?.clear())
 
-  /** Una partida a dos en el desafío, con las semillas que se pidan una detrás de otra. */
-  function aDos(semillas: number[], alTerminar?: (r: GameResult) => void): Partida {
+  /** A two-player run in the challenge, with the seeds that are asked for one after another. */
+  function twoPlayers(seeds: number[], onFinish?: (r: GameResult) => void): Run {
     let i = 0
-    const p = enPractica({ semillas: () => semillas[i++ % semillas.length], alTerminar })
+    const p = inPractice({ seeds: () => seeds[i++ % seeds.length], onFinish })
     p.setGameMode('challenge')
     p.setPlayers(2)
     return p
   }
 
-  it('solo, o fuera del desafío, no hay partida a dos', () => {
-    const p = enPractica()
+  it('alone, or outside the challenge, there is no two-player run', () => {
+    const p = inPractice()
     p.setGameMode('challenge')
-    jugando(p)
+    playing(p)
     expect([p.duel, p.player]).toEqual([null, null])
-    const q = enPractica()
+    const q = inPractice()
     q.setPlayers(2)
-    jugando(q)
+    playing(q)
     expect(q.duel).toBeNull()
   })
 
-  it('los dos juegan la misma semilla, y al acabar el primero el mando es del segundo', () => {
-    const p = aDos([111, 222, 333])
-    jugando(p)
-    expect([p.player, p.semilla, p.stickSeed]).toEqual([0, 111, deriveSeed(111, 0)])
-    resolver(p, 5)
-    resolver(p, CHALLENGE_LIVES, false)
+  it('both play the same seed, and when the first one ends the controller is the second one\'s', () => {
+    const p = twoPlayers([111, 222, 333])
+    playing(p)
+    expect([p.player, p.seed, p.stickSeed]).toEqual([0, 111, deriveSeed(111, 0)])
+    resolve(p, 5)
+    resolve(p, CHALLENGE_LIVES, false)
     expect(p.gameState).toBe('finished')
     expect(p.duel?.points).toEqual([p.points, null])
-    expect([p.player, p.celebra, p.isRecord]).toEqual([1, false, false])
-    jugando(p)
-    expect([p.player, p.semilla]).toEqual([1, 111])
+    expect([p.player, p.celebrates, p.isRecord]).toEqual([1, false, false])
+    playing(p)
+    expect([p.player, p.seed]).toEqual([1, 111])
   })
 
-  it('gana quien más saca, se apunta a la pareja, se celebra, al salón una vez y sin récord', () => {
-    const contados: GameResult[] = []
-    const p = aDos([111, 222], (r) => contados.push(r))
-    jugando(p)
-    resolver(p, 5)
-    resolver(p, CHALLENGE_LIVES, false)
-    const primero = p.points
-    jugando(p)
-    resolver(p, 1)
-    resolver(p, CHALLENGE_LIVES, false)
+  it('whoever scores more wins, it is recorded for the pair, it is celebrated, told to the hall once and with no record', () => {
+    const reported: GameResult[] = []
+    const p = twoPlayers([111, 222], (r) => reported.push(r))
+    playing(p)
+    resolve(p, 5)
+    resolve(p, CHALLENGE_LIVES, false)
+    const first = p.points
+    playing(p)
+    resolve(p, 1)
+    resolve(p, CHALLENGE_LIVES, false)
     p.tick(1)
-    expect(p.duel?.points).toEqual([primero, p.points])
-    expect([p.celebra, p.isRecord, getBestPoints('challenge')]).toEqual([true, false, 0])
+    expect(p.duel?.points).toEqual([first, p.points])
+    expect([p.celebrates, p.isRecord, getBestPoints('challenge')]).toEqual([true, false, 0])
     expect(getDuelTally()).toEqual({ wins: [1, 0], ties: 0 })
-    expect(contados).toEqual([{ mode: 'duel', points: primero, challenge: false }])
-    // Otra vez: una partida nueva, con otra semilla.
-    jugando(p)
-    expect([p.player, p.semilla, p.duel?.points]).toEqual([0, 222, [null, null]])
+    expect(reported).toEqual([{ mode: 'duel', points: first, challenge: false }])
+    // Again: a new run, with another seed.
+    playing(p)
+    expect([p.player, p.seed, p.duel?.points]).toEqual([0, 222, [null, null]])
   })
 
-  it('con los mismos puntos es empate; volver al menú deja la partida', () => {
-    const p = aDos([7])
-    jugando(p)
-    resolver(p, CHALLENGE_LIVES, false)
-    jugando(p)
-    resolver(p, CHALLENGE_LIVES, false)
+  it('with the same points it is a tie; going back to the menu leaves the run', () => {
+    const p = twoPlayers([7])
+    playing(p)
+    resolve(p, CHALLENGE_LIVES, false)
+    playing(p)
+    resolve(p, CHALLENGE_LIVES, false)
     expect(getDuelTally()).toEqual({ wins: [0, 0], ties: 1 })
     p.resetGame()
     expect(p.duel).toBeNull()
   })
 })
 
-describe('las hazañas, como en la web', () => {
+describe('the feats, as on the web', () => {
   beforeEach(() => gameStorage()?.clear())
 
-  /** Lo que la escena le pasa al salón: el resultado tal cual, en JSON (`contarAlSalon`). */
-  function alSalon(): { json: string[]; partida: (opciones?: ConstructorParameters<typeof Partida>[0]) => Partida } {
+  /** What the scene passes to the hall: the result as it is, in JSON (`reportToHall`). */
+  function toTheHall(): { json: string[]; newRun: (options?: ConstructorParameters<typeof Run>[0]) => Run } {
     const json: string[] = []
     return {
       json,
-      partida: (opciones = {}) => enPractica({ ...opciones, alTerminar: (r: ResultadoConHazanas) => json.push(JSON.stringify(r)) }),
+      newRun: (options = {}) => inPractice({ ...options, onFinish: (r: ResultWithFeats) => json.push(JSON.stringify(r)) }),
     }
   }
 
-  it('los trece sin escaparse ninguno: SR_CLEAN_SWEEP en el JSON, guardada y solo la primera vez', () => {
-    const { json, partida } = alSalon()
-    const p = partida()
+  it('all thirteen with none getting away: SR_CLEAN_SWEEP in the JSON, saved and only the first time', () => {
+    const { json, newRun } = toTheHall()
+    const p = newRun()
     p.setStickCount(MAX_STICKS)
-    jugando(p)
-    resolver(p, MAX_STICKS)
-    expect(JSON.parse(json[0])).toEqual({ mode: 'practice', points: p.points, challenge: false, feats: [HAZANAS.tandaLimpia] })
-    expect(leerHazanas()).toEqual([HAZANAS.tandaLimpia])
-    expect(gameStorage()?.getItem(HAZANAS_KEY)).not.toBeNull()
-    jugando(p)
-    resolver(p, MAX_STICKS)
+    playing(p)
+    resolve(p, MAX_STICKS)
+    expect(JSON.parse(json[0])).toEqual({ mode: 'practice', points: p.points, challenge: false, feats: [FEATS.cleanSweep] })
+    expect(readFeats()).toEqual([FEATS.cleanSweep])
+    expect(gameStorage()?.getItem(FEATS_KEY)).not.toBeNull()
+    playing(p)
+    resolve(p, MAX_STICKS)
     expect(JSON.parse(json[1])).not.toHaveProperty('feats')
   })
 
-  it('doce de trece no: el JSON es el de siempre', () => {
-    const { json, partida } = alSalon()
-    const p = partida()
+  it('twelve out of thirteen does not: the JSON is the usual one', () => {
+    const { json, newRun } = toTheHall()
+    const p = newRun()
     p.setStickCount(MAX_STICKS)
-    jugando(p)
-    resolver(p, MAX_STICKS - 1)
-    resolver(p, 1, false)
+    playing(p)
+    resolve(p, MAX_STICKS - 1)
+    resolve(p, 1, false)
     expect(JSON.parse(json[0])).toEqual({ mode: 'practice', points: p.points, challenge: false })
   })
 
-  it('con el aro al mínimo, una tanda limpia: SR_LOW_HOOP; un paso por encima, no', () => {
-    const { json, partida } = alSalon()
-    const p = partida()
+  it('with the hoop at the minimum, a clean round: SR_LOW_HOOP; one step above, no', () => {
+    const { json, newRun } = toTheHall()
+    const p = newRun()
     p.adjustHoop(-100)
     p.adjustHoop(1)
-    jugando(p)
-    resolver(p, MIN_STICKS)
+    playing(p)
+    resolve(p, MIN_STICKS)
     expect(JSON.parse(json[0])).not.toHaveProperty('feats')
     p.adjustHoop(-1)
     expect(p.hoopAdjustment).toBe(-HOOP_ADJUST_RANGE)
-    jugando(p)
-    resolver(p, MIN_STICKS)
-    expect(JSON.parse(json[1]).feats).toEqual([HAZANAS.aroAlMinimo])
+    playing(p)
+    resolve(p, MIN_STICKS)
+    expect(JSON.parse(json[1]).feats).toEqual([FEATS.lowHoop])
   })
 
-  it('un palo de espaldas: SR_BEHIND_BACK; dejar la partida a medias la pierde', () => {
-    const { json, partida } = alSalon()
-    const p = partida()
-    jugando(p)
+  it('a stick behind the back: SR_BEHIND_BACK; leaving the run halfway loses it', () => {
+    const { json, newRun } = toTheHall()
+    const p = newRun()
+    playing(p)
     p.catchStick(0.5, true)
     p.resetGame()
-    jugando(p)
-    resolver(p, MIN_STICKS, false)
+    playing(p)
+    resolve(p, MIN_STICKS, false)
     expect(JSON.parse(json[0])).not.toHaveProperty('feats')
-    jugando(p)
+    playing(p)
     p.catchStick(0.5, true)
-    resolver(p, MIN_STICKS - 1, false)
-    expect(JSON.parse(json[1]).feats).toEqual([HAZANAS.deEspaldas])
+    resolve(p, MIN_STICKS - 1, false)
+    expect(JSON.parse(json[1]).feats).toEqual([FEATS.behindBack])
   })
 
-  it('sin fin, la tanda limpia cuenta al recargar y se da al terminar; la que se escapa, no', () => {
-    const { json, partida } = alSalon()
-    const p = partida()
+  it('endless, the clean round counts on reloading and is given on ending; the one that gets away does not', () => {
+    const { json, newRun } = toTheHall()
+    const p = newRun()
     p.setEndless(true)
     p.setStickCount(MAX_STICKS)
-    jugando(p)
-    resolver(p, 1, false)
-    resolver(p, MAX_STICKS - 1)
+    playing(p)
+    resolve(p, 1, false)
+    resolve(p, MAX_STICKS - 1)
     expect(p.wave).toBe(1)
-    resolver(p, MAX_STICKS)
+    resolve(p, MAX_STICKS)
     expect(p.wave).toBe(2)
-    resolver(p, 1)
+    resolve(p, 1)
     p.endRun()
-    expect(JSON.parse(json[0]).feats).toEqual([HAZANAS.tandaLimpia])
+    expect(JSON.parse(json[0]).feats).toEqual([FEATS.cleanSweep])
   })
 
-  it('en el desafío, sin perder una vida; y a dos, lo del primer turno se cuenta al acabar el segundo', () => {
-    const { json, partida } = alSalon()
-    const p = partida()
+  it('in the challenge, without losing a life; and with two players, the first turn\'s is counted when the second ends', () => {
+    const { json, newRun } = toTheHall()
+    const p = newRun()
     p.setGameMode('challenge')
     p.setPlayers(2)
-    jugando(p)
-    resolver(p, CHALLENGE_SETUP.stickCount)
+    playing(p)
+    resolve(p, CHALLENGE_SETUP.stickCount)
     expect(json).toEqual([])
-    jugando(p)
-    resolver(p, CHALLENGE_LIVES, false)
-    expect(JSON.parse(json[0])).toMatchObject({ mode: 'duel', feats: [HAZANAS.tandaLimpia] })
+    playing(p)
+    resolve(p, CHALLENGE_LIVES, false)
+    expect(JSON.parse(json[0])).toMatchObject({ mode: 'duel', feats: [FEATS.cleanSweep] })
   })
 })
 
-describe('el cartel del objetivo, como en la web', () => {
+describe('the goal sign, as on the web', () => {
   beforeEach(() => gameStorage()?.clear())
 
-  /** Los listones de Stick Rush en el salón. */
-  const OBJETIVO: Goal = {
+  /** The thresholds of Stick Rush in the hall. */
+  const GOAL: Goal = {
     medals: { bronze: 1900, silver: 3750, gold: 5200 },
     better: 'higher',
     unit: 'points in challenge',
@@ -432,116 +433,116 @@ describe('el cartel del objetivo, como en la web', () => {
     mode: 'challenge',
   }
 
-  it('sin salón: la misión y el récord guardado; jugando, lo que se lleva, las vidas y los palos; al acabar, lo hecho', () => {
+  it('without a hall: the mission and the saved record; playing, the score so far, the lives and the sticks; at the end, what was achieved', () => {
     gameStorage()!.setItem('stick-rush:best-points:challenge', '3100')
-    const p = new Partida()
+    const p = new Run()
     p.startGame()
-    expect(p.cartel('en')).toMatchObject({ title: 'Catch 13 sticks. Drop three and out', detail: 'Your record 3,100' })
-    expect(p.cartel('es')).toMatchObject({ title: 'Atrapa 13 palos. Tres al suelo y fuera', detail: 'Tu récord 3100' })
+    expect(p.sign('en')).toMatchObject({ title: 'Catch 13 sticks. Drop three and out', detail: 'Your record 3,100' })
+    expect(p.sign('es')).toMatchObject({ title: 'Atrapa 13 palos. Tres al suelo y fuera', detail: 'Tu récord 3100' })
     p.tick(COUNTDOWN_SECONDS)
-    // Hasta que se resuelve el primer palo sigue la misión: da tiempo a leerla.
-    expect(p.faseDelCartel).toBe('before')
+    // Until the first stick is resolved the mission stays: there is time to read it.
+    expect(p.signPhase).toBe('before')
     p.missStick()
-    expect(p.faseDelCartel).toBe('playing')
-    expect(p.cartel('es')).toMatchObject({ title: 'Tu récord 3100 · llevas 0', detail: 'Vidas ♥♥♡ · Palos 12' })
-    expect(p.medalla).toBeNull()
-    resolver(p, 2, false)
-    expect([p.gameState, p.faseDelCartel]).toEqual(['finished', 'end'])
-    expect(p.cartel('en')).toMatchObject({ title: 'You scored 0', detail: '3,100 short of your record' })
+    expect(p.signPhase).toBe('playing')
+    expect(p.sign('es')).toMatchObject({ title: 'Tu récord 3100 · llevas 0', detail: 'Vidas ♥♥♡ · Palos 12' })
+    expect(p.medal).toBeNull()
+    resolve(p, 2, false)
+    expect([p.gameState, p.signPhase]).toEqual(['finished', 'end'])
+    expect(p.sign('en')).toMatchObject({ title: 'You scored 0', detail: '3,100 short of your record' })
   })
 
-  it('con los listones del salón: los tres listones, la medalla que sube y lo que faltó', () => {
-    const p = new Partida({ objetivo: { ...OBJETIVO, medals: { bronze: 1, silver: 400, gold: 100000 } } })
-    jugando(p)
-    expect(p.cartel('es')).toMatchObject({ title: 'Atrapa 13 palos. Tres al suelo y fuera', detail: 'Bronce 1 · Plata 400 · Oro 100.000' })
+  it('with the hall\'s thresholds: the three thresholds, the medal that goes up and what was missing', () => {
+    const p = new Run({ goal: { ...GOAL, medals: { bronze: 1, silver: 400, gold: 100000 } } })
+    playing(p)
+    expect(p.sign('es')).toMatchObject({ title: 'Atrapa 13 palos. Tres al suelo y fuera', detail: 'Bronce 1 · Plata 400 · Oro 100.000' })
     p.catchStick(0.5)
-    expect(p.medalla).toBe('bronze')
-    resolver(p, 3)
+    expect(p.medal).toBe('bronze')
+    resolve(p, 3)
     expect(p.points).toBeGreaterThanOrEqual(400)
-    expect(p.medalla).toBe('silver')
-    resolver(p, 3, false)
-    // El cartel escribe las cifras como la chapa del salón: en español, cuatro cifras van sin punto.
+    expect(p.medal).toBe('silver')
+    resolve(p, 3, false)
+    // The sign writes the figures like the hall's badge: in Spanish, four figures go without a dot.
     expect(p.points).toBeLessThan(10000)
-    expect(p.cartel('es')).toMatchObject({ title: `Plata · ${p.points} points in challenge`, detail: `Te han faltado ${formatoDeCifra(100000 - p.points, 'es')} para el oro` })
+    expect(p.sign('es')).toMatchObject({ title: `Plata · ${p.points} points in challenge`, detail: `Te han faltado ${formatFigure(100000 - p.points, 'es')} para el oro` })
   })
 
-  it('dos partidas seguidas: la segunda compara con el récord nuevo de la primera, que el salón no ha vuelto a pasar', () => {
-    const contados: unknown[] = []
-    const p = new Partida({ objetivo: OBJETIVO, alTerminar: (resultado) => contados.push(resultado) })
-    jugando(p)
-    // La primera vez, el bronce en palos y el oro.
-    expect(p.cartel('es')?.detail).toBe('Bronce ≈ 13 palos · Oro 5200')
-    resolver(p, 3)
-    resolver(p, 3, false)
-    const hechos = p.points
-    expect(hechos).toBeGreaterThan(0)
-    expect(p.cartel('en')?.footer).toContain('First record!')
-    expect(contados).toHaveLength(1)
-    // El metadato `goal` sigue sin récord, pero la partida ya lo sabe: lo pide al empezar.
-    jugando(p)
-    expect(p.cartel('es')?.detail).toBe('Bronce 1900 · Plata 3750 · Oro 5200')
-    resolver(p, 3, false)
-    expect(p.cartel('en')?.footer).toContain(`Your best ${formatoDeCifra(hechos, 'en')}`)
+  it('two runs in a row: the second one compares with the new record of the first, which the hall has not passed again', () => {
+    const reported: unknown[] = []
+    const p = new Run({ goal: GOAL, onFinish: (result) => reported.push(result) })
+    playing(p)
+    // The first time, the bronze in sticks and the gold.
+    expect(p.sign('es')?.detail).toBe('Bronce ≈ 13 palos · Oro 5200')
+    resolve(p, 3)
+    resolve(p, 3, false)
+    const achieved = p.points
+    expect(achieved).toBeGreaterThan(0)
+    expect(p.sign('en')?.footer).toContain('First record!')
+    expect(reported).toHaveLength(1)
+    // The `goal` metadata still has no record, but the run already knows it: it asks for it on starting.
+    playing(p)
+    expect(p.sign('es')?.detail).toBe('Bronce 1900 · Plata 3750 · Oro 5200')
+    resolve(p, 3, false)
+    expect(p.sign('en')?.footer).toContain(`Your best ${formatFigure(achieved, 'en')}`)
   })
 
-  it('fuera del reto: en el salón dice que no cuenta mientras se juega; suelto, no se cuelga', () => {
-    const enElSalon = enPractica({ objetivo: OBJETIVO })
-    jugando(enElSalon)
-    expect(enElSalon.cartel('es')).toMatchObject({ title: 'Práctica · no cuenta para medalla', subdued: true })
-    expect([enElSalon.faseDelCartel, enElSalon.medalla]).toEqual([null, null])
-    resolver(enElSalon, MIN_STICKS)
-    expect([enElSalon.gameState, enElSalon.cartel('es')]).toEqual(['finished', null])
+  it('outside the challenge: in the hall it says it does not count while playing; standalone, it is not hung', () => {
+    const inTheHall = inPractice({ goal: GOAL })
+    playing(inTheHall)
+    expect(inTheHall.sign('es')).toMatchObject({ title: 'Práctica · no cuenta para medalla', subdued: true })
+    expect([inTheHall.signPhase, inTheHall.medal]).toEqual([null, null])
+    resolve(inTheHall, MIN_STICKS)
+    expect([inTheHall.gameState, inTheHall.sign('es')]).toEqual(['finished', null])
 
-    const suelto = enPractica()
-    jugando(suelto)
-    expect(suelto.cartel('en')).toBeNull()
+    const standalone = inPractice()
+    playing(standalone)
+    expect(standalone.sign('en')).toBeNull()
 
-    const aDos = new Partida({ objetivo: OBJETIVO })
-    aDos.setPlayers(2)
-    jugando(aDos)
-    expect(aDos.cartel('en')?.title).toBe('Duel · does not count for a medal')
+    const twoPlayers = new Run({ goal: GOAL })
+    twoPlayers.setPlayers(2)
+    playing(twoPlayers)
+    expect(twoPlayers.sign('en')?.title).toBe('Duel · does not count for a medal')
   })
 
-  it('el listón cruzado suena con su medalla, además del atrape, y una sola vez', () => {
-    expect(SOUNDS).toEqual(expect.arrayContaining(Object.values(SONIDO_DEL_LISTON)))
-    const base: Pistas = { score: 0, missed: 0, countdown: 0, gameState: 'playing', streak: 0, isRecord: false, levelPassed: null, lives: 3, medalla: null }
-    const conBronce: Pistas = { ...base, score: 1, streak: 1, medalla: 'bronze' }
-    expect(sonidosDesde(base, conBronce)).toEqual(['catch-1', 'medal-bronze'])
-    expect(sonidosDesde(conBronce, { ...conBronce, score: 2, streak: 2 })).toEqual(['catch-2'])
-    expect(sonidosDesde(conBronce, { ...conBronce, score: 2, streak: 2, medalla: 'gold' })).toEqual(['catch-2', 'medal-gold'])
-    // Volver al menú deja la medalla en nada: no suena, y sin medalla que mirar tampoco.
-    expect(sonidosDesde(conBronce, { ...base, gameState: 'menu' })).toEqual([])
-    expect(sonidosDesde({ ...base, medalla: undefined }, { ...base, medalla: undefined })).toEqual([])
+  it('the crossed threshold sounds with its medal, besides the catch, and only once', () => {
+    expect(SOUNDS).toEqual(expect.arrayContaining(Object.values(THRESHOLD_SOUND)))
+    const base: Cues = { score: 0, missed: 0, countdown: 0, gameState: 'playing', streak: 0, isRecord: false, levelPassed: null, lives: 3, medal: null }
+    const withBronze: Cues = { ...base, score: 1, streak: 1, medal: 'bronze' }
+    expect(soundsBetween(base, withBronze)).toEqual(['catch-1', 'medal-bronze'])
+    expect(soundsBetween(withBronze, { ...withBronze, score: 2, streak: 2 })).toEqual(['catch-2'])
+    expect(soundsBetween(withBronze, { ...withBronze, score: 2, streak: 2, medal: 'gold' })).toEqual(['catch-2', 'medal-gold'])
+    // Going back to the menu leaves the medal at nothing: it does not sound, and with no medal to look at neither.
+    expect(soundsBetween(withBronze, { ...base, gameState: 'menu' })).toEqual([])
+    expect(soundsBetween({ ...base, medal: undefined }, { ...base, medal: undefined })).toEqual([])
   })
 })
 
-describe('el calentamiento, como en el store de la web', () => {
+describe('the warm-up, as in the web\'s store', () => {
   beforeEach(() => gameStorage()?.clear())
 
-  it('tres palos al suelo con la lección delante dejan el reto intacto, y al cerrarla empieza de cero', () => {
-    const p = new Partida()
+  it('three sticks on the floor with the lesson in front leave the challenge intact, and on closing it it starts from scratch', () => {
+    const p = new Run()
     p.setImmersive(true)
-    jugando(p)
-    expect([p.gameMode, p.calentando]).toEqual(['challenge', true])
-    resolver(p, 3, false)
+    playing(p)
+    expect([p.gameMode, p.warmingUp]).toEqual(['challenge', true])
+    resolve(p, 3, false)
     expect([p.gameState, p.lives]).toEqual(['playing', CHALLENGE_LIVES])
-    expect(p.cartel('es')?.title).toBe('Calentamiento · no cuenta para medalla')
+    expect(p.sign('es')?.title).toBe('Calentamiento · no cuenta para medalla')
 
-    const antes = p.runId
+    const before = p.runId
     p.finishTutorial()
     p.tick(0.01)
-    expect([p.calentando, p.runId, p.gameState, p.resolved, p.lives, p.ahoraCuenta]).toEqual([false, antes + 1, 'countdown', 0, CHALLENGE_LIVES, true])
+    expect([p.warmingUp, p.runId, p.gameState, p.resolved, p.lives, p.nowItCounts]).toEqual([false, before + 1, 'countdown', 0, CHALLENGE_LIVES, true])
     p.tick(COUNTDOWN_SECONDS)
     p.missStick()
-    expect([p.ahoraCuenta, p.lives]).toEqual([false, CHALLENGE_LIVES - 1])
+    expect([p.nowItCounts, p.lives]).toEqual([false, CHALLENGE_LIVES - 1])
   })
 
-  it('nunca en la práctica ni en el reto del salón', () => {
-    const practica = enPractica()
-    practica.setImmersive(true)
-    jugando(practica)
-    expect(practica.calentando).toBe(false)
-    const delReto = new Partida({ reto: { seed: 7 } })
-    expect(delReto.calentando).toBe(false)
+  it('never in practice nor in the hall challenge', () => {
+    const practice = inPractice()
+    practice.setImmersive(true)
+    playing(practice)
+    expect(practice.warmingUp).toBe(false)
+    const fromChallenge = new Run({ challenge: { seed: 7 } })
+    expect(fromChallenge.warmingUp).toBe(false)
   })
 })

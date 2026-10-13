@@ -29,19 +29,19 @@ import {
   writeHoopAdjustment,
 } from './hoopHeight'
 
-/** Alcance cómodo del brazo desde el hombro, el mismo de `xrInteraction.test.ts`. */
+/** Comfortable reach of the arm from the shoulder, the same as in `xrInteraction.test.ts`. */
 const ARM_REACH = 0.75
 
 /**
- * Altura de hombro de quien tiene los ojos ahí. Sale de la pareja con la que se
- * diseñó la máquina (1.60 de ojos, 1.45 de hombro), así que un jugador más bajo
- * arrastra su hombro con él.
+ * Shoulder height of whoever has their eyes there. It comes from the pair the machine was
+ * designed with (1.60 for the eyes, 1.45 for the shoulder), so a shorter player
+ * drags their shoulder along.
  */
 function shoulderHeightFor(eyeHeight: number): number {
   return eyeHeight - (REFERENCE_EYE_HEIGHT - PLAYER_SHOULDER_HEIGHT)
 }
 
-/** Lo lejos que le queda al jugador el palo colgado del punto `t` del aro. */
+/** How far from the player the stick hanging from point `t` of the hoop is. */
 function reachTo(t: number, hoopHeight: number, eyeHeight: number): number {
   const [x, y, z] = machinePoint(t, hoopHeight)
   const [px, , pz] = PLAYER_POSITION
@@ -50,9 +50,9 @@ function reachTo(t: number, hoopHeight: number, eyeHeight: number): number {
 }
 
 /**
- * Cuántos metros de su caída pasa el palo del punto `t` dentro del brazo: el tramo de la
- * vertical, entre donde cuelga y donde se da por perdido, que queda a menos de `ARM_REACH`
- * del hombro.
+ * How many metres of its fall the stick of point `t` spends inside the arm: the stretch of the
+ * vertical, between where it hangs and where it is given up for lost, that is less than
+ * `ARM_REACH` from the shoulder.
  */
 function reachableFall(t: number, hoopHeight: number, eyeHeight: number): number {
   const [x, , z] = machinePoint(t, hoopHeight)
@@ -67,15 +67,15 @@ function reachableFall(t: number, hoopHeight: number, eyeHeight: number): number
 }
 
 /**
- * Lo menos que tiene que pasar un palo dentro del brazo, en metros. En Imposible cae a
- * unos 2 m/s: con 40 cm de franja la mano tiene un par de décimas para cerrarse.
+ * The least a stick has to spend inside the arm, in metres. On Impossible it falls at
+ * some 2 m/s: with a 40 cm band the hand has a couple of tenths to close.
  */
 const MIN_REACHABLE_FALL = 0.4
 
 /**
- * Estaturas de prueba: sentado, bajo, de referencia y muy alto, más los dos
- * extremos que se aceptan como persona —que son justo donde el tope absoluto
- * puede entrar a recortar y separar el aro del brazo—.
+ * Test statures: seated, short, the reference one and very tall, plus the two
+ * extremes that are accepted as a person —which are exactly where the absolute cap
+ * can come in to trim and separate the hoop from the arm—.
  */
 const EYE_HEIGHTS = [
   MIN_EYE_HEIGHT,
@@ -86,21 +86,21 @@ const EYE_HEIGHTS = [
   MAX_EYE_HEIGHT,
 ]
 
-describe('altura de ojos que entrega el visor', () => {
-  it('con el espacio referido al suelo vale lo que mide la cabeza', () => {
+describe('eye height the headset delivers', () => {
+  it('with the space referred to the floor it is worth what the head measures', () => {
     expect(headsetEyeHeight(1.72, true)).toBe(1.72)
     expect(headsetEyeHeight(1.1, true)).toBe(1.1)
   })
 
-  it('sin espacio referido al suelo no hay dato que valga', () => {
-    // En un espacio `local` la cabeza nace en el cero: su cota mide desde donde
-    // arrancó la sesión, no desde el suelo, y tomarla por una estatura pondría
-    // el aro a la altura de las rodillas.
+  it('with no space referred to the floor there is no valid data', () => {
+    // In a `local` space the head is born at zero: its height measures from where
+    // the session started, not from the floor, and taking it for a stature would put
+    // the hoop at knee height.
     expect(headsetEyeHeight(1.72, false)).toBeNull()
     expect(headsetEyeHeight(0.02, false)).toBeNull()
   })
 
-  it('descarta lo que no puede ser una persona', () => {
+  it('discards what cannot be a person', () => {
     expect(headsetEyeHeight(0, true)).toBeNull()
     expect(headsetEyeHeight(-1.6, true)).toBeNull()
     expect(headsetEyeHeight(42, true)).toBeNull()
@@ -108,43 +108,43 @@ describe('altura de ojos que entrega el visor', () => {
     expect(headsetEyeHeight(Number.POSITIVE_INFINITY, true)).toBeNull()
   })
 
-  it('el espacio de la sesión se da por bueno si trae suelo', () => {
+  it('the space of the session is taken as good if it brings a floor', () => {
     expect(hasFloorReference(['local-floor', 'hand-tracking'])).toBe(true)
     expect(hasFloorReference(['bounded-floor'])).toBe(true)
   })
 
-  it('un espacio sin suelo se rechaza', () => {
+  it('a space with no floor is rejected', () => {
     expect(hasFloorReference(['local', 'hand-tracking'])).toBe(false)
     expect(hasFloorReference([])).toBe(false)
   })
 
-  it('un navegador que no publica sus prestaciones no impide medir', () => {
-    // `enabledFeatures` es opcional en la especificación, y `local-floor` va
-    // como requerida al abrir la sesión: si no se hubiera concedido, no habría
-    // sesión. Exigir la lista sería renunciar a medir en visores donde el dato
-    // es bueno; y si el espacio no fuera de suelo, la cota nacería junto al cero
-    // y el filtro de estaturas la descartaría igual.
+  it('a browser that does not publish its features does not prevent measuring', () => {
+    // `enabledFeatures` is optional in the specification, and `local-floor` goes
+    // as required when the session opens: had it not been granted, there would be no
+    // session. Demanding the list would be giving up measuring in headsets where the data
+    // is good; and if the space were not a floor one, the height would be born next to zero
+    // and the stature filter would discard it anyway.
     expect(hasFloorReference(undefined)).toBe(true)
     expect(hasFloorReference(null)).toBe(true)
     expect(headsetEyeHeight(0.05, hasFloorReference(undefined))).toBeNull()
   })
 
-  it('acepta los extremos del rango, que son personas reales', () => {
+  it('accepts the extremes of the range, which are real people', () => {
     expect(headsetEyeHeight(MIN_EYE_HEIGHT, true)).toBe(MIN_EYE_HEIGHT)
     expect(headsetEyeHeight(MAX_EYE_HEIGHT, true)).toBe(MAX_EYE_HEIGHT)
   })
 })
 
-describe('altura del aro', () => {
-  it('sin dato del visor deja el aro donde ha estado siempre', () => {
-    // Es lo que hace que el escritorio y una sesión sin suelo se jueguen igual
-    // que antes de que la altura fuera ajustable.
+describe('height of the hoop', () => {
+  it('with no data from the headset it leaves the hoop where it has always been', () => {
+    // It is what makes the desktop and a session with no floor play the same
+    // as before the height was adjustable.
     expect(hoopHeightFor({})).toBeCloseTo(MACHINE_HEIGHT, 6)
     expect(hoopHeightFor({ eyeHeight: null })).toBeCloseTo(MACHINE_HEIGHT, 6)
     expect(hoopHeightFor({ eyeHeight: undefined })).toBeCloseTo(MACHINE_HEIGHT, 6)
   })
 
-  it('sube el aro con quien juega y lo baja con quien está sentado', () => {
+  it('raises the hoop with whoever plays and lowers it with whoever is seated', () => {
     const tall = hoopHeightFor({ eyeHeight: 1.9 })
     const seated = hoopHeightFor({ eyeHeight: 1.1 })
 
@@ -154,15 +154,15 @@ describe('altura del aro', () => {
     expect(tall).toBeGreaterThan(MACHINE_HEIGHT)
   })
 
-  it('una medida absurda no mueve el aro de su sitio', () => {
-    // Un visor dejado sobre la mesa, un espacio mal calibrado o alguien
-    // trasteando: mejor la altura de siempre que uno inalcanzable.
+  it('an absurd measurement does not move the hoop from its place', () => {
+    // A headset left on the table, a badly calibrated space or someone
+    // tinkering: better the usual height than an unreachable one.
     for (const absurd of [0, -3, 50, Number.NaN, Number.POSITIVE_INFINITY]) {
       expect(hoopHeightFor({ eyeHeight: absurd })).toBeCloseTo(MACHINE_HEIGHT, 6)
     }
   })
 
-  it('la corrección manual suma metros sobre lo que dice el visor', () => {
+  it('the manual correction adds metres on top of what the headset says', () => {
     const base = hoopHeightFor({ eyeHeight: 1.5 })
     expect(hoopHeightFor({ eyeHeight: 1.5, adjustment: 0.1 })).toBeCloseTo(
       base + 0.1,
@@ -174,13 +174,13 @@ describe('altura del aro', () => {
     )
   })
 
-  it('la corrección manual no se sale de su rango', () => {
+  it('the manual correction does not leave its range', () => {
     expect(clampHoopAdjustment(5)).toBe(HOOP_ADJUST_RANGE)
     expect(clampHoopAdjustment(-5)).toBe(-HOOP_ADJUST_RANGE)
     expect(clampHoopAdjustment(Number.NaN)).toBe(0)
     expect(clampHoopAdjustment(Number.NEGATIVE_INFINITY)).toBe(0)
 
-    // Y el cálculo la acota aunque le llegue sin acotar.
+    // And the calculation bounds it even if it arrives unbounded.
     expect(hoopHeightFor({ eyeHeight: 1.6, adjustment: 99 })).toBeCloseTo(
       1.6 + HOOP_RISE_ABOVE_EYES + HOOP_ADJUST_RANGE,
       6,
@@ -191,7 +191,7 @@ describe('altura del aro', () => {
     )
   })
 
-  it('nunca deja el aro dentro del suelo ni por las nubes', () => {
+  it('never leaves the hoop inside the floor nor up in the clouds', () => {
     const extremes = [
       { eyeHeight: MIN_EYE_HEIGHT, adjustment: -HOOP_ADJUST_RANGE },
       { eyeHeight: MAX_EYE_HEIGHT, adjustment: HOOP_ADJUST_RANGE },
@@ -203,41 +203,41 @@ describe('altura del aro', () => {
       const height = hoopHeightFor(input)
       expect(height).toBeGreaterThanOrEqual(HOOP_MIN_HEIGHT)
       expect(height).toBeLessThanOrEqual(HOOP_MAX_HEIGHT)
-      // Y con recorrido de caída de sobra: un aro a la altura a la que el palo
-      // ya cuenta como perdido no dejaría jugar ninguna partida.
+      // And with fall travel to spare: a hoop at the height at which the stick
+      // already counts as lost would not let any run be played.
       expect(height).toBeGreaterThan(STICK_MISS_Y + 0.5)
     }
   })
 
-  it('el aro queda por encima de la cabeza a cualquier estatura', () => {
-    // Incluso bajándolo del todo: si cayera por debajo de los ojos, los palos
-    // colgarían delante de la cara en vez de alrededor.
+  it('the hoop ends up above the head at any stature', () => {
+    // Even lowering it all the way: if it fell below the eyes, the sticks
+    // would hang in front of the face instead of around.
     for (const eyeHeight of EYE_HEIGHTS) {
       const height = hoopHeightFor({ eyeHeight, adjustment: -HOOP_ADJUST_RANGE })
       expect(height).toBeGreaterThan(eyeHeight)
     }
   })
 
-  it('cada palo cruza el alcance del brazo al caer, se ponga el aro donde se ponga', () => {
-    // El invariante que hace jugable la máquina. Con el aro medio metro sobre los
-    // ojos, un palo colgado puede quedar por encima de la mano —es lo que se pidió:
-    // que no cuelguen delante de la cara—, así que lo que se exige es que **al
-    // caer** pase un buen trecho dentro del brazo. Si el ajuste pudiera sacarlos,
-    // el menú del visor sería una forma de romper la partida.
+  it('each stick crosses the reach of the arm as it falls, wherever the hoop is put', () => {
+    // The invariant that makes the machine playable. With the hoop half a metre above the
+    // eyes, a hanging stick can end up above the hand —it is what was asked for:
+    // that they do not hang in front of the face—, so what is demanded is that **as it
+    // falls** it spends a good stretch inside the arm. If the adjustment could take them out,
+    // the headset's menu would be a way of breaking the run.
     for (const eyeHeight of EYE_HEIGHTS) {
       for (const adjustment of [-HOOP_ADJUST_RANGE, 0, HOOP_ADJUST_RANGE]) {
         const height = hoopHeightFor({ eyeHeight, adjustment })
         for (let i = 0; i <= 20; i++) {
           expect(
             reachableFall(i / 20, height, eyeHeight),
-            `ojos ${eyeHeight}, ajuste ${adjustment}, palo ${i}/20`,
+            `eyes ${eyeHeight}, adjustment ${adjustment}, stick ${i}/20`,
           ).toBeGreaterThanOrEqual(MIN_REACHABLE_FALL)
         }
       }
     }
   })
 
-  it('y con el aro por defecto, el palo se coge incluso colgado', () => {
+  it('and with the default hoop, the stick is caught even while hanging', () => {
     for (let i = 0; i <= 20; i++) {
       expect(reachTo(i / 20, hoopHeightFor({ eyeHeight: REFERENCE_EYE_HEIGHT }), REFERENCE_EYE_HEIGHT)).toBeLessThanOrEqual(
         ARM_REACH,
@@ -245,27 +245,27 @@ describe('altura del aro', () => {
     }
   })
 
-  it('los palos cuelgan por encima de la cara, no delante', () => {
-    // «La máquina más alta», con el visor: la punta de abajo del palo colgado queda por
-    // encima de los ojos a cualquier estatura.
+  it('the sticks hang above the face, not in front', () => {
+    // «The machine higher», with the headset: the bottom tip of the hanging stick ends up
+    // above the eyes at any stature.
     for (const eyeHeight of EYE_HEIGHTS) {
       const height = hoopHeightFor({ eyeHeight })
       expect(height - STICK_CORD_LENGTH - STICK_LENGTH).toBeGreaterThan(eyeHeight - 0.2)
     }
   })
 
-  it('se mueve en pasos que se notan sin pasarse', () => {
-    // Un paso demasiado fino obliga a machacar el botón; uno demasiado grueso
-    // salta por encima de la altura buena.
+  it('moves in steps that are noticed without overdoing it', () => {
+    // A step that is too fine forces hammering the button; one that is too coarse
+    // jumps over the good height.
     expect(HOOP_ADJUST_STEP).toBeGreaterThanOrEqual(0.02)
     expect(HOOP_ADJUST_STEP).toBeLessThanOrEqual(HOOP_ADJUST_RANGE / 2)
   })
 })
 
-describe('velocidad de caída con el aro movido', () => {
-  it('cada dificultad dura lo mismo esté el aro donde esté', () => {
-    // Sin esto, quien juega de pie tendría más margen de reacción que quien
-    // juega sentado, con la misma dificultad elegida.
+describe('fall speed with the hoop moved', () => {
+  it('each difficulty lasts the same wherever the hoop is', () => {
+    // Without this, whoever plays standing would have more reaction margin than whoever
+    // plays seated, with the same difficulty chosen.
     const reference =
       (MACHINE_HEIGHT - STICK_MISS_Y) / DIFFICULTY_SPEEDS.medium
 
@@ -276,22 +276,22 @@ describe('velocidad de caída con el aro movido', () => {
     }
   })
 
-  it('a la altura de siempre no toca la velocidad', () => {
+  it('at the usual height it does not touch the speed', () => {
     expect(hoopFallSpeed(DIFFICULTY_SPEEDS.hard, MACHINE_HEIGHT)).toBeCloseTo(
       DIFFICULTY_SPEEDS.hard,
       6,
     )
   })
 
-  it('una altura imposible deja la velocidad como estaba', () => {
-    // Antes que devolver 0 (el palo se quedaría colgando para siempre) o un
-    // negativo (subiría), se juega con la velocidad de la dificultad.
+  it('an impossible height leaves the speed as it was', () => {
+    // Rather than returning 0 (the stick would stay hanging forever) or a
+    // negative (it would go up), the game is played with the difficulty's speed.
     expect(hoopFallSpeed(1.2, STICK_MISS_Y)).toBe(1.2)
     expect(hoopFallSpeed(1.2, Number.NaN)).toBe(1.2)
   })
 })
 
-/** Almacenamiento de mentira, con lo justo que usa la altura del aro. */
+/** Fake storage, with just what the height of the hoop uses. */
 function fakeStorage(initial?: string): Storage {
   const values = new Map<string, string>()
   if (initial !== undefined) values.set(HOOP_ADJUST_KEY, initial)
@@ -301,46 +301,46 @@ function fakeStorage(initial?: string): Storage {
   } as unknown as Storage
 }
 
-/** El que tienen los navegadores en modo privado: lanza en vez de fallar. */
+/** The one browsers have in private mode: it throws instead of failing. */
 function blockedStorage(): Storage {
   return {
     getItem: () => {
-      throw new DOMException('bloqueado', 'SecurityError')
+      throw new DOMException('blocked', 'SecurityError')
     },
     setItem: () => {
-      throw new DOMException('cuota agotada', 'QuotaExceededError')
+      throw new DOMException('quota exhausted', 'QuotaExceededError')
     },
   } as unknown as Storage
 }
 
-describe('la corrección se recuerda entre visitas', () => {
-  it('lee lo guardado', () => {
+describe('the correction is remembered between visits', () => {
+  it('reads what was stored', () => {
     expect(readHoopAdjustment(fakeStorage('-0.15'))).toBeCloseTo(-0.15, 6)
     expect(readHoopAdjustment(fakeStorage('0.1'))).toBeCloseTo(0.1, 6)
   })
 
-  it('descarta lo que no es una corrección', () => {
+  it('discards what is not a correction', () => {
     expect(parseHoopAdjustment(null)).toBe(0)
     expect(parseHoopAdjustment('')).toBe(0)
     expect(parseHoopAdjustment('   ')).toBe(0)
-    expect(parseHoopAdjustment('un palmo')).toBe(0)
+    expect(parseHoopAdjustment('a hand span')).toBe(0)
     expect(parseHoopAdjustment('Infinity')).toBe(0)
   })
 
-  it('acota lo guardado a mano desde el navegador', () => {
-    // Editarlo desde las herramientas del navegador no puede colocar el aro
-    // fuera de lo que el propio menú permite.
+  it('bounds what was stored by hand from the browser', () => {
+    // Editing it from the browser's tools cannot place the hoop
+    // outside what the menu itself allows.
     expect(parseHoopAdjustment('99')).toBe(HOOP_ADJUST_RANGE)
     expect(parseHoopAdjustment('-99')).toBe(-HOOP_ADJUST_RANGE)
   })
 
-  it('escribe la corrección en su clave', () => {
+  it('writes the correction under its key', () => {
     const storage = fakeStorage()
     writeHoopAdjustment(storage, -0.1)
     expect(storage.getItem(HOOP_ADJUST_KEY)).toBe('-0.1')
   })
 
-  it('no guarda nada que la lectura fuera a descartar', () => {
+  it('stores nothing the reading would discard', () => {
     const storage = fakeStorage()
     const setItem = vi.spyOn(storage, 'setItem')
 
@@ -350,18 +350,18 @@ describe('la corrección se recuerda entre visitas', () => {
     expect(setItem).not.toHaveBeenCalled()
   })
 
-  it('guarda acotado lo que se pase de rango', () => {
+  it('stores bounded whatever goes out of range', () => {
     const storage = fakeStorage()
     writeHoopAdjustment(storage, 5)
     expect(storage.getItem(HOOP_ADJUST_KEY)).toBe(String(HOOP_ADJUST_RANGE))
   })
 
-  it('sin almacenamiento se juega con el aro donde lo deje el visor', () => {
+  it('with no storage the game is played with the hoop where the headset leaves it', () => {
     expect(readHoopAdjustment(null)).toBe(0)
     expect(() => writeHoopAdjustment(null, 0.1)).not.toThrow()
   })
 
-  it('un almacenamiento bloqueado no rompe la partida', () => {
+  it('a blocked storage does not break the run', () => {
     expect(readHoopAdjustment(blockedStorage())).toBe(0)
     expect(() => writeHoopAdjustment(blockedStorage(), 0.1)).not.toThrow()
   })

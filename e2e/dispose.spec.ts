@@ -2,100 +2,100 @@ import { expect, test, type Page } from '@playwright/test'
 import { openHost } from './support/host'
 
 /**
- * Entrar en la cabina y volver al salón no deja nada en la GPU.
+ * Entering the cabinet and going back to the hall leaves nothing on the GPU.
  *
- * El salón monta y desmonta la escena en cada visita, en el mismo Canvas, y lo que la escena no
- * suelte se queda hasta cerrar la pestaña. El contador de three (`renderer.info.memory`) no lo ve
- * todo: los búferes de las copias de un `<Instances>` no son de ninguna geometría
- * (`disposeInstances.ts`). Así que además se cuentan los búferes y las texturas de WebGL, envolviendo
- * sus `create*` y `delete*`, como el e2e de memoria del salón (`xrcade/e2e/support/medidas.ts`).
+ * The hall mounts and unmounts the scene on every visit, in the same Canvas, and what the scene does
+ * not dispose stays until the tab is closed. three's counter (`renderer.info.memory`) does not see
+ * everything: the buffers of the copies of an `<Instances>` belong to no geometry
+ * (`disposeInstances.ts`). So the WebGL buffers and textures are counted as well, wrapping
+ * their `create*` and `delete*`, like the hall's memory e2e (`xrcade/e2e/support/medidas.ts`).
  *
- * La primera visita deja lo que se guarda a propósito para la siguiente —los modelos del kit en la
- * caché de `useGLTF`, el HDRI en la de `useLoader`, los planos del PMREM del renderizador— y alguna
- * cosa más que se crea una vez. A partir de ahí, **cada visita tiene que dejar lo mismo que la
- * anterior**. Con el suelo proyectado del HDRI sin soltar subía una geometría y tres búferes por
- * visita (`useSoltarMallas`).
+ * The first visit leaves what is kept on purpose for the next one —the kit's models in the
+ * `useGLTF` cache, the HDRI in the `useLoader` one, the planes of the renderer's PMREM— and some
+ * other thing that is created once. From there on, **every visit has to leave the same as the
+ * previous one**. With the HDRI's projected ground not disposed, one geometry and three buffers went up per
+ * visit (`useDisposeMeshes`).
  */
 
 declare global {
   interface Window {
     __THREE_DEVTOOLS__?: EventTarget
-    __renderizador?: { info: { memory: { geometries: number; textures: number } } }
-    __glVivos?: { buffers: number; textures: number }
+    __renderer?: { info: { memory: { geometries: number; textures: number } } }
+    __glLive?: { buffers: number; textures: number }
   }
 }
 
-/** Instala el contador antes de abrir la página. */
-async function instrumentar(page: Page) {
+/** Installs the counter before opening the page. */
+async function instrument(page: Page) {
   await page.addInitScript(() => {
     const devtools = new EventTarget()
     devtools.addEventListener('observe', (event) => {
       const detail = (event as CustomEvent).detail as { isWebGLRenderer?: boolean }
-      if (detail?.isWebGLRenderer === true) window.__renderizador = detail as never
+      if (detail?.isWebGLRenderer === true) window.__renderer = detail as never
     })
     window.__THREE_DEVTOOLS__ = devtools
     const gl = WebGL2RenderingContext.prototype as unknown as Record<string, (...args: unknown[]) => unknown>
-    const vivos = { buffers: 0, textures: 0 }
-    window.__glVivos = vivos
-    const contar = (crear: string, borrar: string, clave: keyof typeof vivos) => {
-      const crea = gl[crear]!
-      const borra = gl[borrar]!
-      gl[crear] = function (this: unknown, ...args: unknown[]) {
-        const hecho = crea.apply(this, args)
-        if (hecho != null) vivos[clave]++
-        return hecho
+    const live = { buffers: 0, textures: 0 }
+    window.__glLive = live
+    const count = (create: string, remove: string, key: keyof typeof live) => {
+      const originalCreate = gl[create]!
+      const originalRemove = gl[remove]!
+      gl[create] = function (this: unknown, ...args: unknown[]) {
+        const made = originalCreate.apply(this, args)
+        if (made != null) live[key]++
+        return made
       }
-      gl[borrar] = function (this: unknown, ...args: unknown[]) {
-        if (args[0] != null) vivos[clave]--
-        return borra.apply(this, args)
+      gl[remove] = function (this: unknown, ...args: unknown[]) {
+        if (args[0] != null) live[key]--
+        return originalRemove.apply(this, args)
       }
     }
-    contar('createBuffer', 'deleteBuffer', 'buffers')
-    contar('createTexture', 'deleteTexture', 'textures')
+    count('createBuffer', 'deleteBuffer', 'buffers')
+    count('createTexture', 'deleteTexture', 'textures')
   })
 }
 
-type Vivo = { geometrias: number; texturas: number; bufferes: number; texturasGL: number }
+type Live = { geometries: number; textures: number; buffers: number; glTextures: number }
 
-function leer(page: Page): Promise<Vivo> {
+function read(page: Page): Promise<Live> {
   return page.evaluate(() => ({
-    geometrias: window.__renderizador!.info.memory.geometries,
-    texturas: window.__renderizador!.info.memory.textures,
-    bufferes: window.__glVivos!.buffers,
-    texturasGL: window.__glVivos!.textures,
+    geometries: window.__renderer!.info.memory.geometries,
+    textures: window.__renderer!.info.memory.textures,
+    buffers: window.__glLive!.buffers,
+    glTextures: window.__glLive!.textures,
   }))
 }
 
-/** Lo que queda cuando deja de cambiar: cuatro lecturas iguales seguidas, cada medio segundo. */
-async function asentado(page: Page): Promise<Vivo> {
-  let anterior = ''
-  let iguales = 0
-  for (let i = 0; i < 90 && iguales < 4; i++) {
+/** What is left when it stops changing: four equal readings in a row, every half second. */
+async function settled(page: Page): Promise<Live> {
+  let previous = ''
+  let equal = 0
+  for (let i = 0; i < 90 && equal < 4; i++) {
     await page.waitForTimeout(500)
-    const ahora = JSON.stringify(await leer(page))
-    iguales = ahora === anterior ? iguales + 1 : 0
-    anterior = ahora
+    const now = JSON.stringify(await read(page))
+    equal = now === previous ? equal + 1 : 0
+    previous = now
   }
-  return leer(page)
+  return read(page)
 }
 
-test('entrar en la cabina y volver al salón no deja búferes ni geometrías', async ({ page }) => {
-  await instrumentar(page)
-  await openHost(page, undefined, { aLaCarta: true })
-  await expect.poll(() => page.evaluate(() => window.__renderizador != null)).toBe(true)
+test('entering the cabinet and going back to the hall leaves no buffers nor geometries', async ({ page }) => {
+  await instrument(page)
+  await openHost(page, undefined, { onDemand: true })
+  await expect.poll(() => page.evaluate(() => window.__renderer != null)).toBe(true)
 
-  const alSalir: Vivo[] = []
-  for (let visita = 1; visita <= 4; visita++) {
-    await page.evaluate(() => window.__stickRushHost.entrarEnLaCabina())
-    const dentro = await asentado(page)
-    expect(dentro.geometrias, 'la escena no llegó a montarse').toBeGreaterThan(10)
-    await page.evaluate(() => window.__stickRushHost.salirDeLaCabina())
-    alSalir.push(await asentado(page))
-    console.log(`[liberar] visita ${visita}: dentro ${JSON.stringify(dentro)}, al salir ${JSON.stringify(alSalir.at(-1))}`)
+  const onLeaving: Live[] = []
+  for (let visit = 1; visit <= 4; visit++) {
+    await page.evaluate(() => window.__stickRushHost.enterCabinet())
+    const inside = await settled(page)
+    expect(inside.geometries, 'the scene never got mounted').toBeGreaterThan(10)
+    await page.evaluate(() => window.__stickRushHost.leaveCabinet())
+    onLeaving.push(await settled(page))
+    console.log(`[dispose] visit ${visit}: inside ${JSON.stringify(inside)}, on leaving ${JSON.stringify(onLeaving.at(-1))}`)
   }
 
-  // La primera visita llena las cachés; desde la segunda, cada una deja lo mismo que la anterior.
-  for (let visita = 2; visita < alSalir.length; visita++) {
-    expect(alSalir[visita], `la visita ${visita + 1} dejó más que la ${visita}`).toEqual(alSalir[visita - 1])
+  // The first visit fills the caches; from the second on, each one leaves the same as the previous one.
+  for (let visit = 2; visit < onLeaving.length; visit++) {
+    expect(onLeaving[visit], `visit ${visit + 1} left more than visit ${visit}`).toEqual(onLeaving[visit - 1])
   }
 })

@@ -1,102 +1,102 @@
 import { pulsesFor, type HandSide, type HandPulse, type HapticEvent } from './hapticFeedback'
 
 /**
- * Vibración de los mandos (haptics de WebXR).
+ * Vibration of the controllers (WebXR haptics).
  *
- * **Lo que vibra es el contacto, y en la mano que toca** (`.claude/rules/xr.md`, «Cada
- * contacto se siente en la mano que toca, y nada más»). En este juego hay un solo contacto:
- * **atrapar un palo**. Se traduce a un `agarre` de las recetas comunes (`tactos.ts`), en la
- * mano que lo ha cogido, y con algo más de fuerza si se ha cogido in extremis, a punto de
- * tocar el suelo: ese es el que se celebra.
+ * **What vibrates is the contact, and in the hand that touches** (`.claude/rules/xr.md`, "Each
+ * contact is felt in the hand that touches, and nothing else"). In this game there is a single
+ * contact: **catching a stick**. It is translated into a `grab` of the common recipes
+ * (`hapticFeedback.ts`), in the hand that caught it, and with a little more strength if it was
+ * caught in extremis, about to touch the ground: that is the one that is celebrated.
  *
- * Y lo que no es contacto no vibra. **El palo que se escapa ya no vibra**: antes daba un
- * golpe largo en los dos mandos, pero ninguna mano lo ha tocado, y el sonido y el palo rojo
- * en el suelo ya lo dicen. Lo que sí se conserva es el toque de un botón del menú
- * (`PRESS_PULSE`): no es un contacto con nada del juego, es la confirmación de que el rayo
- * ha pulsado, y va en la mano que apunta.
+ * And what is not contact does not vibrate. **The stick that gets away no longer vibrates**: it
+ * used to give a long pulse in both controllers, but no hand has touched it, and the sound and the
+ * red stick on the ground already say it. What is kept is the tap of a menu button
+ * (`PRESS_PULSE`): it is not a contact with anything of the game, it is the confirmation that the
+ * ray has pressed, and it goes in the hand that points.
  *
- * No hay nada que descargar: el motor del mando lo expone el propio WebXR en
- * `XRInputSource.gamepad.hapticActuators`, un array de actuadores con `pulse()`.
- * Fuera de una sesión inmersiva —el ratón en escritorio, o una mano desnuda sin
- * mando— no hay actuador y el juego sigue igual, sin vibración.
+ * There is nothing to download: the controller's motor is exposed by WebXR itself in
+ * `XRInputSource.gamepad.hapticActuators`, an array of actuators with `pulse()`.
+ * Outside an immersive session —the mouse on desktop, or a bare hand without a
+ * controller— there is no actuator and the game goes on the same, without vibration.
  */
 
-/** Un golpe de vibración. */
+/** A pulse of vibration. */
 export interface HapticPulse {
-  /** Cuánto aprieta, de 0 (nada) a 1 (todo lo que dé el mando). */
+  /** How hard it presses, from 0 (nothing) to 1 (everything the controller gives). */
   intensity: number
-  /** Cuánto dura, en milisegundos. */
+  /** How long it lasts, in milliseconds. */
   durationMs: number
 }
 
 /**
- * El toque de un botón del menú inmersivo: lo justo para notar que se ha
- * activado.
+ * The tap of a button of the immersive menu: just enough to notice that it has
+ * been activated.
  *
- * Los botones se pulsan **apuntando** con el rayo, así que la mano no toca
- * nada y no hay nada que confirme la pulsación salvo lo que cambie en la
- * escena, que a veces es un panel entero cambiando y a veces un palito que se
- * enciende al otro lado del menú. Discreto a propósito: elegir trece palos son
- * trece pulsaciones seguidas.
+ * The buttons are pressed **by pointing** with the ray, so the hand touches
+ * nothing and there is nothing to confirm the press except whatever changes in
+ * the scene, which is sometimes a whole panel changing and sometimes a little
+ * stick that lights up on the other side of the menu. Discreet on purpose:
+ * choosing thirteen sticks is thirteen presses in a row.
  */
 export const PRESS_PULSE: HapticPulse = { intensity: 0.25, durationMs: 18 }
 
 /**
- * A partir de qué momento de la caída un palo se ha cogido **in extremis**: 0 recién
- * soltado, 1 tocando el suelo (`stickFallProgress`, en tiempo). Es el último quinto del
- * tiempo, que con el palo acelerando es algo más de un tercio del recorrido: el tramo en
- * que se escapa. A CALIBRAR CON EL VISOR.
+ * From what moment of the fall a stick has been caught **in extremis**: 0 just
+ * released, 1 touching the ground (`stickFallProgress`, in time). It is the last fifth of the
+ * time, which with the stick accelerating is a little over a third of the distance: the stretch
+ * in which it gets away. TO BE CALIBRATED WITH THE HEADSET.
  */
 export const IN_EXTREMIS = 0.8
 
 /**
- * Cuánto más fuerte se siente el palo cogido in extremis que uno cualquiera. Multiplica la
- * intensidad del `agarre` común (0,25 → 0,45): se tiene que notar distinto sin llegar a ser
- * un golpe. A CALIBRAR CON EL VISOR.
+ * How much stronger the stick caught in extremis feels than any other one. It multiplies the
+ * intensity of the common `grab` (0.25 → 0.45): it has to feel different without becoming
+ * a strike. TO BE CALIBRATED WITH THE HEADSET.
  */
 export const IN_EXTREMIS_BOOST = 1.8
 
-/** El contacto de atrapar un palo, dicho desde la mano que lo coge. */
-export function tactoDelAtrape(mano: HandSide): HapticEvent {
-  return { type: 'grab', hand: mano }
+/** The contact of catching a stick, told from the hand that catches it. */
+export function catchHaptic(hand: HandSide): HapticEvent {
+  return { type: 'grab', hand }
 }
 
 /**
- * Los pulsos de atrapar un palo con esa mano, cogido en ese punto de la caída.
+ * The pulses of catching a stick with that hand, caught at that point of the fall.
  *
- * @param fallProgress cuánto había caído el palo al cogerlo, de 0 a 1.
+ * @param fallProgress how far the stick had fallen when it was caught, from 0 to 1.
  */
-export function pulsosDelAtrape(mano: HandSide, fallProgress: number): HandPulse[] {
-  const pulsos = pulsesFor(tactoDelAtrape(mano))
-  if (!(fallProgress >= IN_EXTREMIS)) return pulsos
-  return pulsos.map((p) => ({ ...p, intensity: Math.min(1, p.intensity * IN_EXTREMIS_BOOST) }))
+export function catchPulses(hand: HandSide, fallProgress: number): HandPulse[] {
+  const pulses = pulsesFor(catchHaptic(hand))
+  if (!(fallProgress >= IN_EXTREMIS)) return pulses
+  return pulses.map((p) => ({ ...p, intensity: Math.min(1, p.intensity * IN_EXTREMIS_BOOST) }))
 }
 
 /**
- * La mano que ha producido un evento de puntero, si es de un mando o de una mano de XR.
+ * The hand that produced a pointer event, if it is from a controller or from an XR hand.
  *
- * El ratón no tiene mano, y una fuente sin lado (`'none'`) tampoco: a ninguna de las dos se
- * le puede cobrar un contacto.
+ * The mouse has no hand, and neither does a source without a side (`'none'`): neither of the
+ * two can be charged with a contact.
  */
-export function manoDelEvento(event: unknown): HandSide | null {
+export function eventHand(event: unknown): HandSide | null {
   const handedness = inputSourceOf(event)?.handedness
   return handedness === 'left' || handedness === 'right' ? handedness : null
 }
 
-/** Lo único que se le pide al mando: dar un golpe. */
+/** The only thing asked of the controller: to give a pulse. */
 interface HapticActuator {
   pulse(value: number, duration: number): Promise<boolean>
 }
 
 /**
- * El motor de vibración de un mando, si lo hay.
+ * The vibration motor of a controller, if there is one.
  *
- * El ratón y las manos desnudas no llevan mando, y un mando sin motor (o un
- * navegador que no implemente `pulse`) no vibra: los tres casos son jugar sin
- * vibración, no un fallo.
+ * The mouse and bare hands carry no controller, and a controller without a motor
+ * (or a browser that does not implement `pulse`) does not vibrate: the three cases
+ * are playing without vibration, not a failure.
  *
- * Se usa el primer actuador: los mandos de visor declaran uno, y cuando hay
- * varios el primero es el del cuerpo del mando.
+ * The first actuator is used: headset controllers declare one, and when there
+ * are several the first is the one of the controller's body.
  */
 function actuatorOf(inputSource: XRInputSource | undefined): HapticActuator | undefined {
   const actuator = inputSource?.gamepad?.hapticActuators?.[0]
@@ -104,11 +104,11 @@ function actuatorOf(inputSource: XRInputSource | undefined): HapticActuator | un
 }
 
 /**
- * El mando que ha disparado este evento, si lo hay.
+ * The controller that fired this event, if there is one.
  *
- * El evento llega de @pmndrs/pointer-events y trae en `pointerState` el estado
- * del puntero que lo produjo: para un mando de XR es su `XRControllerState`,
- * con el `inputSource` de WebXR dentro.
+ * The event arrives from @pmndrs/pointer-events and brings in `pointerState` the
+ * state of the pointer that produced it: for an XR controller it is its
+ * `XRControllerState`, with the WebXR `inputSource` inside.
  */
 function inputSourceOf(event: unknown): XRInputSource | undefined {
   if (typeof event !== 'object' || event == null) return undefined
@@ -117,26 +117,26 @@ function inputSourceOf(event: unknown): XRInputSource | undefined {
 }
 
 /**
- * ¿Lo devuelto por el mando es una promesa a la que agarrarse?
+ * Is what the controller returned a promise to hold on to?
  *
- * La especificación dice que `pulse()` devuelve una, pero eso es una promesa
- * del navegador, no una garantía: encadenarle el `catch` a ciegas convertiría
- * un mando que devuelva otra cosa en un error en plena captura.
+ * The specification says that `pulse()` returns one, but that is a promise
+ * of the browser, not a guarantee: chaining the `catch` to it blindly would turn
+ * a controller that returns something else into an error in the middle of a catch.
  */
 function isPromise(value: unknown): value is Promise<unknown> {
   return typeof (value as Promise<unknown> | undefined)?.catch === 'function'
 }
 
 /**
- * Le pide el golpe a un motor de vibración concreto.
+ * Asks a specific vibration motor for the pulse.
  *
- * Que el mando se niegue a vibrar es un desenlace previsto —el visor ha perdido
- * el foco, la sesión se está cerrando— y significa jugar sin vibración: el
- * destello y el sonido siguen ahí. Se recogen sus dos formas de negarse, porque
- * llegan por caminos distintos: la promesa rechazada (sin el `catch` sería un
- * rechazo suelto por cada palo atrapado) y la excepción en el acto, que subiría
- * por el manejador del agarre y sí se llevaría por delante lo que quede de la
- * captura.
+ * The controller refusing to vibrate is a foreseen outcome —the headset has lost
+ * focus, the session is closing— and means playing without vibration: the
+ * flash and the sound are still there. Its two ways of refusing are handled,
+ * because they arrive by different paths: the rejected promise (without the
+ * `catch` it would be a loose rejection for each stick caught) and the exception
+ * on the spot, which would go up through the grip handler and would indeed take
+ * down whatever is left of the catch.
  */
 function fire(actuator: HapticActuator, pulse: HapticPulse): boolean {
   try {
@@ -149,10 +149,10 @@ function fire(actuator: HapticActuator, pulse: HapticPulse): boolean {
 }
 
 /**
- * Hace vibrar el mando que ha disparado `event`.
+ * Makes the controller that fired `event` vibrate.
  *
- * @returns si el mando llegó a recibir el golpe. Con el ratón, con la mano
- *   desnuda o con un mando sin motor devuelve `false` y no ocurre nada.
+ * @returns whether the controller got to receive the pulse. With the mouse, with
+ *   the bare hand or with a controller without a motor it returns `false` and nothing happens.
  */
 export function pulseHaptics(event: unknown, pulse: HapticPulse): boolean {
   const actuator = actuatorOf(inputSourceOf(event))
@@ -160,51 +160,51 @@ export function pulseHaptics(event: unknown, pulse: HapticPulse): boolean {
   return fire(actuator, pulse)
 }
 
-/** Cómo se programa un pulso que sale más tarde; `setTimeout` salvo en los tests. */
-export type Programar = (hacer: () => void, ms: number) => () => void
+/** How a pulse that goes out later is scheduled; `setTimeout` except in the tests. */
+export type Schedule = (run: () => void, ms: number) => () => void
 
-const conSetTimeout: Programar = (hacer, ms) => {
-  const id = setTimeout(hacer, ms)
+const withSetTimeout: Schedule = (run, ms) => {
+  const id = setTimeout(run, ms)
   return () => clearTimeout(id)
 }
 
 /**
- * Reproduce unos pulsos en los mandos de su mano.
+ * Plays some pulses in the controllers of their hand.
  *
- * Los que llevan `retardo` se programan; el resto sale en el acto. Devuelve cómo cancelar
- * los que quedan pendientes, para llamarlo al desmontar: un pulso que saliera después
- * vibraría por algo que ya no está.
+ * The ones that carry a `delay` are scheduled; the rest go out on the spot. It returns how to
+ * cancel the ones left pending, to call it on unmount: a pulse that went out afterwards
+ * would vibrate for something that is no longer there.
  *
- * @param fuentes los mandos entre los que buscar el de cada mano: los de la sesión, o solo
- *   el que ha producido el evento.
+ * @param sources the controllers among which to look for each hand's one: the session's, or only
+ *   the one that produced the event.
  */
-export function reproducirPulsos(
-  fuentes: Iterable<XRInputSource | undefined>,
-  pulsos: readonly HandPulse[],
-  programar: Programar = conSetTimeout,
+export function playPulses(
+  sources: Iterable<XRInputSource | undefined>,
+  pulses: readonly HandPulse[],
+  schedule: Schedule = withSetTimeout,
 ): () => void {
-  const lista = [...fuentes]
-  const pendientes: (() => void)[] = []
-  for (const pulso of pulsos) {
-    const actuator = actuatorOf(lista.find((fuente) => fuente?.handedness === pulso.hand))
+  const list = [...sources]
+  const pending: (() => void)[] = []
+  for (const pulse of pulses) {
+    const actuator = actuatorOf(list.find((source) => source?.handedness === pulse.hand))
     if (actuator == null) continue
-    const golpe = { intensity: pulso.intensity, durationMs: pulso.ms }
-    if (pulso.delay > 0) pendientes.push(programar(() => fire(actuator, golpe), pulso.delay))
-    else fire(actuator, golpe)
+    const haptic = { intensity: pulse.intensity, durationMs: pulse.ms }
+    if (pulse.delay > 0) pending.push(schedule(() => fire(actuator, haptic), pulse.delay))
+    else fire(actuator, haptic)
   }
   return () => {
-    for (const cancelar of pendientes) cancelar()
+    for (const cancel of pending) cancel()
   }
 }
 
 /**
- * Hace sentir en su mano que ha atrapado un palo.
+ * Makes their hand feel that it has caught a stick.
  *
- * @returns cómo cancelar lo que quede pendiente. Con el ratón, la mano desnuda o un mando
- *   sin motor no ocurre nada.
+ * @returns how to cancel whatever is left pending. With the mouse, the bare hand or a controller
+ *   without a motor nothing happens.
  */
-export function pulsarAtrape(event: unknown, fallProgress: number): () => void {
-  const mano = manoDelEvento(event)
-  if (mano == null) return () => {}
-  return reproducirPulsos([inputSourceOf(event)], pulsosDelAtrape(mano, fallProgress))
+export function pulseCatch(event: unknown, fallProgress: number): () => void {
+  const hand = eventHand(event)
+  if (hand == null) return () => {}
+  return playPulses([inputSourceOf(event)], catchPulses(hand, fallProgress))
 }

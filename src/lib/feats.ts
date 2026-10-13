@@ -4,169 +4,170 @@ import type { GameResult } from './seed'
 import { gameStorage } from './storage'
 
 /**
- * Las hazañas de Stick Rush: lo que un logro de Steam necesita saber y la partida no contaba.
+ * The feats of Stick Rush: what a Steam achievement needs to know and the run did not count.
  *
- * Son las tres marcadas con ➕ en `xrcade/docs/logros-de-steam.md`. El juego no sabe de Steam: solo
- * cuenta, guarda lo conseguido y, al acabar la partida, le dice al salón qué ha conseguido **por
- * primera vez** (`hazanas` del resultado). Quien lo convierte en logro es el hub.
+ * They are the three marked with ➕ in `xrcade/docs/logros-de-steam.md`. The game knows nothing of
+ * Steam: it only counts, stores what was earned and, when the run ends, tells the hall what it has
+ * earned **for the first time** (`feats` of the result). The one that turns it into an achievement
+ * is the hub.
  *
- * Todo es puro y sin React: lo alimentan el store de la web (`gameStore.ts`) y la partida de Godot
- * (`godot/scene/game/run.ts`) en los mismos sitios —al atrapar un palo y al resolverse una
- * tanda—, con los mismos números.
+ * Everything is pure and without React: it is fed by the web's store (`gameStore.ts`) and the Godot
+ * run (`godot/scene/game/run.ts`) in the same places —when a stick is caught and when a round is
+ * resolved—, with the same numbers.
  */
 
-/** Los nombres de API de Steamworks. No se cambian una vez publicados. */
-export const HAZANAS = {
-  /** Atrapar los trece palos de una tanda, con la máquina llena, sin que se escape ninguno. */
-  tandaLimpia: 'SR_CLEAN_SWEEP',
-  /** Con el aro bajado todo lo que deja el ajuste, atrapar una tanda entera sin que se escape ninguno. */
-  aroAlMinimo: 'SR_LOW_HOOP',
-  /** Oculto: atrapar un palo de espaldas a él. */
-  deEspaldas: 'SR_BEHIND_BACK',
+/** The Steamworks API names. They are not changed once published. */
+export const FEATS = {
+  /** Catching the thirteen sticks of a round, with the machine full, without any getting away. */
+  cleanSweep: 'SR_CLEAN_SWEEP',
+  /** With the hoop lowered as far as the adjustment allows, catching a whole round without any getting away. */
+  lowHoop: 'SR_LOW_HOOP',
+  /** Hidden: catching a stick with your back to it. */
+  behindBack: 'SR_BEHIND_BACK',
 } as const
 
-/** Todas, para no aceptar del guardado nada que no exista. */
-const TODAS: readonly string[] = Object.values(HAZANAS)
+/** All of them, so as not to accept from the save anything that does not exist. */
+const ALL: readonly string[] = Object.values(FEATS)
 
 /**
- * Cuánto tiene que estar girada la cabeza respecto al palo, en horizontal, para que el atrape sea
- * «de espaldas»: 120°. A 90° el palo queda a un lado, que es mirar de reojo y no dar la espalda;
- * pasado 120° ya está detrás del hombro.
+ * How far the head has to be turned with respect to the stick, horizontally, for the catch to be
+ * "behind the back": 120°. At 90° the stick is to one side, which is looking out of the corner of
+ * the eye and not turning your back; past 120° it is already behind the shoulder.
  */
-export const GIRO_DE_ESPALDAS = (2 * Math.PI) / 3
+export const BEHIND_BACK_TURN = (2 * Math.PI) / 3
 
 /**
- * Lo poco que puede separarse el palo de la cabeza en horizontal para que haya un «delante» y un
- * «detrás»: con el palo justo encima de la cabeza la dirección no dice nada.
+ * The least the stick can be apart from the head horizontally for there to be an "in front" and a
+ * "behind": with the stick right above the head the direction says nothing.
  */
-const SEPARACION_MINIMA = 0.05
+const MIN_SEPARATION = 0.05
 
-/** Un punto o una dirección en el suelo: `x` y `z` del espacio del mundo (`y` hacia arriba). */
-export interface EnElSuelo {
+/** A point or a direction on the ground: `x` and `z` of world space (`y` upwards). */
+export interface OnTheGround {
   readonly x: number
   readonly z: number
 }
 
 /**
- * Si un palo se ha cogido de espaldas: más de `GIRO_DE_ESPALDAS` entre hacia dónde mira la cabeza
- * y dónde está el palo, los dos llevados al suelo. Se mira en horizontal porque inclinar la cabeza
- * hacia arriba o hacia abajo no es darse la vuelta.
+ * Whether a stick has been caught behind the back: more than `BEHIND_BACK_TURN` between where the
+ * head is looking and where the stick is, both taken to the ground. It is looked at horizontally
+ * because tilting the head up or down is not turning around.
  *
- * @param cabeza Dónde están los ojos.
- * @param mirada Hacia dónde miran (no hace falta que sea unitaria).
- * @param palo Dónde está el palo que se coge (o el puño que lo coge, que viene a ser lo mismo).
+ * @param head Where the eyes are.
+ * @param gaze Where they are looking (it does not need to be a unit vector).
+ * @param stick Where the stick being caught is (or the fist catching it, which comes to the same thing).
  */
-export function deEspaldas({
-  cabeza,
-  mirada,
-  palo,
+export function isBehindBack({
+  head,
+  gaze,
+  stick,
 }: {
-  cabeza: EnElSuelo
-  mirada: EnElSuelo
-  palo: EnElSuelo
+  head: OnTheGround
+  gaze: OnTheGround
+  stick: OnTheGround
 }): boolean {
-  const hx = palo.x - cabeza.x
-  const hz = palo.z - cabeza.z
-  const hacia = Math.hypot(hx, hz)
-  const mira = Math.hypot(mirada.x, mirada.z)
-  // Mirando al cielo o al suelo no hay «delante», y con el palo encima tampoco hay «dónde».
-  if (hacia < SEPARACION_MINIMA || mira < 1e-6) return false
-  const coseno = (hx * mirada.x + hz * mirada.z) / (hacia * mira)
-  return coseno < Math.cos(GIRO_DE_ESPALDAS)
+  const hx = stick.x - head.x
+  const hz = stick.z - head.z
+  const toward = Math.hypot(hx, hz)
+  const looking = Math.hypot(gaze.x, gaze.z)
+  // Looking at the sky or at the ground there is no "in front", and with the stick overhead there is no "where" either.
+  if (toward < MIN_SEPARATION || looking < 1e-6) return false
+  const cosine = (hx * gaze.x + hz * gaze.z) / (toward * looking)
+  return cosine < Math.cos(BEHIND_BACK_TURN)
 }
 
-/** Lo conseguido en la partida en curso, sin mirar si ya estaba conseguido de antes. */
-export interface CuentaDeHazanas {
-  readonly logradas: readonly string[]
+/** What was earned in the run in progress, without checking whether it was already earned before. */
+export interface FeatCount {
+  readonly earned: readonly string[]
 }
 
-export const SIN_HAZANAS: CuentaDeHazanas = { logradas: [] }
+export const NO_FEATS: FeatCount = { earned: [] }
 
-function lograr(cuenta: CuentaDeHazanas, api: string): CuentaDeHazanas {
-  return cuenta.logradas.includes(api) ? cuenta : { logradas: [...cuenta.logradas, api] }
+function earn(count: FeatCount, api: string): FeatCount {
+  return count.earned.includes(api) ? count : { earned: [...count.earned, api] }
 }
 
-/** Un palo atrapado. `espaldas` sale de `deEspaldas`; sin visor no se puede dar la espalda. */
-export function contarAtrape(cuenta: CuentaDeHazanas, { espaldas }: { espaldas: boolean }): CuentaDeHazanas {
-  return espaldas ? lograr(cuenta, HAZANAS.deEspaldas) : cuenta
+/** A caught stick. `behind` comes from `isBehindBack`; without a headset you cannot turn your back. */
+export function countCatch(count: FeatCount, { behind }: { behind: boolean }): FeatCount {
+  return behind ? earn(count, FEATS.behindBack) : count
 }
 
 /**
- * ¿Está el aro todo lo abajo que deja bajarlo el ajuste? Con margen de redondeo: el ajuste se
- * guarda como la suma de pasos de 5 cm.
+ * Is the hoop as low as the adjustment lets it be lowered? With a rounding margin: the adjustment is
+ * stored as the sum of 5 cm steps.
  */
-export function aroAlMinimo(ajusteDelAro: number): boolean {
-  return ajusteDelAro <= -HOOP_ADJUST_RANGE + 1e-9
+export function hoopAtMinimum(hoopAdjustment: number): boolean {
+  return hoopAdjustment <= -HOOP_ADJUST_RANGE + 1e-9
 }
 
 /**
- * Una tanda resuelta **entera**: todos sus palos atrapados o en el suelo. La que se deja a medias
- * —quedarse sin vidas en el desafío, terminar la partida sin fin a mitad de tanda— no llega aquí.
+ * A round resolved **whole**: all its sticks caught or on the ground. The one left halfway
+ * —running out of lives in the challenge, ending the endless run mid-round— does not get here.
  *
- * @param palos Los palos que colgaban de la máquina en la tanda.
- * @param atrapados Los que se cogieron de ellos.
- * @param ajusteDelAro La corrección manual del aro con la que se jugó (`hoopHeight.ts`).
+ * @param sticks The sticks that hung from the machine in the round.
+ * @param caught The ones that were caught of them.
+ * @param hoopAdjustment The manual correction of the hoop it was played with (`hoopHeight.ts`).
  */
-export function contarTanda(
-  cuenta: CuentaDeHazanas,
-  { palos, atrapados, ajusteDelAro }: { palos: number; atrapados: number; ajusteDelAro: number },
-): CuentaDeHazanas {
-  if (palos <= 0 || atrapados < palos) return cuenta
-  let siguiente = cuenta
-  if (palos >= MAX_STICKS) siguiente = lograr(siguiente, HAZANAS.tandaLimpia)
-  if (aroAlMinimo(ajusteDelAro)) siguiente = lograr(siguiente, HAZANAS.aroAlMinimo)
-  return siguiente
+export function countRound(
+  count: FeatCount,
+  { sticks, caught, hoopAdjustment }: { sticks: number; caught: number; hoopAdjustment: number },
+): FeatCount {
+  if (sticks <= 0 || caught < sticks) return count
+  let next = count
+  if (sticks >= MAX_STICKS) next = earn(next, FEATS.cleanSweep)
+  if (hoopAtMinimum(hoopAdjustment)) next = earn(next, FEATS.lowHoop)
+  return next
 }
 
-/** Dónde se guardan las ya conseguidas: una lista de nombres de API, en JSON. */
-export const HAZANAS_KEY = 'stick-rush:hazanas'
+/** Where the ones already earned are stored: a list of API names, in JSON. */
+export const FEATS_KEY = 'stick-rush:hazanas'
 
-/** Las conseguidas en alguna partida. Lo ilegible o lo que no es una hazaña de aquí, no cuenta. */
-export function leerHazanas(storage: Storage | null = gameStorage()): readonly string[] {
+/** The ones earned in some run. What is unreadable or is not a feat of this game does not count. */
+export function readFeats(storage: Storage | null = gameStorage()): readonly string[] {
   if (storage == null) return []
   try {
-    const leido: unknown = JSON.parse(storage.getItem(HAZANAS_KEY) ?? '[]')
-    return Array.isArray(leido) ? TODAS.filter((api) => leido.includes(api)) : []
+    const read: unknown = JSON.parse(storage.getItem(FEATS_KEY) ?? '[]')
+    return Array.isArray(read) ? ALL.filter((api) => read.includes(api)) : []
   } catch {
     return []
   }
 }
 
 /**
- * Las conseguidas en esta partida que **no** lo estaban de antes, y las deja guardadas.
+ * The ones earned in this run that were **not** earned before, and it leaves them stored.
  *
- * Es lo que va en el resultado: el salón celebra la primera vez y no las siguientes. Con el
- * almacenamiento bloqueado todas parecen nuevas cada vez; darlas de más es inofensivo (Steam no
- * desbloquea dos veces) y callarlas no lo sería.
+ * It is what goes in the result: the hall celebrates the first time and not the following ones.
+ * With storage blocked they all look new every time; giving them in excess is harmless (Steam does
+ * not unlock twice) and keeping quiet about them would not be.
  */
-export function estrenarHazanas(
-  logradas: readonly string[],
+export function earnFeats(
+  earned: readonly string[],
   storage: Storage | null = gameStorage(),
 ): string[] {
-  const antes = leerHazanas(storage)
-  const nuevas = logradas.filter((api) => TODAS.includes(api) && !antes.includes(api))
-  if (nuevas.length > 0 && storage != null) {
+  const before = readFeats(storage)
+  const newlyEarned = earned.filter((api) => ALL.includes(api) && !before.includes(api))
+  if (newlyEarned.length > 0 && storage != null) {
     try {
-      storage.setItem(HAZANAS_KEY, JSON.stringify([...antes, ...nuevas]))
+      storage.setItem(FEATS_KEY, JSON.stringify([...before, ...newlyEarned]))
     } catch {
-      // Cuota agotada o escritura prohibida: se vuelven a dar la próxima vez, que no hace daño.
+      // Quota exhausted or writing forbidden: they are given again next time, which does no harm.
     }
   }
-  return nuevas
+  return newlyEarned
 }
 
 /**
- * Lo que la escena le cuenta al salón al acabar, con las hazañas estrenadas en la partida.
+ * What the scene tells the hall on finishing, with the feats first earned in the run.
  *
- * El campo es opcional y solo va cuando hay alguna: el `Resultado` común (`semilla.ts`) es el
- * mismo en los diecisiete juegos y un salón que no lo lea sigue recibiendo lo de siempre.
+ * The field is optional and only goes when there is one: the common `GameResult` (`seed.ts`) is the
+ * same in the seventeen games and a hall that does not read it keeps receiving the usual.
  */
-export type ResultadoConHazanas = GameResult & {
-  /** Los nombres de API conseguidos por primera vez en esta partida. */
+export type ResultWithFeats = GameResult & {
+  /** The API names earned for the first time in this run. */
   readonly feats?: readonly string[]
 }
 
-/** El resultado con sus hazañas, o tal cual si no se estrenó ninguna. */
-export function conHazanas(resultado: GameResult, nuevas: readonly string[]): ResultadoConHazanas {
-  return nuevas.length > 0 ? { ...resultado, feats: [...nuevas] } : resultado
+/** The result with its feats, or as is if none was first earned. */
+export function withFeats(result: GameResult, newlyEarned: readonly string[]): ResultWithFeats {
+  return newlyEarned.length > 0 ? { ...result, feats: [...newlyEarned] } : result
 }

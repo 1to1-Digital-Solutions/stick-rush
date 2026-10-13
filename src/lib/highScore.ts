@@ -1,37 +1,37 @@
 /**
- * La mejor puntuación, guardada entre visitas: las marcas de `bests.ts` y lo que solo tiene el
- * navegador, la suscripción al evento `storage` de las otras pestañas y lo que ve el servidor.
+ * The best score, kept between visits: the bests of `bests.ts` and what only the browser has,
+ * the subscription to the `storage` event of the other tabs and what the server sees.
  *
- * Todo lo demás —las claves, leer, escribir, guardar si mejora, la racha sin fin— está en
- * `bests.ts`, sin navegador, y se reexporta de aquí tal cual: quien importaba de este fichero
- * sigue importando lo mismo.
+ * Everything else —the keys, reading, writing, saving if it improves, the endless streak— is in
+ * `bests.ts`, without a browser, and is re-exported from here as is: whoever imported from this
+ * file keeps importing the same.
  */
-import { escucharElRecord } from './bests'
+import { subscribeToRecord } from './bests'
 
 export * from './bests'
 
 /**
- * Lo que ve el servidor al prerenderizar: no hay navegador, así que no hay
- * récord. Sin esto el HTML del servidor y el del cliente diferirían y React
- * avisaría de un error de hidratación.
+ * What the server sees when prerendering: there is no browser, so there is no
+ * record. Without this the server's HTML and the client's would differ and React
+ * would warn of a hydration error.
  */
 export function getServerBestPoints(): number {
   return 0
 }
 
 /**
- * Suscripción para `useSyncExternalStore`.
+ * Subscription for `useSyncExternalStore`.
  *
- * Además del aviso propio se escucha el evento `storage`, que es como el
- * navegador cuenta que **otra pestaña** ha tocado el almacenamiento. Sin él,
- * batir el récord en una pestaña dejaría a las demás enseñando el anterior, y
- * el almacenamiento dejaría de ser la única fuente de verdad que dice ser.
+ * Besides its own notification the `storage` event is listened to, which is how
+ * the browser tells that **another tab** has touched the storage. Without it,
+ * beating the record in one tab would leave the others showing the previous one,
+ * and the storage would stop being the only source of truth it claims to be.
  */
 export function subscribeBestPoints(listener: () => void): () => void {
-  const dejar = escucharElRecord(listener)
+  const unsubscribe = subscribeToRecord(listener)
   window.addEventListener('storage', listener)
   return () => {
-    dejar()
+    unsubscribe()
     window.removeEventListener('storage', listener)
   }
 }

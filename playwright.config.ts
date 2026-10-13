@@ -1,12 +1,12 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * Tests de extremo a extremo sobre el build de producción.
+ * End-to-end tests on the production build.
  *
- * Se sirve en `127.0.0.1` y no en `localhost` a propósito: `@react-three/xr`
- * inyecta el emulador WebXR (IWER) cuando el hostname es exactamente
- * `localhost`, y con él aparece un botón "Enter XR" que no existe en el juego
- * real. Con la IP el navegador se comporta como el de un usuario sin visor.
+ * It is served on `127.0.0.1` and not on `localhost` on purpose: `@react-three/xr`
+ * injects the WebXR emulator (IWER) when the hostname is exactly
+ * `localhost`, and with it a "Enter XR" button shows up that does not exist in the real
+ * game. With the IP the browser behaves like that of a user with no headset.
  */
 const PORT = Number(process.env.E2E_PORT ?? 3100)
 const HOST = '127.0.0.1'
@@ -14,19 +14,19 @@ const baseURL = `http://${HOST}:${PORT}`
 
 export default defineConfig({
   testDir: './e2e',
-  // Empaqueta el emulador WebXR que usan los tests de sesión inmersiva.
+  // Bundles the WebXR emulator the immersive session tests use.
   globalSetup: './e2e/support/globalSetup.ts',
-  // La escena 3D es tiempo real: dos partidas a la vez en la misma máquina se
-  // roban FPS y falsean los tiempos de caída.
+  // The 3D scene is real time: two runs at once on the same machine steal
+  // FPS from each other and falsify the fall times.
   workers: 1,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? 'github' : 'list',
-  // Holgado a propósito: una partida entera dura segundos, y `Stick` limita el
-  // delta por frame a 50 ms, así que en una máquina cargada (o en CI, con
-  // WebGL por software) la caída se alarga en tiempo real. Con los 30 s por
-  // defecto, un pico de carga tumbaba tests que en realidad funcionan.
+  // Roomy on purpose: a whole run lasts seconds, and `Stick` caps the
+  // delta per frame at 50 ms, so on a loaded machine (or in CI, with
+  // software WebGL) the fall stretches in real time. With the default 30 s,
+  // a load spike knocked down tests that actually work.
   timeout: 90_000,
   expect: { timeout: 15_000 },
   use: {
@@ -38,7 +38,7 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        // El Canvas necesita WebGL; en headless lo cubre SwiftShader.
+        // The Canvas needs WebGL; in headless SwiftShader covers it.
         launchOptions: { args: ['--use-gl=angle', '--enable-unsafe-swiftshader'] },
       },
     },

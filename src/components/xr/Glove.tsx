@@ -5,233 +5,233 @@ import { useFrame } from '@react-three/fiber'
 import { Color, Object3D, type InstancedMesh } from 'three'
 
 import {
-  CERRADA,
-  acercarPostura,
-  angulosDelDedo,
-  posturaDelGuante,
-  type Lectura,
-  type Postura,
+  CLOSED,
+  approachPose,
+  fingerAngles,
+  glovePose,
+  type Reading,
+  type Pose,
 } from '../../lib/glove'
 import { DECOR_POINTER_EVENTS } from '../../lib/pointers'
 import { HINT_COLOR } from './XRControllerModel'
 
 /**
- * La mano del jugador, dibujada como un guante que agarra el mando y cierra el puño.
+ * The player's hand, drawn as a glove that grips the controller and closes its fist.
  *
- * Lo que decide cuánto se cierra cada dedo está en `lib/glove.ts`; aquí solo se dibuja.
+ * What decides how far each finger closes is in `lib/glove.ts`; here it is only drawn.
  *
- * **Sin ficheros y en una sola llamada de dibujo.** El guante son cajas —palma, puño y tres
- * falanges por dedo—, todas instancias de la misma `InstancedMesh`: dieciséis piezas que el
- * visor pinta de una vez por ojo. Con mallas sueltas serían dieciséis llamadas por mano y por
- * ojo, y en el Quest eso se nota (`.claude/rules/xr.md`, «Lo que cuestan se mide»). El
- * esqueleto son `Object3D` sin dibujar: cada fotograma se doblan sus articulaciones y se copia
- * dónde queda cada pieza a su instancia.
+ * **No files and a single draw call.** The glove is boxes —palm, cuff and three phalanges
+ * per finger—, all of them instances of the same `InstancedMesh`: sixteen parts that the
+ * headset paints at once per eye. With separate meshes it would be sixteen calls per hand and
+ * per eye, and on the Quest that shows (`.claude/rules/xr.md`, «Lo que cuestan se mide»). The
+ * skeleton is `Object3D`s that are not drawn: every frame its joints are bent and where each
+ * part ends up is copied to its instance.
  *
- * **Colocado sobre el mando dibujado** (`XRControllerModel`), en el mismo `grip-space`: el
- * mango baja por −Y con una leve inclinación, el gatillo de delante mira a −Z y el lateral
- * está en el costado de dentro (`side`). La palma va por fuera, los dedos rodean el mango por
- * delante y acaban sobre el gatillo lateral, que es el que cierran; el pulgar descansa arriba,
- * sobre la cabeza del mando.
+ * **Placed on the drawn controller** (`XRControllerModel`), in the same `grip-space`: the
+ * handle goes down along −Y with a slight tilt, the front trigger faces −Z and the side one
+ * is on the inner side (`side`). The palm goes on the outside, the fingers wrap the handle
+ * from the front and end on the side trigger, which is the one they close; the thumb rests on
+ * top, over the head of the controller.
  *
- * **La ayuda del agarre está en la mano.** Mientras hay que enseñar el gesto (`highlight`),
- * las yemas de los tres dedos que aprietan el gatillo lateral laten en ámbar —el mismo ámbar
- * que el botón y que los palos—; al cerrar el puño se ponen verdes, que confirma que el visor
- * está leyendo el gatillo.
+ * **The grip hint is in the hand.** While the gesture has to be taught (`highlight`), the
+ * tips of the three fingers that squeeze the side trigger pulse in amber —the same amber as
+ * the button and as the sticks—; when the fist closes they turn green, which confirms that
+ * the headset is reading the trigger.
  *
- * Para llevarlo a otro juego basta con recolocar `PALMA`, `NUDILLOS` y `PULGAR` sobre su mando.
+ * To take it to another game it is enough to reposition `PALM`, `KNUCKLES` and `THUMB` on its controller.
  */
 
-/** Blanco de guante de dibujos: se lee como una mano sin parecer la piel de nadie. */
-const GUANTE = new Color('#e9eef5')
-const AMBAR = new Color(HINT_COLOR)
-const VERDE = new Color('#22c55e')
+/** Cartoon-glove white: it reads as a hand without looking like anybody's skin. */
+const GLOVE = new Color('#e9eef5')
+const AMBER = new Color(HINT_COLOR)
+const GREEN = new Color('#22c55e')
 
-/** Ciclos por segundo del latido de las yemas, el mismo que el del botón del mando. */
-const LATIDO_HZ = 1.6
+/** Cycles per second of the fingertips' pulse, the same as the controller button's. */
+const PULSE_HZ = 1.6
 
-/** Grosor y ancho de un dedo, en metros. */
-const DEDO = { grueso: 0.015, ancho: 0.017 }
+/** Thickness and width of a finger, in metres. */
+const FINGER = { thickness: 0.015, width: 0.017 }
 
 /**
- * Los cuatro dedos: a qué altura del mango nace cada uno y lo que miden sus tres falanges.
- * El índice arriba, sobre el gatillo de delante; el meñique abajo y más corto.
+ * The four fingers: at what height of the handle each one starts and what its three phalanges
+ * measure. The index on top, over the front trigger; the little finger at the bottom and shorter.
  */
-const DEDOS = [
-  { y: -0.012, falanges: [0.022, 0.017, 0.015], indice: true },
-  { y: -0.032, falanges: [0.024, 0.018, 0.015], indice: false },
-  { y: -0.052, falanges: [0.022, 0.017, 0.014], indice: false },
-  { y: -0.071, falanges: [0.018, 0.014, 0.012], indice: false },
+const FINGERS = [
+  { y: -0.012, phalanges: [0.022, 0.017, 0.015], index: true },
+  { y: -0.032, phalanges: [0.024, 0.018, 0.015], index: false },
+  { y: -0.052, phalanges: [0.022, 0.017, 0.014], index: false },
+  { y: -0.071, phalanges: [0.018, 0.014, 0.012], index: false },
 ] as const
 
-/** Dónde nacen los dedos: por fuera del mango y un poco por delante de su eje. */
-const NUDILLOS = { x: 0.028, z: -0.012 }
+/** Where the fingers start: outside the handle and a little in front of its axis. */
+const KNUCKLES = { x: 0.028, z: -0.012 }
 
-/** La palma: una placa por fuera del mango, de lo alto de los dedos. */
-const PALMA = { x: 0.036, y: -0.042, z: 0.008, medida: [0.018, 0.084, 0.056] as const }
+/** The palm: a plate outside the handle, as tall as the fingers. */
+const PALM = { x: 0.036, y: -0.042, z: 0.008, size: [0.018, 0.084, 0.056] as const }
 
-/** El puño del guante, hacia la muñeca, que en el `grip-space` queda a +Z. */
-const PUNO = { x: 0.03, y: -0.046, z: 0.052, medida: [0.036, 0.07, 0.03] as const }
+/** The cuff of the glove, towards the wrist, which in the `grip-space` is at +Z. */
+const CUFF = { x: 0.03, y: -0.046, z: 0.052, size: [0.036, 0.07, 0.03] as const }
 
-/** El pulgar: nace arriba de la palma y cruza sobre la cabeza del mando. */
-const PULGAR = { x: 0.028, y: 0.012, z: -0.002, falanges: [0.024, 0.02] as const }
+/** The thumb: it starts at the top of the palm and crosses over the head of the controller. */
+const THUMB = { x: 0.028, y: 0.012, z: -0.002, phalanges: [0.024, 0.02] as const }
 
-/** Cuánto se dobla el pulgar con el puño cerrado, por articulación. */
-const DOBLEZ_PULGAR = [0.5, 0.7] as const
+/** How far the thumb bends with the fist closed, per joint. */
+const THUMB_BEND = [0.5, 0.7] as const
 
-/** La inclinación del mango del mando dibujado: los dedos lo siguen. */
-const INCLINACION_DEL_MANGO = 0.22
+/** The tilt of the drawn controller's handle: the fingers follow it. */
+const HANDLE_TILT = 0.22
 
-type Esqueleto = {
-  raiz: Object3D
-  /** Las articulaciones de cada dedo, del nudillo a la punta. */
-  dedos: Object3D[][]
-  pulgar: Object3D[]
-  /** Lo que se dibuja: cada una es una instancia. */
-  piezas: Object3D[]
-  /** Qué instancias son yemas que llevan la ayuda. */
-  yemas: Set<number>
+type Skeleton = {
+  root: Object3D
+  /** The joints of each finger, from the knuckle to the tip. */
+  fingers: Object3D[][]
+  thumb: Object3D[]
+  /** What is drawn: each one is an instance. */
+  parts: Object3D[]
+  /** Which instances are fingertips that carry the hint. */
+  fingertips: Set<number>
 }
 
-/** Una caja de esas medidas colgada de `padre`, que empieza en su origen y crece hacia −Z. */
-function falange(padre: Object3D, largo: number, piezas: Object3D[]): Object3D {
-  const pieza = new Object3D()
-  pieza.position.z = -largo / 2
-  pieza.scale.set(DEDO.ancho, DEDO.grueso, largo)
-  padre.add(pieza)
-  piezas.push(pieza)
-  const siguiente = new Object3D()
-  siguiente.position.z = -largo
-  padre.add(siguiente)
-  return siguiente
+/** A box of those measurements hanging from `parent`, which starts at its origin and grows towards −Z. */
+function phalanx(parent: Object3D, length: number, parts: Object3D[]): Object3D {
+  const part = new Object3D()
+  part.position.z = -length / 2
+  part.scale.set(FINGER.width, FINGER.thickness, length)
+  parent.add(part)
+  parts.push(part)
+  const next = new Object3D()
+  next.position.z = -length
+  parent.add(next)
+  return next
 }
 
 /**
- * Monta el esqueleto de la mano de un lado.
+ * Builds the skeleton of the hand of one side.
  *
- * @param fuera −1 o 1: hacia dónde queda el costado de fuera del mango, el de la palma. Es el
- *   contrario del gatillo lateral.
+ * @param outer −1 or 1: which way the outer side of the handle is, the palm's. It is the
+ *   opposite of the side trigger.
  */
-function montarEsqueleto(fuera: number): Esqueleto {
-  const raiz = new Object3D()
-  const piezas: Object3D[] = []
-  const yemas = new Set<number>()
+function buildSkeleton(outer: number): Skeleton {
+  const root = new Object3D()
+  const parts: Object3D[] = []
+  const fingertips = new Set<number>()
 
-  const caja = (x: number, y: number, z: number, medida: readonly [number, number, number]) => {
-    const pieza = new Object3D()
-    pieza.position.set(x, y, z)
-    pieza.rotation.x = INCLINACION_DEL_MANGO
-    pieza.scale.set(...medida)
-    raiz.add(pieza)
-    piezas.push(pieza)
+  const box = (x: number, y: number, z: number, size: readonly [number, number, number]) => {
+    const part = new Object3D()
+    part.position.set(x, y, z)
+    part.rotation.x = HANDLE_TILT
+    part.scale.set(...size)
+    root.add(part)
+    parts.push(part)
   }
-  caja(fuera * PALMA.x, PALMA.y, PALMA.z, PALMA.medida)
-  caja(fuera * PUNO.x, PUNO.y, PUNO.z, PUNO.medida)
+  box(outer * PALM.x, PALM.y, PALM.z, PALM.size)
+  box(outer * CUFF.x, CUFF.y, CUFF.z, CUFF.size)
 
-  const dedos = DEDOS.map(({ y, falanges, indice }) => {
-    const nudillo = new Object3D()
-    // El mango se inclina hacia delante al bajar, y los nudillos con él.
-    nudillo.position.set(fuera * NUDILLOS.x, y, NUDILLOS.z + (y + 0.045) * INCLINACION_DEL_MANGO)
-    raiz.add(nudillo)
-    const articulaciones = [nudillo]
-    let actual = nudillo
-    falanges.forEach((largo, i) => {
-      const siguiente = falange(actual, largo, piezas)
-      if (i === falanges.length - 1 && !indice) yemas.add(piezas.length - 1)
-      if (i < falanges.length - 1) articulaciones.push(siguiente)
-      actual = siguiente
+  const fingers = FINGERS.map(({ y, phalanges, index }) => {
+    const knuckle = new Object3D()
+    // The handle tilts forward as it goes down, and the knuckles with it.
+    knuckle.position.set(outer * KNUCKLES.x, y, KNUCKLES.z + (y + 0.045) * HANDLE_TILT)
+    root.add(knuckle)
+    const joints = [knuckle]
+    let current = knuckle
+    phalanges.forEach((length, i) => {
+      const next = phalanx(current, length, parts)
+      if (i === phalanges.length - 1 && !index) fingertips.add(parts.length - 1)
+      if (i < phalanges.length - 1) joints.push(next)
+      current = next
     })
-    return articulaciones
+    return joints
   })
 
   const base = new Object3D()
-  base.position.set(fuera * PULGAR.x, PULGAR.y, PULGAR.z)
-  // Apunta hacia dentro, por encima de la cabeza del mando. En orden YXZ el doblez (X) se
-  // aplica en el eje del propio pulgar y no en el de la mano.
+  base.position.set(outer * THUMB.x, THUMB.y, THUMB.z)
+  // It points inwards, over the head of the controller. In YXZ order the bend (X) is
+  // applied on the thumb's own axis and not on the hand's.
   base.rotation.order = 'YXZ'
-  base.rotation.y = fuera * (Math.PI / 2)
-  raiz.add(base)
-  const pulgar = [base]
-  const punta = falange(base, PULGAR.falanges[0], piezas)
-  pulgar.push(punta)
-  falange(punta, PULGAR.falanges[1], piezas)
+  base.rotation.y = outer * (Math.PI / 2)
+  root.add(base)
+  const thumb = [base]
+  const tip = phalanx(base, THUMB.phalanges[0], parts)
+  thumb.push(tip)
+  phalanx(tip, THUMB.phalanges[1], parts)
 
-  return { raiz, dedos, pulgar, piezas, yemas }
+  return { root, fingers, thumb, parts, fingertips }
 }
 
 /**
- * El guante.
+ * The glove.
  *
- * @param side      −1 o 1 según la mano, como en `ControllerModel`: el costado del gatillo
- *   lateral. La palma va en el contrario.
- * @param highlight si las yemas llevan la ayuda del agarre.
- * @param leer      lo que se aprieta ahora mismo. Se consulta en cada fotograma porque el
- *   mando cambia sin que React vuelva a renderizar.
+ * @param side      −1 or 1 depending on the hand, as in `ControllerModel`: the side of the
+ *   side trigger. The palm goes on the opposite one.
+ * @param highlight whether the fingertips carry the grip hint.
+ * @param read      what is being squeezed right now. It is queried every frame because the
+ *   controller changes without React rendering again.
  */
-export function Guante({
+export function Glove({
   side,
   highlight,
-  leer,
+  read,
 }: {
   side: number
   highlight: boolean
-  leer: () => Lectura
+  read: () => Reading
 }) {
-  const malla = useRef<InstancedMesh>(null)
-  const fuera = -side
-  const esqueleto = useMemo(() => montarEsqueleto(fuera), [fuera])
-  const postura = useRef<Postura>(posturaDelGuante({ agarre: 0, gatillo: 0 }))
-  const tiempo = useRef(0)
+  const meshRef = useRef<InstancedMesh>(null)
+  const outer = -side
+  const skeleton = useMemo(() => buildSkeleton(outer), [outer])
+  const pose = useRef<Pose>(glovePose({ grip: 0, trigger: 0 }))
+  const time = useRef(0)
   const color = useMemo(() => new Color(), [])
 
-  // Los colores de partida, antes del primer fotograma: sin ellos la malla nace sin
-  // `instanceColor` y el material se compila sin él.
+  // The starting colours, before the first frame: without them the mesh is born without
+  // `instanceColor` and the material is compiled without it.
   useLayoutEffect(() => {
-    const mesh = malla.current
+    const mesh = meshRef.current
     if (mesh == null) return
-    for (let i = 0; i < esqueleto.piezas.length; i++) mesh.setColorAt(i, GUANTE)
-  }, [esqueleto])
+    for (let i = 0; i < skeleton.parts.length; i++) mesh.setColorAt(i, GLOVE)
+  }, [skeleton])
 
   useFrame((_, delta) => {
-    const mesh = malla.current
+    const mesh = meshRef.current
     if (mesh == null) return
-    tiempo.current += delta
-    postura.current = acercarPostura(postura.current, posturaDelGuante(leer()), delta)
-    const { dedos, indice, pulgar } = postura.current
+    time.current += delta
+    pose.current = approachPose(pose.current, glovePose(read()), delta)
+    const { fingers, index, thumb } = pose.current
 
-    // Los dedos se doblan alrededor del mango, que es vertical: giran sobre Y, desde −Z
-    // (delante) hacia el costado del gatillo lateral, que es el contrario de `fuera`.
-    esqueleto.dedos.forEach((articulaciones, d) => {
-      const angulos = angulosDelDedo(DEDOS[d].indice ? indice : dedos)
-      articulaciones.forEach((articulacion, i) => {
-        articulacion.rotation.y = fuera * angulos[i]
+    // The fingers bend around the handle, which is vertical: they turn about Y, from −Z
+    // (the front) towards the side of the side trigger, which is the opposite of `outer`.
+    skeleton.fingers.forEach((joints, f) => {
+      const angles = fingerAngles(FINGERS[f].index ? index : fingers)
+      joints.forEach((joint, i) => {
+        joint.rotation.y = outer * angles[i]
       })
     })
-    // Y el pulgar baja sobre la cabeza del mando: gira sobre su propio X (ver `montarEsqueleto`).
-    esqueleto.pulgar.forEach((articulacion, i) => {
-      articulacion.rotation.x = -DOBLEZ_PULGAR[i] * pulgar
+    // And the thumb comes down over the head of the controller: it turns about its own X (see `buildSkeleton`).
+    skeleton.thumb.forEach((joint, i) => {
+      joint.rotation.x = -THUMB_BEND[i] * thumb
     })
 
-    esqueleto.raiz.updateMatrixWorld(true)
-    esqueleto.piezas.forEach((pieza, i) => mesh.setMatrixAt(i, pieza.matrixWorld))
+    skeleton.root.updateMatrixWorld(true)
+    skeleton.parts.forEach((part, i) => mesh.setMatrixAt(i, part.matrixWorld))
     mesh.instanceMatrix.needsUpdate = true
 
-    const cerrada = dedos >= CERRADA
-    const latido = 0.5 + 0.5 * Math.sin(tiempo.current * Math.PI * 2 * LATIDO_HZ)
-    if (cerrada) color.copy(VERDE)
-    else if (highlight) color.copy(GUANTE).lerp(AMBAR, 0.35 + 0.65 * latido)
-    else color.copy(GUANTE)
-    for (const yema of esqueleto.yemas) mesh.setColorAt(yema, color)
+    const closed = fingers >= CLOSED
+    const pulse = 0.5 + 0.5 * Math.sin(time.current * Math.PI * 2 * PULSE_HZ)
+    if (closed) color.copy(GREEN)
+    else if (highlight) color.copy(GLOVE).lerp(AMBER, 0.35 + 0.65 * pulse)
+    else color.copy(GLOVE)
+    for (const fingertip of skeleton.fingertips) mesh.setColorAt(fingertip, color)
     if (mesh.instanceColor != null) mesh.instanceColor.needsUpdate = true
   })
 
   return (
     <instancedMesh
-      ref={malla}
-      args={[undefined, undefined, esqueleto.piezas.length]}
-      // Se mueve cada fotograma y su esfera envolvente se calcularía una vez: sin esto,
-      // three la daría por fuera de la vista con la mano en otro sitio.
+      ref={meshRef}
+      args={[undefined, undefined, skeleton.parts.length]}
+      // It moves every frame and its bounding sphere would be computed once: without this,
+      // three would take it to be out of view with the hand somewhere else.
       frustumCulled={false}
-      // La mano no es un blanco: el rayo y el agarre la atraviesan.
+      // The hand is not a target: the ray and the grab go through it.
       pointerEvents={DECOR_POINTER_EVENTS}
     >
       <boxGeometry />

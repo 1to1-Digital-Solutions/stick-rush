@@ -1,54 +1,54 @@
 import { describe, expect, it } from 'vitest'
 import {
-  MODOS_DEL_MENU,
-  botonDeOpciones,
-  filasALaVista,
-  filasDelModo,
-  papelDeLaFila,
-  seVe,
-  siguienteModo,
+  MENU_MODES,
+  optionsButton,
+  visibleRows,
+  modeRows,
+  rowRole,
+  isShown,
+  nextMode,
 } from './gameMenu'
 
 /**
- * Las filas del menú de Stick Rush en la plantilla común: lo que pliega «Más opciones» es lo
- * mismo en el visor, en la portada y en Godot, porque los tres preguntan aquí.
+ * The rows of Stick Rush's menu in the common template: what «Más opciones» folds is the same
+ * in the headset, on the front page and in Godot, because the three ask here.
  */
-describe('la fila del modo empieza por el reto', () => {
-  it('el reto, el que da medalla, primero; el interruptor lo recorre en ese orden y vuelve', () => {
-    expect(MODOS_DEL_MENU).toEqual(['challenge', 'practice', 'levels'])
-    expect(siguienteModo('challenge')).toBe('practice')
-    expect(siguienteModo('practice')).toBe('levels')
-    expect(siguienteModo('levels')).toBe('challenge')
+describe('the mode row starts with the challenge', () => {
+  it('the challenge, the one that gives a medal, first; the switch goes through them in that order and comes back', () => {
+    expect(MENU_MODES).toEqual(['challenge', 'practice', 'levels'])
+    expect(nextMode('challenge')).toBe('practice')
+    expect(nextMode('practice')).toBe('levels')
+    expect(nextMode('levels')).toBe('challenge')
   })
 })
 
-describe('las filas de cada modo', () => {
-  it('el modo, quién juega y lo demás, cada uno con su papel', () => {
-    expect(filasDelModo('challenge', 'visor')).toEqual(['mode', 'players', 'hoop', 'around'])
-    expect(filasDelModo('practice', 'visor')).toEqual(['mode', 'endless', 'sticks', 'speed', 'hoop', 'around'])
-    expect(filasDelModo('levels', 'portada')).toEqual(['mode', 'levels'])
-    expect(['mode', 'levels'].map((f) => papelDeLaFila(f as 'mode'))).toEqual(['mode', 'mode'])
-    expect(papelDeLaFila('players')).toBe('players')
-    expect(papelDeLaFila('hoop')).toBe('other')
+describe('the rows of each mode', () => {
+  it('the mode, who plays and the rest, each with its role', () => {
+    expect(modeRows('challenge', 'headset')).toEqual(['mode', 'players', 'hoop', 'around'])
+    expect(modeRows('practice', 'headset')).toEqual(['mode', 'endless', 'sticks', 'speed', 'hoop', 'around'])
+    expect(modeRows('levels', 'page')).toEqual(['mode', 'levels'])
+    expect(['mode', 'levels'].map((row) => rowRole(row as 'mode'))).toEqual(['mode', 'mode'])
+    expect(rowRole('players')).toBe('players')
+    expect(rowRole('hoop')).toBe('other')
   })
 
-  it('al abrir, plegado: solo lo del modo y quién juega', () => {
-    expect(filasALaVista('practice', 'visor', false)).toEqual({ rows: ['mode'], folded: 5 })
-    expect(filasALaVista('practice', 'portada', true)).toEqual({ rows: ['mode', 'endless', 'sticks', 'speed'], folded: 0 })
-    expect(seVe('levels', 'levels', 'visor', false)).toBe(true)
-    expect(seVe('hoop', 'levels', 'visor', false)).toBe(false)
+  it('on opening, folded: only what belongs to the mode and who plays', () => {
+    expect(visibleRows('practice', 'headset', false)).toEqual({ rows: ['mode'], folded: 5 })
+    expect(visibleRows('practice', 'page', true)).toEqual({ rows: ['mode', 'endless', 'sticks', 'speed'], folded: 0 })
+    expect(isShown('levels', 'levels', 'headset', false)).toBe(true)
+    expect(isShown('hoop', 'levels', 'headset', false)).toBe(false)
   })
 
-  it('el reto es una partida fija: lo demás no se enseña aunque se pida, y no hay botón', () => {
-    expect(filasALaVista('challenge', 'visor', true)).toEqual({ rows: ['mode', 'players'], folded: 0 })
-    expect(botonDeOpciones('challenge', 'visor', false)).toBeNull()
-    expect(botonDeOpciones('challenge', 'visor', true)).toBeNull()
+  it('the challenge is a fixed run: the rest is not shown even when asked for, and there is no button', () => {
+    expect(visibleRows('challenge', 'headset', true)).toEqual({ rows: ['mode', 'players'], folded: 0 })
+    expect(optionsButton('challenge', 'headset', false)).toBeNull()
+    expect(optionsButton('challenge', 'headset', true)).toBeNull()
   })
 
-  it('el botón dice «Más opciones» plegado y «Menos opciones» desplegado; sin nada que plegar, no está', () => {
-    expect(botonDeOpciones('practice', 'portada', false)).toBe('More options')
-    expect(botonDeOpciones('practice', 'portada', true)).toBe('Fewer options')
-    expect(botonDeOpciones('levels', 'visor', false)).toBe('More options')
-    expect(botonDeOpciones('levels', 'portada', false)).toBeNull()
+  it('the button says «Más opciones» folded and «Menos opciones» unfolded; with nothing to fold, it is not there', () => {
+    expect(optionsButton('practice', 'page', false)).toBe('More options')
+    expect(optionsButton('practice', 'page', true)).toBe('Fewer options')
+    expect(optionsButton('levels', 'headset', false)).toBe('More options')
+    expect(optionsButton('levels', 'page', false)).toBeNull()
   })
 })

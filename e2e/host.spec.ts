@@ -2,58 +2,58 @@ import { expect, test } from '@playwright/test'
 
 import {
   ASSETS_BASE,
-  buscarEnLaEscena,
+  findInScene,
   enterHostBooth,
   enterHostVR,
   openHost,
-  partidasTerminadas,
+  finishedRuns,
 } from './support/host'
 import { installXREmulator, placeHand, useBareHands } from './support/xr'
 
 /**
- * Las manos, montado dentro del salón.
+ * The hands, mounted inside the hall.
  *
- * El guante y la mano articulada colgaban antes del store de WebXR del propio juego (su
- * `controller`, su `hand.model`), y dentro del salón el store es del salón, que no dibuja
- * manos: justo donde más se juega, quien iba a por un palo no veía dónde tenía la mano. Ahora
- * las monta la escena (`ManosDelJugador`), y esto lo comprueba con la escena metida en un
- * Canvas ajeno cuyo store, como el del salón, no dibuja nada en la mano.
+ * The glove and the articulated hand used to hang from the game's own WebXR store (its
+ * `controller`, its `hand.model`), and inside the hall the store is the hall's, which draws no
+ * hands: right where it is played most, whoever went for a stick could not see where their hand was. Now
+ * the scene mounts them (`PlayerHands`), and this checks it with the scene put inside
+ * someone else's Canvas whose store, like the hall's, draws nothing in the hand.
  *
- * Desde fuera del Canvas no se ve la geometría, así que el anfitrión deja buscar por nombre
- * (`guante-right`, `mano-desnuda-right`): si está, si se pinta y dónde.
+ * From outside the Canvas the geometry is not seen, so the host lets us look up by name
+ * (`glove-right`, `bare-hand-right`): whether it is there, whether it is painted and where.
  */
 
-/** Dónde se pone la mano: delante y un poco a la derecha, a la altura del pecho. */
-const DELANTE = { x: 0.2, y: 1.3, z: -0.35 }
+/** Where the hand is put: in front and a little to the right, at chest height. */
+const IN_FRONT = { x: 0.2, y: 1.3, z: -0.35 }
 
-test('con mandos, el guante va en la mano aunque el store sea del anfitrión', async ({ page }) => {
+test('with controllers, the glove goes on the hand even though the store is the host\'s', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
 
   await installXREmulator(page)
   await openHost(page)
   await enterHostVR(page)
-  await placeHand(page, 'right', DELANTE)
+  await placeHand(page, 'right', IN_FRONT)
 
   await expect
-    .poll(() => buscarEnLaEscena(page, 'guante-right'), {
-      message: 'el guante de la mano derecha no llegó a pintarse',
+    .poll(() => findInScene(page, 'glove-right'), {
+      message: 'the right hand\'s glove never got painted',
     })
     .toMatchObject({ visible: true })
 
-  // Y donde está el mando, no donde está el mundo: la escena lo baja y lo corre, y el guante
-  // tiene que quedarse en la mano igual.
-  const guante = await buscarEnLaEscena(page, 'guante-right')
-  expect(guante).not.toBeNull()
-  const lejos = Math.hypot(guante!.x - DELANTE.x, guante!.y - DELANTE.y, guante!.z - DELANTE.z)
-  expect(lejos).toBeLessThan(0.12)
+  // And where the controller is, not where the world is: the scene lowers it and shifts it, and the glove
+  // has to stay on the hand all the same.
+  const glove = await findInScene(page, 'glove-right')
+  expect(glove).not.toBeNull()
+  const away = Math.hypot(glove!.x - IN_FRONT.x, glove!.y - IN_FRONT.y, glove!.z - IN_FRONT.z)
+  expect(away).toBeLessThan(0.12)
 
-  // Uno por mano, no dos: el `controller` del anfitrión no dibuja nada suyo.
-  expect(await buscarEnLaEscena(page, 'guante-left')).not.toBeNull()
+  // One per hand, not two: the host's `controller` draws nothing of its own.
+  expect(await findInScene(page, 'glove-left')).not.toBeNull()
   expect(errors).toEqual([])
 })
 
-test('con las manos desnudas, la mano articulada sale del juego y no de la raíz', async ({
+test('with bare hands, the articulated hand comes from the game and not from the root', async ({
   page,
 }) => {
   const errors: string[] = []
@@ -62,58 +62,58 @@ test('con las manos desnudas, la mano articulada sale del juego y no de la raíz
   await installXREmulator(page)
   const { requested } = await openHost(page)
   await enterHostVR(page)
-  // Se entra con mandos y se sueltan, que es lo que se hace con el visor. Hay que esperar a que
-  // estén registrados: @react-three/xr los registra al cargar su perfil, y si se desconectan
-  // antes, los da de alta igual después y se quedan colgados (en el visor la pose de un mando
-  // que ya no está no llega, y el guante se esconde; en el emulador sí llega).
-  await expect.poll(() => buscarEnLaEscena(page, 'guante-right')).not.toBeNull()
+  // It is entered with controllers and they are put down, which is what is done with the headset. We have to wait until
+  // they are registered: @react-three/xr registers them on loading their profile, and if they are disconnected
+  // before, it signs them up all the same afterwards and they are left hanging (in the headset the pose of a controller
+  // that is no longer there does not arrive, and the glove hides; in the emulator it does arrive).
+  await expect.poll(() => findInScene(page, 'glove-right')).not.toBeNull()
   await useBareHands(page)
 
   await expect
-    .poll(() => buscarEnLaEscena(page, 'mano-desnuda-right'), {
-      message: 'la mano desnuda derecha no llegó a pintarse',
+    .poll(() => findInScene(page, 'bare-hand-right'), {
+      message: 'the right bare hand never got painted',
     })
     .toMatchObject({ visible: true })
   await expect
-    .poll(() => buscarEnLaEscena(page, 'mano-desnuda-left'))
+    .poll(() => findInScene(page, 'bare-hand-left'))
     .toMatchObject({ visible: true })
 
-  // El modelo se pide bajo el prefijo del juego —la raíz del salón no lo tiene— y fuera de sus
-  // `webxr-profiles/`, que el salón borra de cada juego al instalarlo porque sirve la suya.
+  // The model is requested under the game's prefix —the hall's root does not have it— and outside its
+  // `webxr-profiles/`, which the hall deletes from each game on installing it because it serves its own.
   expect(requested).toContain(`${ASSETS_BASE}manos/generic-hand/right.glb`)
-  const otrasRutas = requested.filter(
-    (ruta) => ruta.includes('/generic-hand/') && !ruta.startsWith(`${ASSETS_BASE}manos/`),
+  const otherPaths = requested.filter(
+    (requestedPath) => requestedPath.includes('/generic-hand/') && !requestedPath.startsWith(`${ASSETS_BASE}manos/`),
   )
-  expect(otrasRutas).toEqual([])
+  expect(otherPaths).toEqual([])
 
-  // Al soltar los mandos, el guante se va.
-  await expect.poll(() => buscarEnLaEscena(page, 'guante-right')).toBeNull()
+  // On putting the controllers down, the glove goes away.
+  await expect.poll(() => findInScene(page, 'glove-right')).toBeNull()
   expect(errors).toEqual([])
 })
 
-test('con un reto, la escena montada dentro de la sesión entra jugando y avisa al acabar', async ({
+test('with a challenge, the scene mounted inside the session enters playing and reports on finishing', async ({
   page,
 }) => {
-  // Como en el salón: se entra en la sesión y después se elige cabina. La escena nace dentro de
-  // una sesión abierta, y eso no puede tomarse como «se entró al visor con una partida de
-  // escritorio a medias», que la descartaba y dejaba el reto en el menú.
-  // Una partida entera en tiempo real: con WebGL por software la caída se alarga.
+  // As in the hall: the session is entered and then the cabinet is chosen. The scene is born inside
+  // an open session, and that cannot be taken as «the headset was entered with a desktop
+  // run half way through», which discarded it and left the challenge in the menu.
+  // A whole run in real time: with software WebGL the fall stretches.
   test.setTimeout(150_000)
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
 
   await installXREmulator(page)
-  await openHost(page, undefined, { aLaCarta: true, reto: 20260925 })
+  await openHost(page, undefined, { onDemand: true, challenge: 20260925 })
   await enterHostVR(page)
   await enterHostBooth(page)
 
-  // Sin tocar nada: la cuenta atrás corre sola, los palos caen y ninguno se coge. Con tres
-  // vidas, el tercero que toca el suelo acaba el desafío, y se avisa una vez, como reto.
+  // Without touching anything: the countdown runs by itself, the sticks fall and none is caught. With three
+  // lives, the third one that touches the floor ends the challenge, and it is reported once, as a challenge.
   await expect
-    .poll(() => partidasTerminadas(page), {
+    .poll(() => finishedRuns(page), {
       timeout: 75_000,
-      message: 'la escena no avisó del final del reto',
+      message: 'the scene did not report the end of the challenge',
     })
-    .toEqual([{ modo: 'challenge', puntos: 0, reto: true }])
+    .toEqual([{ mode: 'challenge', points: 0, challenge: true }])
   expect(errors).toEqual([])
 })

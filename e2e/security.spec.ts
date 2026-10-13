@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { openGame, startGame } from './helpers'
 
-test.describe('Cabeceras de seguridad', () => {
-  test('la respuesta trae la política de seguridad y los permisos', async ({
+test.describe('Security headers', () => {
+  test('the response brings the security policy and the permissions', async ({
     page,
   }) => {
     const response = await page.goto('/')
@@ -15,12 +15,12 @@ test.describe('Cabeceras de seguridad', () => {
     expect(headers['content-security-policy']).toBeTruthy()
   })
 
-  test('la CSP cierra la salida a servicios externos', async ({ page }) => {
+  test('the CSP closes the way out to external services', async ({ page }) => {
     const response = await page.goto('/')
     const csp = response!.headers()['content-security-policy']
 
-    // Es lo que garantiza que el juego funcione en un visor sin salida a
-    // internet, aunque una librería del árbol traiga un CDN cableado.
+    // It is what guarantees that the game works in a headset with no way out to
+    // the internet, even if a library of the tree brings a hard-wired CDN.
     expect(csp).toContain("connect-src 'self'")
     expect(csp).toContain("default-src 'self'")
     expect(csp).toContain("object-src 'none'")
@@ -28,19 +28,19 @@ test.describe('Cabeceras de seguridad', () => {
     expect(csp).toContain("frame-ancestors 'self'")
   })
 
-  test('WebXR sigue permitido: sin esto el juego no arranca en el visor', async ({
+  test('WebXR is still allowed: without this the game does not start in the headset', async ({
     page,
   }) => {
     const response = await page.goto('/')
     const permissions = response!.headers()['permissions-policy']
 
     expect(permissions).toContain('xr-spatial-tracking=(self)')
-    // Y lo que el juego no usa, cerrado.
+    // And what the game does not use, closed.
     expect(permissions).toContain('geolocation=()')
     expect(permissions).toContain('microphone=()')
   })
 
-  test('la CSP no rompe la escena: se juega sin violaciones', async ({ page }) => {
+  test('the CSP does not break the scene: it is played with no violations', async ({ page }) => {
     const violations: string[] = []
     page.on('console', (message) => {
       const text = message.text()

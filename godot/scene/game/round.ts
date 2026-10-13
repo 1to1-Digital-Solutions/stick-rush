@@ -1,22 +1,22 @@
 /**
- * Los palos de una tanda en Godot: lo que en la web hace cada `Stick.tsx` fotograma a fotograma,
- * sin pintar nada.
+ * The sticks of a round in Godot: what each `Stick.tsx` does on the web frame by frame, without
+ * painting anything.
  *
- * Cada palo cuelga de su punto del aro (`buildStickLayout`, con la semilla de la tanda), espera su
- * turno meciéndose (`hangingSwing`), se suelta y cae **desde el reposo, acelerando** con la
- * aceleración de su propio recorrido (`fallAcceleration`, `fallDrop`), y acaba atrapado —con su
- * destello, que dura lo que dura en la web— o en el suelo, teñido de rojo. **Se coge colgando o
- * cayendo, hasta que toca el suelo** (`canCatchStick`), y cuánto llevaba cayendo, en tiempo, decide
- * el bonus por reflejos (`stickFallProgress`). Todo sale de `src/lib` tal cual; aquí solo corre el
- * reloj de cada palo con sus mismas reglas y sus mismas constantes (`CATCH_FLASH_DECAY`,
- * `MISS_TINT_SPEED`, que en la web viven dentro del componente).
+ * Each stick hangs from its point of the hoop (`buildStickLayout`, with the round's seed), waits
+ * its turn swaying (`hangingSwing`), is released and falls **from rest, accelerating** with the
+ * acceleration of its own travel (`fallAcceleration`, `fallDrop`), and ends up caught —with its
+ * flash, which lasts what it lasts on the web— or on the floor, tinted red. **It is caught hanging
+ * or falling, until it touches the floor** (`canCatchStick`), and how long it had been falling, in
+ * time, decides the reflex bonus (`stickFallProgress`). Everything comes from `src/lib` as it is;
+ * here only the clock of each stick runs, with its same rules and its same constants
+ * (`CATCH_FLASH_DECAY`, `MISS_TINT_SPEED`, which on the web live inside the component).
  *
- * **Como en la web, los palos no vuelven a montarse por cambiar el aro de altura o el número de
- * palos en el menú**: los que ya había conservan su estado (un palo perdido sigue en el suelo) y
- * solo cambia su anclaje. Una tanda nueva —otra partida, otra recarga de la partida sin fin— sí trae
- * palos nuevos. Quién decide cuándo es nueva es la escena, con la clave (`claveDeLaTanda`).
+ * **As on the web, the sticks are not mounted again because the hoop changes height or the number
+ * of sticks changes in the menu**: the ones already there keep their state (a missed stick stays on
+ * the floor) and only their anchor changes. A new round —another run, another reload of the endless
+ * run— does bring new sticks. Who decides when it is new is the scene, with the key (`roundKey`).
  *
- * No toca el motor, así que se prueba entera en `round.engine.test.ts`.
+ * It does not touch the engine, so it is tested whole in `round.engine.test.ts`.
  */
 import {
   STICK_CORD_LENGTH,
@@ -30,77 +30,77 @@ import { buildStickLayout, type StickLayout } from '@/lib/stickLayout'
 import { SWING_RELEASE_DECAY, hangingSwing, type SwingTilt } from '@/lib/stickSwing'
 import { canCatchStick, type StickState } from '@/lib/xrInteraction'
 
-/** A qué ritmo se apaga el destello del acierto, 1/s (`CATCH_FLASH_DECAY` de `Stick.tsx`). */
+/** How fast the flash of the catch fades, 1/s (`CATCH_FLASH_DECAY` in `Stick.tsx`). */
 export const CATCH_FLASH_DECAY = 1.8
-/** A qué ritmo se tiñe de rojo el palo perdido, 1/s (`MISS_TINT_SPEED` de `Stick.tsx`). */
+/** How fast the missed stick is tinted red, 1/s (`MISS_TINT_SPEED` in `Stick.tsx`). */
 export const MISS_TINT_SPEED = 3.5
-/** El paso más largo que se da de una vez: un salto tras un tirón no suelta media tanda (`Stick.tsx`). */
-export const PASO_MAXIMO = 0.05
+/** The longest step taken at once: a jump after a hitch does not release half a round (`Stick.tsx`). */
+export const MAX_STEP = 0.05
 
 export type Vec3 = [number, number, number]
 
-/** Un palo y su reloj: lo que en la web son el estado y los `ref` de `Stick.tsx`. */
-export interface Palo {
-  readonly indice: number
+/** A stick and its clock: what on the web are the state and the `ref`s of `Stick.tsx`. */
+export interface Stick {
+  readonly index: number
   layout: StickLayout
-  estado: StickState
-  /** Segundos de partida desde que se montó: decide cuándo se suelta (`elapsed`). */
+  state: StickState
+  /** Seconds of run since it was mounted: decides when it is released (`elapsed`). */
   elapsed: number
-  /** Segundos que lleva cayendo: la cota sale de aquí, no de sumar pasos (`fallTime`). */
+  /** Seconds it has been falling: the height comes from here, not from adding steps (`fallTime`). */
   fallTime: number
-  /** Reloj del vaivén, que corre también con la partida parada (`swingTime`). */
+  /** Clock of the sway, which also runs with the run paused (`swingTime`). */
   swingTime: number
-  /** Cuánto del vaivén se aplica, de 1 colgando a 0 soltado (`swingLevel`). */
+  /** How much of the sway is applied, from 1 hanging to 0 released (`swingLevel`). */
   swingLevel: number
-  /** Inclinación de ahora: la del vaivén por su nivel. */
-  inclinacion: SwingTilt
-  /** El destello del acierto, de 1 a 0 (`flash`). */
+  /** The tilt right now: that of the sway times its level. */
+  tilt: SwingTilt
+  /** The flash of the catch, from 1 to 0 (`flash`). */
   flash: number
-  /** Cuánto se ha teñido de rojo el palo perdido, de 0 a 1 (`missTint`). */
+  /** How much the missed stick has been tinted red, from 0 to 1 (`missTint`). */
   missTint: number
-  /** La cota del anclaje: la del aro colgando, más abajo cayendo, `STICK_MISS_Y` en el suelo. */
+  /** The height of the anchor: the hoop's when hanging, lower when falling, `STICK_MISS_Y` on the floor. */
   y: number
-  /** Se esconde al acabar el destello del acierto. */
+  /** It is hidden when the flash of the catch ends. */
   visible: boolean
 }
 
-/** Lo que pasa en un fotograma: los palos que han tocado el suelo, por índice. */
-export interface SucesosDeLaTanda {
-  perdidos: number[]
+/** What happens in a frame: the sticks that have touched the floor, by index. */
+export interface RoundEvents {
+  missed: number[]
 }
 
-/** La clave de una tanda: con otra, palos nuevos (en la web, la `key` de cada `Stick`). */
-export function claveDeLaTanda(runId: number, semilla: number): string {
-  return `${runId}:${semilla >>> 0}`
+/** The key of a round: with another one, new sticks (on the web, the `key` of each `Stick`). */
+export function roundKey(runId: number, seed: number): string {
+  return `${runId}:${seed >>> 0}`
 }
 
 /**
- * Dónde está el cuerpo de un palo, de su punta de arriba a la de abajo, en el espacio de la
- * máquina: cuelga un hilo por debajo del anclaje, inclinado con el vaivén (primero sobre `Z`, luego
- * sobre `X`, que es el orden de three para un giro sin `Y`).
+ * Where the body of a stick is, from its top tip to its bottom one, in the machine's space: it
+ * hangs a cord below the anchor, tilted with the sway (first about `Z`, then about `X`, which is
+ * three's order for a rotation without `Y`).
  */
-export function cuerpoDelPalo(palo: Palo): { arriba: Vec3; abajo: Vec3 } {
-  const [ax, , az] = palo.layout.anchor
-  const { x: bx, z: bz } = palo.inclinacion
-  const punta = (d: number): Vec3 => {
+export function stickBody(stick: Stick): { top: Vec3; bottom: Vec3 } {
+  const [ax, , az] = stick.layout.anchor
+  const { x: bx, z: bz } = stick.tilt
+  const tip = (d: number): Vec3 => {
     const sx = d * Math.sin(bz)
     const sy = -d * Math.cos(bz)
-    return [ax + sx, palo.y + sy * Math.cos(bx), az + sy * Math.sin(bx)]
+    return [ax + sx, stick.y + sy * Math.cos(bx), az + sy * Math.sin(bx)]
   }
-  return { arriba: punta(STICK_CORD_LENGTH), abajo: punta(STICK_CORD_LENGTH + STICK_LENGTH) }
+  return { top: tip(STICK_CORD_LENGTH), bottom: tip(STICK_CORD_LENGTH + STICK_LENGTH) }
 }
 
-function nuevoPalo(layout: StickLayout, indice: number, mece: boolean): Palo {
+function newStick(layout: StickLayout, index: number, swings: boolean): Stick {
   return {
-    indice,
+    index,
     layout,
-    estado: 'hanging',
+    state: 'hanging',
     elapsed: 0,
     fallTime: 0,
     swingTime: 0,
-    // Nace a 0 si no se mece: empezar a 1 lo dejaría naciendo inclinado y enderezándose.
-    swingLevel: mece ? 1 : 0,
-    inclinacion: { x: 0, z: 0 },
+    // It is born at 0 if it does not sway: starting at 1 would leave it born tilted and straightening up.
+    swingLevel: swings ? 1 : 0,
+    tilt: { x: 0, z: 0 },
     flash: 0,
     missTint: 0,
     y: layout.anchor[1],
@@ -108,112 +108,113 @@ function nuevoPalo(layout: StickLayout, indice: number, mece: boolean): Palo {
   }
 }
 
-export class Tanda {
-  palos: Palo[] = []
-  private semilla: number
-  private cuantos = 0
-  private alto = 0
+export class Round {
+  sticks: Stick[] = []
+  private seed: number
+  private count = 0
+  private height = 0
 
   constructor(
-    readonly clave: string,
-    semilla: number,
-    cuantos: number,
-    alto: number,
-    /** Si los palos se mecen colgando: en la web se apaga con `prefers-reduced-motion`. */
-    private readonly mece = true,
+    readonly key: string,
+    seed: number,
+    count: number,
+    height: number,
+    /** Whether the sticks sway while hanging: on the web it is turned off with `prefers-reduced-motion`. */
+    private readonly swings = true,
   ) {
-    this.semilla = semilla
-    this.colocar(cuantos, alto)
+    this.seed = seed
+    this.place(count, height)
   }
 
   /**
-   * Con otro número de palos u otra altura del aro, el reparto nuevo (`buildStickLayout`) sin
-   * perder lo que llevaba cada palo que sigue: los que sobran se van, los que faltan nacen colgando.
-   * El palo que se mueve con el aro se lleva la cota nueva; el perdido sigue en el suelo.
+   * With another number of sticks or another hoop height, the new layout (`buildStickLayout`)
+   * without losing what each stick that stays was carrying: the spare ones go, the missing ones are
+   * born hanging. The stick that moves with the hoop takes the new height; the missed one stays on
+   * the floor.
    */
-  colocar(cuantos: number, alto: number): void {
-    if (cuantos === this.cuantos && alto === this.alto) return
-    this.cuantos = cuantos
-    this.alto = alto
-    const layouts = buildStickLayout(cuantos, this.semilla, alto)
-    this.palos = layouts.map((layout, i) => {
-      const antes = this.palos[i]
-      if (antes == null) return nuevoPalo(layout, i, this.mece)
-      const seMueve = antes.layout.anchor[1] !== layout.anchor[1]
-      antes.layout = layout
-      if (seMueve && antes.estado !== 'missed') antes.y = layout.anchor[1]
-      return antes
+  place(count: number, height: number): void {
+    if (count === this.count && height === this.height) return
+    this.count = count
+    this.height = height
+    const layouts = buildStickLayout(count, this.seed, height)
+    this.sticks = layouts.map((layout, i) => {
+      const previous = this.sticks[i]
+      if (previous == null) return newStick(layout, i, this.swings)
+      const moves = previous.layout.anchor[1] !== layout.anchor[1]
+      previous.layout = layout
+      if (moves && previous.state !== 'missed') previous.y = layout.anchor[1]
+      return previous
     })
   }
 
   /**
-   * Un fotograma de todos los palos. `parada` es la partida parada (menú, cuenta atrás, final o la
-   * pregunta delante): el reloj de cada palo no corre, pero el vaivén sí. `velocidad` es la media de
-   * la dificultad ya corregida para la altura del aro (`hoopFallSpeed`).
+   * A frame of all the sticks. `paused` is the run paused (menu, countdown, end or the question in
+   * front): the clock of each stick does not run, but the sway does. `speed` is the average one of
+   * the difficulty already corrected for the hoop height (`hoopFallSpeed`).
    */
-  avanzar(delta: number, { parada, velocidad }: { parada: boolean; velocidad: number }): SucesosDeLaTanda {
-    const d = Math.min(Math.max(0, delta), PASO_MAXIMO)
-    const perdidos: number[] = []
-    for (const palo of this.palos) {
-      if (!parada) palo.elapsed += d
+  advance(delta: number, { paused, speed }: { paused: boolean; speed: number }): RoundEvents {
+    const d = Math.min(Math.max(0, delta), MAX_STEP)
+    const missed: number[] = []
+    for (const stick of this.sticks) {
+      if (!paused) stick.elapsed += d
 
-      // El vaivén: el palo colgado se mece; en cuanto se suelta se endereza.
-      if (this.mece && palo.estado === 'hanging') {
-        palo.swingTime += d
-        palo.swingLevel = 1
-      } else if (palo.swingLevel > 0) {
-        palo.swingLevel = Math.max(0, palo.swingLevel - d * SWING_RELEASE_DECAY)
+      // The sway: the hanging stick sways; as soon as it is released it straightens up.
+      if (this.swings && stick.state === 'hanging') {
+        stick.swingTime += d
+        stick.swingLevel = 1
+      } else if (stick.swingLevel > 0) {
+        stick.swingLevel = Math.max(0, stick.swingLevel - d * SWING_RELEASE_DECAY)
       }
-      if (palo.swingLevel > 0) {
-        const t = hangingSwing(palo.swingTime, palo.layout.swingPhase)
-        palo.inclinacion = { x: t.x * palo.swingLevel, z: t.z * palo.swingLevel }
-      } else palo.inclinacion = { x: 0, z: 0 }
+      if (stick.swingLevel > 0) {
+        const t = hangingSwing(stick.swingTime, stick.layout.swingPhase)
+        stick.tilt = { x: t.x * stick.swingLevel, z: t.z * stick.swingLevel }
+      } else stick.tilt = { x: 0, z: 0 }
 
-      // El destello del acierto se apaga y, al acabar, el palo se va.
-      if (palo.flash > 0) {
-        palo.flash = Math.max(0, palo.flash - d * CATCH_FLASH_DECAY)
-        if (palo.flash <= 0 && palo.estado === 'caught') palo.visible = false
+      // The flash of the catch fades and, when it ends, the stick goes.
+      if (stick.flash > 0) {
+        stick.flash = Math.max(0, stick.flash - d * CATCH_FLASH_DECAY)
+        if (stick.flash <= 0 && stick.state === 'caught') stick.visible = false
       }
-      if (palo.estado === 'missed' && palo.missTint < 1) palo.missTint = Math.min(1, palo.missTint + d * MISS_TINT_SPEED)
+      if (stick.state === 'missed' && stick.missTint < 1) stick.missTint = Math.min(1, stick.missTint + d * MISS_TINT_SPEED)
 
-      if (palo.estado === 'hanging') {
-        if (!parada && palo.elapsed >= palo.layout.delay) palo.estado = 'falling'
+      if (stick.state === 'hanging') {
+        if (!paused && stick.elapsed >= stick.layout.delay) stick.state = 'falling'
         continue
       }
-      if (palo.estado === 'falling' && !parada) {
-        palo.fallTime += d
-        const [, ay] = palo.layout.anchor
-        palo.y = ay - fallDrop(palo.fallTime, fallAcceleration(velocidad, ay - STICK_MISS_Y))
-        if (palo.y <= STICK_MISS_Y) {
-          palo.y = STICK_MISS_Y
-          palo.estado = 'missed'
-          perdidos.push(palo.indice)
+      if (stick.state === 'falling' && !paused) {
+        stick.fallTime += d
+        const [, ay] = stick.layout.anchor
+        stick.y = ay - fallDrop(stick.fallTime, fallAcceleration(speed, ay - STICK_MISS_Y))
+        if (stick.y <= STICK_MISS_Y) {
+          stick.y = STICK_MISS_Y
+          stick.state = 'missed'
+          missed.push(stick.index)
         }
       }
     }
-    return { perdidos }
+    return { missed }
   }
 
-  /** Si ese palo se puede coger ahora (`canCatchStick`). */
-  sePuedeCoger(indice: number, parada: boolean): boolean {
-    const palo = this.palos[indice]
-    return palo != null && canCatchStick(palo.estado, parada)
+  /** Whether that stick can be caught now (`canCatchStick`). */
+  canCatch(index: number, paused: boolean): boolean {
+    const stick = this.sticks[index]
+    return stick != null && canCatchStick(stick.state, paused)
   }
 
   /**
-   * Coge un palo, si se puede: se enciende y devuelve cuánto llevaba cayendo, en fracción de su
-   * tiempo de caída (`stickFallProgress`, contra su propio anclaje). `null` si no se podía.
+   * Catches a stick, if it can be: it lights up and returns how long it had been falling, as a
+   * fraction of its fall time (`stickFallProgress`, against its own anchor). `null` if it could not.
    */
-  atrapar(indice: number, parada: boolean): number | null {
-    if (!this.sePuedeCoger(indice, parada)) return null
-    const palo = this.palos[indice]
-    palo.estado = 'caught'
-    palo.flash = 1
-    return stickFallProgress(palo.y, palo.layout.anchor[1])
+  catchStick(index: number, paused: boolean): number | null {
+    if (!this.canCatch(index, paused)) return null
+    const stick = this.sticks[index]
+    stick.state = 'caught'
+    stick.flash = 1
+    return stickFallProgress(stick.y, stick.layout.anchor[1])
   }
 
-  /** Los palos que se pueden coger ahora, por índice. */
-  cogibles(parada: boolean): Palo[] {
-    return this.palos.filter((p) => canCatchStick(p.estado, parada))
+  /** The sticks that can be caught now, by index. */
+  catchable(paused: boolean): Stick[] {
+    return this.sticks.filter((p) => canCatchStick(p.state, paused))
   }
 }

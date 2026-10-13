@@ -1,40 +1,40 @@
 /**
- * Cómo responde la feria a lo que hace el jugador.
+ * How the fairground responds to what the player does.
  *
- * Las bombillas de las guirnaldas y de la noria suben de brillo con la racha y,
- * a partir de cierta racha, palpitan al ritmo de una fiesta; el público se
- * mece más deprisa y más alto. Todo son funciones puras de la racha y del reloj:
- * la escena las lee cada fotograma sin pasar por React y se pueden probar sin
- * escena.
+ * The bulbs of the garlands and of the Ferris wheel get brighter with the streak
+ * and, from a certain streak on, they throb to the rhythm of a party; the crowd
+ * sways faster and higher. All of them are pure functions of the streak and the
+ * clock: the scene reads them every frame without going through React and they
+ * can be tested without a scene.
  *
- * Con `prefers-reduced-motion` las bombillas no palpitan y el público no se
- * mueve; el brillo sí sube, que un cambio lento de luz no es movimiento.
+ * With `prefers-reduced-motion` the bulbs do not throb and the crowd does not
+ * move; the glow does rise, since a slow change of light is not motion.
  */
 
-/** Brillo de las bombillas sin racha: el que tenía la feria antes de todo esto. */
+/** Glow of the bulbs with no streak: the one the fairground had before all this. */
 export const BULB_GLOW_IDLE = 1.6
-/** Hasta dónde llega el brillo con una racha larga. */
+/** How far the glow gets with a long streak. */
 export const BULB_GLOW_MAX = 3.2
-/** Racha a partir de la cual las bombillas empiezan a palpitar. */
+/** Streak from which the bulbs start to throb. */
 export const PARTY_STREAK = 5
-/** Racha con la que la fiesta ya está al máximo; más no cambia nada. */
+/** Streak with which the party is already at its maximum; more changes nothing. */
 export const FULL_PARTY_STREAK = 15
 
-/** Cuánto sube el brillo con la racha: rápido al principio, saturando después. */
+/** How much the glow rises with the streak: fast at first, saturating afterwards. */
 export function bulbGlow(streak: number): number {
   const s = Math.max(0, streak)
   return BULB_GLOW_IDLE + (BULB_GLOW_MAX - BULB_GLOW_IDLE) * (1 - Math.exp(-s / 6))
 }
 
-/** Cuánto de fiesta hay: 0 sin racha, 1 con la racha de fiesta completa. */
+/** How much of a party there is: 0 with no streak, 1 with the full party streak. */
 export function partyLevel(streak: number): number {
   if (streak < PARTY_STREAK) return 0
   return Math.min(1, (streak - PARTY_STREAK + 1) / (FULL_PARTY_STREAK - PARTY_STREAK + 1))
 }
 
 /**
- * El palpitar de las bombillas en este instante, entre 0 (color de siempre) y
- * 1 (blanco de fiesta). Late más deprisa cuanto mayor es la racha.
+ * The throb of the bulbs at this instant, between 0 (the usual colour) and
+ * 1 (party white). It beats faster the longer the streak.
  */
 export function bulbPulse(streak: number, time: number): number {
   const level = partyLevel(streak)
@@ -44,12 +44,12 @@ export function bulbPulse(streak: number, time: number): number {
   return wave * level
 }
 
-/** Cuánto se mece el público, en metros de subida y bajada. Siempre algo: la gente no es de piedra. */
+/** How much the crowd sways, in metres of rise and fall. Always something: people are not made of stone. */
 export function crowdBob(streak: number): number {
   return 0.012 + 0.05 * Math.min(1, Math.max(0, streak) / FULL_PARTY_STREAK)
 }
 
-/** A qué ritmo se mece, en vaivenes por segundo. */
+/** At what tempo it sways, in sways per second. */
 export function crowdTempo(streak: number): number {
   return 1.1 + 1.3 * Math.min(1, Math.max(0, streak) / FULL_PARTY_STREAK)
 }

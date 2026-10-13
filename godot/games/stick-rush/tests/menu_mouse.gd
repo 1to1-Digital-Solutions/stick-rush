@@ -1,158 +1,158 @@
-## El menú y los palos con el ratón, en la escena de verdad: que se empieza en el menú con el reto
-## elegido y la práctica a un toque, que elegir
-## velocidad y palos y subir el aro y darle a jugar empieza la partida con eso, que un clic en un
-## palo durante la cuenta atrás no lo coge y jugando sí, que un clic en el aire no coge nada, que
-## Escape pregunta antes de dejar la partida, que salir vuelve al menú con el modo que se eligió, y
-## que la flecha de la esquina sale del juego.
+## The menu and the sticks with the mouse, in the real scene: that it starts in the menu with the
+## challenge chosen and practice one tap away, that choosing
+## speed and sticks and raising the hoop and pressing play starts the run with that, that a click on
+## a stick during the countdown does not catch it and while playing it does, that a click in the air
+## catches nothing, that Escape asks before leaving the run, that leaving goes back to the menu with
+## the mode that was chosen, and that the arrow in the corner leaves the game.
 ##
-## La velocidad, los palos y el aro van tras «Más opciones», que se despliega antes de elegirlos.
+## The speed, the sticks and the hoop go behind «Más opciones», which is unfolded before choosing them.
 ##
-## Los clics son eventos del ratón empujados al viewport, sobre donde la cámara pinta cada botón
-## (`pantalla_del_boton`) o cada palo (`pantalla_del_palo`): el mismo camino que un clic de verdad,
-## puntería incluida. Apretar y soltar van en pasos distintos, como con una mano: la pulsación
-## cuenta al apretar. Entre un paso y el siguiente pasa un tercio de segundo largo, que es lo que la
-## puntería pide para no tomar dos clics seguidos por un doble roce.
+## The clicks are mouse events pushed to the viewport, over where the camera paints each button
+## (`button_on_screen`) or each stick (`stick_on_screen`): the same path as a real click, aim
+## included. Pressing and releasing go in different steps, as with a hand: the press counts on
+## pressing. Between one step and the next a long third of a second goes by, which is what the aim
+## asks for so as not to take two clicks in a row for a double brush.
 extends Node
 
 const MAIN := "res://games/stick-rush/main.tscn"
 const MAX_FRAMES := 72 * 40
-## Fotogramas entre paso y paso: a 72 por segundo, un tercio de segundo largo.
-const ENTRE_PASOS := 26
-## Un punto del cielo, lejos de cualquier botón y de cualquier palo.
-const CIELO := Vector2(900, 60)
+## Frames between step and step: at 72 per second, a long third of a second.
+const BETWEEN_STEPS := 26
+## A point of the sky, far from any button and from any stick.
+const SKY := Vector2(900, 60)
 
-## Los pasos: [qué, con qué]. `apretar`/`soltar` un botón por su id (o `palo`, o el cielo),
-## `escape`, `esperar` una fase, `esperar_tiempo` fotogramas, y las comprobaciones.
-const PASOS := [
-	["esperar", "menu"],
-	# El menú abre en el reto; un toque en el modo lo pasa a la práctica, que es donde se elige.
-	["modo", "challenge"],
-	["apretar", "mode"], ["soltar", ""],
-	["modo", "practice"],
-	# Lo de la práctica y el aro van plegados tras «Más opciones»: se despliegan para elegirlos.
-	["apretar", "opciones"], ["soltar", ""],
-	["apretar", "difficulty:hard"], ["soltar", ""],
-	["apretar", "sticks:7"], ["soltar", ""],
-	["apretar", "hoopUp"], ["soltar", ""],
-	["aro", 0.05],
-	["apretar", "play"], ["soltar", ""],
-	["esperar", "countdown"],
-	["eleccion", "practice:hard:7"],
-	["apretar", "palo"], ["soltar", ""],
-	["atrapados", 0],
-	["esperar_tiempo", 72 * 3],
-	["esperar", "playing"],
-	["apretar", "cielo"], ["soltar", ""],
-	["atrapados", 0],
-	["apretar", "palo"], ["soltar", ""],
-	["atrapados", 1],
+## The steps: [what, with what]. `press`/`release` a button by its id (or `stick`, or the sky),
+## `escape`, `wait` for a phase, `wait_time` frames, and the checks.
+const STEPS := [
+	["wait", "menu"],
+	# The menu opens on the challenge; a tap on the mode switches it to practice, which is where things are chosen.
+	["mode", "challenge"],
+	["press", "mode"], ["release", ""],
+	["mode", "practice"],
+	# Practice's options and the hoop are folded behind «Más opciones»: they are unfolded to choose them.
+	["press", "options"], ["release", ""],
+	["press", "difficulty:hard"], ["release", ""],
+	["press", "sticks:7"], ["release", ""],
+	["press", "hoopUp"], ["release", ""],
+	["hoop", 0.05],
+	["press", "play"], ["release", ""],
+	["wait", "countdown"],
+	["selection", "practice:hard:7"],
+	["press", "stick"], ["release", ""],
+	["caught", 0],
+	["wait_time", 72 * 3],
+	["wait", "playing"],
+	["press", "sky"], ["release", ""],
+	["caught", 0],
+	["press", "stick"], ["release", ""],
+	["caught", 1],
 	["escape", ""],
-	["esperar", "quit"],
-	["apretar", "confirm:leave"], ["soltar", ""],
-	["esperar", "menu"],
-	# El modo elegido sigue puesto al volver. (No se pulsa otra vez: sin ventana el motor corre
-	# más deprisa que el reloj, y dos toques al mismo botón tan seguidos son un doble roce.)
-	["modo", "practice"],
-	["apretar", "exit"], ["soltar", ""],
-	["salida", ""],
+	["wait", "quit"],
+	["press", "confirm:leave"], ["release", ""],
+	["wait", "menu"],
+	# The chosen mode is still set on coming back. (It is not pressed again: with no window the engine
+	# runs faster than the clock, and two taps on the same button so close together are a double brush.)
+	["mode", "practice"],
+	["press", "exit"], ["release", ""],
+	["exited", ""],
 ]
 
 var game: Node
 var frames := 0
-var paso := 0
-var espera := 0
+var step := 0
+var wait := 0
 var failures: Array[String] = []
-var apretado_en := Vector2(-1, -1)
+var pressed_at := Vector2(-1, -1)
 
 
 func _ready() -> void:
-	# Sin ventana, el motor pinta en 64×64: se juega en la proporción de una pantalla.
+	# With no window, the engine paints at 64×64: it is played in the proportion of a screen.
 	get_window().size = Vector2i(1152, 648)
 	AudioServer.add_bus()
 	var bus := AudioServer.bus_count - 1
-	AudioServer.set_bus_name(bus, "Mudo")
+	AudioServer.set_bus_name(bus, "Muted")
 	AudioServer.set_bus_mute(bus, true)
 	game = (load(MAIN) as PackedScene).instantiate()
 	game.set_meta("harness_menu", true)
-	game.set_meta("sfx_bus", "Mudo")
+	game.set_meta("sfx_bus", "Muted")
 	add_child(game)
 
 
-func mover_a(at: Vector2) -> void:
+func move_to(at: Vector2) -> void:
 	var e := InputEventMouseMotion.new()
 	e.position = at
 	get_viewport().push_input(e)
 
 
-func boton(at: Vector2, apretado: bool) -> void:
+func button(at: Vector2, pressed: bool) -> void:
 	var e := InputEventMouseButton.new()
 	e.position = at
 	e.button_index = MOUSE_BUTTON_LEFT
-	e.pressed = apretado
+	e.pressed = pressed
 	get_viewport().push_input(e)
 
 
 func _process(_delta: float) -> void:
 	frames += 1
 	if frames > MAX_FRAMES:
-		failures.append("no ha acabado en %d fotogramas (paso %d)" % [MAX_FRAMES, paso])
-		terminar()
+		failures.append("it has not ended in %d frames (step %d)" % [MAX_FRAMES, step])
+		finish()
 		return
-	if espera > 0:
-		espera -= 1
+	if wait > 0:
+		wait -= 1
 		return
-	espera = ENTRE_PASOS
-	if paso >= PASOS.size():
-		terminar()
+	wait = BETWEEN_STEPS
+	if step >= STEPS.size():
+		finish()
 		return
-	var que: String = PASOS[paso][0]
-	var con = PASOS[paso][1]
-	match que:
-		"esperar":
-			if game.fase() != con:
-				failures.append("paso %d: la fase es %s y no %s" % [paso, game.fase(), con])
-		"esperar_tiempo":
-			espera = int(con)
-		"apretar":
-			if con == "cielo":
-				apretado_en = CIELO
-			elif con == "palo":
-				apretado_en = game.pantalla_del_palo()
+	var what: String = STEPS[step][0]
+	var with = STEPS[step][1]
+	match what:
+		"wait":
+			if game.phase() != with:
+				failures.append("step %d: the phase is %s and not %s" % [step, game.phase(), with])
+		"wait_time":
+			wait = int(with)
+		"press":
+			if with == "sky":
+				pressed_at = SKY
+			elif with == "stick":
+				pressed_at = game.stick_on_screen()
 			else:
-				apretado_en = game.pantalla_del_boton(con)
-			if apretado_en.x < 0:
-				failures.append("paso %d: no encuentro %s" % [paso, con])
-			mover_a(apretado_en)
-			boton(apretado_en, true)
-			# El palo o el aire, de un fotograma a otro: que el siguiente paso mire enseguida.
-			if con == "palo" or con == "cielo":
-				espera = 3
-		"soltar":
-			boton(apretado_en, false)
+				pressed_at = game.button_on_screen(with)
+			if pressed_at.x < 0:
+				failures.append("step %d: cannot find %s" % [step, with])
+			move_to(pressed_at)
+			button(pressed_at, true)
+			# The stick or the air, from one frame to another: let the next step look straight away.
+			if with == "stick" or with == "sky":
+				wait = 3
+		"release":
+			button(pressed_at, false)
 		"escape":
 			var e := InputEventKey.new()
 			e.keycode = KEY_ESCAPE
 			e.pressed = true
 			get_viewport().push_input(e)
-		"eleccion":
-			if game.eleccion() != con:
-				failures.append("se juega %s y se eligió %s" % [game.eleccion(), con])
-		"aro":
-			if absf(float(game.ajuste_del_aro()) - float(con)) > 1e-6:
-				failures.append("el aro se ha subido %.3f y no %.3f" % [game.ajuste_del_aro(), con])
-		"atrapados":
-			if int(game.atrapados()) != int(con):
-				failures.append("paso %d: %d palos cogidos y tocaban %d" % [paso, game.atrapados(), con])
-		"modo":
-			if game.modo_de_la_partida() != con:
-				failures.append("paso %d: el modo es %s y no %s" % [paso, game.modo_de_la_partida(), con])
-		"salida":
+		"selection":
+			if game.selection() != with:
+				failures.append("%s is played and %s was chosen" % [game.selection(), with])
+		"hoop":
+			if absf(float(game.hoop_adjustment()) - float(with)) > 1e-6:
+				failures.append("the hoop has been raised %.3f and not %.3f" % [game.hoop_adjustment(), with])
+		"caught":
+			if int(game.caught()) != int(with):
+				failures.append("step %d: %d sticks caught and %d were due" % [step, game.caught(), with])
+		"mode":
+			if game.run_mode() != with:
+				failures.append("step %d: the mode is %s and not %s" % [step, game.run_mode(), with])
+		"exited":
 			if not game.has_meta("salida"):
-				failures.append("la flecha de salir no ha salido")
-	paso += 1
+				failures.append("the exit arrow has not exited")
+	step += 1
 
 
-func terminar() -> void:
+func finish() -> void:
 	set_process(false)
-	print("MENU-RATON %s %s" % ["ok" if failures.is_empty() else "FAIL", ", ".join(failures)])
+	print("MENU-MOUSE %s %s" % ["ok" if failures.is_empty() else "FAIL", ", ".join(failures)])
 	get_tree().quit(0 if failures.is_empty() else 1)

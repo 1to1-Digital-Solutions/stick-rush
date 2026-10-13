@@ -2,36 +2,36 @@ import { type GameMode } from './gameMode'
 import { createStoredPreference, gameStorage } from './storage'
 
 /**
- * La mejor puntuación, guardada entre visitas.
+ * The best score, kept between visits.
  *
- * Un entero por modo en `localStorage`, sin identificadores ni nada que describa
- * a quien juega. Rompe a propósito el "cero almacenamiento" que la auditoría de
- * seguridad dio por bueno, porque un récord que se borra al recargar no es un
- * récord; lo demás que se guarda son la altura del aro (`hoopHeight.ts`), el
- * tutorial ya visto (`tutorial.ts`) y el silencio (`mutePreference.ts`). El
- * escenario y el modo siguen viviendo solo en memoria.
+ * One integer per mode in `localStorage`, with no identifiers nor anything that
+ * describes who is playing. It breaks on purpose the "zero storage" that the
+ * security audit approved, because a record that is erased on reload is not a
+ * record; the rest of what is stored are the hoop height (`hoopHeight.ts`), the
+ * tutorial already seen (`tutorial.ts`) and the mute (`mutePreference.ts`). The
+ * scenery and the mode still live only in memory.
  *
- * **Un récord por modo** y no uno global: un desafío se corta al quedarse sin
- * vidas, así que con los mismos palos y la misma dificultad nunca puede puntuar
- * más que la práctica equivalente. Con una sola marca, el modo con algo en juego
- * sería el único que jamás la batiría.
+ * **One record per mode** and not a global one: a challenge is cut short when
+ * the lives run out, so with the same sticks and the same difficulty it can
+ * never score more than the equivalent practice. With a single best, the mode
+ * with something at stake would be the only one that would never beat it.
  *
- * El acceso es tolerante a fallos: en modo privado, o con el almacenamiento
- * bloqueado por política, tocar `localStorage` **lanza** en vez de devolver
- * `null`. Ahí el juego se queda sin récord y se juega igual: es una función de
- * más, no una condición para jugar.
+ * Access is fault tolerant: in private mode, or with storage blocked by
+ * policy, touching `localStorage` **throws** instead of returning `null`. There
+ * the game is left without a record and is played just the same: it is an extra
+ * feature, not a condition for playing.
  *
- * Las funciones de lectura y escritura reciben el `Storage` por parámetro, así
- * que la regla se prueba sin navegador y sin tocar el almacenamiento real. Por
- * encima hay un almacén al que React se suscribe (`useSyncExternalStore`): el
- * récord no es estado de React sino algo que vive fuera y que el juego
- * consulta, que es justo lo que evita sincronizarlo con efectos.
+ * The read and write functions receive the `Storage` as a parameter, so the
+ * rule is tested without a browser and without touching the real storage. On
+ * top there is a store React subscribes to (`useSyncExternalStore`): the
+ * record is not React state but something that lives outside and that the game
+ * queries, which is exactly what avoids synchronising it with effects.
  */
 
 /**
- * Clave del récord de cada modo. Con prefijo para no chocar con nada más del
- * mismo origen. La de práctica es la que ya había: quien tuviera un récord antes
- * de que existieran los modos lo conserva donde estaba.
+ * Key of each mode's record. Prefixed so as not to clash with anything else of
+ * the same origin. The practice one is the one that already existed: whoever had
+ * a record before the modes existed keeps it where it was.
  */
 export const HIGH_SCORE_KEYS: Record<GameMode, string> = {
   practice: 'stick-rush:best-points',
@@ -39,16 +39,15 @@ export const HIGH_SCORE_KEYS: Record<GameMode, string> = {
   challenge: 'stick-rush:best-points:challenge',
 }
 
-/** La partida sin fin no mide puntos —crecen sin tope— sino la mejor racha. */
+/** The endless run does not measure points —they grow without limit— but the best streak. */
 export const ENDLESS_STREAK_KEY = 'stick-rush:best-streak:endless'
 
 /**
- * Interpreta lo leído del almacenamiento.
+ * Interprets what was read from storage.
  *
- * Es entrada externa —cualquiera puede editarla desde las herramientas del
- * navegador—, así que solo se acepta un entero no negativo y exacto. Cualquier
- * otra cosa cuenta como "todavía no hay récord" en vez de propagar un `NaN` a
- * la puntuación.
+ * It is external input —anyone can edit it from the browser's tools—, so only
+ * an exact non-negative integer is accepted. Anything else counts as "there is
+ * no record yet" instead of propagating a `NaN` to the score.
  */
 export function parseBestPoints(raw: string | null): number {
   if (raw == null || raw.trim() === '') return 0
@@ -57,7 +56,7 @@ export function parseBestPoints(raw: string | null): number {
   return value
 }
 
-/** Récord guardado de ese modo, o 0 si no hay ninguno legible. */
+/** Stored record of that mode, or 0 if there is no readable one. */
 export function readBestPoints(
   storage: Storage | null,
   mode: GameMode,
@@ -66,14 +65,14 @@ export function readBestPoints(
   try {
     return parseBestPoints(storage.getItem(HIGH_SCORE_KEYS[mode]))
   } catch {
-    // Almacenamiento bloqueado: se juega sin récord previo.
+    // Storage blocked: the game is played without a previous record.
     return 0
   }
 }
 
 /**
- * Guarda el récord de un modo. Los valores imposibles no se escriben, para no
- * dejar en el navegador algo que la lectura vaya a descartar.
+ * Saves a mode's record. Impossible values are not written, so as not to
+ * leave in the browser something the read is going to discard.
  */
 export function writeBestPoints(
   storage: Storage | null,
@@ -84,27 +83,27 @@ export function writeBestPoints(
   try {
     storage.setItem(HIGH_SCORE_KEYS[mode], String(points))
   } catch {
-    // Cuota agotada o escritura prohibida: esa partida se queda sin récord.
-    // Perderlo no justifica interrumpir el juego con un aviso.
+    // Quota exhausted or writing forbidden: that run is left without a record.
+    // Losing it does not justify interrupting the game with a notice.
   }
 }
 
 
 /*
- * Aquí no se toca el navegador: lo que lo toca (el evento `storage` entre pestañas) vive en
- * `highScore.ts`, que reexporta todo esto. Así el port a Godot (`godot/`) carga las marcas tal
- * cual, con su guardado, sin arrastrar `window`.
+ * The browser is not touched here: what touches it (the `storage` event between tabs) lives in
+ * `highScore.ts`, which re-exports all of this. That way the Godot port (`godot/`) loads the bests
+ * as they are, with its own saving, without dragging `window` along.
  */
 
-/** Quién quiere enterarse, en este mismo proceso, de que el récord ha cambiado. */
+/** Who wants to find out, in this same process, that the record has changed. */
 const listeners = new Set<() => void>()
 
 /**
- * Apunta a alguien para enterarse de que el récord ha cambiado en este proceso; devuelve cómo
- * dejar de escuchar. Lo que escribe otra pestaña lo añade `subscribeBestPoints`, que es la del
- * navegador.
+ * Signs someone up to find out that the record has changed in this process; returns how to
+ * stop listening. What another tab writes is added by `subscribeBestPoints`, which is the
+ * browser's one.
  */
-export function escucharElRecord(listener: () => void): () => void {
+export function subscribeToRecord(listener: () => void): () => void {
   listeners.add(listener)
   return () => {
     listeners.delete(listener)
@@ -112,17 +111,17 @@ export function escucharElRecord(listener: () => void): () => void {
 }
 
 /**
- * Récord vigente de un modo. Se lee del navegador cada vez en lugar de guardar
- * una copia: el almacenamiento es la única fuente de verdad, así que no hay dos
- * versiones que puedan discrepar.
+ * Current record of a mode. It is read from the browser every time instead of
+ * keeping a copy: the storage is the only source of truth, so there are no two
+ * versions that could disagree.
  */
 export function getBestPoints(mode: GameMode): number {
   return readBestPoints(gameStorage(), mode)
 }
 
 /**
- * Guarda la puntuación si mejora el récord de ese modo, y avisa a quien lo esté
- * mirando.
+ * Saves the score if it improves that mode's record, and notifies whoever is
+ * watching it.
  */
 export function saveBestPoints(mode: GameMode, points: number): void {
   if (!Number.isSafeInteger(points) || points <= getBestPoints(mode)) return
@@ -142,7 +141,7 @@ export const {
   subscribe: subscribeBestEndlessStreak,
 } = endlessStreak
 
-/** Guarda la racha de una partida sin fin si mejora la marca. */
+/** Saves the streak of an endless run if it improves the best. */
 export function saveBestEndlessStreak(streak: number): void {
   if (!Number.isSafeInteger(streak) || streak <= getBestEndlessStreak()) return
   endlessStreak.save(streak)

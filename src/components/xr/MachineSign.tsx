@@ -3,54 +3,54 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useXR } from '@react-three/xr'
 import { useHand } from '../../lib/settingsClient'
-import { pulsosDelListon, sitioDelCartel } from '../../lib/machineSign'
+import { thresholdPulses, signPlacement } from '../../lib/machineSign'
 import { useGame } from '../../lib/gameStore'
-import { reproducirPulsos } from '../../lib/haptics'
+import { playPulses } from '../../lib/haptics'
 import type { Medal } from '../../lib/goal'
 import { GoalSign } from './GoalSign'
 
-/** El cartel no se mueve: su sitio es el mismo toda la partida. */
-const SITIO = sitioDelCartel()
+/** The sign does not move: its placement is the same for the whole run. */
+const PLACEMENT = signPlacement()
 
 /**
- * El cartel del objetivo, de frente y bajo la máquina: encima del marcador del visor.
+ * The goal sign, facing the player and under the machine: above the headset's scoreboard.
  *
- * Aquí solo se junta lo de cada lado: qué dice sale del store (`cartel`), dónde va lo decide
- * `sitioDelCartel` y lo pinta el componente común a todos los juegos del salón. Cuelga de la
- * interfaz (`XRGazeAnchor`), como el marcador: va con quien juega, no con el decorado, y sube o
- * baja con sus ojos.
+ * Here only what comes from each side is put together: what it says comes from the store (`sign`),
+ * where it goes is decided by `signPlacement` and it is painted by the component shared by all the
+ * games of the hall. It hangs from the UI (`XRGazeAnchor`), like the scoreboard: it goes with whoever
+ * plays, not with the scenery, and it rises or drops with their eyes.
  *
- * Fuera de la sesión inmersiva, en la web del juego, manda el marcador en DOM y la misión se
- * lee allí (`HUD.tsx`).
+ * Outside the immersive session, on the game's website, the DOM scoreboard rules and the mission is
+ * read there (`HUD.tsx`).
  */
-export function CartelDeLaMaquina({ hasDomUi = false }: { hasDomUi?: boolean }) {
+export function MachineSign({ hasDomUi = false }: { hasDomUi?: boolean }) {
   const mode = useXR((state) => state.mode)
   const session = useXR((state) => state.session)
-  const { cartel, medalla } = useGame()
-  const mano = useHand()
+  const { sign, medal } = useGame()
+  const hand = useHand()
 
-  // El listón cruzado se nota en la mano buena, un instante después del atrape que lo cruzó; el
-  // sonido lo pone `useGameSound`. Lo que quede pendiente se cancela al desmontar.
-  const cancelar = useRef(() => {})
-  useEffect(() => () => cancelar.current(), [])
-  const alCelebrar = useCallback(
-    (cruzada: Medal) => {
-      cancelar.current()
-      cancelar.current = reproducirPulsos(session?.inputSources ?? [], pulsosDelListon(cruzada, mano))
+  // The crossed threshold is felt in the good hand, an instant after the catch that crossed it; the
+  // sound is played by `useGameSound`. Whatever is still pending is cancelled on unmount.
+  const cancel = useRef(() => {})
+  useEffect(() => () => cancel.current(), [])
+  const onCelebrate = useCallback(
+    (crossed: Medal) => {
+      cancel.current()
+      cancel.current = playPulses(session?.inputSources ?? [], thresholdPulses(crossed, hand))
     },
-    [session, mano],
+    [session, hand],
   )
 
-  if ((hasDomUi && mode == null) || cartel == null) return null
+  if ((hasDomUi && mode == null) || sign == null) return null
 
   return (
     <GoalSign
-      view={cartel}
-      position={SITIO.position}
-      rotation={SITIO.rotation}
-      distance={SITIO.distancia}
-      celebrate={medalla}
-      onCelebrate={alCelebrar}
+      view={sign}
+      position={PLACEMENT.position}
+      rotation={PLACEMENT.rotation}
+      distance={PLACEMENT.distance}
+      celebrate={medal}
+      onCelebrate={onCelebrate}
     />
   )
 }

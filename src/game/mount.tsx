@@ -3,18 +3,18 @@
 import { createRoot } from 'react-dom/client'
 import { StickRush, type StickRushProps } from './StickRush'
 
-/** Lo que devuelve `mountStickRush` para poder deshacerlo. */
+/** What `mountStickRush` returns so that it can be undone. */
 export interface StickRushHandle {
-  /** Desmonta el juego y libera lo que tenga abierto (escena, audio, sesión). */
+  /** Unmounts the game and releases whatever it has open (scene, audio, session). */
   unmount(): void
 }
 
 /**
- * Monta el juego en un elemento del DOM.
+ * Mounts the game in a DOM element.
  *
- * Es el mismo juego que `<StickRush>`, para quien no renderiza React por su
- * cuenta: crea la raíz, pinta dentro y devuelve con qué quitarlo. El elemento
- * tiene que tener altura; el juego la llena.
+ * It is the same game as `<StickRush>`, for whoever does not render React on
+ * their own: it creates the root, paints inside and returns what to remove it
+ * with. The element has to have a height; the game fills it.
  */
 export function mountStickRush(
   container: HTMLElement,

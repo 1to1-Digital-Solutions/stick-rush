@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react'
 import { getXrStore } from './xrStore'
 import { useLang } from '../../lib/settingsClient'
-import { traductor } from '../../lib/textos'
+import { translator } from '../../lib/textos'
 
 type XRSupport = {
   vr: boolean
   ar: boolean
 }
 
-/** Comprueba qué modos inmersivos soporta el navegador/dispositivo. */
+/** Checks which immersive modes the browser/device supports. */
 async function detectXRSupport(): Promise<XRSupport> {
   if (typeof navigator === 'undefined' || !navigator.xr) {
     return { vr: false, ar: false }
@@ -23,19 +23,19 @@ async function detectXRSupport(): Promise<XRSupport> {
 }
 
 /**
- * Entrada al visor. Se renderiza en el DOM (no en la escena 3D) y dispara la
- * sesión a través del store de WebXR compartido. Si el dispositivo no soporta
- * ningún modo inmersivo, no se muestra nada.
+ * Entry to the headset. It is rendered in the DOM (not in the 3D scene) and starts the
+ * session through the shared WebXR store. If the device supports
+ * no immersive mode, nothing is shown.
  *
- * **Un solo botón, y prefiere AR.** Antes había uno por modo, pero eso ataba la
- * decisión a antes de ponerse el visor y no dejaba cambiar de opinión: WebXR no
- * permite pasar de `immersive-vr` a `immersive-ar` sin cerrar la sesión y abrir
- * otra. Entrando en `immersive-ar`, los dos modos son la misma sesión pintada
- * de dos formas y el jugador alterna desde el menú inmersivo al instante. En un
- * visor sin AR se entra en VR y allí la opción aparece deshabilitada.
+ * **A single button, and it prefers AR.** There used to be one per mode, but that tied the
+ * decision to before putting the headset on and did not allow a change of mind: WebXR does not
+ * let you go from `immersive-vr` to `immersive-ar` without closing the session and opening
+ * another. Entering in `immersive-ar`, the two modes are the same session painted
+ * in two ways and the player switches from the immersive menu instantly. On a
+ * headset without AR one enters in VR and there the option appears disabled.
  */
 export function XRWrapper() {
-  const t = traductor(useLang())
+  const t = translator(useLang())
   const [support, setSupport] = useState<XRSupport>({ vr: false, ar: false })
   const [ready, setReady] = useState(false)
 
@@ -72,7 +72,7 @@ export function XRWrapper() {
           ? t('Inside you choose between the scene and your room')
           : t('Your headset only supports virtual reality')}
       </p>
-      {/* Cómo se sale con el visor puesto: la salida común del salón (`AroDeSalir`). */}
+      {/* How to get out with the headset on: the hall's common exit (`ExitRing`). */}
       <p className="text-xs text-white/40">{t('Hold B or Y to exit')}</p>
     </div>
   )

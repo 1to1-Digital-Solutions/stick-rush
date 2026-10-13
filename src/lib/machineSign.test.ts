@@ -1,23 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import {
-  MISION_DEL_RETO,
-  MODO_DE_LAS_MEDALLAS,
-  PUNTOS_DE_UN_PALO,
-  enPalos,
-  palosPara,
-  RETARDO_DEL_LISTON,
-  VISTA_SIN_GIRAR,
-  apartadoDeLaMirada,
-  esquinasDelCartel,
-  llevaLaCuenta,
-  loQueQueda,
-  partidaDelCartel,
-  poseDelCartel,
-  pulsosDelListon,
-  sitioDelCartel,
-  tactoDelListon,
-  type LoQueSeJuega,
-  type ProporcionDelCartel,
+  CHALLENGE_MISSION,
+  MEDALS_MODE,
+  POINTS_PER_STICK,
+  inSticks,
+  sticksFor,
+  THRESHOLD_DELAY,
+  VIEW_WITHOUT_TURNING,
+  angleFromGaze,
+  signCorners,
+  runCounts,
+  remainingText,
+  signRun,
+  signPose,
+  thresholdPulses,
+  signPlacement,
+  thresholdHaptic,
+  type WhatIsPlayed,
+  type SignAspect,
 } from './machineSign'
 import { MACHINE_HEIGHT, MAX_STICKS, PLAYER_OFFSET_Z, STICK_CORD_LENGTH, STICK_LENGTH, STICK_RADIUS } from './gameConfig'
 import { CHALLENGE_LIVES, CHALLENGE_SETUP, DEFAULT_GAME_MODE } from './gameMode'
@@ -26,10 +26,10 @@ import { goalSign, medalToCelebrate, type Goal } from './goal'
 import { pointOnPanel } from './panelReading'
 import { buildStickLayout } from './stickLayout'
 import { pulsesFor } from './hapticFeedback'
-import { traductorSuave } from './textos'
+import { softTranslator } from './textos'
 import {
   TUTORIAL_PANEL,
-  XR_CARTEL_POSITION,
+  XR_SIGN_POSITION,
   XR_CONFIRM_POSITION,
   XR_CONFIRM_SIZE,
   XR_HUD_POSITION,
@@ -39,124 +39,124 @@ import {
 } from './xrLayout'
 
 /**
- * El cartel del objetivo en la máquina: que se lea de frente y sin girar la cabeza, que no tape
- * ningún palo ni se pise con los paneles de alrededor, y que cuente la partida que toca.
+ * The goal sign on the machine: that it is read head-on and without turning the head, that it
+ * covers no stick nor overlaps the panels around, and that it tells the run it should.
  */
 
-/** Lo que mide el cartel por metro de distancia: 24° de ancho por 4,5° de alto, como el de verdad. */
-const PROPORCION: ProporcionDelCartel = {
+/** What the sign measures per metre of distance: 24° wide by 4.5° high, like the real one. */
+const ASPECT: SignAspect = {
   width: 2 * Math.tan((12 * Math.PI) / 180),
   height: 2 * Math.tan((2.25 * Math.PI) / 180),
 }
 
-/** Lo más que crece el cartel al celebrar un listón (`pulsoDelFestejo`). */
-const CRECIDO = 1.12
+/** The most the sign grows when celebrating a threshold (`celebrationPulse`). */
+const GROWN = 1.12
 
-const SITIO = sitioDelCartel()
-const ALTO = PROPORCION.height * SITIO.distancia
+const PLACEMENT = signPlacement()
+const HEIGHT = ASPECT.height * PLACEMENT.distance
 
-/** Hasta dónde llega el cartel por arriba y por abajo, también mientras celebra. */
-const ARRIBA = pointOnPanel(poseDelCartel(), 0, (ALTO * CRECIDO) / 2).y
-const ABAJO = pointOnPanel(poseDelCartel(), 0, (-ALTO * CRECIDO) / 2).y
+/** How far the sign reaches at the top and at the bottom, also while it celebrates. */
+const TOP = pointOnPanel(signPose(), 0, (HEIGHT * GROWN) / 2).y
+const BOTTOM = pointOnPanel(signPose(), 0, (-HEIGHT * GROWN) / 2).y
 
-describe('dónde se lee el cartel', () => {
-  it('de frente: centrado, sin girar hacia ningún lado', () => {
-    expect(SITIO.position).toBe(XR_CARTEL_POSITION)
-    expect(SITIO.position[0]).toBe(0)
-    expect(SITIO.rotation[1]).toBe(0)
-    expect(SITIO.rotation[2]).toBe(0)
+describe('where the sign is read', () => {
+  it('head-on: centred, without turning to either side', () => {
+    expect(PLACEMENT.position).toBe(XR_SIGN_POSITION)
+    expect(PLACEMENT.position[0]).toBe(0)
+    expect(PLACEMENT.rotation[1]).toBe(0)
+    expect(PLACEMENT.rotation[2]).toBe(0)
   })
 
-  it('mira a los ojos de quien juega: se lee de frente y a la distancia que dice', () => {
-    const [x, y, z] = SITIO.position
-    const haciaLosOjos = { x: -x, y: REFERENCE_EYE_HEIGHT - y, z: -z }
-    const distancia = Math.hypot(haciaLosOjos.x, haciaLosOjos.y, haciaLosOjos.z)
-    expect(SITIO.distancia).toBeCloseTo(distancia)
+  it('looks at the eyes of whoever plays: it is read head-on and at the distance it says', () => {
+    const [x, y, z] = PLACEMENT.position
+    const towardTheEyes = { x: -x, y: REFERENCE_EYE_HEIGHT - y, z: -z }
+    const distance = Math.hypot(towardTheEyes.x, towardTheEyes.y, towardTheEyes.z)
+    expect(PLACEMENT.distance).toBeCloseTo(distance)
 
-    // La normal del panel sale de dos puntos suyos: un paso a la derecha y otro hacia arriba.
-    const pose = poseDelCartel()
-    const centro = pointOnPanel(pose, 0, 0)
-    const derecha = pointOnPanel(pose, 1, 0)
-    const arriba = pointOnPanel(pose, 0, 1)
-    const u = { x: derecha.x - centro.x, y: derecha.y - centro.y, z: derecha.z - centro.z }
-    const v = { x: arriba.x - centro.x, y: arriba.y - centro.y, z: arriba.z - centro.z }
+    // The panel's normal comes from two of its points: one step to the right and another upwards.
+    const pose = signPose()
+    const centre = pointOnPanel(pose, 0, 0)
+    const right = pointOnPanel(pose, 1, 0)
+    const up = pointOnPanel(pose, 0, 1)
+    const u = { x: right.x - centre.x, y: right.y - centre.y, z: right.z - centre.z }
+    const v = { x: up.x - centre.x, y: up.y - centre.y, z: up.z - centre.z }
     const normal = { x: u.y * v.z - u.z * v.y, y: u.z * v.x - u.x * v.z, z: u.x * v.y - u.y * v.x }
-    const coseno = (normal.x * haciaLosOjos.x + normal.y * haciaLosOjos.y + normal.z * haciaLosOjos.z) / distancia
-    expect(coseno).toBeCloseTo(1, 5)
+    const cosine = (normal.x * towardTheEyes.x + normal.y * towardTheEyes.y + normal.z * towardTheEyes.z) / distance
+    expect(cosine).toBeCloseTo(1, 5)
   })
 
-  it('queda dentro de lo que se ve sin girar la cabeza desde la postura de juego', () => {
-    for (const esquina of esquinasDelCartel(PROPORCION)) {
-      expect(apartadoDeLaMirada(esquina)).toBeLessThanOrEqual(VISTA_SIN_GIRAR)
+  it('stays inside what is seen without turning the head from the playing posture', () => {
+    for (const corner of signCorners(ASPECT)) {
+      expect(angleFromGaze(corner)).toBeLessThanOrEqual(VIEW_WITHOUT_TURNING)
     }
-    // Por debajo de la mirada, no encima: a unos 27°, que se alcanza bajando los ojos.
-    const centro = { x: SITIO.position[0], y: SITIO.position[1], z: SITIO.position[2] }
-    expect(SITIO.position[1]).toBeLessThan(REFERENCE_EYE_HEIGHT)
-    expect(apartadoDeLaMirada(centro)).toBeGreaterThan(20)
-    expect(apartadoDeLaMirada(centro)).toBeLessThan(30)
-    expect(VISTA_SIN_GIRAR).toBeLessThanOrEqual(35)
+    // Below the gaze, not above: at some 27°, which is reached by lowering the eyes.
+    const centre = { x: PLACEMENT.position[0], y: PLACEMENT.position[1], z: PLACEMENT.position[2] }
+    expect(PLACEMENT.position[1]).toBeLessThan(REFERENCE_EYE_HEIGHT)
+    expect(angleFromGaze(centre)).toBeGreaterThan(20)
+    expect(angleFromGaze(centre)).toBeLessThan(30)
+    expect(VIEW_WITHOUT_TURNING).toBeLessThanOrEqual(35)
   })
 
-  it('y juegue quien juegue: sube y baja con los ojos, como el resto de la interfaz', () => {
-    for (const ojos of [MIN_EYE_HEIGHT, 1.15, REFERENCE_EYE_HEIGHT, MAX_EYE_HEIGHT]) {
-      const subida = xrUiRise(ojos)
-      for (const esquina of esquinasDelCartel(PROPORCION)) {
-        const dondeQueda = { ...esquina, y: esquina.y + subida }
-        expect(apartadoDeLaMirada(dondeQueda, ojos), `ojos a ${ojos}`).toBeLessThanOrEqual(VISTA_SIN_GIRAR)
-        expect(dondeQueda.y, `ojos a ${ojos}`).toBeGreaterThan(0)
+  it('and whoever plays: it goes up and down with the eyes, like the rest of the ui', () => {
+    for (const eyes of [MIN_EYE_HEIGHT, 1.15, REFERENCE_EYE_HEIGHT, MAX_EYE_HEIGHT]) {
+      const rise = xrUiRise(eyes)
+      for (const corner of signCorners(ASPECT)) {
+        const whereItEndsUp = { ...corner, y: corner.y + rise }
+        expect(angleFromGaze(whereItEndsUp, eyes), `eyes at ${eyes}`).toBeLessThanOrEqual(VIEW_WITHOUT_TURNING)
+        expect(whereItEndsUp.y, `eyes at ${eyes}`).toBeGreaterThan(0)
       }
     }
   })
 
-  it('no tapa ningún palo: todos caen más cerca de quien juega que el cartel', () => {
-    // Quien juega está un paso por detrás del centro del aro, y el mundo se corre eso mismo.
-    const palos = buildStickLayout(MAX_STICKS, 1).map(({ anchor: [x, , z] }) => Math.hypot(x, z - PLAYER_OFFSET_Z) + STICK_RADIUS)
-    expect(palos).toHaveLength(MAX_STICKS)
-    const elMasLejano = Math.max(...palos)
+  it('covers no stick: all of them fall nearer to whoever plays than the sign', () => {
+    // Whoever plays is one step behind the centre of the hoop, and the world shifts by that same amount.
+    const sticks = buildStickLayout(MAX_STICKS, 1).map(({ anchor: [x, , z] }) => Math.hypot(x, z - PLAYER_OFFSET_Z) + STICK_RADIUS)
+    expect(sticks).toHaveLength(MAX_STICKS)
+    const farthest = Math.max(...sticks)
 
-    // Lo más cerca que llega el cartel, girado como esté la interfaz: su borde de abajo.
-    const pose = poseDelCartel()
-    const ancho = PROPORCION.width * SITIO.distancia * CRECIDO
-    const bordes = [-1, 0, 1].flatMap((x) => [-1, 1].map((y) => pointOnPanel(pose, (x * ancho) / 2, (y * ALTO * CRECIDO) / 2)))
-    const loMasCerca = Math.min(...bordes.map((punto) => Math.hypot(punto.x, punto.z)))
+    // The nearest the sign gets, however the ui is turned: its bottom edge.
+    const pose = signPose()
+    const width = ASPECT.width * PLACEMENT.distance * GROWN
+    const edges = [-1, 0, 1].flatMap((x) => [-1, 1].map((y) => pointOnPanel(pose, (x * width) / 2, (y * HEIGHT * GROWN) / 2)))
+    const nearest = Math.min(...edges.map((point) => Math.hypot(point.x, point.z)))
 
-    expect(elMasLejano).toBeLessThan(0.7)
-    expect(loMasCerca).toBeGreaterThan(elMasLejano + 0.1)
+    expect(farthest).toBeLessThan(0.7)
+    expect(nearest).toBeGreaterThan(farthest + 0.1)
   })
 
-  it('ni lo tapan los que cuelgan: la línea de los ojos al cartel pasa por debajo de ellos', () => {
-    const loMasBajoQueCuelgan = MACHINE_HEIGHT - STICK_CORD_LENGTH - STICK_LENGTH
-    const palos = buildStickLayout(MAX_STICKS, 1).map(({ anchor: [x, , z] }) => Math.hypot(x, z - PLAYER_OFFSET_Z))
-    const arriba = pointOnPanel(poseDelCartel(), 0, (ALTO * CRECIDO) / 2)
-    const lejos = Math.hypot(arriba.x, arriba.z)
-    for (const palo of palos) {
-      const alturaDeLaVista = REFERENCE_EYE_HEIGHT + ((arriba.y - REFERENCE_EYE_HEIGHT) * palo) / lejos
-      expect(alturaDeLaVista).toBeLessThan(loMasBajoQueCuelgan)
+  it('nor do the hanging ones cover it: the line from the eyes to the sign passes below them', () => {
+    const lowestTheyHang = MACHINE_HEIGHT - STICK_CORD_LENGTH - STICK_LENGTH
+    const sticks = buildStickLayout(MAX_STICKS, 1).map(({ anchor: [x, , z] }) => Math.hypot(x, z - PLAYER_OFFSET_Z))
+    const top = pointOnPanel(signPose(), 0, (HEIGHT * GROWN) / 2)
+    const far = Math.hypot(top.x, top.z)
+    for (const stick of sticks) {
+      const sightHeight = REFERENCE_EYE_HEIGHT + ((top.y - REFERENCE_EYE_HEIGHT) * stick) / far
+      expect(sightHeight).toBeLessThan(lowestTheyHang)
     }
   })
 
-  it('va encima del marcador sin pisarlo, con cartel o diciendo que no cuenta', () => {
-    for (const reparto of [
+  it('goes above the scoreboard without overlapping it, with the sign or saying it does not count', () => {
+    for (const layout of [
       xrHudLayout({ finished: false, row: false, sign: true }),
       xrHudLayout({ finished: true, row: false, sign: true }),
-      // Fuera del reto el cartel dice bajito que no cuenta y el marcador va entero, con sus vidas a dos.
+      // Outside the challenge the sign says quietly that it does not count and the scoreboard goes whole, with its lives for two.
       xrHudLayout({ finished: false, row: false, sign: false }),
       xrHudLayout({ finished: false, row: true, sign: false }),
     ]) {
-      const techoDelMarcador = XR_HUD_POSITION[1] + reparto.centre + reparto.height / 2
-      expect(ABAJO).toBeGreaterThan(techoDelMarcador)
+      const scoreboardTop = XR_HUD_POSITION[1] + layout.centre + layout.height / 2
+      expect(BOTTOM).toBeGreaterThan(scoreboardTop)
     }
-    expect(XR_CARTEL_POSITION[2]).toBe(XR_HUD_POSITION[2])
+    expect(XR_SIGN_POSITION[2]).toBe(XR_HUD_POSITION[2])
   })
 
-  it('y por debajo del aviso de salir y del tutorial, que se enseñan con la partida en marcha', () => {
-    expect(ARRIBA).toBeLessThan(XR_CONFIRM_POSITION[1] - XR_CONFIRM_SIZE[1] / 2)
-    expect(ARRIBA).toBeLessThan(XR_TUTORIAL_POSITION[1] - TUTORIAL_PANEL.height / 2)
+  it('and below the exit notice and the tutorial, which are shown with the run under way', () => {
+    expect(TOP).toBeLessThan(XR_CONFIRM_POSITION[1] - XR_CONFIRM_SIZE[1] / 2)
+    expect(TOP).toBeLessThan(XR_TUTORIAL_POSITION[1] - TUTORIAL_PANEL.height / 2)
   })
 })
 
-/** Los listones de Stick Rush en el salón. */
-const OBJETIVO: Goal = {
+/** The thresholds of Stick Rush in the hall. */
+const GOAL: Goal = {
   medals: { bronze: 1900, silver: 3750, gold: 5200 },
   better: 'higher',
   unit: 'points in challenge',
@@ -164,195 +164,195 @@ const OBJETIVO: Goal = {
   mode: 'challenge',
 }
 
-const en = traductorSuave('en')
-const es = traductorSuave('es')
+const en = softTranslator('en')
+const es = softTranslator('es')
 
-/** El reto en marcha, solo, con lo que se diga encima. */
-function reto(cambios: Partial<LoQueSeJuega> = {}): LoQueSeJuega {
+/** The challenge under way, alone, with whatever is said on top. */
+function challenge(changes: Partial<WhatIsPlayed> = {}): WhatIsPlayed {
   return {
-    objetivo: OBJETIVO,
+    goal: GOAL,
     gameMode: 'challenge',
-    aDos: false,
+    twoPlayers: false,
     gameState: 'playing',
     points: 0,
     lives: CHALLENGE_LIVES,
     resolved: 0,
     stickCount: CHALLENGE_SETUP.stickCount,
     record: 0,
-    ...cambios,
+    ...changes,
   }
 }
 
-describe('la partida que se le cuenta al cartel', () => {
-  it('la misión es la del reto: los palos de las reglas y sus tres vidas', () => {
-    expect(MODO_DE_LAS_MEDALLAS).toBe(DEFAULT_GAME_MODE)
-    expect(MISION_DEL_RETO).toContain('{sticks}')
-    // Las vidas van escritas en la frase: si dejan de ser tres, hay que reescribirla.
+describe('the run the sign is told about', () => {
+  it('the mission is the one of the challenge: the sticks of the rules and its three lives', () => {
+    expect(MEDALS_MODE).toBe(DEFAULT_GAME_MODE)
+    expect(CHALLENGE_MISSION).toContain('{sticks}')
+    // The lives are written out in the sentence: if they stop being three, it has to be rewritten.
     expect(CHALLENGE_LIVES).toBe(3)
-    expect(en(MISION_DEL_RETO, { sticks: CHALLENGE_SETUP.stickCount })).toBe(
+    expect(en(CHALLENGE_MISSION, { sticks: CHALLENGE_SETUP.stickCount })).toBe(
       'Catch 13 sticks. Drop three and out',
     )
-    expect(es(MISION_DEL_RETO, { sticks: CHALLENGE_SETUP.stickCount })).toBe('Atrapa 13 palos. Tres al suelo y fuera')
+    expect(es(CHALLENGE_MISSION, { sticks: CHALLENGE_SETUP.stickCount })).toBe('Atrapa 13 palos. Tres al suelo y fuera')
   })
 
-  it('en el menú no se cuelga nada', () => {
-    expect(partidaDelCartel(reto({ gameState: 'menu' }), en)).toBeNull()
-    expect(partidaDelCartel(reto({ gameState: 'menu', objetivo: null }), en)).toBeNull()
+  it('in the menu nothing is hung', () => {
+    expect(signRun(challenge({ gameState: 'menu' }), en)).toBeNull()
+    expect(signRun(challenge({ gameState: 'menu', goal: null }), en)).toBeNull()
   })
 
-  it('durante la cuenta atrás: la misión y los tres listones', () => {
-    const partida = partidaDelCartel(reto({ gameState: 'countdown' }), es)
+  it('during the countdown: the mission and the three thresholds', () => {
+    const run = signRun(challenge({ gameState: 'countdown' }), es)
 
-    expect(partida?.phase).toBe('before')
-    expect(goalSign(partida!, es)).toMatchObject({
+    expect(run?.phase).toBe('before')
+    expect(goalSign(run!, es)).toMatchObject({
       title: 'Atrapa 13 palos. Tres al suelo y fuera',
       detail: 'Bronce 1900 · Plata 3750 · Oro 5200',
     })
-    expect(medalToCelebrate(partida!)).toBeNull()
+    expect(medalToCelebrate(run!)).toBeNull()
   })
 
-  it('la primera vez, sin récord, el bronce dicho en palos y el oro', () => {
-    const sinRecord = { ...OBJETIVO, record: null }
-    expect(goalSign(partidaDelCartel(reto({ gameState: 'countdown', objetivo: sinRecord }), es)!, es).detail).toBe(
+  it('the first time, with no record, the bronze said in sticks and the gold', () => {
+    const noRecord = { ...GOAL, record: null }
+    expect(goalSign(signRun(challenge({ gameState: 'countdown', goal: noRecord }), es)!, es).detail).toBe(
       'Bronce ≈ 13 palos · Oro 5200',
     )
-    expect(goalSign(partidaDelCartel(reto({ gameState: 'countdown', objetivo: sinRecord }), en)!, en).detail).toBe(
+    expect(goalSign(signRun(challenge({ gameState: 'countdown', goal: noRecord }), en)!, en).detail).toBe(
       'Bronze ≈ 13 sticks · Gold 5,200',
     )
-    // Un bronce de un palo se dice con su cifra: «≈ 1 palo» es el primer atrape.
-    const deUnPalo = { ...sinRecord, medals: { bronze: 10, silver: 20, gold: 30 } }
-    expect(goalSign(partidaDelCartel(reto({ gameState: 'countdown', objetivo: deUnPalo }), en)!, en).detail).toBe(
+    // A bronze of one stick is said with its figure: «≈ 1 palo» is the first catch.
+    const ofOneStick = { ...noRecord, medals: { bronze: 10, silver: 20, gold: 30 } }
+    expect(goalSign(signRun(challenge({ gameState: 'countdown', goal: ofOneStick }), en)!, en).detail).toBe(
       'Bronze 10 · Silver 20 · Gold 30',
     )
   })
 
-  it('los puntos, en palos: lo menos que vale uno en el reto, y el plural que toca', () => {
-    expect(PUNTOS_DE_UN_PALO).toBe(150)
-    expect([palosPara(1), palosPara(150), palosPara(151), palosPara(1900)]).toEqual([1, 1, 2, 13])
-    expect(enPalos(es)(150)).toBe('≈ 1 palo')
-    expect(enPalos(es)(300)).toBe('≈ 2 palos')
-    expect(enPalos(en)(150)).toBe('≈ 1 stick')
-    expect(enPalos(en)(300)).toBe('≈ 2 sticks')
+  it('the points, in sticks: the least one is worth in the challenge, and the right plural', () => {
+    expect(POINTS_PER_STICK).toBe(150)
+    expect([sticksFor(1), sticksFor(150), sticksFor(151), sticksFor(1900)]).toEqual([1, 1, 2, 13])
+    expect(inSticks(es)(150)).toBe('≈ 1 palo')
+    expect(inSticks(es)(300)).toBe('≈ 2 palos')
+    expect(inSticks(en)(150)).toBe('≈ 1 stick')
+    expect(inSticks(en)(300)).toBe('≈ 2 sticks')
   })
 
-  it('y sigue hasta que se resuelve el primer palo: da tiempo a leerla', () => {
-    expect(partidaDelCartel(reto({ gameState: 'playing', resolved: 0 }), en)?.phase).toBe('before')
-    expect(partidaDelCartel(reto({ gameState: 'playing', resolved: 1, points: 150 }), en)?.phase).toBe('playing')
-    // Aunque ese primer palo se haya escapado y no haya puntos.
-    expect(partidaDelCartel(reto({ gameState: 'playing', resolved: 1, lives: 2 }), en)?.phase).toBe('playing')
+  it('and it stays until the first stick is settled: there is time to read it', () => {
+    expect(signRun(challenge({ gameState: 'playing', resolved: 0 }), en)?.phase).toBe('before')
+    expect(signRun(challenge({ gameState: 'playing', resolved: 1, points: 150 }), en)?.phase).toBe('playing')
+    // Even if that first stick got away and there are no points.
+    expect(signRun(challenge({ gameState: 'playing', resolved: 1, lives: 2 }), en)?.phase).toBe('playing')
   })
 
-  it('jugando: el listón que falta, lo que se lleva, las vidas y los palos que quedan', () => {
-    const partida = partidaDelCartel(reto({ points: 2100, lives: 2, resolved: 6 }), es)
+  it('playing: the threshold that is missing, what has been scored, the lives and the sticks that remain', () => {
+    const run = signRun(challenge({ points: 2100, lives: 2, resolved: 6 }), es)
 
-    expect(partida).toMatchObject({ phase: 'playing', points: 2100, remaining: 'Vidas ♥♥♡ · Palos 7' })
-    expect(goalSign(partida!, es)).toMatchObject({
+    expect(run).toMatchObject({ phase: 'playing', points: 2100, remaining: 'Vidas ♥♥♡ · Palos 7' })
+    expect(goalSign(run!, es)).toMatchObject({
       title: 'Plata a 3750 · llevas 2100',
       detail: 'Vidas ♥♥♡ · Palos 7',
       medal: 'silver',
     })
-    expect(medalToCelebrate(partida!)).toBe('bronze')
+    expect(medalToCelebrate(run!)).toBe('bronze')
   })
 
-  it('al acabar: lo conseguido y lo que faltó para la siguiente', () => {
-    const partida = partidaDelCartel(reto({ gameState: 'finished', points: 2100, lives: 0, resolved: 9 }), es)
+  it('at the end: what was achieved and what was missing for the next one', () => {
+    const run = signRun(challenge({ gameState: 'finished', points: 2100, lives: 0, resolved: 9 }), es)
 
-    expect(partida?.phase).toBe('end')
-    expect(goalSign(partida!, es)).toMatchObject({
+    expect(run?.phase).toBe('end')
+    expect(goalSign(run!, es)).toMatchObject({
       title: 'Bronce · 2100 points in challenge',
       detail: 'Te han faltado 1650 para la plata',
     })
-    // Sin llegar al bronce, lo que faltó para él.
-    const sinMedalla = partidaDelCartel(reto({ gameState: 'finished', points: 400, lives: 0, resolved: 4 }), en)
-    expect(goalSign(sinMedalla!, en)).toMatchObject({
+    // Without reaching the bronze, what was missing for it.
+    const noMedal = signRun(challenge({ gameState: 'finished', points: 400, lives: 0, resolved: 4 }), en)
+    expect(goalSign(noMedal!, en)).toMatchObject({
       title: 'No medal · 400 points in challenge',
       detail: '1,500 short of bronze',
     })
   })
 
-  it('fuera del reto, dentro del salón: dice bajito que no cuenta para medalla', () => {
-    const practica = partidaDelCartel(reto({ gameMode: 'practice', lives: null, points: 900, resolved: 3 }), es)
-    expect(goalSign(practica!, es)).toMatchObject({ title: 'Práctica · no cuenta para medalla', subdued: true })
-    expect(medalToCelebrate(practica!)).toBeNull()
-    expect(llevaLaCuenta(practica)).toBe(false)
+  it('outside the challenge, inside the hall: it says quietly that it does not count for a medal', () => {
+    const practice = signRun(challenge({ gameMode: 'practice', lives: null, points: 900, resolved: 3 }), es)
+    expect(goalSign(practice!, es)).toMatchObject({ title: 'Práctica · no cuenta para medalla', subdued: true })
+    expect(medalToCelebrate(practice!)).toBeNull()
+    expect(runCounts(practice)).toBe(false)
 
-    const niveles = partidaDelCartel(reto({ gameMode: 'levels', lives: null, gameState: 'countdown' }), en)
-    expect(goalSign(niveles!, en).title).toBe('Levels · does not count for a medal')
+    const levels = signRun(challenge({ gameMode: 'levels', lives: null, gameState: 'countdown' }), en)
+    expect(goalSign(levels!, en).title).toBe('Levels · does not count for a medal')
   })
 
-  it('a dos tampoco cuenta, aunque sea el reto: una tanda a dos no es la marca de nadie', () => {
-    const partida = partidaDelCartel(reto({ aDos: true, points: 2100, resolved: 5 }), es)
+  it('with two players it does not count either, even if it is the challenge: a round for two is the best of no one', () => {
+    const run = signRun(challenge({ twoPlayers: true, points: 2100, resolved: 5 }), es)
 
-    expect(goalSign(partida!, es).title).toBe('Duelo · no cuenta para medalla')
-    expect(medalToCelebrate(partida!)).toBeNull()
+    expect(goalSign(run!, es).title).toBe('Duelo · no cuenta para medalla')
+    expect(medalToCelebrate(run!)).toBeNull()
   })
 
-  it('lo que no cuenta se dice mientras se juega: al acabar no se cuelga, y el marcador va entero', () => {
-    expect(partidaDelCartel(reto({ gameMode: 'practice', lives: null, gameState: 'finished' }), en)).toBeNull()
-    expect(partidaDelCartel(reto({ aDos: true, gameState: 'finished' }), en)).toBeNull()
+  it('what does not count is said while it is played: at the end it is not hung, and the scoreboard goes whole', () => {
+    expect(signRun(challenge({ gameMode: 'practice', lives: null, gameState: 'finished' }), en)).toBeNull()
+    expect(signRun(challenge({ twoPlayers: true, gameState: 'finished' }), en)).toBeNull()
   })
 
-  it('si el salón dice que las medallas salen de otro modo, el reto tampoco cuenta', () => {
-    const partida = partidaDelCartel(reto({ objetivo: { ...OBJETIVO, mode: 'levels' }, points: 500, resolved: 2 }), es)
+  it('if the hall says that the medals come from another mode, the challenge does not count either', () => {
+    const run = signRun(challenge({ goal: { ...GOAL, mode: 'levels' }, points: 500, resolved: 2 }), es)
 
-    expect(goalSign(partida!, es).title).toBe('Reto · no cuenta para medalla')
+    expect(goalSign(run!, es).title).toBe('Reto · no cuenta para medalla')
   })
 
-  it('con el juego abierto suelto: en el reto, la misión y el récord guardado aquí', () => {
-    const antes = partidaDelCartel(reto({ objetivo: null, gameState: 'countdown', record: 3100 }), en)
-    expect(goalSign(antes!, en)).toMatchObject({
+  it('with the game opened on its own: in the challenge, the mission and the record stored here', () => {
+    const before = signRun(challenge({ goal: null, gameState: 'countdown', record: 3100 }), en)
+    expect(goalSign(before!, en)).toMatchObject({
       title: 'Catch 13 sticks. Drop three and out',
       detail: 'Your record 3,100',
     })
 
-    const jugando = partidaDelCartel(reto({ objetivo: undefined, points: 1200, lives: 1, resolved: 8, record: 3100 }), en)
-    expect(goalSign(jugando!, en)).toMatchObject({
+    const playing = signRun(challenge({ goal: undefined, points: 1200, lives: 1, resolved: 8, record: 3100 }), en)
+    expect(goalSign(playing!, en)).toMatchObject({
       title: 'Your record 3,100 · you have 1,200',
       detail: 'Lives ♥♡♡ · Sticks 5',
     })
-    expect(llevaLaCuenta(jugando)).toBe(true)
+    expect(runCounts(playing)).toBe(true)
 
-    // Sin récord guardado no hay segunda línea.
-    const sinRecord = partidaDelCartel(reto({ objetivo: null, gameState: 'countdown' }), en)
-    expect(goalSign(sinRecord!, en).detail).toBeNull()
+    // With no stored record there is no second line.
+    const noRecord = signRun(challenge({ goal: null, gameState: 'countdown' }), en)
+    expect(goalSign(noRecord!, en).detail).toBeNull()
   })
 
-  it('con el juego abierto suelto y fuera del reto no se cuelga nada', () => {
-    expect(partidaDelCartel(reto({ objetivo: null, gameMode: 'practice', lives: null }), en)).toBeNull()
-    expect(partidaDelCartel(reto({ objetivo: null, aDos: true }), en)).toBeNull()
-    expect(llevaLaCuenta(null)).toBe(false)
+  it('with the game opened on its own and outside the challenge nothing is hung', () => {
+    expect(signRun(challenge({ goal: null, gameMode: 'practice', lives: null }), en)).toBeNull()
+    expect(signRun(challenge({ goal: null, twoPlayers: true }), en)).toBeNull()
+    expect(runCounts(null)).toBe(false)
   })
 
-  it('un reto sin vidas en juego no es el reto: no cuenta', () => {
-    expect(partidaDelCartel(reto({ objetivo: null, lives: null }), en)).toBeNull()
+  it('a challenge with no lives in play is not the challenge: it does not count', () => {
+    expect(signRun(challenge({ goal: null, lives: null }), en)).toBeNull()
   })
 
-  it('las vidas se escriben con las que quedan llenas y las gastadas vacías', () => {
-    expect(loQueQueda(CHALLENGE_LIVES, 13, en)).toBe('Lives ♥♥♥ · Sticks 13')
-    expect(loQueQueda(1, 4, es)).toBe('Vidas ♥♡♡ · Palos 4')
-    expect(loQueQueda(0, 0, en)).toBe('Lives ♡♡♡ · Sticks 0')
-    // Una cuenta de más no pinta corazones de más.
-    expect(loQueQueda(CHALLENGE_LIVES + 2, 1, en)).toBe('Lives ♥♥♥ · Sticks 1')
+  it('the lives are written with the remaining ones full and the spent ones empty', () => {
+    expect(remainingText(CHALLENGE_LIVES, 13, en)).toBe('Lives ♥♥♥ · Sticks 13')
+    expect(remainingText(1, 4, es)).toBe('Vidas ♥♡♡ · Palos 4')
+    expect(remainingText(0, 0, en)).toBe('Lives ♡♡♡ · Sticks 0')
+    // One count too many does not draw hearts too many.
+    expect(remainingText(CHALLENGE_LIVES + 2, 1, en)).toBe('Lives ♥♥♥ · Sticks 1')
   })
 })
 
-describe('el listón en la mano', () => {
-  it('se siente más fuerte cuanto mejor es la medalla, en la mano que se diga', () => {
-    const fuerza = (medalla: 'bronze' | 'silver' | 'gold') => pulsosDelListon(medalla, 'left')[0]
+describe('the threshold in the hand', () => {
+  it('is felt stronger the better the medal is, in whichever hand is said', () => {
+    const strength = (medal: 'bronze' | 'silver' | 'gold') => thresholdPulses(medal, 'left')[0]
 
-    expect(fuerza('bronze').hand).toBe('left')
-    expect(fuerza('silver').intensity).toBeGreaterThan(fuerza('bronze').intensity)
-    expect(fuerza('gold').intensity).toBeGreaterThan(fuerza('silver').intensity)
-    expect(pulsosDelListon('gold', 'right')).toHaveLength(1)
-    expect(pulsosDelListon('gold', 'right')[0].hand).toBe('right')
+    expect(strength('bronze').hand).toBe('left')
+    expect(strength('silver').intensity).toBeGreaterThan(strength('bronze').intensity)
+    expect(strength('gold').intensity).toBeGreaterThan(strength('silver').intensity)
+    expect(thresholdPulses('gold', 'right')).toHaveLength(1)
+    expect(thresholdPulses('gold', 'right')[0].hand).toBe('right')
   })
 
-  it('llega después del atrape que lo cruzó, para que sean dos toques y no uno', () => {
-    const delAtrape = pulsesFor({ type: 'grab', hand: 'right' })[0]
-    const [pulso] = pulsosDelListon('silver', 'right')
+  it('arrives after the catch that crossed it, so that they are two taps and not one', () => {
+    const fromTheCatch = pulsesFor({ type: 'grab', hand: 'right' })[0]
+    const [pulse] = thresholdPulses('silver', 'right')
 
-    expect(pulso.delay).toBe(pulsesFor(tactoDelListon('silver', 'right'))[0].delay + RETARDO_DEL_LISTON)
-    // `pulse()` no encola: el del listón sale cuando el del atrape ya ha acabado.
-    expect(pulso.delay).toBeGreaterThan(delAtrape.delay + delAtrape.ms)
+    expect(pulse.delay).toBe(pulsesFor(thresholdHaptic('silver', 'right'))[0].delay + THRESHOLD_DELAY)
+    // `pulse()` does not queue: the threshold's one goes out when the catch's one has already ended.
+    expect(pulse.delay).toBeGreaterThan(fromTheCatch.delay + fromTheCatch.ms)
   })
 })

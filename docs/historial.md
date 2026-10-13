@@ -1,1321 +1,1354 @@
-# Historial de stick-rush — tanda a tanda
+# History of stick-rush — round by round
 
-> Esto es la memoria larga: qué se hizo en cada tanda, qué se probó con las gafas puestas y
-> por qué se decidió lo que se decidió. **Solo se lee si la pregunta es «por qué está esto
-> así»**; para trabajar hoy basta con `ESTADO.md`. Las secciones están tal cual se escribieron
-> en su momento, con su fecha o su rama, en el orden en que se fueron añadiendo.
+> This is the long memory: what was done in each round, what was tested with the goggles on and
+> why what was decided was decided. **It is only read if the question is "why is this the way
+> it is"**; to work today, `ESTADO.md` is enough. The sections are just as they were written
+> at the time, with their date or their branch, in the order in which they were added.
 
-### Lo que había en ESTADO.md hasta el 2026-09-27
+### What was in ESTADO.md until 2026-09-27
 
-> **Cómo continuar tras reiniciar:** di a Claude «revisa `ESTADO.md` y continúa con el siguiente
-> paso». Este fichero es la memoria entre sesiones: mantenlo corto, veraz y al día.
+> **How to continue after a restart:** tell Claude "check `ESTADO.md` and continue with the next
+> step". This file is the memory between sessions: keep it short, truthful and up to date.
 >
-> El **backlog** (qué falta por hacer) vive en **`TODO.md`**. Aquí va el estado y el
-> porqué de las decisiones; allí, la lista de tareas.
+> The **backlog** (what is left to do) lives in **`TODO.md`**. Here go the state and the
+> why of the decisions; there, the list of tasks.
 
 ---
 
-#### 📍 Tanda del visor del 24/09 (en develop, sin versión; la última es v0.21.0)
+#### 📍 Headset round of 24/09 (on develop, no version; the latest is v0.21.0)
 
-«Está perfecto», con cuatro retoques. Hecho:
+"It's perfect", with four touch-ups. Done:
 
-- **Un minipaso atrás**: `PLAYER_OFFSET_Z` −0,02 → **+0,08** (`lib/gameConfig.ts`). El signo
-  importa: negativo es *hacia* el arco (a −0,18 se arrancaba encima de la máquina), así que el
-  paso atrás es positivo. El palo del frente queda a 65 cm en horizontal (brazo: 75).
-- **Máquina más alta**: `HOOP_RISE_ABOVE_EYES` 0,35 → **0,5** (`lib/hoopHeight.ts`), ya
-  desacoplado de `MACHINE_HEIGHT` (escritorio sigue en 1,95). La velocidad se escala con el
-  recorrido, así que la dificultad no cambia. El invariante de alcance pasa a ser «cada palo
-  **cruza** el brazo al caer, ≥ 40 cm de franja» (`hoopHeight.test.ts`), no «colgado al alcance».
-- **Manos en VR, montadas por la escena** (`components/xr/PlayerHands.tsx`, lógica en
-  `lib/hands.ts`), no por el `XRStore`: lo del store solo existe en la web propia y en el salón
-  el store es del salón, que no dibuja manos. Así salen igual en los dos sitios. Se colocan como
-  `MandoDeVerdad` (pose de WebXR con los padres deshechos, `colocarEnElOrigen`).
-  - Con mandos, un **guante** low-poly procedural en el `grip-space` (`Glove.tsx`, lógica en
-    `lib/glove.ts`): 16 cajas en una `InstancedMesh`, cierra el puño con el lateral y el índice
-    con el gatillo; las yemas llevan la ayuda del agarre. Ya **no** va en `StickRushController`
-    (que sigue dibujando el mando y los punteros solo en la web propia).
-  - Sin mandos, la **mano articulada** `generic-hand` hueso a hueso (`fillPoses`), cargada sin
-    suspender desde `public/manos/generic-hand/` (190 KB; `npm run sync:xr-profiles`). Va **fuera
-    de `webxr-profiles/`** porque el salón borra esa carpeta de cada juego al instalarlo
-    (`xrcade/scripts/install-game-assets.ts`); `copy-assets.mjs` copia ya `manos/`. El store
-    propio queda con `hand.model: false` para no pintarla dos veces.
-  - **No se tocó xrcade** (opción B): encender `hand.model` en el salón cambiaba los dieciséis
-    juegos, todos con `hand.model: false` a propósito, y cinco dibujan su herramienta en la mano
-    desnuda (arco, pistola, pala, dos mazos).
-  - e2e nuevo con **anfitrión de prueba** (`e2e/support/host*.ts(x)`, `globalSetup.ts` común con
-    ocho juegos): escena en Canvas ajeno, store sin mando ni mano como el del salón. Comprueba
-    guante en la mano (±12 cm), manos desnudas visibles, `.glb` pedido bajo el prefijo del juego.
-- **Columna de ajustes** (regla común): el menú del visor pasa de estar de frente a 95 cm a
-  **1,5 m y 55° a la izquierda**, a la altura de los ojos, de cara y escalado ×1,35
-  (`XR_COLUMN`, `XR_MENU_POSE`, `onMenu` en `lib/xrLayout.ts`). Sin visor (salón en escritorio)
-  sigue delante (`XR_MENU_DESK_POSE`). La zona muerta del anclaje se alarga hacia la izquierda lo
-  que está apartada la columna (`leftDeadzone`, `lib/xrAnchor.ts`): si no, mirarla la hacía huir.
-  El aviso de dejar la partida se queda delante.
-- **Hápticos por contacto** (`lib/tactos.ts` común + `lib/haptics.ts`): atrapar = `agarre` en la
-  mano que coge, ×1,8 si es in extremis (≥ 80 % de la caída). El palo que se escapa ya no vibra
-  (`XRHaptics` borrado). Se conserva el toque del botón del menú (no es un contacto).
-- **Mando junto al gesto**: no aplica tal cual (stick-rush no tiene `Hints.tsx`); la ayuda del
-  agarre va en la mano dibujada.
+- **A tiny step back**: `PLAYER_OFFSET_Z` −0.02 → **+0.08** (`lib/gameConfig.ts`). The sign
+  matters: negative is *towards* the arc (at −0.18 you started on top of the machine), so the
+  step back is positive. The front stick ends up 65 cm away horizontally (arm: 75).
+- **Higher machine**: `HOOP_RISE_ABOVE_EYES` 0.35 → **0.5** (`lib/hoopHeight.ts`), now
+  decoupled from `MACHINE_HEIGHT` (desktop stays at 1.95). The speed is scaled with the
+  travel, so the difficulty does not change. The reach invariant becomes "every stick
+  **crosses** the arm as it falls, ≥ 40 cm of band" (`hoopHeight.test.ts`), not "hanging within
+  reach".
+- **Hands in VR, mounted by the scene** (`components/xr/PlayerHands.tsx`, logic in
+  `lib/hands.ts`), not by the `XRStore`: the store's ones only exist on the game's own website,
+  and in the hall the store belongs to the hall, which does not draw hands. This way they come
+  out the same in both places. They are placed like `RealController` (WebXR pose with the parents
+  undone, `placeAtOrigin`).
+  - With controllers, a procedural low-poly **glove** in the `grip-space` (`Glove.tsx`, logic in
+    `lib/glove.ts`): 16 boxes in an `InstancedMesh`, it closes the fist with the side button and
+    the index finger with the trigger; the fingertips carry the grip hint. It is **no longer**
+    in `StickRushController` (which still draws the controller and the pointers only on the
+    game's own website).
+  - Without controllers, the `generic-hand` **articulated hand** bone by bone (`fillPoses`),
+    loaded without suspending from `public/manos/generic-hand/` (190 KB;
+    `npm run sync:xr-profiles`). It goes **outside `webxr-profiles/`** because the hall deletes
+    that folder of each game when installing it (`xrcade/scripts/install-game-assets.ts`);
+    `copy-assets.mjs` now copies `manos/`. The game's own store is left with `hand.model: false`
+    so as not to paint it twice.
+  - **xrcade was not touched** (option B): turning on `hand.model` in the hall changed the
+    sixteen games, all with `hand.model: false` on purpose, and five draw their tool in the bare
+    hand (bow, pistol, paddle, two mallets).
+  - New e2e with a **test host** (`e2e/support/host*.ts(x)`, `globalSetup.ts` shared with
+    eight games): scene in someone else's Canvas, store with no controller or hand like the
+    hall's. It checks glove in the hand (±12 cm), bare hands visible, `.glb` requested under the
+    game's prefix.
+- **Settings column** (common rule): the headset menu goes from facing you at 95 cm to
+  **1.5 m and 55° to the left**, at eye height, facing you and scaled ×1.35
+  (`XR_COLUMN`, `XR_MENU_POSE`, `onMenu` in `lib/xrLayout.ts`). Without a headset (hall on
+  desktop) it stays in front (`XR_MENU_DESK_POSE`). The dead zone of the anchor is lengthened to
+  the left by as much as the column is set aside (`leftDeadzone`, `lib/xrAnchor.ts`): otherwise,
+  looking at it made it run away. The notice about leaving the run stays in front.
+- **Haptics by contact** (the common `lib/hapticFeedback.ts` + `lib/haptics.ts`): catching = `grab` in
+  the hand that grabs, ×1.8 if it is in extremis (≥ 80 % of the fall). The stick that gets away
+  no longer vibrates (`XRHaptics` deleted). The tap of the menu button is kept (it is not a
+  contact).
+- **Controller next to the gesture**: does not apply as is (stick-rush has no `Hints.tsx`); the
+  grip hint goes on the drawn hand.
 
-**Pendiente de visor:**
+**Pending in the headset:**
 
-| Qué mirar con las gafas | Dónde se toca |
+| What to look at with the goggles | Where to touch |
 |---|---|
-| ¿El paso atrás es el justo? ¿Se llega al palo del frente? | `PLAYER_OFFSET_Z` (`gameConfig.ts`) |
-| ¿Máquina a buena altura? ¿Cuelgan por encima de la cara? | `HOOP_RISE_ABOVE_EYES` (`hoopHeight.ts`) |
-| Columna: distancia, ángulo, tamaño; ¿estorban los palos que cuelgan delante de ella? | `XR_COLUMN`, `XR_MENU_SCALE` (`xrLayout.ts`) |
-| ¿Se lee el guante como mano? ¿Se ve cerrarse? Posición sobre el mando real. **En el salón va sin mando dibujado debajo** (el del juego es del store propio): ¿se entiende así? | `PALMA`, `NUDILLOS`, `PULGAR` (`Glove.tsx`); `REPOSO`, `VELOCIDAD_DE_CIERRE` (`glove.ts`) |
-| Manos desnudas, en la web y en el salón: ¿el modelo encaja con la mano real? | `PlayerHands.tsx` (`ManoDesnuda`) |
-| ¿Se nota el atrape? ¿Y el in extremis distinto? | `IN_EXTREMIS`, `IN_EXTREMIS_BOOST` (`haptics.ts`); recetas en `tactos.ts` (común) |
+| Is the step back just right? Can the front stick be reached? | `PLAYER_OFFSET_Z` (`gameConfig.ts`) |
+| Machine at a good height? Do they hang above the face? | `HOOP_RISE_ABOVE_EYES` (`hoopHeight.ts`) |
+| Column: distance, angle, size; do the sticks hanging in front of it get in the way? | `XR_COLUMN`, `XR_MENU_SCALE` (`xrLayout.ts`) |
+| Does the glove read as a hand? Can it be seen closing? Position over the real controller. **In the hall it goes with no drawn controller underneath** (the game's one belongs to its own store): is it understood like that? | `PALM`, `KNUCKLES`, `THUMB` (`Glove.tsx`); `REST`, `CLOSING_SPEED` (`glove.ts`) |
+| Bare hands, on the web and in the hall: does the model fit the real hand? | `PlayerHands.tsx` (`BareHand`) |
+| Is the catch felt? And the in extremis one, differently? | `IN_EXTREMIS`, `IN_EXTREMIS_BOOST` (`haptics.ts`); recipes in `hapticFeedback.ts` (common) |
 
-**En el salón, con manos desnudas no se atrapa**: el salón tiene `hand.grabPointer: false` a
-propósito, y el agarre de stick-rush es ese puntero. Se ve la mano pero no coge. Es decisión
-del salón (no se tocó); si se quiere, es activarlo ahí mirando los otros dieciséis.
+**In the hall, with bare hands nothing is caught**: the hall has `hand.grabPointer: false` on
+purpose, and stick-rush's grip is that pointer. The hand is seen but does not grab. It is the
+hall's decision (it was not touched); if wanted, it means enabling it there while looking at the
+other sixteen.
 
-Ojo con la columna: los palos cuelgan del aro entre quien juega y el panel (a 55° hay 3–4 con
-13 palos), y su mitad de arriba se ve entre barrotes. Ya pasaba de frente. Si molesta, la regla
-deja ir más allá, nunca más cerca.
+Mind the column: the sticks hang from the hoop between whoever plays and the panel (at 55° there
+are 3–4 with 13 sticks), and its top half is seen between bars. It already happened when facing
+it. If it bothers, the rule allows going further away, never closer.
 
-#### v0.7.2 (2026-09-07): los tests dicen ahora cuánto código ejecutan
+#### v0.7.2 (2026-09-07): the tests now say how much code they run
 
-- **La suite mide su propia cobertura** (`npm run coverage`, y un paso más en CI). Se mide
-  **el dominio** (`src/lib`), que es lo único que se puede probar sin un navegador con WebGL;
-  la escena se prueba de extremo a extremo.
-- **Está al 100 %, y el mínimo es 100**: lo que se añada sin probar rompe el build. Las pocas
-  ramas que ningún test puede alcanzar —guardas que solo actuarían si cambiara el código de
-  al lado— llevan `v8 ignore` con el motivo escrito al lado, no un número más bajo.
-- Para llegar ahí se escribieron tests de lo que no probaba nadie: el almacenamiento cuando el
-  navegador no deja guardar, el motor de sonido contra un `AudioContext` de mentira, el panel
-  del visor y el estado de la partida con relojes falsos.
-- El informe HTML queda en `coverage/`, que no se commitea.
+- **The suite measures its own coverage** (`npm run coverage`, and one more step in CI).
+  **The domain** (`src/lib`) is measured, which is the only thing that can be tested without a
+  browser with WebGL; the scene is tested end to end.
+- **It is at 100 %, and the minimum is 100**: whatever is added untested breaks the build. The
+  few branches that no test can reach —guards that would only act if the neighbouring code
+  changed— carry `v8 ignore` with the reason written next to it, not a lower number.
+- To get there, tests were written for what nobody tested: the storage when the
+  browser does not let it save, the sound engine against a fake `AudioContext`, the headset
+  panel and the state of the run with fake clocks.
+- The HTML report is left in `coverage/`, which is not committed.
 
-#### Dónde estábamos el 2026-09-06 (superado: hoy va por v0.21.0)
+#### Where we were on 2026-09-06 (superseded: today it is at v0.21.0)
 
-**El juego está publicado y montado en el salón de xrcade.** Los tags `v0.2.0` a `v0.5.0`
-existen y están en `origin`; xrcade tiene que pasar a **`v0.6.0`**.
+**The game is published and mounted in the xrcade hall.** The tags `v0.2.0` to `v0.5.0`
+exist and are on `origin`; xrcade has to move to **`v0.6.0`**.
 
-**`v0.6.0` (2026-09-06): la feria responde al jugador.** Había noria y casetas pero nadie
-dentro: ahora hay **público** —42 siluetas (cuerpo y cabeza fundidos en una geometría, una
-familia instanciada con `createInstances` = **una llamada de dibujo**), en un anillo entre las
-guirnaldas y las casetas, mirando a la máquina (`lib/crowdLayout.ts`, `components/game/Crowd.tsx`)—
-que se mece más alto y más deprisa con la racha. Y las **bombillas** de casetas y guirnaldas
-suben de brillo con la racha (1,6 → 3,2, saturando) y a partir de **5 palos seguidos palpitan**
-hacia el blanco, más rápido cuanto mayor la racha (`lib/fairMood.ts`, `BulbMood` en
-`FairPieces.tsx`): se toca el material de la familia entera, así que cuesta lo mismo con cien
-bombillas que con mil. La racha llega al recinto por un **ref** (`FairMood.tsx`) y no por props:
-el decorado no se vuelve a renderizar por nada que pase en la partida. Con
-`prefers-reduced-motion` el público se queda quieto y las bombillas no palpitan (el brillo sí
-sube, que eso no se mueve). La escena pasa de 29 a **30 llamadas en el menú**; el desglose vive
-en `e2e/fairground.spec.ts`. **Nada de esto está probado con las gafas.**
+**`v0.6.0` (2026-09-06): the fairground responds to the player.** There was a Ferris wheel and
+stalls but nobody inside: now there is a **crowd** —42 silhouettes (body and head merged into
+one geometry, one family instanced with `createInstances` = **one draw call**), in a ring
+between the garlands and the stalls, looking at the machine (`lib/crowdLayout.ts`,
+`components/game/Crowd.tsx`)— that sways higher and faster with the streak. And the **bulbs** of
+stalls and garlands rise in brightness with the streak (1.6 → 3.2, saturating) and from **5
+sticks in a row they throb** towards white, faster the longer the streak (`lib/fairMood.ts`,
+`BulbMood` in `FairPieces.tsx`): the material of the whole family is touched, so it costs the
+same with a hundred bulbs as with a thousand. The streak reaches the fairground through a
+**ref** (`FairMood.tsx`) and not through props: the set is not rendered again by anything that
+happens in the run. With `prefers-reduced-motion` the crowd stays still and the bulbs do not
+throb (the brightness does rise, since that does not move). The scene goes from 29 to **30 calls
+in the menu**; the breakdown lives in `e2e/fairground.spec.ts`. **None of this has been tested
+with the goggles.**
 
-**`v0.5.0` (2026-09-06): tres modos.** Además de práctica y desafío, **Niveles**: una
-escalera propia de 15 niveles (`levels.ts`: 5/9/13 palos por cada velocidad), sin vidas,
-puntuados con estrellas (60/80/100 % atrapados) y con el desbloqueo y las estrellas guardados
-entre visitas (`progress.ts`, `createStoredPreference` en `storage.ts`). Y la práctica gana
-**Sin fin**: como los palos se crean de golpe, funciona por **tandas** (`stickSeed` cambia con
-cada tanda y la máquina se recarga; `waveScore/waveResolved` cuentan la tanda, `score/resolved`
-la partida); la termina el jugador («Terminar», o el botón verde a la derecha en el visor) y lo
-que se guarda es la **mejor racha**. En el visor el interruptor de modo recorre los tres, la
-fila de palos se convierte en la escalera en Niveles, y hay un interruptor de tanda/sin fin en
-medio de la fila de ajustes. El desafío sigue igual: el modo heroico con vidas. **Nada de esto
-está probado con las gafas.**
+**`v0.5.0` (2026-09-06): three modes.** Besides practice and challenge, **Levels**: a
+ladder of its own with 15 levels (`levels.ts`: 5/9/13 sticks for each speed), with no lives,
+scored with stars (60/80/100 % caught) and with the unlocking and the stars saved
+between visits (`progress.ts`, `createStoredPreference` in `storage.ts`). And practice gains
+**Endless**: since the sticks are created all at once, it works by **rounds** (`stickSeed`
+changes with each round and the machine reloads; `waveScore/waveResolved` count the round,
+`score/resolved` the run); the player ends it («Terminar», or the green button on the right in
+the headset) and what is saved is the **best streak**. In the headset the mode switch cycles
+through the three, the row of sticks becomes the ladder in Levels, and there is a round/endless
+switch in the middle of the settings row. The challenge stays the same: the heroic mode with
+lives. **None of this has been tested with the goggles.**
 
-`develop` = `origin/develop`; `main` va **31 commits por detrás** y es lo que despliega Vercel.
-Publicar a `main` (`git merge --ff-only develop && git push origin main`) es una decisión tuya
-tras la sesión con el visor.
+`develop` = `origin/develop`; `main` is **31 commits behind** and is what Vercel deploys.
+Publishing to `main` (`git merge --ff-only develop && git push origin main`) is a decision of
+yours after the session with the headset.
 
-Verificado hoy: lint y typecheck limpios, **538 unitarios** y **77 e2e** en verde,
-`npm audit` sin vulnerabilidades. El detalle de cada tanda —qué se probó con las gafas, qué se
-decidió y por qué— vive en **`docs/historial.md`**, que solo se lee si la pregunta es «por qué
-está esto así».
+Verified today: lint and typecheck clean, **538 unit tests** and **77 e2e** green,
+`npm audit` with no vulnerabilities. The detail of each round —what was tested with the goggles,
+what was decided and why— lives in **`docs/historial.md`**, which is only read if the question
+is "why is this the way it is".
 
-#### ⏭️ SIGUIENTE PASO (lo primero al volver)
+#### ⏭️ NEXT STEP (the first thing on coming back)
 
-0. **Probar en el visor lo añadido el 2026-08-06.** El emulador no puede pulsar botones,
-   así que nada de esto está validado en hardware. Qué mirar: (a) que la **posición del
-   jugador** ya sea la buena, sin dar el paso adelante; (b) que el **tamaño** convenza
-   tras el −8 %; (c) que el **selector de escenario/passthrough** funcione y el fundido
-   no maree; (d) que la **cuenta atrás** dé tiempo suficiente; (e) que el destello verde
-   y los palos rojos en el suelo se lean bien con las gafas; (f) que los **iconos** de
-   casa y de salida se distingan de un vistazo, y si los de repetir, escenario y
-   passthrough se entienden o hay que rehacerlos igual; (g) que el **sonido** se oiga
-   dentro de la sesión, que acierto y fallo se distingan sin mirar y que el volumen
-   (`MASTER_GAIN`, 0.28) no resulte invasivo pegado a los oídos; (h) que los tres
-   **golpes de vibración** se distingan sin mirar y no acaben molestando (las tres
-   recetas, en `src/lib/haptics.ts`): el del acierto con el brazo en movimiento y sin
-   que una racha larga lo vuelva un zumbido (`CATCH_PULSE`, 0.7 y 45 ms); el del
-   fallo, que sale por los dos mandos y tiene que leerse como otra cosa y no como un
-   acierto flojo (`MISS_PULSE`, 0.35 y 140 ms); y el de los botones del menú, que con
-   trece palos son trece pulsaciones seguidas (`PRESS_PULSE`, 0.25 y 18 ms);
-   (i) que la **marca del récord**
-   sobre la barra de puntuación se distinga del relleno con las gafas puestas, y que
-   al batirlo se note que la barra cambia (`ScoreBar` en `src/components/xr/XRHud.tsx`);
-   (j) que el **recinto de feria** nuevo no se coma los fotogramas en el visor, que las
-   casetas no agobien a 6.4 m y que la noria girando en la periferia no maree. El coste de
-   dibujo ya está medido y descarta el recinto, así que el guion de qué mirar y qué
-   constante tocar en cada caso está en "Validar el recinto en el visor"; radios y
-   distancias, en `src/lib/sceneryLayout.ts`.
-   (k) que el **botón de compartir** de la pantalla de fin funcione con las gafas
-   puestas: si el visor abre la hoja del sistema, que se pueda usar sin quitárselas;
-   si no, que el avión de papel pase a marca de verificación (texto copiado) y que al
-   quitarse el visor el resultado esté de verdad en el portapapeles. El aspa roja
-   significa que el navegador del visor no deja ni compartir ni copiar: si sale, hay
-   que decidir qué se hace en su lugar. El emulador no puede pulsar botones 3D, así
-   que esto **solo se valida en hardware** (`ShareButton` en
+0. **Test in the headset what was added on 2026-08-06.** The emulator cannot press buttons,
+   so none of this is validated on hardware. What to look at: (a) that the **position of the
+   player** is now the right one, without taking the step forward; (b) that the **size** is
+   convincing after the −8 %; (c) that the **scenery/passthrough selector** works and the fade
+   does not cause dizziness; (d) that the **countdown** gives enough time; (e) that the green
+   flash and the red sticks on the floor read well with the goggles; (f) that the **icons** for
+   home and for exit can be told apart at a glance, and whether those for repeat, scenery and
+   passthrough are understood or have to be redone as well; (g) that the **sound** is heard
+   inside the session, that hit and miss can be told apart without looking and that the volume
+   (`MASTER_GAIN`, 0.28) is not intrusive right against the ears; (h) that the three
+   **vibration hits** can be told apart without looking and do not end up being a nuisance (the
+   three recipes, in `src/lib/haptics.ts`): the one for the hit with the arm moving and without
+   a long streak turning it into a buzz (`CATCH_PULSE`, 0.7 and 45 ms); the one for the
+   miss, which comes out through both controllers and has to read as something else and not as a
+   weak hit (`MISS_PULSE`, 0.35 and 140 ms); and the one for the menu buttons, which with
+   thirteen sticks are thirteen presses in a row (`PRESS_PULSE`, 0.25 and 18 ms);
+   (i) that the **record mark**
+   on the score bar can be told apart from the fill with the goggles on, and that
+   on beating it you notice the bar changing (`ScoreBar` in `src/components/xr/XRHud.tsx`);
+   (j) that the new **fairground** does not eat the frames in the headset, that the
+   stalls are not oppressive at 6.4 m and that the Ferris wheel turning in the periphery does
+   not cause dizziness. The draw cost is already measured and rules out the fairground, so the
+   script of what to look at and which constant to touch in each case is in "Validating the
+   fairground in the headset"; radii and distances, in `src/lib/sceneryLayout.ts`.
+   (k) that the **share button** of the end screen works with the goggles
+   on: if the headset opens the system sheet, that it can be used without taking them off;
+   if not, that the paper plane turns into a check mark (text copied) and that on
+   taking off the headset the result really is on the clipboard. The red cross
+   means that the headset's browser allows neither sharing nor copying: if it shows up, a
+   decision is needed on what to do instead. The emulator cannot press 3D buttons, so
+   this **is only validated on hardware** (`ShareButton` in
    `src/components/xr/XRHud.tsx`).
-   (l) que el **botón de empezar** ya enseñe un triángulo de reproducir —hasta ahora se
-   veía de canto— y que se lea a esa distancia con los 3,2 cm de radio que tiene el
-   dibujo; y que la **interfaz a la altura de los ojos** caiga bien de pie y sentado: que
-   el panel no se cruce con la máquina si juega alguien alto, que el marcador no quede
-   demasiado bajo jugando sentado en el suelo, y que la fila del ajuste del aro siga
-   cómoda de mirar (ver "Menú inmersivo: el triángulo y su altura"; `xrUiRise` en
-   `src/lib/xrLayout.ts` es lo que hay que retocar si el conjunto queda alto o bajo).
-   Valores a retocar: adelanto del jugador (`PLAYER_OFFSET_Z`, −0.18 m), tamaño
-   (`MACHINE_RADIUS` 0.57 m y `STICK_LENGTH` 0.39 m — al cambiarlos hay que recalcular
-   `DIFFICULTY_SPEEDS` para conservar los tiempos, que `gameConfig.test.ts` vigila),
-   duración de la cuenta (`COUNTDOWN_SECONDS`), fundido (`FADE_SECONDS` en
-   `SceneryFade`), zona muerta del anclaje (`XR_ANCHOR_DEADZONE`, 40°) y radio de agarre
-   (9 cm, en `XRController`).
-1. **Publicar `main`** (`git push origin main`): sin eso el deploy no lleva los últimos
-   cambios.
-2. **Desplegar un preview en Vercel** y probarlo desde el visor (ver "Notas para el deploy").
-3. Comprobar que en AR se sigue viendo el passthrough tras los cambios de geometría.
-4. ~~Limpiar las ramas del remoto antes de hacer el repo público.~~ **HECHO
-   (2026-08-06).** El remoto tiene **solo `main`**, y su único email de autor es el
-   `noreply`: el personal ya no está en ninguna parte publicada. Se borraron las siete de
-   Dependabot y `fix/xr-escena-y-hud` (04-08), y `master` y `agent/stick-rush-v1`
-   (06-08). Dependabot recreará sus ramas solo sobre el `main` nuevo. Ojo: las PR #1 y #2
-   apuntan a commits huérfanos desde la reescritura del historial.
-5. ~~Consolidar git en local.~~ **HECHO (2026-08-06).** Solo quedan `main` y `develop`,
-   las dos en el mismo commit y sin worktrees sueltos. Se borraron las seis ramas ya
-   integradas y el worktree muerto de `agent/inicializar-proyecto-…` (693 MB; sus 22
-   ficheros en staging eran el scaffold del 28 de junio, con Zustand, que el proyecto
-   descartó). Antes de forzar cada borrado se comprobó que la rama no tuviera ni un
-   fichero fuera de `main`; en el caso de `fix/xr-mandos-y-menu-visible` se verificó
-   además que su árbol fuera **idéntico** al del merge de la PR #10.
+   (l) that the **start button** now shows a play triangle —until now it was seen
+   edge-on— and that it reads at that distance with the 3.2 cm radius the drawing
+   has; and that the **UI at eye height** falls well standing and seated: that
+   the panel does not cross the machine if someone tall plays, that the scoreboard does not end
+   up too low playing seated on the floor, and that the row of the hoop adjustment stays
+   comfortable to look at (see "Immersive menu: the triangle and its height"; `xrUiRise` in
+   `src/lib/xrLayout.ts` is what has to be retouched if the whole ends up high or low).
+   Values to retouch: forward offset of the player (`PLAYER_OFFSET_Z`, −0.18 m), size
+   (`MACHINE_RADIUS` 0.57 m and `STICK_LENGTH` 0.39 m — on changing them `DIFFICULTY_SPEEDS` has
+   to be recalculated to keep the times, which `gameConfig.test.ts` watches),
+   duration of the count (`COUNTDOWN_SECONDS`), fade (`FADE_SECONDS` in
+   `SceneryFade`), dead zone of the anchor (`XR_ANCHOR_DEADZONE`, 40°) and grab radius
+   (9 cm, in `XRController`).
+1. **Publish `main`** (`git push origin main`): without that the deploy does not carry the
+   latest changes.
+2. **Deploy a preview on Vercel** and test it from the headset (see "Notes for the deploy").
+3. Check that in AR the passthrough is still seen after the geometry changes.
+4. ~~Clean up the remote's branches before making the repo public.~~ **DONE
+   (2026-08-06).** The remote has **only `main`**, and its only author email is the
+   `noreply` one: the personal one is no longer in any published place. The seven Dependabot
+   ones and `fix/xr-escena-y-hud` were deleted (04-08), and `master` and `agent/stick-rush-v1`
+   (06-08). Dependabot will recreate its branches by itself on the new `main`. Note: PRs #1 and
+   #2 point to orphan commits since the rewrite of the history.
+5. ~~Consolidate git locally.~~ **DONE (2026-08-06).** Only `main` and `develop` are left,
+   both on the same commit and with no stray worktrees. The six branches already
+   integrated were deleted, and so was the dead worktree of `agent/inicializar-proyecto-…`
+   (693 MB; its 22 staged files were the scaffold of 28 June, with Zustand, which the project
+   discarded). Before forcing each deletion it was checked that the branch did not have a single
+   file outside `main`; in the case of `fix/xr-mandos-y-menu-visible` it was also verified
+   that its tree was **identical** to that of the merge of PR #10.
 
-#### 🧭 Convenciones de trabajo aprendidas
+#### 🧭 Working conventions learned
 
-- **Commits y push**: `.claude/rules/git-workflow.md` prohíbe `push` y tocar `main`. En
-  la práctica el dueño del repo lo autoriza caso por caso; sin autorización explícita,
-  commitear en una rama y ofrecer el comando.
-- **Verificar antes de dar nada por hecho**: `npm run lint`, `npm run typecheck`,
-  `npm test` y `npm run test:e2e`. La suite e2e tarda ~1 min y tiene partes sensibles al
-  tiempo; si algo falla de forma intermitente, repetirla antes de "arreglar" nada.
-- Hay un **backup del historial previo a la reescritura** en
-  `refs/backup/main-antes-de-reescribir` (SHA `e0750ca`), por si hiciera falta.
+- **Commits and push**: `.claude/rules/git-workflow.md` forbids `push` and touching `main`. In
+  practice the owner of the repo authorises it case by case; without explicit authorisation,
+  commit on a branch and offer the command.
+- **Verify before taking anything for granted**: `npm run lint`, `npm run typecheck`,
+  `npm test` and `npm run test:e2e`. The e2e suite takes ~1 min and has time-sensitive
+  parts; if something fails intermittently, run it again before "fixing" anything.
+- There is a **backup of the history prior to the rewrite** in
+  `refs/backup/main-antes-de-reescribir` (SHA `e0750ca`), in case it were needed.
 
-#### 🔒 Godot: congelado hasta cerrar el web
+#### 🔒 Godot: frozen until the web is closed
 
-**Decisión (2026-07-31): no se toca `godot/` mientras se itera en el web.** Primero se deja el
-web como debe quedar (jugabilidad, look, XR) y solo entonces se porta el resultado final a
-Godot, de una vez. Portar cada iteración por el camino sería trabajo tirado.
+**Decision (2026-07-31): `godot/` is not touched while iterating on the web.** First the
+web is left the way it must end up (gameplay, look, XR) and only then is the final result ported
+to Godot, in one go. Porting each iteration along the way would be wasted work.
 
-Pendiente para ese momento (no antes):
+Pending for that moment (not before):
 
-- [ ] Replicar en Godot el rediseño del web: aro **horizontal** alrededor del jugador, escala
-      humana (metros), velocidades en m/s, estética de feria y palos amarillos. Hoy `godot/`
-      mantiene el arco vertical y las unidades viejas. Detalle en `godot/README.md`.
-- [ ] Decidir qué pasa con un palo perdido: en el web se queda clavado en el suelo, en Godot
-      desaparece.
-- [ ] Abrir el proyecto en Godot 4.3+ por primera vez (se escribió sin ejecutarlo, no hay Godot
-      en esta máquina) y revisar los avisos del editor.
+- [ ] Replicate in Godot the redesign of the web: **horizontal** hoop around the player, human
+      scale (metres), speeds in m/s, fairground look and yellow sticks. Today `godot/`
+      keeps the vertical arc and the old units. Detail in `godot/README.md`.
+- [ ] Decide what happens with a missed stick: on the web it stays stuck in the floor, in Godot
+      it disappears.
+- [ ] Open the project in Godot 4.3+ for the first time (it was written without running it,
+      there is no Godot on this machine) and review the editor's warnings.
 
-#### Qué es stick-rush
+#### What stick-rush is
 
-- Juego web (Next.js + React Three Fiber) de palos que cuelgan de una máquina
-  semicircular y caen de forma escalonada; el jugador los atrapa con clic (navegador)
-  o con los mandos (XR VR/AR). Selecciona nº de palos (5–13) y dificultad.
+- A web game (Next.js + React Three Fiber) of sticks that hang from a semicircular
+  machine and fall in a staggered way; the player catches them with a click (browser)
+  or with the controllers (XR VR/AR). They select the number of sticks (5–13) and difficulty.
 
-#### Decisiones firmes
+#### Firm decisions
 
 - Stack: Next.js 16 (App Router) + React 19 + TypeScript; R3F + drei + three +
-  `@react-three/xr`; Tailwind v4. Estado global con **Context API** (sin Zustand/Redux).
-- `npm` como gestor de paquetes (se descartó el pnpm que generó el scaffold).
-- **La versión de Node se fija en `.nvmrc` (hoy 24.19.0) y el CI la lee de ahí**
-  (`node-version-file`, no `node-version`). El formato del `package-lock.json` cambia
-  entre versiones de npm: con el CI en Node 22 (npm 10) un `npm install` reescribía unas
-  220 líneas del lock, generado con npm 11. El patch va fijado a propósito —dejarlo en
-  `24` a secas volvería a dejar la versión de npm al azar—, así que subirlo es un cambio
-  manual: al hacerlo, comprobar que `npm install` sigue dejando el lock intacto.
-- `build` fija `NODE_ENV=production` en el script porque el entorno exporta
-  `NODE_ENV=development`, que rompía la prerenderización de `/_global-error`.
-- **Un palo se coge hasta que toca el suelo, colgando incluido** (decidido el
-  2026-08-10). Adelantarse al palo es jugar, no hacer trampa: la ventana se abre
-  al arrancar la partida y se cierra cuando el palo se resuelve. Lo que se
-  cierra es el otro extremo: un palo ya resuelto no vuelve a contar (el perdido
-  se queda tirado, pero es decorado) y con la partida parada —cuenta atrás
-  incluida— no se coge nada. Que 13 palos en Fácil se puedan vaciar del aro es
-  aceptado a cambio de dos contrapesos que ya existen: la cuenta atrás y el
-  bonus por reflejos, que paga el doble por cogerlo arriba. La regla vive en
-  `canCatchStick` (`src/lib/xrInteraction.ts`) y la fijan unitarios; el e2e "un
-  palo que todavía cuelga del aro se puede atrapar" comprueba que el juego la
-  cumple de verdad, con un clic sobre un palo sin soltar. El cursor
-  de escritorio la sigue también cuando la ventana se abre o se cierra sola bajo
-  un puntero quieto (acabar la cuenta atrás, el palo que toca el suelo): un
-  `useEffect` en `Stick` la revisa, porque sin mover el ratón no llega ningún
-  `pointerover` nuevo.
+  `@react-three/xr`; Tailwind v4. Global state with the **Context API** (no Zustand/Redux).
+- `npm` as the package manager (the pnpm that the scaffold generated was discarded).
+- **The Node version is pinned in `.nvmrc` (today 24.19.0) and the CI reads it from there**
+  (`node-version-file`, not `node-version`). The format of `package-lock.json` changes
+  between npm versions: with the CI on Node 22 (npm 10) an `npm install` rewrote some
+  220 lines of the lock, generated with npm 11. The patch is pinned on purpose —leaving it at
+  a bare `24` would again leave the npm version to chance—, so bumping it is a manual
+  change: when doing so, check that `npm install` still leaves the lock intact.
+- `build` sets `NODE_ENV=production` in the script because the environment exports
+  `NODE_ENV=development`, which broke the prerendering of `/_global-error`.
+- **A stick can be grabbed until it touches the floor, hanging included** (decided on
+  2026-08-10). Getting ahead of the stick is playing, not cheating: the window opens
+  when the run starts and closes when the stick is resolved. What is
+  closed is the other end: a stick already resolved does not count again (the missed one
+  stays lying there, but it is set dressing) and with the run stopped —countdown
+  included— nothing can be grabbed. That 13 sticks on Easy can be emptied from the hoop is
+  accepted in exchange for two counterweights that already exist: the countdown and the
+  reflex bonus, which pays double for grabbing it up high. The rule lives in
+  `canCatchStick` (`src/lib/xrInteraction.ts`) and unit tests pin it; the e2e "a stick
+  that still hangs from the hoop can be caught" checks that the game really
+  complies with it, with a click on a stick not yet released. The desktop
+  cursor follows it too when the window opens or closes by itself under
+  a still pointer (the countdown ending, the stick that touches the floor): a
+  `useEffect` in `Stick` reviews it, because without moving the mouse no new
+  `pointerover` arrives.
 
-#### Hecho hasta ahora
+#### Done so far
 
-- **La interfaz de dentro de la escena ya se ve cuando lo monta el salón.** Se escondía siempre
-  que no había sesión de WebXR, porque en la web propia manda el DOM y sus botones cazarían los
-  clics del ratón por delante del juego. Pero el salón de xrcade **no pone DOM**: montado ahí y
-  sin visor, el juego se veía entero y no había forma de empezar la partida. Ahora lo decide
-  `hasDomUi` —lo pasa quien monta la escena, no lo adivina el juego—, como en los juegos nuevos.
+- **The in-scene UI is now seen when the hall mounts it.** It was always hidden
+  when there was no WebXR session, because on the game's own website the DOM rules and its
+  buttons would catch the mouse clicks ahead of the game. But the xrcade hall **puts no DOM**:
+  mounted there and without a headset, the game was seen whole and there was no way to start the
+  run. Now `hasDomUi` decides it —whoever mounts the scene passes it, the game does not guess
+  it—, as in the new games.
 
-- Base de la suite de Organízate instalada (`.claude/rules/`, `.claude/agents/`, `CLAUDE.md`).
-- Proyecto Next.js inicializado e instalado (R3F, drei, xr, three).
-- Primera versión jugable del juego:
-  - `StartScreen` (selección de palos y dificultad, CTA, botones VR/AR si hay soporte).
-  - Escena 3D: `StickMachine` (arco con TubeGeometry), `Stick` (caída + captura + glow),
-    `Ground` (plano + grid), `HUD` (marcador y pantalla de fin).
-  - Contexto de juego (`gameStore`) y config (`gameConfig`).
-  - `global-error.tsx` con UI propia.
-- Verificado: `npm run lint` (0 problemas), `npm run typecheck` (0 errores),
-  `npm run build` (OK, rutas `/`, `/game`, `/_not-found` prerenderizadas),
-  `npm run start` sirve `/` y `/game` con HTTP 200.
+- Base of the Organízate suite installed (`.claude/rules/`, `.claude/agents/`, `CLAUDE.md`).
+- Next.js project initialised and installed (R3F, drei, xr, three).
+- First playable version of the game:
+  - `StartScreen` (selection of sticks and difficulty, CTA, VR/AR buttons if supported).
+  - 3D scene: `StickMachine` (arc with TubeGeometry), `Stick` (fall + catch + glow),
+    `Ground` (plane + grid), `HUD` (scoreboard and end screen).
+  - Game context (`gameStore`) and config (`gameConfig`).
+  - `global-error.tsx` with its own UI.
+- Verified: `npm run lint` (0 problems), `npm run typecheck` (0 errors),
+  `npm run build` (OK, routes `/`, `/game`, `/_not-found` prerendered),
+  `npm run start` serves `/` and `/game` with HTTP 200.
 
-Desde esa primera versión han entrado, tanda a tanda: el rediseño de la máquina a escala
-humana con el aro horizontal, la jugabilidad XR con agarre por cierre de mano y menú
-inmersivo, puntuación con cuenta atrás, sonido y vibración, modo práctica y modo desafío,
-el recinto de feria como escenario VR con la máquina instanciada, el tutorial de la primera
-vez, la altura del aro por jugador, compartir el resultado, el récord y el silencio
-recordados, y la separación del juego de su web para que xrcade lo monte como escena. El
-porqué y lo que quedó por comprobar de cada una está en `docs/historial.md`.
+Since that first version, round by round, the following have come in: the redesign of the
+machine at human scale with the horizontal hoop, the XR gameplay with grabbing by closing the
+hand and an immersive menu, score with countdown, sound and vibration, practice mode and
+challenge mode, the fairground as VR scenery with the machine instanced, the first-time
+tutorial, the hoop height per player, sharing the result, the record and the mute
+remembered, and the separation of the game from its website so that xrcade mounts it as a scene.
+The why and what was left to check for each one is in `docs/historial.md`.
 
-#### Notas para el deploy en Vercel
+#### Notes for the deploy on Vercel
 
-- **No hace falta configurar nada**: no hay variables de entorno, ni base de datos, ni
-  peticiones a terceros. `npm run build` (con su `NODE_ENV=production`) funciona tal cual.
-- **El emulador WebXR no aparecerá**: `@react-three/xr` inyecta IWER solo cuando el hostname es
-  exactamente `localhost` (de ahí el botón "Enter XR" y el aviso de "Multiple instances of
-  Three.js" en local). Comprobado sirviendo por `127.0.0.1`: ambos desaparecen.
-- **Protección de deployments**: si el preview tiene activada Vercel Authentication, el
-  navegador del visor tendrá que hacer login en Vercel para abrirlo. Conviene desactivarla para
-  ese preview o usar un dominio de producción.
-- **Abrir la URL directa en el visor**, no embebida en un iframe (la vista previa del dashboard
-  de Vercel lo es): WebXR necesita `allow="xr-spatial-tracking"` en el iframe padre.
-- HTTPS con certificado válido, así que en el visor no hay que aceptar avisos de certificado
-  como con `npm run dev:https`.
+- **Nothing needs to be configured**: there are no environment variables, no database, no
+  requests to third parties. `npm run build` (with its `NODE_ENV=production`) works as is.
+- **The WebXR emulator will not appear**: `@react-three/xr` injects IWER only when the hostname
+  is exactly `localhost` (hence the "Enter XR" button and the "Multiple instances of
+  Three.js" warning locally). Checked by serving on `127.0.0.1`: both disappear.
+- **Deployment protection**: if the preview has Vercel Authentication enabled, the
+  headset's browser will have to log in to Vercel to open it. It is best to disable it for
+  that preview or to use a production domain.
+- **Open the direct URL in the headset**, not embedded in an iframe (the preview of the Vercel
+  dashboard is one): WebXR needs `allow="xr-spatial-tracking"` on the parent iframe.
+- HTTPS with a valid certificate, so in the headset there are no certificate warnings to accept
+  as with `npm run dev:https`.
 
-#### Caveats y notas
+#### Caveats and notes
 
-*(La lista de tareas pendientes está en **`TODO.md`**. Aquí solo quedan las trampas del
-entorno: no son tareas, son cosas con las que tropezar.)*
+*(The list of pending tasks is in **`TODO.md`**. Only the traps of the
+environment are left here: they are not tasks, they are things to trip over.)*
 
-- **Publicar una versión nueva** va por tag sobre `develop` (`v0.2.0`, `v0.3.0` y `v0.4.0` ya
-  están): el procedimiento y la comprobación de que la `version` coincide con el tag están en
-  «Publicar una versión nueva» de `docs/mounting-the-game.md`. xrcade lo sube con
+- **Publishing a new version** goes by tag on `develop` (`v0.2.0`, `v0.3.0` and `v0.4.0` are
+  already there): the procedure and the check that the `version` matches the tag are in
+  "Publishing a new version" of `docs/mounting-the-game.md`. xrcade bumps it with
   `npm run game:update`.
-- **xrcade instala este repo privado** con las credenciales de git de la máquina; su CI usa un
-  token de organización (`XRCADE_GAMES_TOKEN`). Decidido y escrito en xrcade.
-- **Probar el montaje de verdad desde xrcade**, con el visor puesto: que la sesión
-  inmersiva, los mandos y el audio sigan funcionando dentro de otra aplicación, que es un
-  contexto distinto del de aquí y no se puede validar en este repo.
-- Validar y pulir la interacción XR con mandos en hardware real.
-- **Probar en el visor la altura del aro** (ver "Altura del aro por jugador"): que de pie
-  quede donde estaba, que sentado baje solo y no haya que tocar nada, que los ±20 cm de
-  `HOOP_ADJUST_RANGE` basten para acomodarlo y no dejen ningún palo lejos, y que la fila
-  de arriba del panel no obligue a estirar el cuello (queda 10 cm por encima de los ojos,
-  y el límite del test son 15).
-- ~~**El menú inmersivo sigue a altura fija** (`XR_MENU_POSITION`, 1.40 m).~~ **HECHO**:
-  la interfaz entera cuelga ahora de los ojos del jugador, ver "Menú inmersivo: el
-  triángulo y su altura". Falta probarlo con las gafas.
-- **Probar en el visor el tutorial de la primera vez** (ver "Tutorial de la primera
-  vez"): que el mando de la demostración se lea a 95 cm y se reconozca como el que se
-  tiene en la mano, que dos ciclos de agarre basten para entender el gesto, que 13 palos
-  en fila se cuenten de un vistazo, y que los 7,4 s no se hagan largos (el guion está en
-  `TUTORIAL_STEPS`: repartir distinto no toca ningún componente). Mirar de paso los dos
-  solapes anotados en esa sección —el mango sobre la barra de progreso y las barras de
-  «Imposible» saliéndose de la ficha— y el botón de recuperarlo, que es el único mando en
-  miniatura del menú y nadie ha visto todavía si se entiende.
-- Posibles mejoras: ~~animación de "vibración" de los palos colgando~~ (hecha, ver
-  "Balanceo de los palos"), temporizador/puntuación por tiempo, ~~escenario VR más
-  elaborado~~ (hecho, ver "Escenario VR: recinto de feria").
-- ~~**Decidir si un palo debe poder atraparse mientras aún cuelga.**~~ **DECIDIDO
-  (2026-08-10): sí, se coge hasta que toca el suelo.** Ver "Decisiones firmes". El
-  comportamiento no cambia; lo que cambia es que la regla dejó de estar escrita dos veces
-  dentro de `Stick.tsx` (captura y cursor) y pasó a `canCatchStick`, con unitarios que la
-  sujetan. El e2e "atrapar un palo suma en el marcador" se queda como está: se apoya en los
-  palos colgados, que siguen siendo atrapables a propósito, aunque no lo exige (el barrido
-  vale igual para uno que cae). Lo exige uno nuevo, "un palo que todavía cuelga del aro se
-  puede atrapar": si algún día la ventana se cierra a `falling`, es el que se pone rojo.
-- **Nada de worktrees anidados dentro del repo.** Además de los avisos de "multiple
-  lockfiles" al compilar, si el worktree llega a tener un `.next/` compilado el `npm run
-  lint` lo recorre entero: los `globalIgnores` de `eslint.config.mjs` son relativos
-  (`.next/**`) y no alcanzan `.claude/worktrees/*/.next/**`. Salían >13.000 problemas,
-  ninguno del proyecto. Se resolvió eliminando el worktree, no tocando la config.
-- El Canvas R3F se carga con `dynamic(..., { ssr: false })`; depende de WebGL/`window`.
-- El `GameProvider` se monta a nivel de página (no en el root layout) para no
-  arrastrar contexto cliente a la página interna `/_global-error`.
-- El puerto 3000 puede estar ocupado por otro proceso del sistema; usar `PORT=...`
-  para `npm run start` si hace falta.
+- **xrcade installs this private repo** with the machine's git credentials; its CI uses an
+  organisation token (`XRCADE_GAMES_TOKEN`). Decided and written in xrcade.
+- **Test the mounting for real from xrcade**, with the headset on: that the immersive
+  session, the controllers and the audio keep working inside another application, which is a
+  different context from the one here and cannot be validated in this repo.
+- Validate and polish the XR interaction with controllers on real hardware.
+- **Test the hoop height in the headset** (see "Hoop height per player"): that standing
+  it stays where it was, that seated it goes down by itself and nothing has to be touched, that
+  the ±20 cm of `HOOP_ADJUST_RANGE` are enough to accommodate it and leave no stick far away,
+  and that the top row of the panel does not force you to crane your neck (it is 10 cm above the
+  eyes, and the limit of the test is 15).
+- ~~**The immersive menu is still at a fixed height** (`XR_MENU_POSITION`, 1.40 m).~~ **DONE**:
+  the whole UI now hangs from the player's eyes, see "Immersive menu: the
+  triangle and its height". It remains to be tested with the goggles.
+- **Test the first-time tutorial in the headset** (see "First-time
+  tutorial"): that the controller of the demonstration reads at 95 cm and is recognised as the
+  one held in the hand, that two grip cycles are enough to understand the gesture, that 13
+  sticks in a row can be counted at a glance, and that the 7.4 s do not feel long (the script is
+  in `TUTORIAL_STEPS`: splitting it differently touches no component). While at it, look at the
+  two overlaps noted in that section —the handle over the progress bar and the bars of
+  «Imposible» spilling out of the chip— and the button to bring it back, which is the only
+  miniature controller of the menu and nobody has yet seen whether it is understood.
+- Possible improvements: ~~"vibration" animation of the hanging sticks~~ (done, see
+  "Swaying of the sticks"), timer/score by time, ~~a more elaborate VR
+  scenery~~ (done, see "VR scenery: fairground").
+- ~~**Decide whether a stick should be catchable while it still hangs.**~~ **DECIDED
+  (2026-08-10): yes, it can be grabbed until it touches the floor.** See "Firm decisions". The
+  behaviour does not change; what changes is that the rule stopped being written twice
+  inside `Stick.tsx` (catch and cursor) and moved to `canCatchStick`, with unit tests that
+  hold it. The e2e "catching a stick adds to the scoreboard" stays as it is: it relies on the
+  hanging sticks, which are still catchable on purpose, although it does not require it (the
+  sweep works just as well for one that is falling). A new one requires it, "a stick that still
+  hangs from the hoop can be caught": if some day the window is closed to `falling`, it is the
+  one that goes red.
+- **No worktrees nested inside the repo.** Besides the "multiple
+  lockfiles" warnings when compiling, if the worktree ever has a compiled `.next/`, `npm run
+  lint` walks all of it: the `globalIgnores` of `eslint.config.mjs` are relative
+  (`.next/**`) and do not reach `.claude/worktrees/*/.next/**`. More than 13,000 problems came
+  out, none of them the project's. It was solved by removing the worktree, not by touching the
+  config.
+- The R3F Canvas is loaded with `dynamic(..., { ssr: false })`; it depends on WebGL/`window`.
+- The `GameProvider` is mounted at page level (not in the root layout) so as not to
+  drag client context into the internal page `/_global-error`.
+- Port 3000 may be taken by another process of the system; use `PORT=...`
+  for `npm run start` if needed.
 
-## Tests (2026-08-03) — cifras al día en «DÓNDE ESTAMOS»
+## Tests (2026-08-03) — up-to-date figures in "WHERE WE ARE"
 
-Ya hay runner, y forma parte de las comprobaciones antes de dar nada por terminado.
+There is now a runner, and it is part of the checks before considering anything finished.
 
-- **Unitarios — Vitest + Testing Library** (`npm test`). Cubren `src/lib`:
-  geometría del aro (`machinePoint`), coherencia de las dificultades, tiempos de caída por
-  nivel, reparto y retardos de los palos, estados del marcador y el ciclo completo de la
-  partida en `gameStore` (incluido el caso de dos palos resolviéndose en el mismo lote).
-- **Extremo a extremo — Playwright** (`npm run test:e2e`, Chromium sobre el build
-  de producción). Menú, selección, teclado, partida, captura de palos con el ratón, fin de
-  partida, revancha, ausencia de errores de consola, cero peticiones externas y pantalla de
-  móvil. Un test aparte (`npm run capture`) regenera la captura del README.
-- Para poder probar la lógica sin navegador se sacó de los componentes 3D a
-  **`src/lib/stickLayout.ts`**: reparto de los palos por el aro, retardos escalonados y
-  estados del marcador. `STICK_MISS_Y`, `STICK_FALL_DISTANCE` y `fallDurationSeconds()` pasan
-  a `gameConfig.ts`. Los componentes solo pintan.
-- Para tener enganches estables (y de paso accesibilidad): el marcador es `role="status"` con
-  `aria-live` y el fin de partida `role="dialog"`.
-- El e2e destapó un incumplimiento real: los botones de dificultad medían **42 px** de alto,
-  por debajo del mínimo táctil de 44 px de `.claude/rules/design.md`. Corregido ahí y en los
-  botones de VR/AR.
-- Los e2e se sirven en `127.0.0.1` y no en `localhost` a propósito: con `localhost`,
-  `@react-three/xr` inyecta el emulador IWER y aparece un botón "Enter XR" que no existe en
-  el juego real.
+- **Unit — Vitest + Testing Library** (`npm test`). They cover `src/lib`:
+  geometry of the hoop (`machinePoint`), consistency of the difficulties, fall times per
+  level, layout and delays of the sticks, states of the scoreboard and the complete cycle of the
+  run in `gameStore` (including the case of two sticks being resolved in the same batch).
+- **End to end — Playwright** (`npm run test:e2e`, Chromium on the production
+  build). Menu, selection, keyboard, run, catching sticks with the mouse, end of
+  run, rematch, absence of console errors, zero external requests and mobile
+  screen. A separate test (`npm run capture`) regenerates the README screenshot.
+- To be able to test the logic without a browser, it was taken out of the 3D components into
+  **`src/lib/stickLayout.ts`**: layout of the sticks around the hoop, staggered delays and
+  states of the scoreboard. `STICK_MISS_Y`, `STICK_FALL_DISTANCE` and `fallDurationSeconds()`
+  move to `gameConfig.ts`. The components only paint.
+- To have stable hooks (and accessibility while at it): the scoreboard is `role="status"` with
+  `aria-live` and the end of the run `role="dialog"`.
+- The e2e uncovered a real breach: the difficulty buttons measured **42 px** in height,
+  below the 44 px touch minimum of `.claude/rules/design.md`. Fixed there and in the
+  VR/AR buttons.
+- The e2e are served on `127.0.0.1` and not on `localhost` on purpose: with `localhost`,
+  `@react-three/xr` injects the IWER emulator and an "Enter XR" button appears that does not
+  exist in the real game.
 
-## Corregido en la revisión (2026-07-31, rama `fix/xr-escena-y-hud`)
+## Fixed in the review (2026-07-31, branch `fix/xr-escena-y-hud`)
 
-- **AR ya no pinta el escenario**: `SceneBackdrop` (en `GameCanvas.tsx`) omite fondo, niebla,
-  suelo y `<Environment>` cuando el modo es `immersive-ar`, para que se vea el passthrough y
-  solo quede la máquina. R3F crea el renderer con `alpha: true`, así que basta con no pintar.
-- **Escala del jugador en XR**: `XROrigin` se agranda con `XR_PLAYER_SCALE` (2.2), de modo que
-  el mundo se percibe a ~1/2.2 y el arco queda ~1.3 m sobre los ojos.
-  > **Obsoleto:** `XR_PLAYER_SCALE` desapareció al pasar la escena a metros; hoy el
-  > jugador va a 1:1 y el aro está a 62 cm (ver "Jugabilidad XR").
-- **Soportes apoyados**: van de `GROUND_Y` al arranque del arco, en el web y en Godot
-  (`main.gd`), que tenía el mismo fallo.
-- **HUD 3D en inmersivo** (`XRHud.tsx`): una ficha por palo (atrapado / perdido / pendiente),
-  distinguidas por color *y* por tamaño y altura. Sin texto a propósito: `<Text>` de drei
-  descargaría las fuentes de un CDN. Al terminar, una barra marcaba la pausa
-  (`XR_RESTART_DELAY_MS`) antes de encadenar la siguiente partida.
-  > **Obsoleto:** el reinicio automático y `XR_RESTART_DELAY_MS` se eliminaron el
-  > 2026-08-03; ahora al terminar se elige entre repetir y volver al menú.
-- **Doble resolución de un palo**: `Stick.tsx` usa un ref de guarda (dos mandos XR sobre el
-  mismo palo, o captura justo al tocar el suelo, ya no suman dos veces) y devuelve el cursor
-  al desmontarse.
-- **Bug crítico encontrado al arreglar lo anterior**: `XRSessionController` hacía
-  `resetGame()` con `mode == null && gameState === 'playing'`, y en escritorio `mode` es null
-  siempre → al pulsar "Jugar" la partida se cancelaba sola y volvía al menú. **El modo
-  escritorio estaba roto.** Ahora se recuerda si hubo sesión inmersiva antes de volver al menú.
-- `gameStore` expone `resolved` (palos resueltos) y deriva `finished` en vez de guardarlo,
-  eliminando el ref mutable y el riesgo de perder resoluciones simultáneas.
+- **AR no longer paints the scenery**: `SceneBackdrop` (in `GameCanvas.tsx`) omits background,
+  fog, floor and `<Environment>` when the mode is `immersive-ar`, so that the passthrough is
+  seen and only the machine is left. R3F creates the renderer with `alpha: true`, so not
+  painting is enough.
+- **Scale of the player in XR**: `XROrigin` is enlarged with `XR_PLAYER_SCALE` (2.2), so that
+  the world is perceived at ~1/2.2 and the arc ends up ~1.3 m above the eyes.
+  > **Obsolete:** `XR_PLAYER_SCALE` disappeared when the scene moved to metres; today the
+  > player is at 1:1 and the hoop is at 62 cm (see "XR gameplay").
+- **Supports resting on the floor**: they go from `GROUND_Y` to the start of the arc, on the
+  web and in Godot (`main.gd`), which had the same bug.
+- **3D HUD in immersive** (`XRHud.tsx`): one chip per stick (caught / missed / pending),
+  told apart by colour *and* by size and height. With no text on purpose: drei's `<Text>`
+  would download the fonts from a CDN. On finishing, a bar marked the pause
+  (`XR_RESTART_DELAY_MS`) before chaining the next run.
+  > **Obsolete:** the automatic restart and `XR_RESTART_DELAY_MS` were removed on
+  > 2026-08-03; now on finishing you choose between repeating and going back to the menu.
+- **Double resolution of a stick**: `Stick.tsx` uses a guard ref (two XR controllers on the
+  same stick, or a catch right as it touches the floor, no longer add up twice) and gives the
+  cursor back on unmounting.
+- **Critical bug found while fixing the above**: `XRSessionController` did
+  `resetGame()` with `mode == null && gameState === 'playing'`, and on desktop `mode` is always
+  null → on pressing "Jugar" the run cancelled itself and went back to the menu. **Desktop
+  mode was broken.** Now it is remembered whether there was an immersive session before going
+  back to the menu.
+- `gameStore` exposes `resolved` (resolved sticks) and derives `finished` instead of storing it,
+  removing the mutable ref and the risk of losing simultaneous resolutions.
 
-## Verificado en navegador (2026-07-31)
+## Verified in the browser (2026-07-31)
 
-Prueba end-to-end sobre el build de producción con Chromium headless (Playwright, instalado
-fuera del repo; el script vive en el scratchpad de la sesión, no se ha añadido como dependencia):
-menú → elegir 9 palos y Fácil → Jugar → clics sobre los palos → fin de partida.
+End-to-end test on the production build with headless Chromium (Playwright, installed
+outside the repo; the script lives in the session's scratchpad, it has not been added as a
+dependency): menu → choose 9 sticks and Easy → Jugar → clicks on the sticks → end of run.
 
-- La escena renderiza: ~1.000 draw calls/s, canvas dimensionado, palos cayendo escalonados.
-- Se atrapan con clic (marcador 0/9 → 1/9) y la partida cierra sola al resolverse todos.
-- **Cero peticiones a dominios externos.**
-- Consola limpia salvo un aviso de `THREE.Clock` deprecado, que viene de dentro de las
-  librerías, no del código del proyecto.
+- The scene renders: ~1,000 draw calls/s, canvas sized, sticks falling staggered.
+- They are caught with a click (scoreboard 0/9 → 1/9) and the run closes by itself when all are
+  resolved.
+- **Zero requests to external domains.**
+- Clean console except for a deprecated `THREE.Clock` warning, which comes from inside the
+  libraries, not from the project's code.
 
-Ojo con el entorno: si se prueba en una pestaña que Chrome tiene en segundo plano
-(`document.visibilityState === 'hidden'`), no se ejecuta `requestAnimationFrame` y R3F ni
-dimensiona el canvas ni pinta. El canvas en blanco ahí no indica un bug de la app.
+Mind the environment: if it is tested in a tab that Chrome has in the background
+(`document.visibilityState === 'hidden'`), `requestAnimationFrame` does not run and R3F neither
+sizes the canvas nor paints. The blank canvas there does not indicate a bug of the app.
 
-## Rediseño de la máquina (2026-07-31)
+## Redesign of the machine (2026-07-31)
 
-La máquina era un arco **vertical** con el jugador delante: en XR los palos del centro le caían
-sobre la cabeza. Ahora es un aro **horizontal** (semicírculo en el plano XZ) y el jugador se
-planta en el centro, así que los palos le caen alrededor, al alcance del brazo.
+The machine was a **vertical** arc with the player in front: in XR the middle sticks fell
+on their head. Now it is a **horizontal** hoop (semicircle in the XZ plane) and the player
+stands in the centre, so the sticks fall around them, within arm's reach.
 
-- Toda la escena pasa a **escala humana (1 unidad = 1 metro)**: aro de 1.25 m de radio a 2.15 m
-  de altura, palos de 42 cm, suelo en y=0. Con eso desaparece el apaño de agrandar al jugador en
-  XR (`XR_PLAYER_SCALE`): ahora va a 1:1.
-- Las velocidades por dificultad se recalcularon a m/s para conservar los tiempos de caída
-  (Fácil ~5.7 s, Imposible ~0.7 s) sobre el nuevo recorrido de 1.6 m.
-- Estética de feria: aro a rayas rojas y crema con ganchos por palo, celosía superior (aro,
-  montantes y diagonales en zigzag), guirnalda de bombillas con casquillo, postes arriostrados
-  con base y palos de madera amarilla, todos del mismo color. La celosía y los tirantes son
-  deliberadamente redundantes: con un solo tubo la máquina parecía que se fuera a caer.
-- Escenario: HDRI de **plaza de pueblo de noche** (con guirnaldas de banderines), servido desde
-  `public/hdri/`. Hace de fondo, ilumina la escena y se **proyecta sobre el suelo**
-  (`<Environment ground>`), de modo que la máquina se planta en el empedrado real en vez de
-  sobre un plano de color con un corte visible contra el horizonte. En AR se mantiene solo como
-  reflejos. El suelo propio ya no pinta nada: solo recibe la sombra de la máquina.
-- Se usa el EXR de 1K (2 MB). Hay 2K disponible (~8 MB) si se quiere el fondo más nítido en el
-  visor; es cambiar el archivo y `HDRI_PATH`.
+- The whole scene moves to **human scale (1 unit = 1 metre)**: hoop of 1.25 m radius at 2.15 m
+  of height, 42 cm sticks, floor at y=0. With that, the hack of enlarging the player in
+  XR (`XR_PLAYER_SCALE`) disappears: now they are at 1:1.
+- The speeds per difficulty were recalculated to m/s to keep the fall times
+  (Easy ~5.7 s, Impossible ~0.7 s) over the new travel of 1.6 m.
+- Fairground look: hoop with red and cream stripes with hooks per stick, upper lattice (hoop,
+  uprights and zigzag diagonals), garland of bulbs with socket, braced posts
+  with a base and sticks of yellow wood, all of the same colour. The lattice and the stays are
+  deliberately redundant: with a single tube the machine looked as if it were going to fall.
+- Scenery: HDRI of a **village square at night** (with garlands of pennants), served from
+  `public/hdri/`. It acts as the background, lights the scene and is **projected onto the
+  floor** (`<Environment ground>`), so that the machine stands on the real cobblestones instead
+  of on a plane of colour with a visible cut against the horizon. In AR it is kept only as
+  reflections. The scene's own floor no longer paints anything: it only receives the machine's
+  shadow.
+- The 1K EXR is used (2 MB). There is a 2K one available (~8 MB) if a sharper background is
+  wanted in the headset; it means changing the file and `HDRI_PATH`.
 
-**No se encontró ningún modelo 3D de máquina de feria** (Poly Haven solo tiene props domésticos),
-así que la máquina sigue siendo geometría por código, ahora con más detalle.
+**No 3D model of a fairground machine was found** (Poly Haven only has household props),
+so the machine is still geometry by code, now with more detail.
 
-*(La deuda de Godot está arriba, en "Godot: congelado hasta cerrar el web".)*
+*(The Godot debt is above, in "Godot: frozen until the web is closed".)*
 
-## Jugabilidad XR tras la primera prueba en visor (2026-08-03)
+## XR gameplay after the first headset test (2026-08-03)
 
-Cinco cosas que salieron de probarlo con las gafas puestas, todas en
+Five things that came out of testing it with the goggles on, all in
 `feat/xr-menu-inmersivo-y-seguridad`:
 
-- **Entrar en VR/AR ya no arranca una partida.** `XRSessionController` lleva al menú y
-  el nuevo `XRMenu` lo dibuja con geometría: fila de 13 palos (encendidos hasta el
-  elegido), cinco fichas de dificultad con barras crecientes, y botón de empezar.
-  **Sin una sola letra**, igual que el HUD: `<Text>` de drei descarga las fuentes de
-  un CDN y la CSP ahora lo bloquea. Piezas comunes en `XRUi.tsx`.
-- **Se puede volver atrás.** Botón de salir a un lado durante la partida
-  (`XRQuitButton`) y, al acabar, repetir o volver al menú. Se quitó el reinicio
-  automático y con él `XR_RESTART_DELAY_MS`.
-- **Los palos ya no caen en orden.** `buildStickLayout` sacaba el retardo del índice,
-  así que caían de izquierda a derecha siempre. Ahora `fallOrder()` baraja
-  (Fisher-Yates sembrado con `runId`) y la posición en el aro no dice nada del turno.
-- **El aro baja al alcance del brazo**: radio 1.25 → **0.62 m** y altura 2.15 → 1.95 m.
-  Las velocidades se recalcularon para conservar los tiempos por dificultad (el
-  recorrido se acortó un 12 %), los perfiles se afinaron y la cámara de escritorio se
-  reencuadró. `xrInteraction.test.ts` fija que el aro no se aleje del alcance.
-- **Se coge agarrando, no apuntando.** `Stick` mira el `pointerType` del evento y
-  descarta `ray`: el agarre (`grab`, esfera en el puño con el botón *squeeze*) y el
-  contacto de la mano (`touch`) sí valen; el rayo se queda solo para el menú. Se
-  resuelve en `pointerdown` y no en `click`, porque con el palo cayendo exigir
-  pulsar-y-soltar sobre el mismo objeto hacía fallar agarres buenos.
-- De regalo: los palos ya **no caen mientras estás en el menú**. Su reloj corría desde
-  que se montaban, así que al empezar podían estar ya por el suelo.
+- **Entering VR/AR no longer starts a run.** `XRSessionController` leads to the menu and
+  the new `XRMenu` draws it with geometry: a row of 13 sticks (lit up to the
+  chosen one), five difficulty chips with growing bars, and a start button.
+  **Without a single letter**, like the HUD: drei's `<Text>` downloads the fonts from
+  a CDN and the CSP now blocks it. Common parts in `XRUi.tsx`.
+- **You can go back.** Exit button to one side during the run
+  (`XRQuitButton`) and, on finishing, repeat or go back to the menu. The automatic
+  restart was removed and with it `XR_RESTART_DELAY_MS`.
+- **The sticks no longer fall in order.** `buildStickLayout` took the delay from the index,
+  so they always fell from left to right. Now `fallOrder()` shuffles
+  (Fisher-Yates seeded with `runId`) and the position on the hoop says nothing about the turn.
+- **The hoop comes down within arm's reach**: radius 1.25 → **0.62 m** and height 2.15 → 1.95 m.
+  The speeds were recalculated to keep the times per difficulty (the
+  travel got 12 % shorter), the profiles were thinned and the desktop camera was
+  reframed. `xrInteraction.test.ts` pins that the hoop does not move out of reach.
+- **You catch by grabbing, not by pointing.** `Stick` looks at the `pointerType` of the event
+  and discards `ray`: the grab (`grab`, a sphere in the fist with the *squeeze* button) and the
+  contact of the hand (`touch`) do count; the ray is left only for the menu. It is
+  resolved on `pointerdown` and not on `click`, because with the stick falling, demanding
+  press-and-release on the same object made good grabs fail.
+- As a bonus: the sticks **no longer fall while you are in the menu**. Their clock ran from
+  the moment they were mounted, so on starting they could already be on the floor.
 
-## Tests de XR con emulador (2026-08-03, rama `test/xr-emulado`)
+## XR tests with an emulator (2026-08-03, branch `test/xr-emulado`)
 
-Chromium no implementa WebXR, así que hasta ahora **ningún test tocaba el modo
-inmersivo**: todos entraban por el ratón, que es otro camino de código. Se inyecta
-IWER (el emulador de Meta, ya presente como dependencia de `@react-three/xr`) con
-`page.addInitScript` y se abren sesiones de verdad, con un Quest 3 y sus dos mandos.
-El bundle se genera en `globalSetup` con esbuild y está gitignorado.
+Chromium does not implement WebXR, so until now **no test touched the immersive
+mode**: they all came in through the mouse, which is another code path. IWER is
+injected (Meta's emulator, already present as a dependency of `@react-three/xr`) with
+`page.addInitScript` and real sessions are opened, with a Quest 3 and its two controllers.
+The bundle is generated in `globalSetup` with esbuild and is gitignored.
 
-Cubierto: que aparezcan las entradas a VR/AR, que **entrar en VR lleve al menú y no
-arranque partida sola**, que los palos no se suelten en el menú, y que salir de la
-sesión devuelva al menú (lo que de paso prueba que la app reconoce el modo).
+Covered: that the entries to VR/AR appear, that **entering VR leads to the menu and does not
+start a run on its own**, that the sticks are not released in the menu, and that leaving the
+session returns to the menu (which in passing proves that the app recognises the mode).
 
-**Lo que NO se pudo cubrir, y por qué:** mover los mandos y pulsar sus botones. El
-emulador entrega sesión, dos `inputSources` y ~125 fps, pero los punteros de
-`@react-three/xr` no emiten eventos sobre los objetos de la escena. Se descartó por
-diagnóstico: no es la orientación del rayo (falla igual con agarre y con contacto
-directo), ni la posición (barrido 2D de todo el plano del jugador sin un solo hover),
-ni el frameloop, ni la detección de modo. **Reintentado al cerrar la v2 y sigue igual**, así
-que se deja de tratar como trabajo pendiente: es una limitación de la herramienta, no algo
-que falte por hacer.
+**What could NOT be covered, and why:** moving the controllers and pressing their buttons. The
+emulator delivers a session, two `inputSources` and ~125 fps, but the pointers of
+`@react-three/xr` do not emit events on the objects of the scene. It was ruled out by
+diagnosis: it is not the orientation of the ray (it fails just the same with grab and with
+direct contact), nor the position (2D sweep of the whole plane of the player without a single
+hover), nor the frameloop, nor the mode detection. **Retried on closing v2 and it is still the
+same**, so it stops being treated as pending work: it is a limitation of the tool, not something
+that is left to do.
 
-Lo que cubre ese riesgo por otra vía, para que no quede al aire: `src/lib/xrInteraction.ts`
-y sus tests comprueban la GEOMETRÍA —que los botones caigan dentro del campo de visión, que
-encaren al jugador, que el aro quede al alcance del brazo—, que es la mitad del fallo que un
-test de pulsación cazaría. La otra mitad, que el evento llegue de verdad, no se puede probar
-sin visor y la valida la sesión de hardware.
+What covers that risk by another route, so that it is not left hanging:
+`src/lib/xrInteraction.ts` and its tests check the GEOMETRY —that the buttons fall inside the
+field of view, that they face the player, that the hoop stays within arm's reach—, which is half
+of the failure that a press test would catch. The other half, that the event really arrives,
+cannot be tested without a headset and is validated by the hardware session.
 
-> **Aviso (2026-08-05):** este párrafo se convirtió en una coartada. Durante semanas
-> tapó un fallo real —los mandos **no se registraban**, así que no había punteros que
-> pudieran emitir nada— que se veía en la consola con solo entrar en sesión. Se
-> reintentó el test tras arreglarlo y sigue sin enganchar, así que la limitación de
-> IWER es real; pero ahora hay un e2e que vigila la consola dentro de la sesión
-> (`la sesión monta mandos e interfaz sin ensuciar la consola`) para que un fallo así
-> no vuelva a esconderse detrás de "es el emulador".
+> **Warning (2026-08-05):** this paragraph turned into an alibi. For weeks
+> it hid a real bug —the controllers **were not being registered**, so there were no pointers
+> that could emit anything— which was visible in the console just by entering a session. The
+> test was retried after fixing it and it still does not hook, so the limitation of
+> IWER is real; but now there is an e2e that watches the console inside the session
+> (`la sesión monta mandos e interfaz sin ensuciar la consola`) so that a bug like that
+> does not hide again behind "it's the emulator".
 
-Como contrapartida, la **regla** de interacción sí está cubierta por unitarios:
-`src/lib/xrInteraction.ts` decide qué puntero puede coger un palo (el rayo no; el
-agarre, el contacto y el ratón sí) y eso se testea sin navegador. El layout de la
-interfaz inmersiva vive en `src/lib/xrLayout.ts`, compartido por componentes y tests.
+In return, the interaction **rule** is indeed covered by unit tests:
+`src/lib/xrInteraction.ts` decides which pointer can grab a stick (the ray cannot; the
+grab, the contact and the mouse can) and that is tested without a browser. The layout of the
+immersive UI lives in `src/lib/xrLayout.ts`, shared by components and tests.
 
-## Tercera prueba en visor (2026-08-06, misma rama)
+## Third headset test (2026-08-06, same branch)
 
-El modo inmersivo **funciona**: se ven los mandos y el menú se maneja. De esa
-prueba salieron seis mejoras, todas dentro de la rama:
+The immersive mode **works**: the controllers are seen and the menu can be operated. Six
+improvements came out of that test, all within the branch:
 
-- **El jugador estaba echado hacia atrás** (había que dar un paso al empezar). El aro
-  es un *semi*círculo, así que su masa cae hacia −Z; ahora el jugador se planta en
-  `PLAYER_POSITION`, 18 cm por delante del centro.
-- **Máquina y palos un 8 % más pequeños**, con las velocidades recalculadas para
-  conservar los tiempos de caída. La altura del aro no se toca: la manda la estatura.
-- **Puntuación** (`src/lib/scoring.ts`): base por palo × dificultad × racha × reflejos.
-  El tope de racha existe para que 13 palos en Fácil no batan a una partida perfecta
-  en Imposible.
-- **Cuenta atrás de 3 s** como fase propia, durante la cual los palos **no se dejan
-  coger** (si no, se vaciaba el aro a clics antes de empezar).
-- **Acierto en verde con onda, fallo en rojo en el suelo.**
-- **Escenario o passthrough se elige dentro del visor**, con fundido. Se entra siempre
-  en `immersive-ar` cuando se puede, porque WebXR no deja cambiar de tipo de sesión
-  sin reabrirla. La entrada del menú es ahora un solo botón.
+- **The player was set too far back** (you had to take a step on starting). The hoop
+  is a *semi*circle, so its mass falls towards −Z; now the player stands at
+  `PLAYER_POSITION`, 18 cm ahead of the centre.
+- **Machine and sticks 8 % smaller**, with the speeds recalculated to
+  keep the fall times. The hoop height is not touched: stature rules it.
+- **Score** (`src/lib/scoring.ts`): base per stick × difficulty × streak × reflexes.
+  The streak cap exists so that 13 sticks on Easy do not beat a perfect run
+  on Impossible.
+- **3 s countdown** as a phase of its own, during which the sticks **cannot be
+  grabbed** (otherwise, the hoop was emptied with clicks before starting).
+- **Hit in green with a ripple, miss in red on the floor.**
+- **Scenery or passthrough is chosen inside the headset**, with a fade. It always enters
+  in `immersive-ar` when possible, because WebXR does not let the session type be changed
+  without reopening it. The entry of the menu is now a single button.
 
-## Sonido (2026-08-10, rama `agent/sonido-al-atrapar-al-perder-y-en-351461`)
+## Sound (2026-08-10, branch `agent/sonido-al-atrapar-al-perder-y-en-351461`)
 
-Con el visor puesto era lo que más se echaba de menos: el marcador está a un
-lado y no se puede mirar mientras caen los palos, así que atrapar y fallar solo
-se notaban si dabas la vuelta a la cabeza.
+With the headset on it was what was missed the most: the scoreboard is to one
+side and cannot be looked at while the sticks fall, so catching and missing were only
+noticed if you turned your head.
 
-- **Sintetizado, no grabado.** `src/lib/sound.ts` describe cada sonido como
-  voces de oscilador (forma de onda, frecuencias, duración, volumen) y
-  `createSoundEngine` las programa con la Web Audio API. Así no hay ficheros que
-  servir, no hace falta abrir `media-src` en la CSP y no hay CDN de por medio.
-  La receta es un dato puro, de modo que se prueba sin navegador.
-- **Qué suena**: acierto con un timbre que sube un semitono por palo de racha
-  (con tope, o una racha larga acabaría chillando), fallo grave y descendente
-  que dura el doble, un tic por segundo de cuenta atrás —subiendo conforme se
-  acerca la salida— y un remate más largo al empezar a caer los palos.
-- **El cableado es `useGameSound`** (en `components/game/`), montado una vez en
-  `GameScene`: escucha el estado del juego en vez de engancharse a los
-  componentes, así vale igual para el ratón y para los mandos del visor.
-- El navegador no deja sonar hasta que el jugador interactúa, así que el
-  `AudioContext` se crea con el primer clic —activar un botón con el teclado
-  dispara uno, así que el teclado también vale; ver "Silencio" más abajo—. En el
-  visor ese gesto es el botón de entrar en la sesión, que todavía es DOM.
-- **Con el contexto suspendido el juego calla a propósito** (quitarse el visor a
-  media partida, o que el sistema le quite el foco al navegador): ahí el reloj
-  del audio se para y todo lo que se programe se amontonaría en el mismo
-  instante, para sonar de golpe y a todo volumen al volver. En su lugar se pide
-  el audio de vuelta y se pierde ese sonido. Al probar con las gafas: si al
-  ponérselas otra vez el primer palo no suena y el siguiente sí, es esto y está
-  bien.
-- **Se puede silenciar** desde los dos menús (ver abajo).
+- **Synthesised, not recorded.** `src/lib/sound.ts` describes each sound as
+  oscillator voices (waveform, frequencies, duration, volume) and
+  `createSoundEngine` schedules them with the Web Audio API. This way there are no files to
+  serve, there is no need to open `media-src` in the CSP and there is no CDN in between.
+  The recipe is pure data, so it is tested without a browser.
+- **What sounds**: hit with a timbre that rises a semitone per stick of streak
+  (with a cap, or a long streak would end up shrieking), a low, descending miss
+  that lasts twice as long, a tick per second of countdown —rising as the
+  start gets closer— and a longer flourish when the sticks start to fall.
+- **The wiring is `useGameSound`** (in `components/game/`), mounted once in
+  `GameScene`: it listens to the state of the game instead of hooking into the
+  components, so it works just the same for the mouse and for the headset's controllers.
+- The browser does not allow sound until the player interacts, so the
+  `AudioContext` is created with the first click —activating a button with the keyboard
+  fires one, so the keyboard counts too; see "Mute" further down—. In the
+  headset that gesture is the button to enter the session, which is still DOM.
+- **With the context suspended the game stays quiet on purpose** (taking off the headset
+  mid-run, or the system taking the focus away from the browser): there the audio
+  clock stops and everything scheduled would pile up at the same
+  instant, to sound all at once and at full volume on coming back. Instead, the audio is
+  asked back and that sound is lost. When testing with the goggles: if on
+  putting them on again the first stick does not sound and the next one does, it is this and it
+  is fine.
+- **It can be muted** from both menus (see below).
 
-## Silencio (rama `agent/poder-silenciar-el-juego-menu-de-7fbe05`)
+## Mute (branch `agent/poder-silenciar-el-juego-menu-de-7fbe05`)
 
-El sonido no se podía ni bajar ni quitar, y en el visor va pegado a los oídos.
+The sound could neither be turned down nor off, and in the headset it sits right against the
+ears.
 
-- La preferencia era una bandera del store (`muted`, como `scenery`) que **no se
-  guardaba entre visitas**: la auditoría dejó el juego sin storage y persistirla
-  era una decisión aparte, no un efecto colateral de esa tarea.
-  > **Decidido después**, en la tarea que pedía decidirlo: se guarda. Ver
-  > "El silencio se recuerda" más abajo.
-- **En silencio no se toca la Web Audio API**: ni contexto, ni nodos, ni
-  permiso de reproducción. `useGameSound` crea el contexto solo cuando hay
-  gesto del jugador *y* el sonido está activo; al silenciar a media partida, la
-  limpieza del efecto cierra el que hubiera abierto.
-- Para eso, el gesto que desbloquea el audio pasó de `pointerdown` a **`click`**
-  (y «ya hubo gesto» de ref a estado). El primer clic de la página puede ser el
-  propio botón de silenciar: con `pointerdown` el gesto y la orden de callar
-  llegan en eventos distintos, así que el juego abría un contexto para cerrarlo
-  en el render siguiente. Escuchando el mismo evento que activa el botón, React
-  ve las dos cosas en el mismo render. El teclado sigue cubierto: activar un
-  botón con Enter dispara su clic. Lo vigila un unitario que pulsa un botón de
-  verdad (`useGameSound.test.tsx`), no dos llamadas al store en el mismo lote —
-  eso pasaba en verde con el fallo puesto.
-- Quitar el silencio devuelve el sonido **sin esperar otro clic**: el propio
-  botón es el gesto que exige el navegador.
-- En escritorio, botón bajo el CTA con `aria-pressed` y altavoz tachado (el
-  e2e de móvil ya vigila los 44 px). En el visor, botón en la esquina del panel
-  del menú, simétrico al de salir, con la silueta de `xrIcons.ts`: altavoz con
-  ondas o con un aspa. El aspa ocupa el sitio de las ondas en vez de cruzar el
-  altavoz —tacharlo con el mismo relleno se ve como una mancha, no como un
-  tachón—. `xrIcons.test.ts` fija esa forma.
-- **Sin validar en hardware**: falta ver si el botón se distingue del de salir
-  con las gafas puestas, y si con `MASTER_GAIN` a 0.28 hace falta además un
-  control de volumen intermedio.
+- The preference was a flag of the store (`muted`, like `scenery`) that **was not
+  saved between visits**: the audit left the game without storage and persisting it
+  was a separate decision, not a side effect of that task.
+  > **Decided later**, in the task that asked to decide it: it is saved. See
+  > "The mute is remembered" further down.
+- **When muted, the Web Audio API is not touched**: no context, no nodes, no
+  playback permission. `useGameSound` creates the context only when there is a
+  gesture from the player *and* the sound is on; on muting mid-run, the
+  cleanup of the effect closes the one it may have opened.
+- For that, the gesture that unlocks the audio went from `pointerdown` to **`click`**
+  (and "there has already been a gesture" from ref to state). The first click on the page may be
+  the mute button itself: with `pointerdown` the gesture and the order to be quiet
+  arrive in different events, so the game opened a context only to close it
+  on the next render. Listening to the same event that activates the button, React
+  sees both things in the same render. The keyboard is still covered: activating a
+  button with Enter fires its click. A unit test that presses a real button watches it
+  (`useGameSound.test.tsx`), not two calls to the store in the same batch —
+  that passed green with the bug in place.
+- Unmuting brings the sound back **without waiting for another click**: the
+  button itself is the gesture the browser demands.
+- On desktop, a button under the CTA with `aria-pressed` and a crossed-out speaker (the
+  mobile e2e already watches the 44 px). In the headset, a button in the corner of the menu
+  panel, symmetrical to the exit one, with the silhouette from `xrIcons.ts`: a speaker with
+  waves or with a cross. The cross takes the place of the waves instead of crossing the
+  speaker —crossing it out with the same fill looks like a blot, not like a
+  strike-through—. `xrIcons.test.ts` pins that shape.
+- **Not validated on hardware**: it remains to be seen whether the button can be told apart
+  from the exit one with the goggles on, and whether with `MASTER_GAIN` at 0.28 an intermediate
+  volume control is needed as well.
 
-## Balanceo de los palos (rama `agent/balanceo-de-los-palos-colgando-p-2b20f4`)
+## Swaying of the sticks (branch `agent/balanceo-de-los-palos-colgando-p-2b20f4`)
 
-Hasta que caía el primero no se movía nada: con el visor puesto la máquina
-parecía congelada mientras se elegían opciones y durante los tres segundos de
-cuenta atrás.
+Until the first one fell nothing moved: with the headset on the machine
+looked frozen while options were being chosen and during the three seconds of
+countdown.
 
-- Los palos colgados se mecen. La receta es un dato puro (`src/lib/stickSwing.ts`,
-  `hangingSwing`): unos 3° de amplitud a 0.55 Hz, con un segundo eje más corto y
-  a otro ritmo para que describan una elipse lenta en vez de ir como
-  limpiaparabrisas. Cada palo lleva su fase (`swingPhase`, de `buildStickLayout`),
-  que además le afina la frecuencia: sin ella los trece se moverían en bloque,
-  que se ve más mecánico que la quietud.
-- **El vaivén corre también con la partida parada.** `Stick` lleva un reloj
-  aparte del que gestiona el retardo de caída, porque justamente el menú y la
-  cuenta atrás son el momento en que hace falta. No toca ni cuándo se suelta un
-  palo ni desde qué altura: es rotación del grupo alrededor del gancho.
-- Al soltarse el palo se endereza en ~0.25 s (`SWING_RELEASE_DECAY`): uno que
-  cae inclinándose cuesta de seguir con la mano.
-- **Se respeta `prefers-reduced-motion`** (`useReducedMotion`, el equivalente
-  para la escena 3D de lo que `globals.css` ya hacía con las animaciones del
-  menú). Quien lo activa ve la máquina quieta, como antes de esta rama: también
-  al abrirla, porque el vaivén de cada palo nace ya apagado (si nace a 1, el
-  palo aparece inclinado y se endereza en un cuarto de segundo, que es
-  exactamente el movimiento que esa preferencia pide no tener). El e2e cubre
-  el caso de activarla con el juego abierto; el arranque no, porque el
-  enderezado dura menos de lo que tarda en pintarse el HDRI.
-- Los e2e del menú miran la escena de verdad: apartan el panel opaco del menú,
-  esperan a que el HDRI esté pintado y comparan dos capturas del canvas
-  separadas 600 ms. Con movimiento normal tienen que diferir; con el reducido,
-  ser idénticas. Ese par es lo que hace la comprobación fiable: si la captura
-  fuera ciega, el primero se pondría rojo.
-- **Sin validar en hardware**: falta ver con las gafas si tres grados se notan lo
-  justo o si conviene subir `SWING_AMPLITUDE`, y que el aro no se vea inquieto
-  con 13 palos meciéndose a la vez.
+- The hanging sticks sway. The recipe is pure data (`src/lib/stickSwing.ts`,
+  `hangingSwing`): about 3° of amplitude at 0.55 Hz, with a second, shorter axis
+  at another rhythm so that they trace a slow ellipse instead of going like
+  windscreen wipers. Each stick carries its phase (`swingPhase`, from `buildStickLayout`),
+  which also tunes its frequency: without it the thirteen would move as a block,
+  which looks more mechanical than stillness.
+- **The swing also runs with the run stopped.** `Stick` carries a clock
+  separate from the one that manages the fall delay, because the menu and the
+  countdown are precisely the moment when it is needed. It touches neither when a
+  stick is released nor from what height: it is rotation of the group around the hook.
+- On being released the stick straightens in ~0.25 s (`SWING_RELEASE_DECAY`): one that
+  falls while tilting is hard to follow with the hand.
+- **`prefers-reduced-motion` is respected** (`useReducedMotion`, the equivalent
+  for the 3D scene of what `globals.css` already did with the animations of the
+  menu). Whoever enables it sees the machine still, as before this branch: also
+  on opening it, because each stick's swing is born already switched off (if it is born at 1,
+  the stick appears tilted and straightens in a quarter of a second, which is
+  exactly the movement that preference asks not to have). The e2e covers
+  the case of enabling it with the game open; the start-up does not, because the
+  straightening lasts less than the HDRI takes to paint.
+- The e2e of the menu look at the real scene: they move the opaque panel of the menu aside,
+  wait for the HDRI to be painted and compare two captures of the canvas
+  600 ms apart. With normal motion they have to differ; with reduced motion,
+  be identical. That pair is what makes the check reliable: if the capture
+  were blind, the first one would go red.
+- **Not validated on hardware**: it remains to be seen with the goggles whether three degrees
+  are noticed just enough or whether `SWING_AMPLITUDE` should be raised, and that the hoop does
+  not look restless with 13 sticks swaying at once.
 
-## Mejor puntuación (rama `agent/guardar-la-mejor-puntuacion-entr-8926aa`)
+## Best score (branch `agent/guardar-la-mejor-puntuacion-entr-8926aa`)
 
-Cada partida empezaba de cero y la anterior no dejaba rastro: no había nada que
-batir.
+Every run started from zero and the previous one left no trace: there was nothing to
+beat.
 
-- **Se rompe el «cero almacenamiento» de la auditoría, a propósito y con el OK
-  del dueño del repo.** Lo único que el juego escribe en el navegador es un
-  entero en `localStorage` (`stick-rush:best-points`): sin identificadores, sin
-  cookies y sin nada que salga de la máquina. El silencio y el escenario siguen
-  sin persistirse; la decisión fue guardar solo el récord.
-- **Un único récord global**, no uno por dificultad ni por número de palos. La
-  puntuación ya escala con las dos cosas (ver `scoring.ts`), así que batirlo
-  empuja a subir de nivel. La contrapartida: con 5 palos en Fácil el récord es
-  inalcanzable, y eso se ve —en el visor la marca se queda pegada al final de
-  la barra—.
-- **El récord no es estado de React**: vive en `src/lib/highScore.ts` y el store
-  se suscribe con `useSyncExternalStore`. No es un capricho: el linter de React
-  19 (`react-hooks/set-state-in-effect`) prohíbe el `useEffect` que lee el
-  almacenamiento al montar y hace `setState`, y con razón —cascada de renders y
-  desajuste de hidratación—. Con un almacén externo, el servidor devuelve 0
-  (`getServerBestPoints`) y el navegador su valor, sin que React se queje.
-- **Se guarda al terminar la partida, no palo a palo.** Si el récord subiera con
-  cada acierto, al acabar sería siempre igual a la puntuación y no habría forma
-  de saber si se ha batido. Para eso `startGame` congela la marca a batir
-  (`recordToBeat`) y `isRecord` se deriva de comparar con ella.
-- **«¡Nuevo récord!» solo si de verdad se guardó** (revisión): `isRecord` exige
-  además que lo guardado sea **exactamente** esa puntuación. Sin la condición,
-  con el almacenamiento bloqueado la marca a batir se quedaba a cero para
-  siempre y toda partida con puntos se anunciaba como récord, uno que al volver
-  al menú no estaba. Y con «al menos» en vez de igualdad quedaba el mismo
-  engaño entre dos pestañas: la marca se congela al empezar, así que si la otra
-  pestaña guarda algo mejor mientras juegas, la partida supera la marca
-  congelada sin llegar a la guardada. Cuesta un frame de retraso —el aviso
-  aparece tras guardar—, que la animación de entrada tapa.
-- **Dónde se ve**: píldora bajo el reclamo del menú (solo si hay récord), y en
-  el fin de partida «¡Nuevo récord!» o «Tu récord: N». En el visor no hay texto,
-  así que es una **marca dorada sobre la barra de puntuación**, en la escala de
-  esa partida; al batirlo la barra se vuelve dorada y la marca crece.
-- **Sin almacenamiento no hay récord, pero se juega igual**: en modo privado
-  `localStorage` lanza al tocarlo en vez de devolver `null`, así que todo el
-  acceso va envuelto. Lo cubre un e2e que bloquea `localStorage` de verdad.
-- **Dos pestañas ven el mismo récord** (revisión): la suscripción escucha además
-  el evento `storage`, que es como el navegador avisa de que otra pestaña ha
-  escrito. Sin él, la que estuviera en el menú seguiría enseñando la marca
-  anterior pese a que el almacenamiento es la única fuente de verdad.
-- **Sin validar en hardware**: falta ver si la marca del récord se distingue del
-  relleno de la barra con las gafas puestas.
+- **The audit's "zero storage" is broken, on purpose and with the OK
+  of the owner of the repo.** The only thing the game writes in the browser is an
+  integer in `localStorage` (`stick-rush:best-points`): no identifiers, no
+  cookies and nothing that leaves the machine. The mute and the scenery are still
+  not persisted; the decision was to save only the record.
+- **A single global record**, not one per difficulty nor per number of sticks. The
+  score already scales with both things (see `scoring.ts`), so beating it
+  pushes you to go up a level. The trade-off: with 5 sticks on Easy the record is
+  unreachable, and that shows —in the headset the mark stays stuck to the end of
+  the bar—.
+- **The record is not React state**: it lives in `src/lib/highScore.ts` and the store
+  subscribes with `useSyncExternalStore`. It is not a whim: the React
+  19 linter (`react-hooks/set-state-in-effect`) forbids the `useEffect` that reads the
+  storage on mounting and does `setState`, and rightly so —cascade of renders and
+  hydration mismatch—. With an external store, the server returns 0
+  (`getServerBestPoints`) and the browser its value, without React complaining.
+- **It is saved when the run ends, not stick by stick.** If the record rose with
+  every hit, at the end it would always be equal to the score and there would be no way
+  of knowing whether it has been beaten. For that `startGame` freezes the best to beat
+  (`recordToBeat`) and `isRecord` is derived from comparing with it.
+- **«¡Nuevo récord!» only if it really was saved** (review): `isRecord` also requires
+  that what was saved be **exactly** that score. Without the condition,
+  with the storage blocked the best to beat stayed at zero for
+  ever and every run with points was announced as a record, one that on going back
+  to the menu was not there. And with "at least" instead of equality the same
+  deception remained between two tabs: the best is frozen on starting, so if the other
+  tab saves something better while you play, the run exceeds the frozen
+  best without reaching the saved one. It costs one frame of delay —the notice
+  appears after saving—, which the entry animation covers.
+- **Where it is seen**: a pill under the tagline of the menu (only if there is a record), and
+  at the end of the run «¡Nuevo récord!» or «Tu récord: N». In the headset there is no text,
+  so it is a **golden mark on the score bar**, on the scale of
+  that run; on beating it the bar turns golden and the mark grows.
+- **Without storage there is no record, but you play just the same**: in private mode
+  `localStorage` throws on being touched instead of returning `null`, so all the
+  access is wrapped. An e2e that really blocks `localStorage` covers it.
+- **Two tabs see the same record** (review): the subscription also listens to
+  the `storage` event, which is how the browser signals that another tab has
+  written. Without it, the one in the menu would keep showing the previous
+  best even though the storage is the only source of truth.
+- **Not validated on hardware**: it remains to be seen whether the record mark can be told
+  apart from the fill of the bar with the goggles on.
 
-## Modo práctica y modo desafío (rama `agent/modo-practica-y-modo-desafio-243a75`)
+## Practice mode and challenge mode (branch `agent/modo-practica-y-modo-desafio-243a75`)
 
-Una partida era una tirada suelta: elegías dificultad, caían N palos y se acabó.
-Faltaba el motivo para volver a ponerse las gafas.
+A run was a single loose throw: you chose a difficulty, N sticks fell and that was it.
+The reason to put the goggles back on was missing.
 
-- **Dos modos**: *Práctica* es el juego de siempre (caen todos los palos, fallar
-  no cuesta nada) y *Desafío* se juega con **tres vidas**: cada palo que toca el
-  suelo cuesta una, y la partida acaba al quedarse sin ellas —aunque queden palos
-  colgando— o al resolverlos todos, que es superar el reto.
-- **Vidas y no rondas que suben de dificultad**, que era la otra opción que
-  planteaba la tarea. La dificultad ya la elige el jugador y es la palanca con la
-  que escala la puntuación; si el desafío la fuera subiendo por su cuenta,
-  elegirla en el menú dejaría de significar nada y dos partidas de "Experto" no
-  serían la misma cosa. Con vidas, el modo cambia solo **cómo termina** la
-  partida y la dificultad sigue queriendo decir lo que decía.
-- **Tres vidas fijas**, ni escaladas con los palos ni con la dificultad: el trato
-  tiene que entenderse antes de empezar (tres fallos y fuera) y graduarlo es para
-  lo que ya están las otras dos opciones. Con 13 palos en Imposible, tres vidas
-  es el reto; con 5 en Fácil, un trámite.
-- **Dónde vive**: `src/lib/gameMode.ts` —funciones puras: cuántas vidas quedan y
-  cómo acaba la partida (`cleared` / `failed`)—, probado sin navegador como
-  `scoring.ts`. El store deriva los fallos de los contadores que ya tenía
-  (`resolved - score`) en vez de llevar un tercero que mantener a la par.
-- **Un récord por modo** (`stick-rush:best-points` y `…:challenge`). Un desafío
-  se corta al quedarse sin vidas, así que con los mismos palos y dificultad nunca
-  puede puntuar más que la práctica equivalente: con una marca común, el modo con
-  algo en juego sería el único que jamás la batiría. La clave de práctica es la
-  que ya había, así que un récord anterior no se pierde. Sigue sin haber nada más
-  en el navegador.
-- **El modo solo se cambia entre partidas.** Lo destapó un test: con el resumen
-  en pantalla —donde la puntuación sigue viva— cambiar de modo mandaba esos
-  puntos al récord del otro, uno que no se había jugado. Hoy ningún menú se ve en
-  esa fase, pero la regla es del juego y no de dónde esté el botón.
-- **Dónde se ve**: en el menú de escritorio, dos tarjetas con lo que cada modo
-  pone en juego (infinito o tres corazones) y una línea de qué significa; durante
-  la partida, los corazones en el marcador (llenos los que quedan, de contorno
-  los gastados) y dentro del `aria-label` que ya se anunciaba, para no montar un
-  segundo aviso; al acabar, el título dice si el reto se superó o si te quedaste
-  sin vidas, y el resumen añade **con cuántas vidas se acabó** junto a la
-  puntuación (son los dos datos que se comparten).
-- **En el visor**, sin letras como todo lo inmersivo: el menú lleva un
-  interruptor con tres corazones —encendidos, el desafío; apagados, la práctica—
-  y el marcador pinta las vidas bajo la barra de puntuación, encogiendo y
-  apagando la gastada. La silueta del corazón está en `xrIcons.ts` con sus tests
-  (dos lóbulos arriba, punta abajo, y el mismo cuadro que los demás iconos).
-- **Sin validar en hardware**: falta ver si el interruptor de corazones del menú
-  se entiende con las gafas puestas sin haberlo leído en ningún sitio, y si las
-  vidas del marcador se distinguen a un metro mientras caen los palos.
+- **Two modes**: *Practice* is the usual game (all the sticks fall, missing
+  costs nothing) and *Challenge* is played with **three lives**: each stick that touches the
+  floor costs one, and the run ends on running out of them —even if sticks are still
+  hanging— or on resolving them all, which is clearing the challenge.
+- **Lives and not rounds that go up in difficulty**, which was the other option the
+  task raised. The difficulty is already chosen by the player and is the lever with
+  which the score scales; if the challenge raised it on its own,
+  choosing it in the menu would stop meaning anything and two "Experto" runs would not
+  be the same thing. With lives, the mode changes only **how** the run **ends**
+  and the difficulty still means what it meant.
+- **Three fixed lives**, scaled neither with the sticks nor with the difficulty: the deal
+  has to be understood before starting (three misses and out) and grading it is what
+  the other two options are already for. With 13 sticks on Impossible, three lives
+  is the challenge; with 5 on Easy, a formality.
+- **Where it lives**: `src/lib/gameMode.ts` —pure functions: how many lives are left and
+  how the run ends (`cleared` / `failed`)—, tested without a browser like
+  `scoring.ts`. The store derives the misses from the counters it already had
+  (`resolved - score`) instead of carrying a third one to keep in step.
+- **One record per mode** (`stick-rush:best-points` and `…:challenge`). A challenge
+  is cut short on running out of lives, so with the same sticks and difficulty it can never
+  score more than the equivalent practice: with a common best, the mode with
+  something at stake would be the only one that would never beat it. The practice key is the
+  one that was already there, so a previous record is not lost. There is still nothing else
+  in the browser.
+- **The mode is only changed between runs.** A test uncovered it: with the summary
+  on screen —where the score is still alive— changing mode sent those
+  points to the record of the other one, one that had not been played. Today no menu is seen in
+  that phase, but the rule belongs to the game and not to wherever the button is.
+- **Where it is seen**: in the desktop menu, two cards with what each mode
+  puts at stake (infinity or three hearts) and a line on what it means; during
+  the run, the hearts on the scoreboard (filled the ones left, outlined
+  the spent ones) and inside the `aria-label` that was already announced, so as not to set up a
+  second notice; at the end, the title says whether the challenge was cleared or whether you
+  ran out of lives, and the summary adds **how many lives it ended with** next to the
+  score (they are the two pieces of data that are shared).
+- **In the headset**, without letters like everything immersive: the menu carries a
+  switch with three hearts —lit, the challenge; unlit, practice—
+  and the scoreboard paints the lives under the score bar, shrinking and
+  switching off the spent one. The silhouette of the heart is in `xrIcons.ts` with its tests
+  (two lobes at the top, tip at the bottom, and the same frame as the other icons).
+- **Not validated on hardware**: it remains to be seen whether the hearts switch of the menu
+  is understood with the goggles on without having read about it anywhere, and whether the
+  lives on the scoreboard can be told apart at a metre while the sticks fall.
 
-## Escenario VR: recinto de feria (rama `agent/escenario-vr-mas-elaborado-que-e-ebc93a`)
+## VR scenery: fairground (branch `agent/escenario-vr-mas-elaborado-que-e-ebc93a`)
 
-El escenario era **solo el HDRI**: una foto de plaza de noche envolviendo la escena y
-proyectada en el suelo. De lejos funciona, pero una foto no tiene paralaje, así que en el
-visor se delata en cuanto el jugador mueve la cabeza, y la máquina quedaba plantada en
-mitad de la nada. Ahora hay geometría alrededor y la foto se queda de cielo y de luz.
+The scenery was **only the HDRI**: a photo of a square at night wrapping the scene and
+projected on the floor. From afar it works, but a photo has no parallax, so in the
+headset it gives itself away as soon as the player moves their head, and the machine was left
+standing in the middle of nowhere. Now there is geometry around and the photo is left as sky
+and as light.
 
-- **Qué hay**: seis casetas en círculo a 6.4 m mirando al jugador (toldo a rayas con
-  bombillas, mostrador, premios en la balda y cartel), ocho postes a 4.6 m con guirnaldas
-  de bombillas colgando entre ellos, y una **noria de 11 m de diámetro** a 13 m, que gira
-  una vuelta cada ~85 s con las cabinas colgando a plomo.
-- **Dónde vive**: `src/lib/sceneryLayout.ts` decide *dónde* va cada cosa (anillos,
-  catenaria de las guirnaldas, medidas de la noria) y se prueba solo, sin navegador;
-  `Fairground.tsx`, `FairStall.tsx` y `FerrisWheel.tsx` solo pintan. Los colores están con
-  los de la máquina en `gameConfig.ts`, y son los mismos a propósito: el recinto tiene que
-  parecer el sitio del que ha salido la máquina.
-- **Las 285 piezas se dibujan instanciadas**: tres `<Instances>` de drei —tablas, postes y
-  bombillas— más los dos aros de la noria. En el visor lo que se paga son las llamadas, no
-  los triángulos. Los límites de instancias son el recuento exacto de piezas, sumado trozo a
-  trozo, porque drei deja de pintar lo que sobra **sin avisar** (`FairPieces.tsx`).
-  Lo que cuesta exactamente no se repite aquí: vive en el desglose de `MENU_DRAW_CALLS`
-  (`e2e/fairground.spec.ts`), que es quien lo mide. La cifra estaba escrita en cuatro sitios y
-  ya había empezado a envejecer en unos antes que en otros.
-- **El decorado no se toca ni se apunta**: cada pieza lleva el raycast anulado. Si no,
-  cada movimiento del ratón —y cada fotograma con los mandos apuntando— lanzaría un rayo
-  contra las 285 piezas para nada.
-- **En passthrough no se pinta nada de esto**: cuelga del mismo bloque que el suelo y el
-  fondo en `SceneBackdrop`, así que el interruptor de escenario/AR lo enciende y lo apaga
-  con su fundido, sin tocar nada más.
-- **Lo que vigilan los tests** (`sceneryLayout.test.ts`, 17): que el decorado no invade los
-  3 m libres alrededor del jugador, que las guirnaldas cuelgan por encima de la máquina
-  —si bajan hasta el aro, el jugador se encuentra bombillas donde busca palos—, que las
-  cabinas de la noria no arrastran por el suelo y que cada caseta encara al jugador.
-  Comprobado que fallan de verdad: acercar las casetas, hundir la guirnalda, bajar la noria
-  o quitar la media vuelta del giro ponen tests en rojo.
-- **Sin assets nuevos ni dependencias nuevas**: todo es geometría por código, como la
-  máquina. El HDRI sigue siendo el mismo fichero.
-- **Sin validar en hardware**: falta ver en el visor si los fotogramas aguantan con el
-  recinto puesto y si la noria girando en la periferia molesta. Con
-  `prefers-reduced-motion` se queda parada. El guion de la prueba y lo que ya se ha podido
-  medir sin gafas están en "Validar el recinto en el visor".
+- **What there is**: six stalls in a circle at 6.4 m looking at the player (striped awning with
+  bulbs, counter, prizes on the shelf and a sign), eight posts at 4.6 m with garlands
+  of bulbs hanging between them, and a **Ferris wheel 11 m in diameter** at 13 m, which turns
+  one revolution every ~85 s with the gondolas hanging plumb.
+- **Where it lives**: `src/lib/sceneryLayout.ts` decides *where* each thing goes (rings,
+  catenary of the garlands, measurements of the Ferris wheel) and is tested on its own, without
+  a browser; `Fairground.tsx`, `FairStall.tsx` and `FerrisWheel.tsx` only paint. The colours are
+  with those of the machine in `gameConfig.ts`, and they are the same on purpose: the fairground
+  has to look like the place the machine came out of.
+- **The 285 parts are drawn instanced**: three drei `<Instances>` —planks, posts and
+  bulbs— plus the two rings of the Ferris wheel. In the headset what is paid for is the calls,
+  not the triangles. The instance limits are the exact count of parts, added up bit by
+  bit, because drei stops painting whatever is left over **without warning**
+  (`FairPieces.tsx`).
+  What it costs exactly is not repeated here: it lives in the breakdown of `MENU_DRAW_CALLS`
+  (`e2e/fairground.spec.ts`), which is the one that measures it. The figure was written in four
+  places and had already started to age in some before others.
+- **The set is neither touched nor aimed at**: each part has its raycast disabled. Otherwise,
+  every movement of the mouse —and every frame with the controllers pointing— would cast a ray
+  against the 285 parts for nothing.
+- **In passthrough none of this is painted**: it hangs from the same block as the floor and the
+  background in `SceneBackdrop`, so the scenery/AR switch turns it on and off
+  with its fade, without touching anything else.
+- **What the tests watch** (`sceneryLayout.test.ts`, 17): that the set does not invade the
+  3 m free around the player, that the garlands hang above the machine
+  —if they come down to the hoop, the player finds bulbs where they look for sticks—, that the
+  gondolas of the Ferris wheel do not drag along the floor and that each stall faces the player.
+  Checked that they really fail: bringing the stalls closer, sinking the garland, lowering the
+  Ferris wheel or removing the half turn of the rotation put tests in red.
+- **No new assets and no new dependencies**: everything is geometry by code, like the
+  machine. The HDRI is still the same file.
+- **Not validated on hardware**: it remains to be seen in the headset whether the frames hold
+  with the fairground in place and whether the Ferris wheel turning in the periphery bothers.
+  With `prefers-reduced-motion` it stays stopped. The script of the test and what could already
+  be measured without goggles are in "Validating the fairground in the headset".
 
-## Instanciar la máquina (rama `agent/instanciar-los-tubos-de-la-maquina`)
+## Instancing the machine (branch `agent/instanciar-los-tubos-de-la-maquina`)
 
-Tiene sección propia porque es un cambio de código con fichero nuevo, no una nota al pie de
-la validación del recinto —que es donde se contaba antes, y trata de otra cosa.
+It has a section of its own because it is a code change with a new file, not a footnote to
+the validation of the fairground —which is where it was told before, and is about something
+else.
 
-- **De 85 llamadas de dibujo a 5.** La máquina se llevaba 85 de las ~110 de la escena: 69
-  tubos sueltos (`Strut`, un cilindro de 10 lados con el que están hechos arcos, celosía,
-  montantes, riostras y patas) y 16 las bombillas de su guirnalda. En el visor eso se paga
-  **por ojo**: eran ~170 por fotograma para dibujar algo que cabe en cinco.
-- **Dónde vive**: `src/components/game/MachinePieces.tsx`, con la misma receta que
-  `FairPieces.tsx` — familias de instancias, límites declarados por recuento y `raycast`
-  anulado en lo que no se toca.
-- **Tres familias de tubos y no una.** Comparten geometría pero no material, y un
-  `<Instances>` tiene un solo material: el aro de los palos es mate porque es madera pintada,
-  los postes son metal pulido y la celosía queda en medio. Unificarlos era más barato **y
-  cambiaba cómo se ve la máquina**, que es lo único que esta optimización no podía tocar.
-  Tres en vez de 69 ya es el 96%.
-- **Las bombillas hornean sus medidas** en la geometría en lugar de escalar: son todas
-  iguales, y el casquillo es un cilindro **cónico** — un escalado lo estira, pero no lo hace
-  cónico.
-- **Los palos y sus ganchos siguen sueltos**, a propósito: se cogen con la mano, y una
-  instancia no se puede apuntar ni mover por su cuenta.
-- **Lo que lo vigila**: `MENU_DRAW_CALL_BUDGET` en `e2e/fairground.spec.ts`. El techo se bajó de
-  120 a 45 al entrar esto — con 120, la máquina podía volver a dibujar cada tubo suelto y el
-  test seguiría en verde. Un guardián con el listón donde estaba antes del arreglo no guarda
-  nada.
+- **From 85 draw calls to 5.** The machine took 85 of the ~110 of the scene: 69
+  loose tubes (`Strut`, a 10-sided cylinder of which arcs, lattice,
+  uprights, braces and legs are made) and 16 the bulbs of its garland. In the headset that is
+  paid **per eye**: it was ~170 per frame to draw something that fits in five.
+- **Where it lives**: `src/components/game/MachinePieces.tsx`, with the same recipe as
+  `FairPieces.tsx` — families of instances, limits declared by count and `raycast`
+  disabled on what is not touched.
+- **Three families of tubes and not one.** They share geometry but not material, and an
+  `<Instances>` has a single material: the hoop of the sticks is matt because it is painted
+  wood, the posts are polished metal and the lattice is in between. Unifying them was cheaper
+  **and changed how the machine looks**, which is the only thing this optimisation could not
+  touch. Three instead of 69 is already 96%.
+- **The bulbs bake their measurements** into the geometry instead of scaling: they are all
+  the same, and the socket is a **conical** cylinder — a scaling stretches it, but does not make
+  it conical.
+- **The sticks and their hooks stay loose**, on purpose: they are grabbed with the hand, and an
+  instance cannot be aimed at or moved on its own.
+- **What watches it**: `MENU_DRAW_CALL_BUDGET` in `e2e/fairground.spec.ts`. The ceiling was
+  lowered from 120 to 45 when this came in — with 120, the machine could go back to drawing each
+  tube loose and the test would stay green. A guard with the threshold where it was before the
+  fix guards nothing.
 
-## Validar el recinto en el visor (rama `agent/validar-en-el-visor-el-recinto-d-94e952`)
+## Validating the fairground in the headset (branch `agent/validar-en-el-visor-el-recinto-d-94e952`)
 
-La validación es de las gafas y **sigue pendiente**: nadie se las ha puesto todavía con el
-recinto delante. Lo que sí está hecho es medir la parte que *no* necesita visor, para que la
-prueba de verdad sea corta y sepa dónde mirar.
+The validation belongs to the goggles and **is still pending**: nobody has put them on yet with
+the fairground in front. What is done is measuring the part that does *not* need a headset, so
+that the real test is short and knows where to look.
 
-- **La escena cuesta 29 llamadas de dibujo por fotograma en el menú**, y el recinto es una
-  porción pequeña de ellas. Medido sobre el build de producción en Chromium; el menú es el
-  estado comparable porque la escena arranca siempre con los cinco palos de `MIN_STICKS`
-  colgando. Qué se lleva cada parte —y cuánto sube el total con más palos— está desglosado
-  en el comentario de `MENU_DRAW_CALLS` (`e2e/fairground.spec.ts`), que es quien lo mide: ahí
-  vive la cuenta y ahí hay que actualizarla si el coste cambia.
-- **Las 285 piezas se pintan todas**: los `instanceCount` que llegan a WebGL son 120 tablas,
-  55 postes y 110 bombillas, exactamente lo que declara `FAIR_PIECES`. Ese era el riesgo real
-  de esta parte —drei deja de pintar en silencio lo que pase del límite— y queda descartado.
-- **Lo caro era la máquina, y ya está instanciada.** Cuando se midió esto costaba 85 de las
-  ~110 llamadas de entonces: 69 tubos sueltos (`Strut`, el cilindro de 10 lados con el que
-  están hechos arcos, celosía, montantes, riostras y patas) y 16 las bombillas de su
-  guirnalda; en el visor eso se paga **por ojo**, así que eran ~170 por fotograma. Ahora va
-  con la misma receta del recinto (`MachinePieces.tsx`): tres familias de tubos —tres y no
-  una, porque comparten geometría pero no material— y dos para las bombillas, y ese ahorro es
-  lo que deja la escena en 29. Lo que queda suelto son los palos con sus ganchos y las bases
-  de los postes, a propósito: un palo se coge con la mano y una instancia no se puede apuntar
-  ni mover por su cuenta. **Ya no queda un recorte grande esperando**, así que si en hardware
-  hay tirones habrá que buscar la causa por otro lado; recortar el recinto sigue siendo lo
-  último que tocar.
-- **La medida se repite sola** (`e2e/fairground.spec.ts`), sin contadores en el código del juego:
-  un `addInitScript` envuelve `drawElements` y `drawElementsInstanced` del prototipo de
-  `WebGL2RenderingContext`, y un `requestAnimationFrame` registrado antes que el de la escena
-  cierra cada fotograma. Vigila las dos cosas que importan: que las tres familias llegan
-  enteras a WebGL —el recorte silencioso de drei— y que la mediana del menú se queda en las
-  29 que mide la escena, con cuatro llamadas de margen a cada lado (`MENU_DRAW_CALLS` y
-  `MENU_DRAW_CALL_MARGIN`). Fija la cifra y no solo un techo: así un cambio de coste sale en
-  rojo —y con él, el aviso de rehacer el desglose— en vez de colarse mientras quepa debajo.
-  El margen absorbe un palo colgando de más o de menos; quedarse sin el recinto o sin la
-  máquina son cinco llamadas de golpe, y dejar de instanciar devolvería la escena a las ~110
-  de antes. Los fps de un escritorio no dicen nada del visor —aquí van al tope de la
-  pantalla—, pero las llamadas sí: son lo que se paga igual en los dos sitios. La muestra ya
-  no arranca en cuanto el canvas tiene tamaño: eso solo dice que R3F pinta, y la máquina llega
-  después con sus texturas, así que en un arranque en frío los 30 fotogramas se cerraban antes
-  —medían 6, y sobre eso ninguna medida comprueba nada—. Ahora se espera a que la escena
-  dibuje sus ocho familias instanciadas (tres del recinto, cinco de la máquina) y solo
-  entonces se cuenta.
+- **The scene costs 29 draw calls per frame in the menu**, and the fairground is a
+  small portion of them. Measured on the production build in Chromium; the menu is the
+  comparable state because the scene always starts with the five sticks of `MIN_STICKS`
+  hanging. What each part takes —and how much the total rises with more sticks— is broken down
+  in the comment of `MENU_DRAW_CALLS` (`e2e/fairground.spec.ts`), which is the one that measures
+  it: the count lives there and that is where it has to be updated if the cost changes.
+- **The 285 parts are all painted**: the `instanceCount` values that reach WebGL are 120 planks,
+  55 posts and 110 bulbs, exactly what `FAIR_PIECES` declares. That was the real risk
+  of this part —drei silently stops painting whatever goes past the limit— and it is ruled out.
+- **The expensive thing was the machine, and it is now instanced.** When this was measured it
+  cost 85 of the ~110 calls of that time: 69 loose tubes (`Strut`, the 10-sided cylinder of
+  which arcs, lattice, uprights, braces and legs are made) and 16 the bulbs of its
+  garland; in the headset that is paid **per eye**, so it was ~170 per frame. Now it goes
+  with the same recipe as the fairground (`MachinePieces.tsx`): three families of tubes —three
+  and not one, because they share geometry but not material— and two for the bulbs, and that
+  saving is what leaves the scene at 29. What is left loose are the sticks with their hooks and
+  the bases of the posts, on purpose: a stick is grabbed with the hand and an instance cannot be
+  aimed at or moved on its own. **There is no longer a big cut waiting**, so if on hardware
+  there are stutters the cause will have to be sought elsewhere; trimming the fairground is
+  still the last thing to touch.
+- **The measurement repeats itself** (`e2e/fairground.spec.ts`), with no counters in the game's
+  code: an `addInitScript` wraps `drawElements` and `drawElementsInstanced` of the prototype of
+  `WebGL2RenderingContext`, and a `requestAnimationFrame` registered before the scene's one
+  closes each frame. It watches the two things that matter: that the three families arrive
+  whole at WebGL —drei's silent trimming— and that the median of the menu stays at the
+  29 that the scene measures, with four calls of margin on each side (`MENU_DRAW_CALLS` and
+  `MENU_DRAW_CALL_MARGIN`). It pins the figure and not just a ceiling: this way a change of cost
+  comes out in red —and with it, the notice to redo the breakdown— instead of slipping through
+  as long as it fits underneath. The margin absorbs one stick more or fewer hanging; being left
+  without the fairground or without the machine is five calls at once, and stopping instancing
+  would return the scene to the ~110 of before. The fps of a desktop say nothing about the
+  headset —here they go to the cap of the screen—, but the calls do: they are what is paid the
+  same in both places. The sample no longer starts as soon as the canvas has a size: that only
+  says that R3F paints, and the machine arrives afterwards with its textures, so on a cold start
+  the 30 frames were closed before —they measured 6, and on that no measurement checks
+  anything—. Now it waits for the scene to draw its eight instanced families (three of the
+  fairground, five of the machine) and only then does it count.
 
-**Qué mirar con las gafas puestas, y qué constante toca en cada caso** (todas en
+**What to look at with the goggles on, and which constant it touches in each case** (all in
 `src/lib/sceneryLayout.ts`):
 
-- ¿Va fluido al girar la cabeza o hay tirón? Si lo hay, el recinto es el último sospechoso:
-  junto con la máquina pesa menos que los palos colgando (desglose en el comentario de
-  `MENU_DRAW_CALLS`, en `e2e/fairground.spec.ts`), así que hay que medir antes de
-  recortarlo.
-- ¿Las casetas agobian a 6.4 m, o el recinto se ve vacío? → `STALL_RING_RADIUS`, con
-  `SCENERY_CLEARANCE` (3 m) como suelo que los tests no dejan pisar.
-- ¿La noria marea o distrae mientras caen los palos? → `WHEEL_SPEED` (0.074 rad/s, una vuelta
-  cada ~85 s). Si queda tapada por una caseta o demasiado al borde de la vista, `WHEEL_CENTER`.
-- ¿Las bombillas de las guirnaldas caen donde se buscan los palos, o deslumbran? →
-  `GARLAND_RING_RADIUS`, `GARLAND_POST_HEIGHT` y `GARLAND_SAG`.
+- Is it smooth when turning the head or is there a stutter? If there is, the fairground is the
+  last suspect: together with the machine it weighs less than the hanging sticks (breakdown in
+  the comment of `MENU_DRAW_CALLS`, in `e2e/fairground.spec.ts`), so measure before
+  trimming it.
+- Are the stalls oppressive at 6.4 m, or does the fairground look empty? → `STALL_RING_RADIUS`,
+  with `SCENERY_CLEARANCE` (3 m) as a floor that the tests do not let you step on.
+- Does the Ferris wheel cause dizziness or distract while the sticks fall? → `WHEEL_SPEED`
+  (0.074 rad/s, one revolution every ~85 s). If it ends up covered by a stall or too close to
+  the edge of the view, `WHEEL_CENTER`.
+- Do the bulbs of the garlands fall where the sticks are looked for, or do they dazzle? →
+  `GARLAND_RING_RADIUS`, `GARLAND_POST_HEIGHT` and `GARLAND_SAG`.
 
-Al mover cualquiera de esas constantes hay que volver a pasar `sceneryLayout.test.ts`: fija los
-límites que hacen el recinto jugable (3 m libres alrededor del jugador, guirnaldas por encima
-de la máquina, cabinas que no arrastran y casetas encarando al jugador) y **no se relajan** para
-acomodar un valor nuevo. Si un ajuste los rompe, es que el ajuste se pasa.
+On moving any of those constants `sceneryLayout.test.ts` has to be run again: it pins the
+limits that make the fairground playable (3 m free around the player, garlands above
+the machine, gondolas that do not drag and stalls facing the player) and they **are not
+relaxed** to accommodate a new value. If an adjustment breaks them, the adjustment goes too far.
 
-## Iconos del menú inmersivo (rama `agent/mejorar-los-iconos-del-menu-3d`)
+## Icons of the immersive menu (branch `agent/mejorar-los-iconos-del-menu-3d`)
 
-De la tercera prueba salió que la flecha de «volver» no se leía como una flecha, y que
-volver al menú y salir del visor compartían icono haciendo cosas distintas.
+The third test showed that the "back" arrow did not read as an arrow, and that
+going back to the menu and exiting the headset shared an icon while doing different things.
 
-- Los iconos se apilaban con primitivas (un prisma triangular junto a una caja) y a un
-  metro de distancia eso se ve como **dos objetos**, no como una figura. Ahora la forma es
-  un **contorno cerrado** en `src/lib/xrIcons.ts` del que sale un `ShapeGeometry`.
-- **Casa** para volver al menú (fin de partida y botón apartado durante la partida) y
-  **puerta con flecha saliendo** para cerrar la sesión (esquina del menú). La flecha
-  suelta desaparece: no queda ningún botón que signifique solo «atrás».
-- La silueta es comprobable sin navegador (`xrIcons.test.ts`, 15 casos): que el tejado
-  corone el cuerpo, que la puerta caiga dentro de la fachada, que la punta de la flecha sea
-  más ancha que el asta, que ningún contorno se cruce consigo mismo y que todos ocupen el
-  mismo cuadro y centrados, para que a igual `size` y `position` se vean del mismo tamaño y
-  en el mismo sitio de su placa.
-- Siguen **sin validar en hardware** `XRRepeatIcon`, `XRSceneIcon` y `XRPassthroughIcon`,
-  que se dejaron como estaban a falta de saber si se entienden con las gafas puestas.
+- The icons were stacked from primitives (a triangular prism next to a box) and at one
+  metre away that looks like **two objects**, not like one figure. Now the shape is
+  a **closed outline** in `src/lib/xrIcons.ts` from which a `ShapeGeometry` comes out.
+- **House** for going back to the menu (end of the run and the button set aside during the run)
+  and **door with an arrow coming out** for closing the session (corner of the menu). The loose
+  arrow disappears: no button is left that means only "back".
+- The silhouette can be checked without a browser (`xrIcons.test.ts`, 15 cases): that the roof
+  crowns the body, that the door falls inside the façade, that the tip of the arrow is
+  wider than the shaft, that no outline crosses itself and that they all occupy the
+  same frame and centred, so that at the same `size` and `position` they look the same size and
+  in the same place on their plate.
+- `XRRepeatIcon`, `XRSceneIcon` and `XRPassthroughIcon` are still **not validated on
+  hardware**; they were left as they were for lack of knowing whether they are understood with
+  the goggles on.
 
-En la revisión de la rama apareció la causa de fondo de que el icono anterior «no se
-leyera como una flecha», que no era solo la forma:
+In the review of the branch, the underlying cause of the previous icon "not
+reading as an arrow" turned up, which was not only the shape:
 
-- El **botón de volver al menú se comía su propio icono**. Está apartado a un lado
-  y su placa giraba para encarar al jugador, pero el dibujo no giraba con ella: el borde
-  izquierdo de la placa se adelantaba por delante del icono y lo cortaba en diagonal
-  desde ese lado, justo donde caía la punta de la flecha. Ahora el giro cuelga del botón
-  (`rotation` de `XRPressable`), así que placa, icono, halo de foco y zona sensible se
-  mueven juntos, y sale de `XR_QUIT_YAW` —derivado de la posición— en vez de un `π/7`
-  puesto a ojo, que además se quedaba 3° corto. `xrInteraction.test.ts` vigila que la
-  placa siga encarando al jugador si alguien mueve el botón.
-- **Un solo tamaño para las siluetas** (`ICON_SIZE`, 5,6 cm): iban a 0.024 y 0.026 y la
-  casa se veía claramente más pequeña que el aro de repetir a su lado en la pantalla de
-  fin de partida.
+- The **back-to-the-menu button ate its own icon**. It is set aside to one side
+  and its plate rotated to face the player, but the drawing did not rotate with it: the left
+  edge of the plate came forward in front of the icon and cut it diagonally
+  from that side, right where the tip of the arrow fell. Now the rotation hangs from the button
+  (`rotation` of `XRPressable`), so plate, icon, focus halo and sensitive area
+  move together, and it comes from `XR_QUIT_YAW` —derived from the position— instead of a `π/7`
+  set by eye, which was also 3° short. `xrInteraction.test.ts` watches that the
+  plate keeps facing the player if someone moves the button.
+- **A single size for the silhouettes** (`ICON_SIZE`, 5.6 cm): they were at 0.024 and 0.026 and
+  the house looked clearly smaller than the repeat ring next to it on the end-of-run
+  screen.
 
-## Altura del aro por jugador (rama `agent/ajustar-la-altura-del-aro-a-quie-cd744e`)
+## Hoop height per player (branch `agent/ajustar-la-altura-del-aro-a-quie-cd744e`)
 
-`MACHINE_HEIGHT` (1.95 m) estaba pensada para una persona de pie de estatura media. De
-pie va bien; sentado, o siendo más bajo, el mismo aro queda por encima de la cabeza y los
-palos pasan fuera del brazo: el juego se vuelve injugable sin que nada falle.
+`MACHINE_HEIGHT` (1.95 m) was designed for a standing person of average stature.
+Standing it works well; seated, or being shorter, the same hoop ends up above the head and the
+sticks pass outside the arm: the game becomes unplayable without anything failing.
 
-- **La altura sale del visor.** El aro se planta 35 cm por encima de los ojos
-  (`HOOP_RISE_ABOVE_EYES`, la relación con la que se diseñó la máquina), leyendo la cota
-  de la cámara **solo mientras el menú inmersivo está delante**: con los palos cayendo, un
-  aro que persiguiera la cabeza subiría al ponerse de puntillas justo cuando el jugador
-  calcula dónde va a estar la mano. Medida suavizada y con umbral de 2 cm, para que no
-  tiemble con la respiración ni repinte la máquina en cada frame (`XRPlayerHeight`).
-- **El dato solo vale con el suelo puesto.** Se mira el `enabledFeatures` de la sesión
-  (`hasFloorReference`): en un espacio `local` la cabeza nace en el cero y su cota no mide
-  desde el suelo. Esa lista es opcional en la especificación y hay navegadores que no la
-  publican; como `local-floor` se pide **requerida** al abrir la sesión, cuando falta se
-  da por buena en vez de renunciar a medir (con `useXRSessionFeatureEnabled` esos visores
-  se quedaban sin la parte automática de la función). Si aun así el espacio no fuera de
-  suelo, la cota nacería junto al cero y el filtro de estaturas la descartaría. Cuando no
-  hay dato no se inventa nada —el aro se queda a la altura de siempre— y el ajuste manual
-  es lo que lo cubre, que es justo el caso de jugar sentado con el espacio calibrado de
-  pie.
-- **Ajuste manual en la fila de arriba del menú inmersivo**, ±20 cm en pasos de 5. El
-  rango no es un número redondo: lo manda el brazo (los palos quedan a ~60 cm en
-  horizontal y el alcance cómodo son 75, así que sobran ~26 cm verticales). Los botones se
-  apagan al llegar al tope y una regla enseña cuánto queda; la respuesta de verdad es el
-  propio aro, que está encima del panel y se ve subir y bajar. Sin una letra, como el
-  resto del menú.
-- **Se recuerda en `localStorage`** (`stick-rush:hoop-adjust`), junto al récord. Lo leído
-  se acota igual que si viniera del menú: editarlo desde las herramientas del navegador no
-  puede colgar el aro del techo. El panel del menú creció de 0.74 a 0.82 de alto para que
-  la fila nueva no quedara flotando.
-- **La dificultad no cambia con la estatura**: subir el aro alarga el recorrido, así que
-  la velocidad de caída se escala con él (`hoopFallSpeed`) y cada dificultad dura lo mismo
-  para todo el mundo. Los tiempos que vigila `gameConfig.test.ts` siguen valiendo.
-- **Los palos perdidos se quedan en el suelo aunque el aro se mueva** (visto en revisión).
-  Mover el aro cambia el anclaje de cada palo, y R3F reescribe con él la posición del
-  grupo: al volver al menú tras una partida y tocar la flecha, los palos rojos tirados por
-  el suelo se levantaban hasta el aro nuevo y se quedaban colgados ahí hasta la partida
-  siguiente. `Stick` les devuelve su cota cuando el anclaje cambia.
-- Todo el cálculo es puro y vive en `src/lib/hoopHeight.ts`, con 27 unitarios: altura alta
-  y baja, valores absurdos (0, negativos, `NaN`, 50 m), sin dato del visor, los dos topes,
-  que el aro nunca quede dentro del suelo ni por encima de la cabeza, que **ningún palo se
-  salga del brazo se ponga donde se ponga** (incluidos los dos extremos de estatura que se
-  aceptan, que es donde el tope absoluto puede recortar), y la persistencia (corrupta,
-  bloqueada, ausente). Las cuatro mutaciones probadas —quitar el clamp, ignorar el tipo de
-  espacio, no corregir la velocidad y doblar el rango— ponen la suite en rojo. El cableado
-  del store (pasos, topes, guardado, medida del visor y su retirada al cerrar la sesión)
-  va aparte, en `gameStore.test.tsx`.
-- **Sin validar en hardware**, como todo lo que se toca a botones en el visor: el emulador
-  no propaga sus punteros. El e2e cubre el arranque con una corrección guardada que no es
-  ni un número (`'un palmo más arriba'`), que es lo que de verdad tumbaría la escena: sin
-  la guarda de `parseHoopAdjustment` el `NaN` llega a la geometría del aro.
+- **The height comes from the headset.** The hoop is set 35 cm above the eyes
+  (`HOOP_RISE_ABOVE_EYES`, the ratio with which the machine was designed), reading the height
+  of the camera **only while the immersive menu is in front**: with the sticks falling, a
+  hoop that chased the head would rise on standing on tiptoe just when the player
+  works out where the hand is going to be. Smoothed measurement with a 2 cm threshold, so that
+  it does not tremble with breathing or repaint the machine on every frame (`XRPlayerHeight`).
+- **The figure is only valid with the floor in place.** The session's `enabledFeatures` is
+  looked at (`hasFloorReference`): in a `local` space the head is born at zero and its height
+  is not measured from the floor. That list is optional in the specification and there are
+  browsers that do not publish it; since `local-floor` is requested as **required** on opening
+  the session, when it is missing it is taken as good instead of giving up on measuring (with
+  `useXRSessionFeatureEnabled` those headsets were left without the automatic part of the
+  feature). If even so the space were not a floor one, the height would be born next to zero and
+  the stature filter would discard it. When there is no figure nothing is made up —the hoop
+  stays at the usual height— and the manual adjustment is what covers it, which is exactly the
+  case of playing seated with the space calibrated
+  standing.
+- **Manual adjustment in the top row of the immersive menu**, ±20 cm in steps of 5. The
+  range is not a round number: the arm rules it (the sticks are at ~60 cm
+  horizontally and the comfortable reach is 75, so ~26 vertical cm are left over). The buttons
+  go dark on reaching the limit and a ruler shows how much is left; the real answer is the
+  hoop itself, which is above the panel and can be seen going up and down. Without a letter,
+  like the rest of the menu.
+- **It is remembered in `localStorage`** (`stick-rush:hoop-adjust`), next to the record. What is
+  read is clamped just as if it came from the menu: editing it from the browser's tools
+  cannot hang the hoop from the ceiling. The menu panel grew from 0.74 to 0.82 in height so that
+  the new row was not left floating.
+- **The difficulty does not change with stature**: raising the hoop lengthens the travel, so
+  the fall speed is scaled with it (`hoopFallSpeed`) and each difficulty lasts the same
+  for everyone. The times that `gameConfig.test.ts` watches still hold.
+- **Missed sticks stay on the floor even if the hoop moves** (seen in review).
+  Moving the hoop changes the anchor of each stick, and R3F rewrites the position of the
+  group with it: on going back to the menu after a run and touching the arrow, the red sticks
+  lying on the floor rose up to the new hoop and stayed hanging there until the next
+  run. `Stick` gives them back their height when the anchor changes.
+- The whole calculation is pure and lives in `src/lib/hoopHeight.ts`, with 27 unit tests: high
+  and low height, absurd values (0, negatives, `NaN`, 50 m), no figure from the headset, the two
+  limits, that the hoop never ends up inside the floor or above the head, that **no stick
+  leaves the arm wherever it is put** (including the two extremes of stature that are
+  accepted, which is where the absolute limit can trim), and the persistence (corrupt,
+  blocked, absent). The four mutations tried —removing the clamp, ignoring the type of
+  space, not correcting the speed and doubling the range— put the suite in red. The wiring
+  of the store (steps, limits, saving, the headset measurement and its withdrawal on closing the
+  session) goes separately, in `gameStore.test.tsx`.
+- **Not validated on hardware**, like everything operated by buttons in the headset: the
+  emulator does not propagate its pointers. The e2e covers the start-up with a saved correction
+  that is not even a number (`'un palmo más arriba'`), which is what would really bring the
+  scene down: without the guard of `parseHoopAdjustment` the `NaN` reaches the geometry of the
+  hoop.
 
-## Tutorial de la primera vez (rama `agent/tutorial-de-5-10-segundos-al-emp-949757`)
+## First-time tutorial (branch `agent/tutorial-de-5-10-segundos-al-emp-949757`)
 
-Con las gafas puestas, quien llegaba nuevo no sabía que los palos se agarran ni
-con qué botón: el menú inmersivo se maneja **apuntando** con el rayo, así que lo
-primero que aprendía era justo lo que no sirve para jugar.
+With the goggles on, whoever arrived new did not know that the sticks are grabbed nor
+with which button: the immersive menu is operated by **pointing** with the ray, so the
+first thing they learned was exactly what is no use for playing.
 
-- **Una fase de partida, no una pantalla.** `startGame` antepone `gameState:
-  'tutorial'` antes de la cuenta atrás, y al acabar encadena con ella entera (los
-  tres segundos son para colocarse; gastarlos mirando la demostración los
-  desperdicia). Los palos siguen colgados y quietos, como en la cuenta atrás.
-- **Lo decide el juego, no el botón**: con gafas (`immersive` en el store, que
-  mantiene al día `XRSessionController`) y sin haberlo visto. Dentro de la sesión
-  también se puede empezar desde el overlay con el teclado, y por ahí tiene que
-  pasar lo mismo. `startGame({ tutorial })` fuerza la decisión: lo usa el botón
-  de volver a verlo.
-- **7,4 s en tres tramos** (`src/lib/tutorial.ts`, guion puro y probado sin
-  navegador): el gatillo que agarra —marcado sobre el mismo mando que el jugador
-  tiene en la mano, con un palo cayéndole encima y el destello del acierto—,
-  cuántos palos van a caer (aparecen uno a uno, se cuentan) y en qué nivel (las
-  barras del menú, agrandadas). El total está **acotado entre 5 y 10 s** por un
-  test: alargar un tramo obliga a acortar otro.
-- **Sin una sola letra**, como todo lo inmersivo: la CSP bloquea las fuentes de
-  `<Text>` de drei. Cada cosa se dice con la geometría que ya significa eso en el
-  juego, y el movimiento es lo que convierte el dibujo en instrucción.
-- **Saltable desde el primer fotograma**: botón en su sitio del panel (dos
-  triángulos y un tope, como cualquier reproductor) más una barra de cuánto
-  queda, para que se vea que dura segundos. Saltarlo también cuenta como visto:
-  el jugador ya ha decidido. Dejarlo a medias volviendo al menú, no.
-- **Se recuerda en `localStorage`** (`stick-rush:tutorial-seen`), junto al récord
-  y la altura del aro. Sin almacenamiento vuelve a salir, que es preferible a dar
-  por sabido algo que quizá nadie ha visto.
-- **Se puede recuperar** desde la esquina de arriba del menú inmersivo, con el
-  mando en miniatura y su gatillo marcado: es literalmente lo que va a enseñar.
-  El dibujo del mando se sacó a `XRControllerModel.tsx` para que sea el mismo en
-  la mano, en la demostración y en ese botón.
-- **En escritorio no existe**: allí la pantalla de inicio lo explica con texto,
-  que se lee antes de lo que dura la demostración. El reflejo en DOM del botón de
-  saltar sí se monta bajo la sesión (es lo que deja saltarlo con teclado, y lo
-  que los e2e pulsan, porque el emulador no propaga los punteros de los mandos).
-- **Sin validar en hardware**: falta ver con las gafas si el mando de la
-  demostración se lee a esa distancia, si dos ciclos de agarre bastan para
-  entender el gesto y si 13 palos en fila se cuentan de un vistazo.
-- **Con el movimiento reducido el gatillo se queda marcado, no apretado**
-  (revisión): dar la pulsación por hecha ponía el gatillo verde, y el verde de la
-  confirmación releva a la marca ámbar y apaga su onda (`SqueezeButton`). En la
-  única imagen fija que ve quien pide no ver movimiento, eso borraba justo lo que
-  señala qué botón agarra.
-- **Dos solapes que solo se ven con las gafas** (medidos sobre las constantes, sin
-  visor): el mango del mando de la demostración baja hasta y ≈ −0.286 del panel y
-  la barra de progreso está en −0.26, así que le cruza por delante los ~6 cm
-  centrales de sus 34; y en «Imposible» la barra más alta del nivel sobresale unos
-  3,5 cm por encima de la ficha (`XRDifficultyBars` a `scale={2.4}` desde
-  y = −0.075, con la ficha de 0.24 de alto). Ninguno rompe nada; se dejan sin
-  tocar porque corregirlos a ciegas es cambiar un número por otro.
+- **A phase of the run, not a screen.** `startGame` puts `gameState:
+  'tutorial'` before the countdown, and on finishing chains with the whole of it (the
+  three seconds are for getting into position; spending them watching the demonstration
+  wastes them). The sticks stay hanging and still, as in the countdown.
+- **The game decides it, not the button**: with goggles (`immersive` in the store, which
+  `XRSessionController` keeps up to date) and without having seen it. Inside the session
+  you can also start from the overlay with the keyboard, and the same has to
+  happen that way. `startGame({ tutorial })` forces the decision: the button
+  to watch it again uses it.
+- **7.4 s in three stretches** (`src/lib/tutorial.ts`, a pure script tested without a
+  browser): the trigger that grabs —marked on the same controller the player
+  has in the hand, with a stick falling onto it and the flash of the hit—,
+  how many sticks are going to fall (they appear one by one, they are counted) and at what level
+  (the bars of the menu, enlarged). The total is **bounded between 5 and 10 s** by a
+  test: lengthening one stretch forces shortening another.
+- **Without a single letter**, like everything immersive: the CSP blocks the fonts of
+  drei's `<Text>`. Each thing is said with the geometry that already means that in the
+  game, and the movement is what turns the drawing into an instruction.
+- **Skippable from the first frame**: a button in its place on the panel (two
+  triangles and a stop, like any player) plus a bar of how much is
+  left, so that it is seen that it lasts seconds. Skipping it also counts as seen:
+  the player has already decided. Leaving it halfway by going back to the menu does not.
+- **It is remembered in `localStorage`** (`stick-rush:tutorial-seen`), next to the record
+  and the hoop height. Without storage it comes up again, which is preferable to taking
+  as known something that perhaps nobody has seen.
+- **It can be brought back** from the top corner of the immersive menu, with the
+  miniature controller and its trigger marked: it is literally what it is going to teach.
+  The drawing of the controller was taken out to `XRControllerModel.tsx` so that it is the same
+  in the hand, in the demonstration and on that button.
+- **On desktop it does not exist**: there the start screen explains it with text,
+  which is read sooner than the demonstration lasts. The DOM mirror of the skip
+  button is indeed mounted under the session (it is what lets it be skipped with the keyboard,
+  and what the e2e press, because the emulator does not propagate the controllers' pointers).
+- **Not validated on hardware**: it remains to be seen with the goggles whether the controller
+  of the demonstration reads at that distance, whether two grip cycles are enough to
+  understand the gesture and whether 13 sticks in a row can be counted at a glance.
+- **With reduced motion the trigger stays marked, not pressed**
+  (review): taking the press as done turned the trigger green, and the green of the
+  confirmation takes over from the amber mark and switches off its ripple (`SqueezeButton`). In
+  the only still image seen by whoever asks not to see movement, that erased exactly what
+  signals which button grabs.
+- **Two overlaps that are only seen with the goggles** (measured on the constants, without
+  a headset): the handle of the demonstration controller comes down to y ≈ −0.286 of the panel
+  and the progress bar is at −0.26, so it crosses in front of the central ~6 cm
+  of its 34; and in «Imposible» the tallest bar of the level sticks out some
+  3.5 cm above the chip (`XRDifficultyBars` at `scale={2.4}` from
+  y = −0.075, with the chip 0.24 in height). Neither breaks anything; they are left
+  untouched because correcting them blind is swapping one number for another.
 
-## Compartir el resultado (rama `agent/compartir-el-resultado-al-acabar-3646d4`)
+## Sharing the result (branch `agent/compartir-el-resultado-al-acabar-3646d4`)
 
-El récord se quedaba en el `localStorage` del dispositivo y de ahí no salía: media
-gracia de un juego de puntuación es enseñar la marca, y la de un visor no la ve nadie.
+The record stayed in the device's `localStorage` and did not leave it: half
+the fun of a score game is showing the best, and nobody sees a headset's one.
 
-- **Compartir es mandar un texto, no publicar un ranking.** Sin servidor, sin marcas
-  ajenas y sin tabla online: eso pediría base de datos y este juego no la tiene ni la
-  va a tener. Lo único que sale del navegador es la línea que el jugador entrega al
-  sistema, y solo cuando pulsa.
-- **El texto es una función pura** (`buildShareText`, en `src/lib/shareResult.ts`), como
-  `scoring.ts` o `gameMode.ts`: es lo único del juego que lee alguien que no ha jugado,
-  así que su forma se fija con unitarios (cada dificultad, con y sin vidas, sin récord
-  previo, y una puntuación corrupta que no puede salir como `NaN`) en vez de mirarla en
-  el navegador. Cuatro líneas como mucho, porque acaba en un mensaje: modo y nivel,
-  puntos y palos —y las vidas solo en desafío, que es donde significan algo—, la marca
-  si hay algo que contar de ella, y el enlace al juego.
-- **Hoja del sistema si la hay; si no, portapapeles** (`shareOrCopy`, mismo fichero). El
-  plan B no es una cortesía: dentro de una sesión inmersiva la hoja puede no abrirse —no
-  hay dónde pintarla, o el navegador no cuenta como gesto el gatillo de un mando—, y ahí
-  un botón que no hace nada es peor que no tener botón. Recibe el navegador por
-  parámetro, así que los cuatro caminos se prueban sin uno.
-- **Cancelar no es un error y no copia por detrás**: quien cierra la hoja ha decidido no
-  compartir, y dejarle el texto en el portapapeles sería hacer lo contrario de lo que
-  acaba de pedir. Solo el `AbortError` cuenta como cancelación; cualquier otro rechazo
-  cae al portapapeles.
-- **Dónde se ve**: en escritorio, botón bajo el CTA de la pantalla de fin con una región
-  viva que confirma («¡Compartido!», «Resultado copiado al portapapeles») y avisa cuando
-  el navegador no deja ninguna de las dos cosas. En el visor, tercer botón entre repetir
-  y volver al menú, sin letras como todo lo inmersivo: avión de papel que pasa a marca de
-  verificación o a aspa, cambiando dibujo *y* color. Dentro de la sesión no hay aviso del
-  sistema que lo cuente, así que lo cuenta la propia placa.
-- **El aviso muere con su partida**: el resultado se guarda junto al `runId` que lo
-  produjo, así que el «copiado» de una partida no sigue en pantalla al acabar la
-  siguiente anunciando algo que nadie ha hecho.
-- **Sin validar en hardware**, como todo lo que se pulsa en el visor: ver el punto (k) de
-  "SIGUIENTE PASO". El emulador entrega sesión pero sus punteros no pulsan los objetos de
-  la escena, así que el e2e cubre los tres navegadores de escritorio posibles (con hoja,
-  solo portapapeles, y ninguna de las dos) y la decisión que hace funcionar el botón en el
-  visor —cuando la hoja no arranca, se copia— se sujeta con unitarios.
+- **Sharing is sending a text, not publishing a ranking.** No server, no other people's
+  bests and no online table: that would ask for a database and this game neither has one nor
+  is going to have one. The only thing that leaves the browser is the line the player hands to
+  the system, and only when they press.
+- **The text is a pure function** (`buildShareText`, in `src/lib/shareResult.ts`), like
+  `scoring.ts` or `gameMode.ts`: it is the only thing of the game read by someone who has not
+  played, so its shape is pinned with unit tests (each difficulty, with and without lives, with
+  no previous record, and a corrupt score that cannot come out as `NaN`) instead of looking at
+  it in the browser. Four lines at most, because it ends up in a message: mode and level,
+  points and sticks —and the lives only in challenge, which is where they mean something—, the
+  best if there is something to tell about it, and the link to the game.
+- **System sheet if there is one; if not, clipboard** (`shareOrCopy`, same file). The
+  plan B is not a courtesy: inside an immersive session the sheet may not open —there is
+  nowhere to paint it, or the browser does not count a controller's trigger as a gesture—, and
+  there a button that does nothing is worse than having no button. It receives the browser as a
+  parameter, so the four paths are tested without one.
+- **Cancelling is not an error and does not copy behind your back**: whoever closes the sheet
+  has decided not to share, and leaving the text on their clipboard would be doing the opposite
+  of what they have just asked. Only `AbortError` counts as a cancellation; any other rejection
+  falls to the clipboard.
+- **Where it is seen**: on desktop, a button under the CTA of the end screen with a live
+  region that confirms («¡Compartido!», «Resultado copiado al portapapeles») and warns when
+  the browser allows neither of the two things. In the headset, a third button between repeat
+  and back to the menu, without letters like everything immersive: a paper plane that turns into
+  a check mark or into a cross, changing drawing *and* colour. Inside the session there is no
+  system notice to tell it, so the plate itself tells it.
+- **The notice dies with its run**: the result is saved next to the `runId` that
+  produced it, so the "copied" of one run does not stay on screen when the
+  next one ends, announcing something nobody has done.
+- **Not validated on hardware**, like everything that is pressed in the headset: see point (k)
+  of "NEXT STEP". The emulator delivers a session but its pointers do not press the objects of
+  the scene, so the e2e covers the three possible desktop browsers (with a sheet,
+  clipboard only, and neither of the two) and the decision that makes the button work in the
+  headset —when the sheet does not start, it copies— is held by unit tests.
 
-## Menú inmersivo: el triángulo y su altura (rama `agent/pulir-el-menu-inmersivo-el-trian-f18a3a`)
+## Immersive menu: the triangle and its height (branch `agent/pulir-el-menu-inmersivo-el-trian-f18a3a`)
 
-Dos arreglos del mismo panel, juntos porque moverlo de altura cambia desde dónde se mira
-cada pieza y separarlos obligaba a revisar dos veces lo mismo con las gafas puestas.
+Two fixes to the same panel, together because moving its height changes where each part is
+looked at from, and separating them forced reviewing the same thing twice with the goggles on.
 
-- **El triángulo de «empezar» se veía de canto.** `XRPlayIcon` componía dos cuartos de
-  vuelta (`[π/2, 0, −π/2]`) y esa composición dejaba el eje del prisma apuntando a +X, así
-  que del símbolo de reproducir solo se veía su grosor: una lasca de un centímetro en el
-  botón más pulsado de la sesión. Ahora el giro sale de `XR_TRIANGLE_ROTATION`
-  (`src/lib/xrIcons.ts`) —de frente al jugador y con la punta a la derecha, como cualquier
-  botón de reproducir— y de ahí salen también las flechas de subir y bajar el aro, que ya
-  estaban bien pero repetían la cuenta a mano.
-- **El dibujo se coloca por su centro** (`XR_TRIANGLE_CENTER`): la punta sale a un radio
-  del eje y el lado opuesto se queda a medio, así que un triángulo colocado por su eje se
-  ve corrido. Con esto, a igual `position`, triángulos y siluetas caen en el mismo sitio de
-  su placa. Y el tamaño del de empezar baja de 0,05 a 0,032: esa medida es el radio del
-  prisma, y de frente da un dibujo de 5,5 cm que antes, de canto, no se veía.
-- **De paso, el botón de saltar el tutorial**: apila dos `XRPlayIcon`, así que enseñaba dos
-  lascas y un tope. Ahora se leen los dos triángulos, y su recentrado pasa de −0,55 a
-  −0,2 veces `size`, que es lo que pide el dibujo entero.
-- **La interfaz cuelga de los ojos del jugador, no del suelo.** El aro ya se acomodaba (ver
-  "Altura del aro por jugador") pero el panel seguía clavado a 1,40 m, y con él el
-  marcador, la cuenta atrás y el botón de volver: quien juega sentado se lo encontraba a la
-  altura de la frente, con la fila del ajuste del aro por encima de la línea de visión.
-  Ahora `xrUiRise` (`src/lib/xrLayout.ts`) convierte la medida del visor en cuánto sube o
-  baja el conjunto, y lo aplica `XRGazeAnchor`, que es el único nodo que ya colocaba la
-  interfaz.
-- **Se sigue la altura de ojos entera, no una fracción.** El panel se mira, no se pisa: lo
-  único que importa es a qué altura quedan sus botones respecto a los ojos. A medias, la
-  fila de arriba se le quedaría por encima de la cabeza a quien juega sentado, que era el
-  problema. No hacen falta los topes absolutos del aro: dentro del margen de estaturas que
-  se acepta como persona, nada de la interfaz llega al suelo. Pero no sobra sitio: los
-  paneles se dibujan centrados en su cota y el del marcador, al acabar una partida de
-  desafío, baja 24 cm, así que con los ojos a 90 cm su borde se queda a **un centímetro**
-  del suelo. Bajar una cota o hacer más alto un panel obliga a mirar ese número.
-- **Se mide en el menú y se queda quieta**, porque el dato es el mismo que usa el aro
-  (`XRPlayerHeight` solo mide con el menú delante): con los palos cayendo, un marcador que
-  persiguiera la cabeza se movería justo cuando el jugador calcula dónde va a estar la mano.
-- **Qué vigilan los tests**: la orientación de los tres triángulos se comprueba sobre la
-  geometría real de three (`xrIcons.test.ts`) —eje hacia el jugador, punta donde dice su
-  nombre y dibujo centrado—, y las tres mutaciones probadas (volver al giro que dejaba el
-  prisma de canto, mandar la punta a la izquierda y quitar el recentrado) ponen tests en
-  rojo.
-  El bloque de alturas de `xrInteraction.test.ts` deja de ser absoluto (0,85–1,75 m) y pasa
-  a medir la distancia a los ojos para las cuatro estaturas de prueba, más una valla nueva:
-  con el jugador más bajo, ni el borde de abajo del panel más alto llega al suelo. Seguir a
-  medias, no seguir, o quitar el filtro de medidas imposibles también ponen tests en rojo.
-- **Sin validar en hardware**, como todo lo que se pulsa en el visor: el emulador no
-  propaga sus punteros. Falta ver con las gafas que el triángulo se lee como «empezar», que
-  el panel cae a buena altura de pie y sentado, y que no se cruza con la máquina al subir
-  con un jugador alto. Y una que aparece con este cambio: la medida sigue viva mientras se
-  está en el menú (`XRPlayerHeight` reporta cada 2 cm), y ahora mueve **los botones a los
-  que se apunta**, no solo el aro. Inclinarse hacia delante para ver mejor el panel lo baja
-  con uno. Si molesta al apuntar, lo que hay que tocar es cuándo se deja de medir, no
-  `xrUiRise`.
+- **The "start" triangle was seen edge-on.** `XRPlayIcon` composed two quarter
+  turns (`[π/2, 0, −π/2]`) and that composition left the axis of the prism pointing at +X, so
+  only the thickness of the play symbol was seen: a one-centimetre sliver on the
+  most pressed button of the session. Now the rotation comes from `XR_TRIANGLE_ROTATION`
+  (`src/lib/xrIcons.ts`) —facing the player and with the tip to the right, like any
+  play button— and from there also come the arrows for raising and lowering the hoop, which
+  were already fine but repeated the sum by hand.
+- **The drawing is placed by its centre** (`XR_TRIANGLE_CENTER`): the tip comes out at one
+  radius from the axis and the opposite side stays at half, so a triangle placed by its axis
+  looks shifted. With this, at the same `position`, triangles and silhouettes fall in the same
+  place on their plate. And the size of the start one goes down from 0.05 to 0.032: that
+  measurement is the radius of the prism, and face-on it gives a 5.5 cm drawing that before,
+  edge-on, was not seen.
+- **While at it, the button to skip the tutorial**: it stacks two `XRPlayIcon`, so it showed two
+  slivers and a stop. Now the two triangles read, and its recentring goes from −0.55 to
+  −0.2 times `size`, which is what the whole drawing asks for.
+- **The UI hangs from the player's eyes, not from the floor.** The hoop already adapted (see
+  "Hoop height per player") but the panel was still nailed at 1.40 m, and with it the
+  scoreboard, the countdown and the back button: whoever plays seated found it at
+  forehead height, with the row of the hoop adjustment above the line of sight.
+  Now `xrUiRise` (`src/lib/xrLayout.ts`) turns the headset's measurement into how much the whole
+  goes up or down, and `XRGazeAnchor` applies it, which is the only node that already placed the
+  UI.
+- **The whole eye height is followed, not a fraction.** The panel is looked at, not stepped on:
+  the only thing that matters is at what height its buttons end up relative to the eyes.
+  Halfway, the top row would be left above the head of whoever plays seated, which was the
+  problem. The absolute limits of the hoop are not needed: within the range of statures that
+  is accepted as a person, nothing of the UI reaches the floor. But there is no room to spare:
+  the panels are drawn centred on their height and the scoreboard one, at the end of a
+  challenge run, goes down 24 cm, so with the eyes at 90 cm its edge is left **one centimetre**
+  from the floor. Lowering a height or making a panel taller forces looking at that number.
+- **It is measured in the menu and stays still**, because the figure is the same one the hoop
+  uses (`XRPlayerHeight` only measures with the menu in front): with the sticks falling, a
+  scoreboard that chased the head would move just when the player works out where the hand is
+  going to be.
+- **What the tests watch**: the orientation of the three triangles is checked on the
+  real geometry of three (`xrIcons.test.ts`) —axis towards the player, tip where its
+  name says and drawing centred—, and the three mutations tried (going back to the rotation that
+  left the prism edge-on, sending the tip to the left and removing the recentring) put tests in
+  red.
+  The block of heights of `xrInteraction.test.ts` stops being absolute (0.85–1.75 m) and moves
+  on to measuring the distance to the eyes for the four test statures, plus a new fence:
+  with the shortest player, not even the bottom edge of the tallest panel reaches the floor.
+  Following halfway, not following, or removing the filter of impossible measurements also put
+  tests in red.
+- **Not validated on hardware**, like everything that is pressed in the headset: the emulator
+  does not propagate its pointers. It remains to be seen with the goggles that the triangle
+  reads as "start", that the panel falls at a good height standing and seated, and that it does
+  not cross the machine on going up with a tall player. And one that appears with this change:
+  the measurement stays alive while in the menu (`XRPlayerHeight` reports every 2 cm), and now
+  it moves **the buttons being aimed at**, not just the hoop. Leaning forward to see the panel
+  better lowers it along with you. If it bothers when aiming, what has to be touched is when
+  measuring stops, not `xrUiRise`.
 
-## Vibración en el resto del juego (rama `agent/rematar-el-feedback-del-juego-vi-d6d6ce`)
+## Vibration in the rest of the game (branch `agent/rematar-el-feedback-del-juego-vi-d6d6ce`)
 
-La vibración solo llegaba al atrapar un palo. Faltaban las dos cosas que el mando
-puede contar y ninguna otra señal alcanza con las gafas puestas: que se ha escapado
-un palo y que un botón del menú ha respondido.
+Vibration only came on catching a stick. The two things the controller
+can tell and no other signal reaches with the goggles on were missing: that a stick has got
+away and that a menu button has responded.
 
-- **El fallo, largo y blando; el acierto, corto y seco.** Se distinguen por las dos
-  cosas a la vez (`MISS_PULSE`, 0.35 y 140 ms, frente a los 0.7 y 45 ms del acierto):
-  con una sola, y el brazo en movimiento, se sentirían igual y la vibración diría
-  menos que el sonido, que sí los distingue.
-- **El fallo sale por los dos mandos.** No hay evento de puntero del que sacar una
-  mano —el palo toca el suelo solo—, así que `pulseAllHaptics` recorre los
-  `inputSources` de la sesión. Que no se sepa en qué mano se habría notado es parte
-  de lo que significa. Por eso también es más suave: no lo ha provocado nadie.
-- **Dónde se engancha**: `XRHaptics`, un puente dentro de `<XR>` que mira los
-  contadores del store, como `useGameSound` hace con el sonido. No va en el store
-  porque el store es el juego —común al ratón y al visor— y esto solo existe con
-  gafas. Dos palos perdidos en el mismo lote dan un golpe, igual que suenan una vez.
-- **Los botones del menú inmersivo dan un toque** al activarse (`PRESS_PULSE`, 0.25 y
-  18 ms, el más discreto de los tres: elegir trece palos son trece pulsaciones). Va en
-  `XRPressable`, así que lo tienen todos —menú, marcador y fin de partida— y solo
-  cuando el botón se activa de verdad: uno apagado, o una pulsación que cae dentro del
-  antirrebote, no confirman nada. El golpe se da **antes** de la acción, porque hay
-  botones que cierran la sesión o cambian la escena entera.
-- **La vibración no la calla el silencio**: es justamente lo que sigue avisando con el
-  sonido quitado.
-- **Sin validar en hardware**, como todo lo que se pulsa en el visor: el emulador no
-  propaga sus punteros. Ver el punto (h) de "SIGUIENTE PASO".
+- **The miss, long and soft; the hit, short and sharp.** They are told apart by both
+  things at once (`MISS_PULSE`, 0.35 and 140 ms, against the 0.7 and 45 ms of the hit):
+  with only one, and the arm moving, they would feel the same and the vibration would say
+  less than the sound, which does tell them apart.
+- **The miss comes out through both controllers.** There is no pointer event from which to get
+  a hand —the stick touches the floor by itself—, so `pulseAllHaptics` goes through the
+  `inputSources` of the session. Not knowing in which hand it would have been felt is part
+  of what it means. That is also why it is softer: nobody caused it.
+- **Where it hooks in**: `XRHaptics`, a bridge inside `<XR>` that looks at the
+  counters of the store, as `useGameSound` does with the sound. It does not go in the store
+  because the store is the game —common to the mouse and the headset— and this only exists with
+  goggles. Two sticks missed in the same batch give one hit, just as they sound once.
+- **The buttons of the immersive menu give a tap** on being activated (`PRESS_PULSE`, 0.25 and
+  18 ms, the most discreet of the three: choosing thirteen sticks is thirteen presses). It goes
+  in `XRPressable`, so they all have it —menu, scoreboard and end of run— and only
+  when the button is really activated: one that is off, or a press that falls inside the
+  debounce, confirm nothing. The hit is given **before** the action, because there are
+  buttons that close the session or change the whole scene.
+- **The mute does not silence the vibration**: it is precisely what keeps signalling with the
+  sound off.
+- **Not validated on hardware**, like everything that is pressed in the headset: the emulator
+  does not propagate its pointers. See point (h) of "NEXT STEP".
 
-## El silencio se recuerda (misma rama)
+## The mute is remembered (same branch)
 
-Hasta ahora el silencio duraba lo que durara la pestaña: al recargar, el juego
-volvía a sonar. En el visor eso significa volver a apagarlo cada vez que uno se
-pone las gafas, para deshacer algo que ya había decidido.
+Until now the mute lasted as long as the tab lasted: on reloading, the game
+sounded again. In the headset that means switching it off again every time you
+put the goggles on, to undo something you had already decided.
 
-- **Se rompe el "sin storage" a propósito**, que es lo que la tarea pedía decidir, y
-  como ya se abrió antes para el récord, la altura del aro y el tutorial. La clave es
-  `stick-rush:muted` y el argumento es el mismo que el de la altura del aro: es una
-  preferencia de cómo se juega, no un dato de la partida.
-- **Solo se escribe el silencio.** Volver al sonido borra la clave en vez de guardar
-  un cero: el arranque por defecto es con sonido, así que el navegador solo guarda
-  algo mientras el jugador se aparte de él. Y solo el valor exacto cuenta como
-  silencio: lo leído es entrada externa, y el lado seguro es sonar.
-- **No es estado de React**, por lo mismo que el récord (ver "Mejor puntuación"): el
-  botón de silenciar sí se prerenderiza —está en la pantalla de inicio— y el servidor
-  no ve el almacenamiento, así que leerlo en un efecto al montar desajustaría la
-  hidratación. Con `useSyncExternalStore` el servidor devuelve "con sonido" y el
-  navegador su valor, sin que React se queje. Lo vigila un e2e que además mira la
-  consola: un error de hidratación no se ve en el botón, se ve ahí.
-- **Sin almacenamiento el botón sigue funcionando** (`inMemory` en
-  `mutePreference.ts`). No es un adorno: si la preferencia solo viviera en lo
-  guardado, en modo privado pulsar "Silenciar" no cambiaría nada —lo guardado no
-  cambia, así que la lectura devolvería siempre lo mismo— y el juego seguiría sonando
-  por más que se pulsara. Se pierde al recargar, no durante la visita. Lo cubren un
-  unitario y un e2e que bloquea `localStorage` de verdad.
-- **Dos pestañas ven lo mismo**: se escucha el evento `storage`, igual que el récord.
-- **El escenario (`scenery`) se queda sin guardar**, y no por pereza: guardar
-  `passthrough` y entrar luego en una sesión `immersive-vr` —un visor sin
-  passthrough— dejaría al jugador mirando la nada, porque el decorado no se pinta y
-  no hay habitación real detrás. Persistirlo pide antes una caída a `scene` cuando la
-  sesión no da passthrough. Queda como tarea de seguimiento.
+- **The "no storage" is broken on purpose**, which is what the task asked to decide, and
+  as it was already opened before for the record, the hoop height and the tutorial. The key is
+  `stick-rush:muted` and the argument is the same as that of the hoop height: it is a
+  preference about how you play, not a piece of data of the run.
+- **Only the mute is written.** Going back to sound deletes the key instead of saving
+  a zero: the default start is with sound, so the browser only stores
+  something while the player departs from it. And only the exact value counts as
+  mute: what is read is external input, and the safe side is to sound.
+- **It is not React state**, for the same reason as the record (see "Best score"): the
+  mute button is indeed prerendered —it is on the start screen— and the server
+  does not see the storage, so reading it in an effect on mounting would mismatch the
+  hydration. With `useSyncExternalStore` the server returns "with sound" and the
+  browser its value, without React complaining. An e2e watches it and also looks at the
+  console: a hydration error is not seen on the button, it is seen there.
+- **Without storage the button keeps working** (`inMemory` in
+  `mutePreference.ts`). It is not an ornament: if the preference lived only in what is
+  saved, in private mode pressing "Silenciar" would change nothing —what is saved does not
+  change, so the read would always return the same— and the game would keep sounding
+  however much it was pressed. It is lost on reloading, not during the visit. A
+  unit test and an e2e that really blocks `localStorage` cover it.
+- **Two tabs see the same thing**: the `storage` event is listened to, like the record.
+- **The scenery (`scenery`) is left unsaved**, and not out of laziness: saving
+  `passthrough` and then entering an `immersive-vr` session —a headset without
+  passthrough— would leave the player staring at nothing, because the set is not painted and
+  there is no real room behind. Persisting it first asks for a fallback to `scene` when the
+  session gives no passthrough. It is left as a follow-up task.
 
-## El juego, separado de su web (rama `agent/separar-el-juego-de-su-web-para--04e755`)
+## The game, separated from its website (branch `agent/separar-el-juego-de-su-web-para--04e755`)
 
-Stick Rush era una app Next entera. Eso bastaba para desplegarse solo y probarlo con las
-gafas, pero impedía que xrcade lo cargara **dentro** de sí mismo: el hub solo podía
-enlazarlo en un iframe a otro dominio, y en VR eso rompe la sesión inmersiva al entrar y
-al volver. Ahora el repositorio son dos cosas: **el juego** (`src/game`, `src/components`,
-`src/lib`), un componente que se monta donde le digan, y **su web** (`src/app`), un
-envoltorio delgado que lo monta a pantalla completa y se sigue desplegando igual.
+Stick Rush was a whole Next app. That was enough to deploy on its own and test it with the
+goggles, but it prevented xrcade from loading it **inside** itself: the hub could only
+link it in an iframe to another domain, and in VR that breaks the immersive session on entering
+and on coming back. Now the repository is two things: **the game** (`src/game`,
+`src/components`, `src/lib`), a component that is mounted wherever it is told, and **its
+website** (`src/app`), a thin wrapper that mounts it full screen and keeps being deployed the
+same.
 
-- **La superficie pública es mínima**: `StickRush` (componente), `mountStickRush`
-  (elemento del DOM), `assetsBase` y `stick-rush/styles.css`. Nada más. El contrato entero
-  —instalación, `transpilePackages`, ficheros estáticos, Tailwind y qué espera el juego de
-  quien lo monta— está en `docs/mounting-the-game.md`, que es lo que respetará la tarea
-  gemela de xrcade.
-- **Se consume por tag del repositorio**, no por registry: `npm install
-  "github:1to1-Digital-Solutions/stick-rush#v0.2.0"`. Actualizar el juego en el salón es
-  subir esa versión. No hace falta publicar en npm ni tener credenciales de registry, y el
-  `package.json` sigue siendo `private`.
-- **React, three y `@react-three/*` pasaron a `peerDependencies`** (y siguen en
-  `devDependencies` para el desarrollo de aquí). Es lo que evita dos copias de React en la
-  página de quien lo monte, que rompen los hooks. Si algún día el despliegue instalara sin
-  `devDependencies`, el build se caería: ya pasaba con Tailwind y TypeScript, así que no es
-  un riesgo nuevo, pero conviene saberlo.
-- **Los 3 MB de `public/` no viajan en el código.** El HDRI, las texturas y los perfiles de
-  mando se copian con `npx stick-rush-assets <destino>` y se le dice al juego dónde con
-  `assetsBase`. Por eso las rutas se guardan relativas (`lib/assets.ts`) y se resuelven al
-  pedir cada recurso: el store de WebXR, que necesita la suya, pasó a crearse **al pedirlo**
-  y no al importar el módulo, que era antes de que nadie pudiera decir dónde están.
-- **Fuera `next/dynamic`**, que ataba el juego a Next. El Canvas se carga con `lazy` de
-  React y espera al navegador con un `useSyncExternalStore` que devuelve `false` en el
-  servidor: es el equivalente de `ssr: false` sin depender del framework, y sin desajustar
-  la hidratación.
-- **Los estilos del juego se separaron a `src/game/styles.css`** y cuelgan de `.stick-rush`
-  en vez de `:root`: montado dentro de otra aplicación, unas variables globales llamadas
-  `--color-primary` le cambiarían el aspecto a lo que las tuviera puestas. Las fuentes se
-  toman de `--font-heading`/`--font-body` con respaldo del sistema; en su propia web las
-  sigue poniendo el layout con `next/font`.
-- **Desmontar el juego cierra la sesión inmersiva** (`endXrSession`, en `xr/xrStore.ts`,
-  llamado desde `StickRush`). Salió de la revisión: el store vive fuera del árbol de React
-  y `<XR>` no cierra nada al desmontarse, así que el hub que quitara el juego con el visor
-  puesto dejaba viva una sesión atada a un Canvas que ya no existe —escena congelada, y sin
-  poder abrir otra, porque WebXR da una sesión por documento—. En su propia web pasaba lo
-  mismo al navegar entre `/` y `/game`.
-- **Lo que NO se hizo, a propósito**: no hay `onExit` ni ningún botón de "volver al hub".
-  Sin la tarea gemela decidida, sería inventarse UI y dejar código sin usar. El hub puede
-  desmontar el juego cuando quiera con `unmount()`.
+- **The public surface is minimal**: `StickRush` (component), `mountStickRush`
+  (DOM element), `assetsBase` and `stick-rush/styles.css`. Nothing else. The whole contract
+  —installation, `transpilePackages`, static files, Tailwind and what the game expects from
+  whoever mounts it— is in `docs/mounting-the-game.md`, which is what the twin task of xrcade
+  will respect.
+- **It is consumed by tag of the repository**, not by registry: `npm install
+  "github:1to1-Digital-Solutions/stick-rush#v0.2.0"`. Updating the game in the hall is
+  bumping that version. There is no need to publish on npm or to have registry credentials, and
+  the `package.json` is still `private`.
+- **React, three and `@react-three/*` moved to `peerDependencies`** (and stay in
+  `devDependencies` for the development here). It is what avoids two copies of React on the
+  page of whoever mounts it, which break the hooks. If some day the deployment installed without
+  `devDependencies`, the build would fall over: it already happened with Tailwind and
+  TypeScript, so it is not a new risk, but it is worth knowing.
+- **The 3 MB of `public/` do not travel in the code.** The HDRI, the textures and the controller
+  profiles are copied with `npx stick-rush-assets <destino>` and the game is told where with
+  `assetsBase`. That is why the paths are kept relative (`lib/assets.ts`) and are resolved on
+  requesting each resource: the WebXR store, which needs its own, came to be created **on
+  requesting it** and not on importing the module, which was before anyone could say where they
+  are.
+- **Out with `next/dynamic`**, which tied the game to Next. The Canvas is loaded with React's
+  `lazy` and waits for the browser with a `useSyncExternalStore` that returns `false` on the
+  server: it is the equivalent of `ssr: false` without depending on the framework, and without
+  mismatching the hydration.
+- **The game's styles were separated into `src/game/styles.css`** and hang from `.stick-rush`
+  instead of `:root`: mounted inside another application, some global variables called
+  `--color-primary` would change the look of whatever had them set. The fonts are
+  taken from `--font-heading`/`--font-body` with a system fallback; on its own website the
+  layout still sets them with `next/font`.
+- **Unmounting the game closes the immersive session** (`endXrSession`, in `xr/xrStore.ts`,
+  called from `StickRush`). It came out of the review: the store lives outside the React tree
+  and `<XR>` closes nothing on unmounting, so the hub that removed the game with the headset
+  on left alive a session tied to a Canvas that no longer exists —frozen scene, and without
+  being able to open another, because WebXR gives one session per document—. On its own website
+  the same happened on navigating between `/` and `/game`.
+- **What was NOT done, on purpose**: there is no `onExit` nor any "back to the hub" button.
+  Without the twin task decided, it would be making up UI and leaving unused code. The hub can
+  unmount the game whenever it wants with `unmount()`.
 
-## Segunda prueba en visor (2026-08-05, rama `fix/xr-mandos-y-menu-visible`)
+## Second headset test (2026-08-05, branch `fix/xr-mandos-y-menu-visible`)
 
-Con las gafas puestas el modo inmersivo era **inutilizable**: no se veían los mandos,
-no se podía seleccionar nivel ni nada, y el botón de volver no aparecía. Dos fallos
-independientes, los dos arreglados en esa rama:
+With the goggles on the immersive mode was **unusable**: the controllers were not seen,
+neither a level nor anything else could be selected, and the back button did not appear. Two
+independent bugs, both fixed in that branch:
 
-1. **Los mandos no llegaban a registrarse.** `@react-three/xr` necesita el *perfil* del
-   mando (qué botón es cuál) y lo descarga de `cdn.jsdelivr.net`. La CSP lo bloquea;
-   `createXRControllerState` resuelve esa carga en una promesa cuyo rechazo se traga un
-   `.catch(console.error)`, así que **nunca se llama a `addController`** y sin estado de
-   mando no se monta ni el rayo ni el puntero de agarre. Los mandos no existían para la
-   app. Ahora los 42 perfiles se sirven desde `public/webxr-profiles/` (528 KB de JSON;
-   los `.glb`, 100 MB, no hacen falta) vía `baseAssetPath`, y `npm run sync:xr-profiles`
-   los regenera.
-2. **La interfaz aparecía a la espalda.** Menú, marcador y botón de salir colgaban de
-   `<XROrigin>` con Z negativo fijo, pero el −Z del origen lo decide la calibración de
-   la sala, no hacia dónde mire el jugador. Ahora cuelgan de `<XRGazeAnchor>`, que gira
-   con él y le acompaña si camina, con una zona muerta de 40° para que se pueda apuntar
-   sin que el objetivo huya. La aritmética está en `src/lib/xrAnchor.ts`, probada sin
-   navegador.
+1. **The controllers never got registered.** `@react-three/xr` needs the *profile* of the
+   controller (which button is which) and downloads it from `cdn.jsdelivr.net`. The CSP blocks
+   it; `createXRControllerState` resolves that load in a promise whose rejection is swallowed by
+   a `.catch(console.error)`, so **`addController` is never called** and without controller
+   state neither the ray nor the grab pointer is mounted. The controllers did not exist for the
+   app. Now the 42 profiles are served from `public/webxr-profiles/` (528 KB of JSON;
+   the `.glb` files, 100 MB, are not needed) via `baseAssetPath`, and
+   `npm run sync:xr-profiles` regenerates them.
+2. **The UI appeared behind your back.** Menu, scoreboard and exit button hung from
+   `<XROrigin>` with a fixed negative Z, but the −Z of the origin is decided by the calibration
+   of the room, not by where the player looks. Now they hang from `<XRGazeAnchor>`, which turns
+   with them and goes along if they walk, with a dead zone of 40° so that you can aim
+   without the target running away. The arithmetic is in `src/lib/xrAnchor.ts`, tested without
+   a browser.
 
-Además: mando dibujado con geometría propia (sin descargas) con el gatillo de agarre
-latiendo en ámbar hasta el primer palo atrapado y en verde mientras se aprieta; botones
-que se resuelven en `pointerdown` y no en `click` (apuntando a pulso, el rayo se salía
-entre pulsar y soltar) y con halo de foco visible; y salida del visor desde el menú.
+In addition: controller drawn with its own geometry (no downloads) with the grip trigger
+pulsing in amber until the first stick caught and in green while it is squeezed; buttons
+that are resolved on `pointerdown` and not on `click` (aiming freehand, the ray slipped off
+between pressing and releasing) and with a visible focus halo; and exit from the headset from
+the menu.
 
-**Sigue sin validarse en hardware**: el emulador no puede pulsar botones (ver el aviso
-en "Tests de XR con emulador"), así que hay que probarlo con las gafas.
+**It is still not validated on hardware**: the emulator cannot press buttons (see the warning
+in "XR tests with an emulator"), so it has to be tested with the goggles.
 
-## Auditoría de seguridad y prueba en visor (2026-08-03)
+## Security audit and headset test (2026-08-03)
 
-Auditoría completa antes de hacer el repo público: **sin secretos en el historial**
-(revisado `--all`, contenido además de nombres), sin XSS, sin red, sin storage[^1], sin
-source maps y sin rutas locales en el bundle. La app es 100 % estática: ni middleware,
-ni Server Actions, ni API routes, ni `next/image`.
+Complete audit before making the repo public: **no secrets in the history**
+(reviewed with `--all`, content as well as names), no XSS, no network, no storage[^1], no
+source maps and no local paths in the bundle. The app is 100 % static: no middleware,
+no Server Actions, no API routes, no `next/image`.
 
-[^1]: **Ya no es cierto**: el juego escribe cinco claves en `localStorage`, cada
-una decidida por su cuenta en la tarea que la introdujo: la mejor puntuación,
-que son dos —una por modo— (ver "Mejor puntuación"), la corrección de la altura
-del aro ("Altura del aro por jugador"), si ya se vio el tutorial del visor
-("Tutorial de la primera vez") y si se juega en silencio ("El silencio se
-recuerda") y el escenario/passthrough ("El escenario se recuerda"). Todas son
-preferencias locales —números y banderas— y sigue sin haber identificadores,
-cookies ni nada que salga del navegador. Lo que queda solo en memoria es el modo
-de juego.
+[^1]: **No longer true**: the game writes five keys in `localStorage`, each
+one decided on its own in the task that introduced it: the best score,
+which is two —one per mode— (see "Best score"), the correction of the hoop
+height ("Hoop height per player"), whether the headset tutorial has already been seen
+("First-time tutorial") and whether you play muted ("The mute is
+remembered") and the scenery/passthrough ("The scenery is remembered"). All are
+local preferences —numbers and flags— and there are still no identifiers,
+cookies or anything that leaves the browser. What stays only in memory is the game
+mode.
 
-Corregido en `feat/xr-menu-inmersivo-y-seguridad`:
+Fixed in `feat/xr-menu-inmersivo-y-seguridad`:
 
-- **Cabeceras** en `next.config.ts`. La importante es `connect-src 'self'`: en el
-  bundle hay CDNs cableados por librerías (mandos de @react-three/xr en jsDelivr,
-  HDRI de preset de drei en raw.githack, fuentes de troika). Ahora el "funciona sin
-  internet" lo impone el navegador. `xr-spatial-tracking=(self)` es obligatorio: sin
-  él WebXR no arranca.
-- **Modelos de mando y mano desactivados** (`xrStore`).
-  > **Corregido (2026-08-05):** aquí se dijo que eso *era la descarga real a jsDelivr*.
-  > Era **falso**, y costó caro: `model: false` solo quita el modelo `.glb`; el
-  > **perfil** del mando se seguía descargando, la CSP lo bloqueaba y eso dejaba el
-  > visor sin mandos. Ver "Segunda prueba en visor". La ruta **sí** se puede redirigir
-  > desde `createXRStore`: acepta `XRControllerLayoutLoaderOptions`, y `baseAssetPath`
-  > es justo lo que ahora apunta a `public/webxr-profiles/`.
-- `LICENSE` MIT, CI (lint/tipos/unitarios/e2e), Dependabot, y `maximumScale: 1` fuera.
+- **Headers** in `next.config.ts`. The important one is `connect-src 'self'`: in the
+  bundle there are CDNs hard-wired by libraries (controllers of @react-three/xr on jsDelivr,
+  drei's preset HDRI on raw.githack, troika's fonts). Now the "works without
+  internet" is enforced by the browser. `xr-spatial-tracking=(self)` is mandatory: without
+  it WebXR does not start.
+- **Controller and hand models disabled** (`xrStore`).
+  > **Corrected (2026-08-05):** here it was said that this *was the real download from
+  > jsDelivr*. It was **false**, and it cost dearly: `model: false` only removes the `.glb`
+  > model; the **profile** of the controller kept being downloaded, the CSP blocked it and that
+  > left the headset without controllers. See "Second headset test". The path **can** be
+  > redirected from `createXRStore`: it accepts `XRControllerLayoutLoaderOptions`, and
+  > `baseAssetPath` is exactly what now points to `public/webxr-profiles/`.
+- MIT `LICENSE`, CI (lint/types/unit/e2e), Dependabot, and `maximumScale: 1` out.
 
-**Pendiente y no resuelto:**
+**Pending and not resolved:**
 
-- ~~`npm audit` con 5 high por `next@16.2.12`~~ **RESUELTO (2026-08-04)**: salió
-  `next@16.3.0` y con él desaparecen los avisos que arrastraba `sharp`/libvips. `npm
-  audit fix` (sin `--force`, sin salirse de los rangos declarados) cerró además `postcss`
-  y `brace-expansion` en dependencias de desarrollo. **0 vulnerabilidades.**
-- ~~El email personal en el historial~~ **RESUELTO (2026-08-03)**: se reescribieron los
-  28 commits que lo llevaban con `git filter-branch --env-filter`, cambiándolo por
-  `100352899+cpl121@users.noreply.github.com`. El árbol quedó **idéntico** (mismo hash
-  de árbol antes y después: solo cambiaron metadatos de autor) y se hizo `push --force`
-  sobre `main`. `git config user.email` ya apunta al noreply para que no vuelva a
-  colarse. **Cerrado del todo el 2026-08-06**: se borraron también las ramas del remoto
-  que lo conservaban, así que hoy `origin` solo tiene `main` y ningún commit publicado
-  lleva el email personal.
-- `.claude/` y `.organizate/install-state.json` se publicarán y dejan ver el tooling
-  interno. Sin secretos, pero es una decisión.
+- ~~`npm audit` with 5 high because of `next@16.2.12`~~ **RESOLVED (2026-08-04)**:
+  `next@16.3.0` came out and with it the warnings that `sharp`/libvips dragged along disappear.
+  `npm audit fix` (without `--force`, without leaving the declared ranges) also closed `postcss`
+  and `brace-expansion` in development dependencies. **0 vulnerabilities.**
+- ~~The personal email in the history~~ **RESOLVED (2026-08-03)**: the
+  28 commits that carried it were rewritten with `git filter-branch --env-filter`, changing it
+  to `100352899+cpl121@users.noreply.github.com`. The tree was left **identical** (same tree
+  hash before and after: only author metadata changed) and a `push --force` was done
+  on `main`. `git config user.email` already points to the noreply so that it does not slip in
+  again. **Closed completely on 2026-08-06**: the branches of the remote
+  that kept it were deleted too, so today `origin` only has `main` and no published commit
+  carries the personal email.
+- `.claude/` and `.organizate/install-state.json` will be published and reveal the internal
+  tooling. No secrets, but it is a decision.
 
-## El menú abre en el reto y el cartel del objetivo (2026-10-05)
+## The menu opens on the challenge and the goal sign (2026-10-05)
 
-Del visor (web): «cuando entro a jugar no tengo clara cuál es la misión». Lo que se decidió y por qué:
+From the headset (web): "when I go in to play I am not clear what the mission is". What was decided and why:
 
-- **Se abre en el reto, siempre** (`DEFAULT_GAME_MODE`), y el modo se llama **«Reto»** en español
-  («Challenge» sigue siendo la clave). Antes se abría en práctica para no estrenarse con vidas;
-  ahora Jugar sin tocar nada tiene que ser la partida que da medalla. Cada modo dice lo primero
-  si cuenta para medalla, en frases de dos renglones: una tercera línea se sale del panel del visor.
-- **El cartel común** (`objetivo.ts`, `CartelDeObjetivo.tsx`, copiados de basketball) va **encima
-  del marcador**, a 1,16 m (`XR_CARTEL_POSITION`): 27° bajo la mirada, más lejos que cualquier palo
-  y por debajo del tutorial y del aviso de salir, que empiezan a 1,21 m. Encima del aro taparía la
-  caída. El marcador calla lo que el cartel dice (barra de puntos y vidas) y encoge
-  (`XR_HUD_WITH_SIGN`); al acabar no sube, porque arriba está el cartel.
-- **La misión se acortó**: «Atrapa los 13 palos. Tres al suelo y se acaba» salía a 0,82° (0,69° en
-  inglés) porque el cartel escribe una línea y la encoge. «Atrapa 13 palos. Tres al suelo y fuera»
-  queda en un grado. Se enseña en la cuenta atrás **y hasta que se resuelve el primer palo**: tres
-  segundos no daban para leerla.
-- **Lo que no cuenta** (práctica, niveles, a dos) lo dice el cartel bajito solo dentro del salón y
-  solo mientras se juega: al acabar, el panel del final ocupa ese sitio.
-- **El listón cruzado**: color y pulso del cartel, dos notas (`medal`) después del atrape y un
-  toque en la mano buena 90 ms más tarde (`pulse()` no encola y el atrape ya vibra).
-- En la web sin visor la misión sale arriba en DOM hasta el primer palo, y el botón resaltado del
-  final es «Otra» (antes solo había «Volver al menú»).
-- **El emulador de los e2e** llevaba roto desde que `iwer` subió a 2.4: sin `forceInstall` se
-  aparta ante el `navigator.xr` de Chromium y ningún test de sesión podía entrar al visor.
-- El e2e del menú de Godot ya no pulsa dos veces el botón del modo: sin ventana el motor corre más
-  deprisa que el reloj y el segundo toque caía dentro del doble roce (300 ms).
+- **It opens on the challenge, always** (`DEFAULT_GAME_MODE`), and the mode is called **«Reto»**
+  in Spanish («Challenge» is still the key). Before, it opened on practice so as not to debut
+  with lives; now Jugar without touching anything has to be the run that gives a medal. Each
+  mode says first whether it counts for a medal, in two-line sentences: a third line spills out
+  of the headset panel.
+- **The common sign** (`goal.ts`, `GoalSign.tsx`, copied from basketball) goes
+  **above the scoreboard**, at 1.16 m (`XR_SIGN_POSITION`): 27° below the gaze, further away
+  than any stick and below the tutorial and the exit notice, which start at 1.21 m. Above the
+  hoop it would cover the fall. The scoreboard keeps quiet about what the sign says (points bar
+  and lives) and shrinks (`XR_HUD_WITH_SIGN`); at the end it does not rise, because the sign is
+  up there.
+- **The mission was shortened**: «Atrapa los 13 palos. Tres al suelo y se acaba» came out at
+  0.82° (0.69° in English) because the sign writes one line and shrinks it. «Atrapa 13 palos.
+  Tres al suelo y fuera» stays at one degree. It is shown in the countdown **and until the first
+  stick is resolved**: three seconds were not enough to read it.
+- **What does not count** (practice, levels, two players) is said quietly by the sign only
+  inside the hall and only while playing: at the end, the final panel takes that place.
+- **The crossed threshold**: colour and pulse of the sign, two notes (`medal`) after the catch
+  and a tap on the good hand 90 ms later (`pulse()` does not queue and the catch already
+  vibrates).
+- On the web without a headset the mission comes out at the top in DOM until the first stick,
+  and the highlighted button of the end is «Otra» (before there was only «Volver al menú»).
+- **The emulator of the e2e** had been broken since `iwer` went up to 2.4: without
+  `forceInstall` it steps aside for Chromium's `navigator.xr` and no session test could enter
+  the headset.
+- The e2e of the Godot menu no longer presses the mode button twice: without a window the engine
+  runs faster than the clock and the second tap fell inside the double touch (300 ms).

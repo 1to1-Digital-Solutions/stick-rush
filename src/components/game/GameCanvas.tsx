@@ -9,20 +9,20 @@ import { getXrStore } from '../xr/xrStore'
 import { GameWorld } from './GameWorld'
 
 /**
- * El Canvas de la web del juego: uno de sus anfitriones, no el juego.
+ * The Canvas of the game's own website: one of its hosts, not the game.
  *
- * El juego en sí es `<GameWorld>`, que son objetos de three y nada más. Lo que
- * se pone alrededor —el Canvas, la sesión de WebXR, la cámara de escritorio—
- * es de quien lo hospeda, y esta web es un anfitrión como el salón de xrcade.
- * Que su propia web se monte igual que el salón no es simetría gratuita: es
- * cómo se prueba el juego con el visor sin levantar el hub entero, y lo que
- * hace que un fallo del contrato salga aquí y no en el salón.
+ * The game itself is `<GameWorld>`, which is three objects and nothing else. What
+ * goes around it —the Canvas, the WebXR session, the desktop camera— belongs
+ * to whoever hosts it, and this website is a host just like the xrcade hall.
+ * That its own website mounts it the same way the hall does is not gratuitous symmetry: it is
+ * how the game is tried with the headset without bringing up the whole hub, and what
+ * makes a contract failure show up here and not in the hall.
  */
 
 /**
- * Órbita de la cámara de escritorio. Se desactiva durante la partida (para no
- * competir con la captura) y en sesión inmersiva, donde el punto de vista lo
- * manda el visor.
+ * Orbit of the desktop camera. It is disabled during the run (so as not to
+ * compete with the catch) and in an immersive session, where the point of view is
+ * the headset's call.
  */
 function DesktopControls() {
   const mode = useXR((state) => state.mode)
@@ -30,8 +30,8 @@ function DesktopControls() {
 
   return (
     <OrbitControls
-      // Desde la cuenta atrás ya no se orbita: la partida ha empezado y girar
-      // la cámara mientras caen los palos compite con la captura.
+      // From the countdown on there is no more orbiting: the run has started and turning
+      // the camera while the sticks fall competes with the catch.
       enabled={
         mode == null && (gameState === 'menu' || gameState === 'finished')
       }
@@ -47,23 +47,23 @@ function DesktopControls() {
 export function GameCanvas() {
   return (
     <Canvas
-      // "percentage" = PCFShadowMap. El valor por defecto de R3F es
-      // PCFSoftShadowMap, deprecado en three 0.185 (avisa por consola).
+      // "percentage" = PCFShadowMap. R3F's default value is
+      // PCFSoftShadowMap, deprecated in three 0.185 (it warns on the console).
       shadows="percentage"
-      // Elevada y por detrás del jugador: a la altura del aro, un semicírculo
-      // horizontal se vería de canto (una simple barra).
+      // Raised and behind the player: at the height of the hoop, a horizontal
+      // semicircle would be seen edge-on (a plain bar).
       camera={{ position: [0, 1.9, 3.05], fov: 52, near: 0.05, far: 60 }}
       gl={{ antialias: true }}
       className="absolute inset-0"
     >
       <XR store={getXrStore()}>
-        {/* El jugador, de pie en el cero. Que el aro le quede alrededor lo
-            resuelve el propio mundo corriéndose (ver `<GameWorld>`), igual que
-            hace en el salón: así el juego se monta idéntico en los dos sitios. */}
+        {/* The player, standing at zero. Having the hoop around them is
+            solved by the world itself shifting (see `<GameWorld>`), just as
+            it does in the hall: that way the game mounts identically in both places. */}
         <XROrigin position={[0, 0, 0]} />
         <GameWorld hasDomUi />
         <DesktopControls />
-        {/* La salida común, sosteniendo B o Y: en el salón la pone el salón. */}
+        {/* The common exit, holding B or Y: in the hall the hall provides it. */}
         <ExitRing />
       </XR>
     </Canvas>

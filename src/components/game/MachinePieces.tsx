@@ -3,24 +3,24 @@
 import { type ComponentProps, type ReactNode } from 'react'
 import { createInstances } from '@react-three/drei'
 import { MACHINE_BULB_COLOR } from '../../lib/gameConfig'
-import { useSoltarInstancias } from './disposeInstances'
+import { useDisposeInstances } from './disposeInstances'
 
 /**
- * Las piezas repetidas de la máquina, instanciadas.
+ * The repeated parts of the machine, instanced.
  *
- * La máquina se llevaba 85 de las 110 llamadas de dibujo de la escena: 69 tubos sueltos y 16
- * de las bombillas de su guirnalda. En el visor eso se paga POR OJO, así que eran ~170 por
- * fotograma para algo que cabe en cinco. Es la misma receta que ya usa el recinto de feria en
- * `FairPieces.tsx`, que dibuja sus 285 piezas en tres.
+ * The machine took 85 of the scene's 110 draw calls: 69 loose tubes and 16
+ * from the bulbs of its garland. In the headset that is paid PER EYE, so it was ~170 per
+ * frame for something that fits in five. It is the same recipe the fairground already uses in
+ * `FairPieces.tsx`, which draws its 285 pieces in three.
  *
- * **Por qué hay tres familias de tubos y no una.** Comparten geometría pero no material, y un
- * `<Instances>` tiene un solo material: el aro de los palos es mate (`metalness` 0.1) porque
- * es madera pintada, los postes son metal pulido (0.7) y la celosía queda en medio (0.6).
- * Unificarlos sería más barato y cambiaría cómo se ve la máquina, que es justo lo que esta
- * optimización no puede tocar. Tres llamadas en vez de 69 ya es el 96%.
+ * **Why there are three families of tubes and not one.** They share geometry but not material, and an
+ * `<Instances>` has a single material: the hoop of the sticks is matte (`metalness` 0.1) because
+ * it is painted wood, the posts are polished metal (0.7) and the truss sits in between (0.6).
+ * Unifying them would be cheaper and would change how the machine looks, which is exactly what this
+ * optimisation cannot touch. Three calls instead of 69 is already 96%.
  *
- * Los palos y sus ganchos NO entran aquí: se cogen con la mano, y una instancia no se puede
- * apuntar ni mover por su cuenta.
+ * The sticks and their hooks do NOT go in here: they are caught by hand, and an instance cannot be
+ * pointed at nor moved on its own.
  */
 
 const [MatteInstances, MatteInstance] = createInstances()
@@ -29,67 +29,67 @@ const [TrussInstances, TrussInstance] = createInstances()
 const [SocketInstances, SocketInstance] = createInstances()
 const [GlassInstances, GlassInstance] = createInstances()
 
-/** Cuántas piezas de cada familia se van a colgar. */
+/** How many parts of each family are going to be hung. */
 export interface MachinePieceCounts {
-  /** Tramos del aro de los palos, mates. */
+  /** Segments of the hoop of the sticks, matte. */
   matte: number
-  /** Postes de la máquina, metal pulido. */
+  /** Posts of the machine, polished metal. */
   frame: number
-  /** Aro superior, celosía y riostras. */
+  /** Upper ring, truss and braces. */
   truss: number
-  /** Bombillas de la guirnalda: casquillo y cristal, una de cada. */
+  /** Bulbs of the garland: socket and glass, one of each. */
   bulbs: number
 }
 
 /**
- * La estructura no se toca ni se apunta. Sin esto, cada movimiento del ratón —y cada
- * fotograma con los mandos apuntando en el visor— lanzaría un rayo contra los 69 tubos para
- * nada, justo mientras el jugador intenta acertar a un palo.
+ * The structure is neither touched nor pointed at. Without this, every mouse movement —and every
+ * frame with the controllers pointing in the headset— would cast a ray against the 69 tubes for
+ * nothing, right while the player is trying to hit a stick.
  */
 const ignoreRaycast = () => null
 
 type PieceProps = ComponentProps<typeof MatteInstance>
 
-/** Tramo del aro de los palos: madera pintada a rayas. */
+/** Segment of the hoop of the sticks: wood painted in stripes. */
 export function MatteTube(props: PieceProps) {
   return <MatteInstance raycast={ignoreRaycast} {...props} />
 }
 
-/** Poste de la máquina: metal pulido. */
+/** Post of the machine: polished metal. */
 export function FrameTube(props: PieceProps) {
   return <FrameInstance raycast={ignoreRaycast} {...props} />
 }
 
-/** Aro superior, montantes, diagonales y riostras. */
+/** Upper ring, uprights, diagonals and braces. */
 export function TrussTube(props: PieceProps) {
   return <TrussInstance raycast={ignoreRaycast} {...props} />
 }
 
-/** Casquillo de una bombilla de la guirnalda. */
+/** Socket of a bulb of the garland. */
 export function BulbSocket(props: PieceProps) {
   return <SocketInstance raycast={ignoreRaycast} {...props} />
 }
 
-/** Cristal de una bombilla: no ilumina, se ve encendido. */
+/** Glass of a bulb: it does not light anything, it looks lit. */
 export function BulbGlass(props: PieceProps) {
   return <GlassInstance raycast={ignoreRaycast} {...props} />
 }
 
 /**
- * Proveedor de las familias. Van anidadas porque cada `createInstances` reparte su contexto a
- * los descendientes.
+ * Provider of the families. They are nested because each `createInstances` hands its context to
+ * its descendants.
  *
- * `limit` es el recuento exacto: si las piezas lo superan, drei deja de pintar las que sobran
- * **sin avisar**, y la máquina aparecería a trozos según la altura del aro. Por eso se calcula
- * de lo que se va a pintar y no se escribe a mano.
+ * `limit` is the exact count: if the parts exceed it, drei stops painting the surplus ones
+ * **without warning**, and the machine would show up in bits depending on the height of the hoop. That is why it is computed
+ * from what is going to be painted and not written by hand.
  *
- * `frustumCulled={false}`: el mesh instanciado vive en el origen y su volumen envolvente no
- * sigue a las instancias, así que dejar decidir al motor haría desaparecer la máquina entera
- * al mirar hacia otro lado — con el visor puesto, girar la cabeza.
+ * `frustumCulled={false}`: the instanced mesh lives at the origin and its bounding volume does not
+ * follow the instances, so letting the engine decide would make the whole machine disappear
+ * when looking elsewhere — with the headset on, turning the head.
  *
- * La geometría de los tubos es unitaria (1 m de alto y 1 de diámetro), de modo que la escala
- * de cada uno son sus medidas en metros. Las bombillas no: son todas iguales y sus medidas
- * van horneadas, porque el casquillo es cónico y eso no se consigue escalando.
+ * The geometry of the tubes is unit-sized (1 m tall and 1 in diameter), so that the scale
+ * of each one is its measurements in metres. The bulbs are not: they are all the same and their measurements
+ * are baked in, because the socket is conical and that cannot be achieved by scaling.
  */
 export function MachinePieces({
   limits,
@@ -98,12 +98,12 @@ export function MachinePieces({
   limits: MachinePieceCounts
   children: ReactNode
 }) {
-  // Sus matrices y colores se sueltan a mano al salir (`disposeInstances.ts`).
-  const matte = useSoltarInstancias()
-  const frame = useSoltarInstancias()
-  const truss = useSoltarInstancias()
-  const socket = useSoltarInstancias()
-  const glass = useSoltarInstancias()
+  // Their matrices and colours are disposed by hand on the way out (`disposeInstances.ts`).
+  const matte = useDisposeInstances()
+  const frame = useDisposeInstances()
+  const truss = useDisposeInstances()
+  const socket = useDisposeInstances()
+  const glass = useDisposeInstances()
 
   return (
     <MatteInstances ref={matte} limit={limits.matte} frustumCulled={false}>
@@ -118,9 +118,9 @@ export function MachinePieces({
           <cylinderGeometry args={[0.5, 0.5, 1, 10]} />
           <meshStandardMaterial metalness={0.6} roughness={0.4} />
 
-          {/* Las bombillas son todas iguales, así que sus medidas van en la geometría y las
-              instancias no escalan: el casquillo es un cilindro CÓNICO y un escalado no puede
-              reproducir esa conicidad, solo estirarlo. */}
+          {/* The bulbs are all the same, so their measurements go in the geometry and the
+              instances do not scale: the socket is a CONICAL cylinder and a scaling cannot
+              reproduce that taper, only stretch it. */}
           <SocketInstances ref={socket} limit={limits.bulbs} frustumCulled={false}>
             <cylinderGeometry args={[0.012, 0.015, 0.038, 8]} />
             <meshStandardMaterial color="#3b3630" metalness={0.5} roughness={0.6} />

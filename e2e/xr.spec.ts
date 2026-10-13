@@ -24,110 +24,110 @@ import {
 } from './support/xr'
 
 /**
- * Lo que tarda la lección en poder salir: la cuenta atrás entera y el margen
- * con el que se arranca la partida dentro de la sesión. Antes de eso no hay
- * palos cayendo, y la lección se aprende atrapándolos.
+ * How long the lesson takes to be able to come out: the whole countdown and the margin
+ * the run is started with inside the session. Before that there are no
+ * sticks falling, and the lesson is learnt by catching them.
  */
-const ESPERA_A_JUGAR = (COUNTDOWN_SECONDS + 5) * 1000
+const WAIT_UNTIL_PLAYING = (COUNTDOWN_SECONDS + 5) * 1000
 
 /**
- * Lo que dura la lección si nadie atrapa nada: de plazo de seguridad en plazo
- * de seguridad, que es el peor caso que cuenta `TUTORIAL_SECONDS`.
+ * How long the lesson lasts if nobody catches anything: from safety deadline to safety
+ * deadline, which is the worst case `TUTORIAL_SECONDS` counts.
  */
-const PLAZO_TOTAL = TUTORIAL_SECONDS
+const TOTAL_DEADLINE = TUTORIAL_SECONDS
 
 /**
- * Modo inmersivo, sobre un Quest 3 emulado con IWER.
+ * Immersive mode, on a Quest 3 emulated with IWER.
  *
- * Chromium no trae WebXR, así que sin el emulador estos caminos no se ejecutan
- * nunca: los demás tests entran por el ratón, que es código distinto. Aquí se
- * abre una sesión de verdad y se comprueba en qué estado deja al juego.
+ * Chromium ships no WebXR, so without the emulator these paths never
+ * run: the other tests enter through the mouse, which is different code. Here a
+ * real session is opened and it is checked what state it leaves the game in.
  *
- * El estado se observa por el DOM: en sesión inmersiva el jugador no lo ve,
- * pero los overlays siguen montados, así que el menú de escritorio y el
- * marcador sirven de espejo de en qué fase está la partida.
+ * The state is observed through the DOM: in an immersive session the player does not see it,
+ * but the overlays are still mounted, so the desktop menu and the
+ * scoreboard serve as a mirror of which phase the run is in.
  *
- * **Lo que estos tests NO cubren:** mover los mandos y pulsar sus botones. El
- * emulador entrega sesión, dos `inputSources`, ~125 fps y modo `controller`,
- * pero los punteros de @react-three/xr no llegan a emitir eventos sobre los
- * objetos de la escena (comprobado con un barrido de posiciones, con agarre,
- * contacto y rayo, y con los botones escuchando `pointerdown`). Así que el
- * agarre de los palos **con un mando** y los botones del menú 3D solo se pueden
- * validar en hardware. Ojo: esto ya no debe usarse como coartada. Durante mucho
- * tiempo tapó un fallo real —los mandos no llegaban a registrarse porque su
- * perfil se descargaba de un CDN que la CSP bloquea—, que sí se podía haber
- * detectado mirando la consola dentro de la sesión. De ahí el test que la
- * vigila. Y con **las manos desnudas** sí engancha: `hands.spec.ts` atrapa un
- * palo de verdad, así que la limitación es del modo `controller` del emulador y
- * no de que el juego no reciba eventos.
+ * **What these tests do NOT cover:** moving the controllers and pressing their buttons. The
+ * emulator delivers a session, two `inputSources`, ~125 fps and `controller` mode,
+ * but the pointers of @react-three/xr do not get to emit events on the
+ * objects of the scene (checked with a sweep of positions, with grip,
+ * touch and ray, and with the buttons listening to `pointerdown`). So the
+ * grip of the sticks **with a controller** and the buttons of the 3D menu can only be
+ * validated on hardware. Beware: this must no longer be used as an alibi. For a long
+ * time it covered a real failure —the controllers did not get registered because their
+ * profile was downloaded from a CDN the CSP blocks—, which could indeed have been
+ * detected by looking at the console inside the session. Hence the test that
+ * watches it. And with **bare hands** it does engage: `hands.spec.ts` catches a
+ * real stick, so the limitation belongs to the emulator's `controller` mode and
+ * not to the game not receiving events.
  *
- * Lo que sí está cubierto sin navegador, en `src/lib`: qué puntero puede
- * atrapar un palo (`xrInteraction.test.ts`), y que la interfaz quede siempre
- * delante del jugador y dentro de su campo de visión (`xrAnchor.test.ts` y el
- * bloque de layout de `xrInteraction.test.ts`) — que es justo el fallo que hacía
- * el modo inmersivo inutilizable.
+ * What is indeed covered with no browser, in `src/lib`: which pointer can
+ * catch a stick (`xrInteraction.test.ts`), and that the ui always ends up
+ * in front of the player and inside their field of view (`xrAnchor.test.ts` and the
+ * layout block of `xrInteraction.test.ts`) — which is just the failure that made
+ * the immersive mode unusable.
  */
 
-test.describe('Sesión inmersiva', () => {
+test.describe('Immersive session', () => {
   test.beforeEach(async ({ page }) => {
     await installXREmulator(page)
     await openGame(page)
   })
 
-  test('con WebXR disponible aparece la entrada al visor', async ({ page }) => {
+  test('with WebXR available the entry to the headset appears', async ({ page }) => {
     await expect(
       page.getByRole('button', { name: 'Enter the headset' }),
     ).toBeVisible()
   })
 
-  test('entrar en VR lleva al menú y no arranca una partida sola', async ({
+  test('entering VR leads to the menu and does not start a run by itself', async ({
     page,
   }) => {
     await enterVR(page)
 
-    // Si hubiera arrancado, el menú habría dejado paso al marcador. Este era el
-    // comportamiento que se veía con el visor puesto.
+    // If it had started, the menu would have given way to the scoreboard. This was the
+    // behaviour that was seen with the headset on.
     await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
     await expect(page.getByRole('status')).toHaveCount(0)
   })
 
-  test('los palos no se sueltan mientras se está en el menú', async ({ page }) => {
+  test('the sticks are not released while in the menu', async ({ page }) => {
     await enterVR(page)
 
-    // Tiempo de sobra para que, con el reloj corriendo, ya hubieran caído.
+    // Time to spare for them, with the clock running, to have already fallen.
     await page.waitForTimeout(4000)
 
     await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
     await expect(page.getByRole('status')).toHaveCount(0)
   })
 
-  // Pendiente por una limitación del emulador, no de la app. Se ha reintentado
-  // tras arreglar el registro de mandos (que era un fallo real: sin el perfil
-  // local no se creaba el `XRControllerState` y no había punteros que valieran),
-  // con los botones escuchando `pointerdown` y con la sesión confirmada en modo
-  // `controller`, dos `inputSources` y la consola limpia. Aun así IWER no llega
-  // a propagar sus poses a los punteros. Se deja escrito para activarlo si el
-  // emulador mejora, y porque describe lo que hay que probar a mano en el visor.
-  test.fixme('se puede empezar la partida apuntando al botón del menú 3D', async ({
+  // Pending because of a limitation of the emulator, not of the app. It has been retried
+  // after fixing the registration of controllers (which was a real failure: without the local
+  // profile the `XRControllerState` was not created and there were no pointers that were any good),
+  // with the buttons listening to `pointerdown` and with the session confirmed in
+  // `controller` mode, two `inputSources` and the console clean. Even so IWER does not get
+  // to propagate its poses to the pointers. It is left written to enable it if the
+  // emulator improves, and because it describes what has to be tried by hand in the headset.
+  test.fixme('the run can be started by pointing at the button of the 3D menu', async ({
     page,
   }) => {
     await enterVR(page)
 
-    // Mano a un lado, a la altura del pecho, apuntando al botón de empezar.
+    // Hand to one side, at chest height, pointing at the start button.
     await placeHand(page, 'right', { x: 0.25, y: 1.25, z: -0.15 })
     await aimHandAt(page, 'right', toPoint(xrPlayButtonPosition()))
     await pressAndRelease(page, 'right', 'trigger')
 
-    // Si el rayo enganchó, la partida arranca y aparece el marcador.
+    // If the ray engaged, the run starts and the scoreboard appears.
     await expect(page.getByRole('status')).toBeVisible()
   })
 
-  test('la sesión monta mandos e interfaz sin ensuciar la consola', async ({
+  test('the session mounts controllers and ui without dirtying the console', async ({
     page,
   }) => {
-    // Dentro de la sesión se monta código que ningún test de escritorio toca:
-    // el mando dibujado a mano, la pista del gatillo y el anclaje que sigue la
-    // mirada. Si alguno reventara, aquí saldría.
+    // Inside the session code is mounted that no desktop test touches:
+    // the hand-drawn controller, the trigger's hint and the anchor that follows the
+    // gaze. If any of them blew up, it would show here.
     const errors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') errors.push(message.text())
@@ -136,13 +136,13 @@ test.describe('Sesión inmersiva', () => {
 
     await enterVR(page)
     await startGameInsideSession(page)
-    // Unos segundos de partida: el anclaje y la pista corren en cada frame.
+    // A few seconds of run: the anchor and the hint run on every frame.
     await page.waitForTimeout(2000)
 
     expect(errors).toEqual([])
   })
 
-  test('salir de la sesión devuelve al menú de escritorio', async ({ page }) => {
+  test('leaving the session goes back to the desktop menu', async ({ page }) => {
     await enterVR(page)
 
     await startGameInsideSession(page)
@@ -150,129 +150,129 @@ test.describe('Sesión inmersiva', () => {
 
     await exitXR(page)
 
-    // Volver al menú al salir solo ocurre si la app detectó el modo inmersivo
-    // (`XRSessionController` recuerda que hubo sesión), así que este test
-    // también prueba que el modo se reconoce.
+    // Going back to the menu on leaving only happens if the app detected the immersive mode
+    // (`XRSessionController` remembers that there was a session), so this test
+    // also proves that the mode is recognised.
     await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
     await expect(page.getByRole('status')).toHaveCount(0)
   })
 })
 
 /**
- * Tutorial de la primera vez.
+ * First-time tutorial.
  *
- * Lo que quien juega ve es el panel dentro del visor con el gesto dibujado, y
- * eso solo se puede juzgar con las gafas puestas. Lo que sí se comprueba aquí
- * es el contrato: que salga la primera vez y solo la primera, que salga **con
- * la partida en marcha** y no antes, que se pueda pasar de paso y que siempre
- * se pueda salir. Los botones que se pulsan son el reflejo en DOM de los del
- * panel —los dos llaman a lo mismo—, porque el emulador no propaga los
- * punteros de los mandos (ver la nota de arriba).
+ * What whoever plays sees is the panel inside the headset with the gesture drawn, and
+ * that can only be judged with the goggles on. What is indeed checked here
+ * is the contract: that it comes out the first time and only the first, that it comes out **with
+ * the run under way** and not before, that one can move on a step and that one can
+ * always get out. The buttons that are pressed are the DOM reflection of the ones of the
+ * panel —both call the same thing—, because the emulator does not propagate the
+ * controllers' pointers (see the note above).
  */
-test.describe('Tutorial en el visor', () => {
+test.describe('Tutorial in the headset', () => {
   test.beforeEach(async ({ page }) => {
     await installXREmulator(page)
     await openGame(page)
   })
 
-  test('la primera partida enseña, pero solo cuando ya se está jugando', async ({
+  test('the first run teaches, but only when play is already under way', async ({
     page,
   }) => {
     await enterVR(page)
     await pressPlayInsideSession(page)
 
-    // Durante la cuenta atrás no hay nada que atrapar: la lección se aprende
-    // atrapando palos, así que espera a que empiecen a caer.
+    // During the countdown there is nothing to catch: the lesson is learnt
+    // by catching sticks, so it waits for them to start falling.
     await expect(page.getByRole('timer')).toBeVisible()
     await expect(tutorialSkipButton(page)).toHaveCount(0)
 
-    // Y en cuanto se juega, sale con sus dos salidas a mano.
-    await expect(tutorialSkipButton(page)).toBeVisible({ timeout: ESPERA_A_JUGAR })
+    // And as soon as play starts, it comes out with its two exits at hand.
+    await expect(tutorialSkipButton(page)).toBeVisible({ timeout: WAIT_UNTIL_PLAYING })
     await expect(tutorialNextButton(page)).toBeVisible()
   })
 
-  test('la partida no se para para enseñar', async ({ page }) => {
-    // Es la diferencia con la demostración de antes: quien la miraba sin hacer
-    // nada salía igual que entró. Ahora los palos caen mientras se explica.
+  test('the run does not stop in order to teach', async ({ page }) => {
+    // It is the difference from the demonstration of before: whoever watched it without doing
+    // anything came out just as they went in. Now the sticks fall while it is explained.
     await enterVR(page)
     await pressPlayInsideSession(page)
 
-    await expect(tutorialSkipButton(page)).toBeVisible({ timeout: ESPERA_A_JUGAR })
+    await expect(tutorialSkipButton(page)).toBeVisible({ timeout: WAIT_UNTIL_PLAYING })
     await expect(page.getByRole('timer')).toHaveCount(0)
     await expect(page.getByRole('status')).toBeVisible()
   })
 
-  test('el botón de siguiente pasa de paso, y el segundo la termina', async ({
+  test('the next button moves on a step, and the second one finishes it', async ({
     page,
   }) => {
     await enterVR(page)
     await pressPlayInsideSession(page)
 
-    const siguiente = tutorialNextButton(page)
-    await expect(siguiente).toBeVisible({ timeout: ESPERA_A_JUGAR })
-    const primera = (await tutorialPhrase(page).textContent()) ?? ''
+    const next = tutorialNextButton(page)
+    await expect(next).toBeVisible({ timeout: WAIT_UNTIL_PLAYING })
+    const first = (await tutorialPhrase(page).textContent()) ?? ''
 
-    await siguiente.focus()
+    await next.focus()
     await page.keyboard.press('Enter')
-    await expect(tutorialPhrase(page)).not.toHaveText(primera)
+    await expect(tutorialPhrase(page)).not.toHaveText(first)
 
-    await siguiente.focus()
+    await next.focus()
     await page.keyboard.press('Enter')
-    await expect(siguiente).toHaveCount(0)
+    await expect(next).toHaveCount(0)
   })
 
-  test('y si nadie hace nada, se retira sola por plazo', async ({ page }) => {
-    // Un paso que no se consiga —porque los palos se escapan— dejaría a alguien
-    // encerrado en él con el panel delante de la cara toda la partida.
+  test('and if nobody does anything, it withdraws by itself on deadline', async ({ page }) => {
+    // A step that is not achieved —because the sticks get away— would leave someone
+    // locked in it with the panel in front of their face the whole run.
     await enterVR(page)
     await pressPlayInsideSession(page)
 
     const skip = tutorialSkipButton(page)
-    await expect(skip).toBeVisible({ timeout: ESPERA_A_JUGAR })
-    await expect(skip).toHaveCount(0, { timeout: (PLAZO_TOTAL + 6) * 1000 })
-    // Y la partida sigue donde estaba: nunca llegó a pararse.
+    await expect(skip).toBeVisible({ timeout: WAIT_UNTIL_PLAYING })
+    await expect(skip).toHaveCount(0, { timeout: (TOTAL_DEADLINE + 6) * 1000 })
+    // And the run goes on where it was: it never got to stop.
     await expect(page.getByRole('status')).toBeVisible()
   })
 
-  test('se puede saltar en cuanto aparece', async ({ page }) => {
+  test('it can be skipped as soon as it appears', async ({ page }) => {
     await enterVR(page)
     await pressPlayInsideSession(page)
 
     const skip = tutorialSkipButton(page)
-    await expect(skip).toBeVisible({ timeout: ESPERA_A_JUGAR })
+    await expect(skip).toBeVisible({ timeout: WAIT_UNTIL_PLAYING })
     await skip.focus()
     await page.keyboard.press('Enter')
 
-    // Saltarla no toca la partida, que sigue exactamente donde estaba.
+    // Skipping it does not touch the run, which goes on exactly where it was.
     await expect(skip).toHaveCount(0)
     await expect(page.getByRole('status')).toBeVisible()
   })
 
-  test('solo la primera vez: al volver a abrir el juego ya no aparece', async ({
+  test('only the first time: on opening the game again it no longer appears', async ({
     page,
   }) => {
     await enterVR(page)
     await pressPlayInsideSession(page)
 
-    // La primera vez sí sale, y saltarla la da por vista.
+    // The first time it does come out, and skipping it counts it as seen.
     const skip = tutorialSkipButton(page)
-    await expect(skip).toBeVisible({ timeout: ESPERA_A_JUGAR })
+    await expect(skip).toBeVisible({ timeout: WAIT_UNTIL_PLAYING })
     await skip.focus()
     await page.keyboard.press('Enter')
     await expect(skip).toHaveCount(0)
 
-    // Recargar reconstruye el juego desde cero: lo único que sobrevive es lo
-    // que se guardó en el navegador.
+    // Reloading rebuilds the game from scratch: the only thing that survives is what
+    // was saved in the browser.
     await openGame(page)
     await enterVR(page)
     await pressPlayInsideSession(page)
 
-    await page.waitForTimeout(ESPERA_A_JUGAR)
+    await page.waitForTimeout(WAIT_UNTIL_PLAYING)
     await expect(tutorialSkipButton(page)).toHaveCount(0)
     await expect(page.getByRole('status')).toBeVisible()
   })
 
-  test('quien ya la vio en otra visita entra directo a jugar', async ({ page }) => {
+  test('whoever already saw it on another visit goes straight in to play', async ({ page }) => {
     await page.addInitScript(
       ([key, value]) => window.localStorage.setItem(key, value),
       [TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE] as [string, string],
@@ -281,15 +281,15 @@ test.describe('Tutorial en el visor', () => {
     await enterVR(page)
     await pressPlayInsideSession(page)
 
-    await page.waitForTimeout(ESPERA_A_JUGAR)
+    await page.waitForTimeout(WAIT_UNTIL_PLAYING)
     await expect(tutorialSkipButton(page)).toHaveCount(0)
   })
 
-  test('quien vio la lección vieja la vuelve a ver: no es la misma', async ({
+  test('whoever saw the old lesson sees it again: it is not the same one', async ({
     page,
   }) => {
-    // Lo guardado es la versión de la lección. La 1 era la demostración por
-    // reloj, con la partida en cola, y no se hacía jugando.
+    // What is saved is the version of the lesson. Version 1 was the demonstration by
+    // clock, with the run queued, and it was not done by playing.
     await page.addInitScript(
       (key) => window.localStorage.setItem(key, '1'),
       TUTORIAL_SEEN_KEY,
@@ -298,13 +298,13 @@ test.describe('Tutorial en el visor', () => {
     await enterVR(page)
     await pressPlayInsideSession(page)
 
-    await expect(tutorialSkipButton(page)).toBeVisible({ timeout: ESPERA_A_JUGAR })
+    await expect(tutorialSkipButton(page)).toBeVisible({ timeout: WAIT_UNTIL_PLAYING })
   })
 
-  test('la lección se pinta sin ensuciar la consola', async ({ page }) => {
-    // Monta geometría que ningún otro test toca: el panel con el gesto dibujado
-    // y el modelo del mando de verdad puesto sobre las dos manos, que llega en
-    // un `.glb` con las texturas dentro del fichero.
+  test('the lesson is painted without dirtying the console', async ({ page }) => {
+    // It mounts geometry no other test touches: the panel with the gesture drawn
+    // and the model of the real controller put over the two hands, which arrives in
+    // a `.glb` with the textures inside the file.
     const errors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') errors.push(message.text())
@@ -313,9 +313,9 @@ test.describe('Tutorial en el visor', () => {
 
     await enterVR(page)
     await pressPlayInsideSession(page)
-    await expect(tutorialSkipButton(page)).toBeVisible({ timeout: ESPERA_A_JUGAR })
-    // Lo suficiente para pasar por los dos pasos del guion.
-    await page.waitForTimeout((PLAZO_TOTAL + 1) * 1000)
+    await expect(tutorialSkipButton(page)).toBeVisible({ timeout: WAIT_UNTIL_PLAYING })
+    // Enough to go through the two steps of the script.
+    await page.waitForTimeout((TOTAL_DEADLINE + 1) * 1000)
 
     expect(errors).toEqual([])
     await expect(page.getByRole('status')).toBeVisible()
@@ -323,17 +323,17 @@ test.describe('Tutorial en el visor', () => {
 })
 
 /**
- * Altura del aro guardada de otra visita.
+ * Hoop height saved from another visit.
  *
- * Lo que se puede comprobar aquí es el **arranque**: que una corrección ya
- * guardada entre en la escena sin romperla, incluso si lo guardado es una
- * barbaridad que nadie pudo elegir en el menú. Pulsar los botones que la
- * cambian sigue siendo cosa del hardware (ver la nota de arriba sobre el
- * emulador); la regla de qué se acepta y qué se descarta está cubierta sin
- * navegador en `src/lib/hoopHeight.test.ts`.
+ * What can be checked here is the **start**: that a correction already
+ * saved enters the scene without breaking it, even if what is saved is an
+ * outrage nobody could have chosen in the menu. Pressing the buttons that
+ * change it is still a matter for the hardware (see the note above about the
+ * emulator); the rule of what is accepted and what is discarded is covered with no
+ * browser in `src/lib/hoopHeight.test.ts`.
  */
-test.describe('Altura del aro guardada', () => {
-  test('una corrección manipulada no rompe la escena ni la sesión', async ({
+test.describe('Saved hoop height', () => {
+  test('a tampered correction breaks neither the scene nor the session', async ({
     page,
   }) => {
     const errors: string[] = []
@@ -343,13 +343,13 @@ test.describe('Altura del aro guardada', () => {
     page.on('pageerror', (error) => errors.push(error.message))
 
     await installXREmulator(page)
-    // Lo que de verdad puede tumbar la escena: algo que no es un número. Sin la
-    // guarda de `parseHoopAdjustment`, el `NaN` viaja hasta las posiciones del
-    // aro y three empieza a quejarse por consola de radios y cajas imposibles,
-    // con la máquina sin dibujar.
+    // What can really knock the scene down: something that is not a number. Without the
+    // guard of `parseHoopAdjustment`, the `NaN` travels as far as the positions of the
+    // hoop and three starts complaining through the console about impossible radii and boxes,
+    // with the machine not drawn.
     await page.addInitScript(
       ([key, value]) => window.localStorage.setItem(key, value),
-      [HOOP_ADJUST_KEY, 'un palmo más arriba'] as const,
+      [HOOP_ADJUST_KEY, 'a hand span higher'] as const,
     )
 
     await openGame(page)

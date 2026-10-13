@@ -10,26 +10,26 @@ import { crowdBob, crowdTempo } from '../../lib/fairMood'
 import { CROWD_SHADES } from '../../lib/gameConfig'
 import { ignoreRaycast } from './FairPieces'
 import type { FairMoodState } from './FairMood'
-import { useSoltarInstancias } from './disposeInstances'
+import { useDisposeInstances } from './disposeInstances'
 import { useReducedMotion } from './useReducedMotion'
 
 /**
- * El público de la feria: siluetas alrededor del recinto mirando a la máquina.
+ * The crowd of the fairground: silhouettes around the venue looking at the machine.
  *
- * Una silueta es un cuerpo (cápsula) con una cabeza (esfera), fundidos en una
- * sola geometría para que todo el público sea UNA familia instanciada y por
- * tanto una llamada de dibujo (ver `FairPieces` para el porqué). No tienen
- * cara ni brazos a propósito: a seis metros, con las luces de feria detrás, lo
- * que se lee es la forma, y una silueta lisa envejece mejor que un muñeco.
+ * A silhouette is a body (capsule) with a head (sphere), merged into a
+ * single geometry so that the whole crowd is ONE instanced family and
+ * therefore one draw call (see `FairPieces` for the why). They have no
+ * face and no arms on purpose: at six metres, with the fairground lights behind, what
+ * is read is the shape, and a plain silhouette ages better than a doll.
  *
- * Se mecen —más alto y más deprisa cuanto mayor es la racha (`lib/fairMood.ts`)—
- * moviendo las instancias desde `useFrame`, sin pasar por React. Con
- * `prefers-reduced-motion` se quedan quietas.
+ * They sway —higher and faster the longer the streak (`lib/fairMood.ts`)—
+ * by moving the instances from `useFrame`, without going through React. With
+ * `prefers-reduced-motion` they stay still.
  */
 
 const [FigureInstances, FigureInstance] = createInstances()
 
-/** La silueta base, de 1,7 m: la estatura de cada figura es su escala en Y. */
+/** The base silhouette, 1.7 m tall: the height of each figure is its scale in Y. */
 function silhouette(): BufferGeometry {
   const body = new CapsuleGeometry(0.2, 1.05, 3, 8).translate(0, 0.725, 0)
   const head = new SphereGeometry(0.13, 8, 6).translate(0, 1.58, 0)
@@ -40,15 +40,15 @@ function silhouette(): BufferGeometry {
   return merged
 }
 
-/** Cuánto se ladea una figura en lo alto de su vaivén, en radianes por metro de salto. */
+/** How much a figure leans at the top of its sway, in radians per metre of jump. */
 const SWAY_PER_METRE = 0.6
 
 export function Crowd({ moodRef }: { moodRef: RefObject<FairMoodState> }) {
   const spots = useMemo(() => crowdSpots(), [])
   const geometry = useMemo(() => silhouette(), [])
   const figures = useRef<(Object3D | null)[]>([])
-  // Sus matrices y colores se sueltan a mano al salir (`disposeInstances.ts`).
-  const instancias = useSoltarInstancias()
+  // Its matrices and colours are disposed of by hand on leaving (`disposeInstances.ts`).
+  const instances = useDisposeInstances()
   const reducedMotion = useReducedMotion()
 
   useEffect(() => () => geometry.dispose(), [geometry])
@@ -65,14 +65,14 @@ export function Crowd({ moodRef }: { moodRef: RefObject<FairMoodState> }) {
       if (figure == null) continue
       const spot = spots[index]
       const wave = Math.sin(time * tempo * Math.PI * 2 + spot.phase)
-      // Solo hacia arriba: la gente salta, no se hunde en el suelo.
+      // Only upwards: people jump, they do not sink into the ground.
       figure.position.y = spot.position[1] + Math.max(0, wave) * bob
       figure.rotation.z = wave * bob * SWAY_PER_METRE
     }
   })
 
   return (
-    <FigureInstances ref={instancias} limit={spots.length} frustumCulled={false}>
+    <FigureInstances ref={instances} limit={spots.length} frustumCulled={false}>
       <primitive object={geometry} attach="geometry" />
       <meshStandardMaterial roughness={0.9} metalness={0} />
       {spots.map((spot, index) => (

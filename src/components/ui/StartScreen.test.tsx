@@ -5,12 +5,12 @@ import { PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS } from '../../lib/duel'
 import { GAME_MODE_HINTS, GAME_MODE_ORDER } from '../../lib/gameMode'
 import { StartScreen } from './StartScreen'
 
-// Sin visor no hay entrada al visor: lo que se prueba es qué pregunta el menú.
+// Without a headset there is no entrance to the headset: what is tested is what the menu asks.
 vi.mock('../xr/XRWrapper', () => ({ XRWrapper: () => null }))
 
 /**
- * El menú de la web: la fila de contra quién sale solo en el desafío, que es la misma partida
- * para todos, y a dos lo que se enseña es lo que lleva la pareja y no el récord de nadie.
+ * The website's menu: the row of against whom shows only in the challenge mode, which is the same
+ * run for everyone, and with two what is shown is what the pair has so far and not anyone's record.
  */
 
 afterEach(() => {
@@ -18,7 +18,7 @@ afterEach(() => {
   localStorage.clear()
 })
 
-async function abrir() {
+async function open() {
   await act(async () => {
     render(
       <GameProvider>
@@ -28,101 +28,101 @@ async function abrir() {
   })
 }
 
-const modo = (nombre: string) => screen.getByRole('button', { name: new RegExp(`^${nombre}`) })
+const modeButton = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) })
 
-describe('el menú de la web abre en el reto', () => {
-  it('con el reto elegido, sin preguntar palos ni velocidad: Jugar sin tocar nada lo empieza', async () => {
-    await abrir()
+describe('the website menu opens on the challenge', () => {
+  it('with the challenge chosen, without asking for sticks or speed: Play without touching anything starts it', async () => {
+    await open()
 
-    expect(modo('Challenge').getAttribute('aria-pressed')).toBe('true')
-    expect(modo('Practice').getAttribute('aria-pressed')).toBe('false')
+    expect(modeButton('Challenge').getAttribute('aria-pressed')).toBe('true')
+    expect(modeButton('Practice').getAttribute('aria-pressed')).toBe('false')
     expect(screen.queryByText('Number of sticks')).toBeNull()
     expect(screen.queryByText('Difficulty')).toBeNull()
     expect(screen.getByRole('button', { name: 'Play' })).toBeDefined()
   })
 
-  it('la práctica queda a un toque, con sus palos y su velocidad tras «Más opciones»', async () => {
-    await abrir()
-    fireEvent.click(modo('Practice'))
+  it('practice is one tap away, with its sticks and its speed behind «Más opciones»', async () => {
+    await open()
+    fireEvent.click(modeButton('Practice'))
 
-    expect(modo('Practice').getAttribute('aria-pressed')).toBe('true')
-    // Abre plegada: el modo a la vista y lo demás tras el botón.
+    expect(modeButton('Practice').getAttribute('aria-pressed')).toBe('true')
+    // It opens folded: the mode in view and the rest behind the button.
     expect(screen.queryByText('Number of sticks')).toBeNull()
     expect(screen.queryByText('Length')).toBeNull()
-    const mas = screen.getByRole('button', { name: 'More options' })
-    expect(mas.getAttribute('aria-expanded')).toBe('false')
+    const more = screen.getByRole('button', { name: 'More options' })
+    expect(more.getAttribute('aria-expanded')).toBe('false')
 
-    fireEvent.click(mas)
+    fireEvent.click(more)
     expect(screen.getByText('Number of sticks')).toBeDefined()
     expect(screen.getByText('Difficulty')).toBeDefined()
     expect(screen.getByText('Length')).toBeDefined()
-    const menos = screen.getByRole('button', { name: 'Fewer options' })
-    expect(menos.getAttribute('aria-expanded')).toBe('true')
+    const fewer = screen.getByRole('button', { name: 'Fewer options' })
+    expect(fewer.getAttribute('aria-expanded')).toBe('true')
 
-    fireEvent.click(menos)
+    fireEvent.click(fewer)
     expect(screen.queryByText('Number of sticks')).toBeNull()
   })
 
-  it('con el reto o los niveles no hay nada plegado: ni el botón', async () => {
-    await abrir()
+  it('with the challenge or the levels there is nothing folded: not even the button', async () => {
+    await open()
     expect(screen.queryByRole('button', { name: 'More options' })).toBeNull()
-    fireEvent.click(modo('Levels'))
+    fireEvent.click(modeButton('Levels'))
     expect(screen.queryByRole('button', { name: 'More options' })).toBeNull()
     expect(screen.getByText('Level')).toBeDefined()
   })
 
-  it('la fila del modo empieza por el reto, el que da medalla, y se llama como la cabina', async () => {
-    await abrir()
-    const modos = screen.getAllByRole('button').filter((b) => /^(Challenge|Practice|Levels)/.test(b.textContent ?? ''))
-    expect(modos.map((b) => b.textContent?.match(/^(Challenge|Practice|Levels)/)?.[0])).toEqual(['Challenge', 'Practice', 'Levels'])
+  it('the mode row starts with the challenge, the one that gives a medal, and is called like the cabinet', async () => {
+    await open()
+    const modeButtons = screen.getAllByRole('button').filter((b) => /^(Challenge|Practice|Levels)/.test(b.textContent ?? ''))
+    expect(modeButtons.map((b) => b.textContent?.match(/^(Challenge|Practice|Levels)/)?.[0])).toEqual(['Challenge', 'Practice', 'Levels'])
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Stick Rush')
   })
 
-  it('cada nivel dice sus estrellas con el plural que toca, en los dos idiomas', async () => {
+  it('each level says its stars with the right plural, in both languages', async () => {
     localStorage.setItem('stick-rush:levels:unlocked', '3')
     localStorage.setItem('stick-rush:levels:stars', '1,2,0')
-    await abrir()
-    fireEvent.click(modo('Levels'))
+    await open()
+    fireEvent.click(modeButton('Levels'))
     expect(screen.getByRole('button', { name: 'Level 1, 1 star' })).toBeDefined()
     expect(screen.getByRole('button', { name: 'Level 2, 2 stars' })).toBeDefined()
   })
 
-  it('dice de cada modo si cuenta para medalla: solo el reto', async () => {
-    await abrir()
+  it('says of each mode whether it counts for a medal: only the challenge', async () => {
+    await open()
 
     for (const mode of GAME_MODE_ORDER) expect(screen.getByText(GAME_MODE_HINTS[mode]), mode).toBeDefined()
-    expect(modo('Challenge').textContent).toContain('Counts for a medal')
-    expect(modo('Practice').textContent).toContain('No medal')
-    expect(modo('Levels').textContent).toContain('No medal')
+    expect(modeButton('Challenge').textContent).toContain('Counts for a medal')
+    expect(modeButton('Practice').textContent).toContain('No medal')
+    expect(modeButton('Levels').textContent).toContain('No medal')
   })
 })
 
-describe('el menú de la web, a dos', () => {
-  it('solo el desafío pregunta contra quién: solo, o a dos pasándose el mando', async () => {
-    await abrir()
-    for (const nombre of ['Practice', 'Levels']) {
-      fireEvent.click(modo(nombre))
-      expect(screen.queryByText('Players'), nombre).toBeNull()
+describe('the website menu, for two', () => {
+  it('only the challenge mode asks against whom: alone, or two passing the controller', async () => {
+    await open()
+    for (const name of ['Practice', 'Levels']) {
+      fireEvent.click(modeButton(name))
+      expect(screen.queryByText('Players'), name).toBeNull()
     }
 
-    fireEvent.click(modo('Challenge'))
+    fireEvent.click(modeButton('Challenge'))
     expect(screen.getByText('Players')).toBeDefined()
     expect(PLAYER_COUNT_LABELS).toEqual({ 1: 'Solo', 2: 'Duel' })
     const solo = screen.getByRole('button', { name: new RegExp(`^${PLAYER_COUNT_LABELS[1]}`) })
-    const aDos = screen.getByRole('button', { name: new RegExp(`^${PLAYER_COUNT_LABELS[2]}`) })
+    const duel = screen.getByRole('button', { name: new RegExp(`^${PLAYER_COUNT_LABELS[2]}`) })
     expect(solo.getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByText(PLAYER_COUNT_HINTS[2])).toBeDefined()
 
-    fireEvent.click(aDos)
-    expect(aDos.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(duel)
+    expect(duel.getAttribute('aria-pressed')).toBe('true')
     expect(solo.getAttribute('aria-pressed')).toBe('false')
   })
 
-  it('a dos no enseña el récord de nadie, sino lo que lleva la pareja', async () => {
+  it('with two it does not show anyone\'s record, but what the pair has so far', async () => {
     localStorage.setItem('stick-rush:best-points:challenge', '321')
     localStorage.setItem('stick-rush:duel-tally', '{"wins":[2,1],"ties":1}')
-    await abrir()
-    fireEvent.click(modo('Challenge'))
+    await open()
+    fireEvent.click(modeButton('Challenge'))
     expect(screen.getByText(/Best score in/)).toBeDefined()
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${PLAYER_COUNT_LABELS[2]}`) }))
@@ -130,9 +130,9 @@ describe('el menú de la web, a dos', () => {
     expect(screen.getByText('Duels won: 2–1 · tied: 1')).toBeDefined()
   })
 
-  it('a dos y sin partidas todavía no dice nada', async () => {
-    await abrir()
-    fireEvent.click(modo('Challenge'))
+  it('with two and no matches yet it says nothing', async () => {
+    await open()
+    fireEvent.click(modeButton('Challenge'))
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${PLAYER_COUNT_LABELS[2]}`) }))
     expect(screen.queryByText(/Duels won/)).toBeNull()
   })

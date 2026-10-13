@@ -2,21 +2,21 @@ import { test } from '@playwright/test'
 import { catchStick, openGame, startGame } from './helpers'
 
 /**
- * Genera la captura que ilustra el README. No es una comprobación: se salta
- * salvo que se pida expresamente, para no reescribir el PNG en cada `test:e2e`.
+ * Generates the screenshot that illustrates the README. It is not a check: it is skipped
+ * unless it is asked for expressly, so as not to rewrite the PNG on every `test:e2e`.
  *
  *   npm run capture
  */
-test.describe('Captura para el README', () => {
-  test.skip(!process.env.CAPTURE, 'ejecuta `npm run capture` para regenerarla')
+test.describe('README capture', () => {
+  test.skip(!process.env.CAPTURE, 'run `npm run capture` to regenerate it')
 
-  test('partida en curso con los palos cayendo', async ({ page }) => {
+  test('run in progress with the sticks falling', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 810 })
     await openGame(page)
     await startGame(page, { sticks: 11, difficulty: 'Easy' })
 
-    // Un par de palos atrapados para que se vea el marcador en marcha, y una
-    // espera para pillar varios ya sueltos a media caída.
+    // A couple of sticks caught so that the scoreboard is seen running, and a
+    // wait to catch several already released in mid fall.
     await catchStick(page)
     await catchStick(page)
     await page.waitForTimeout(3500)

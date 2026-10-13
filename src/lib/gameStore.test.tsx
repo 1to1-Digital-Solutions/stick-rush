@@ -1,30 +1,30 @@
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MACHINE_HEIGHT, MAX_STICKS, MIN_STICKS } from './gameConfig'
-import { COUNTDOWN_SECONDS, useGame, useGameStoreValue, type OpcionesDelSalon } from './gameStore'
+import { COUNTDOWN_SECONDS, useGame, useGameStoreValue, type HallOptions } from './gameStore'
 import { CHALLENGE_LIVES, CHALLENGE_SETUP, DEFAULT_GAME_MODE } from './gameMode'
 import { buildStickLayout } from './stickLayout'
 import { HIGH_SCORE_KEYS } from './highScore'
-import { HAZANAS, HAZANAS_KEY } from './feats'
+import { FEATS, FEATS_KEY } from './feats'
 import { HOOP_ADJUST_RANGE, HOOP_ADJUST_STEP } from './hoopHeight'
 import { OWN_SCENERY_KEY } from './sceneryPreference'
-import { PLAZO_DEL_PASO, TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE, type TutorialStepKey } from './tutorial'
+import { STEP_DEADLINE, TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE, type TutorialStepKey } from './tutorial'
 import { DEFAULT_VOLUMES, SCENERY_KEY, VOLUME_KEYS } from './settings'
 import { setLang, setVolume } from './settingsClient'
 import type { Goal } from './goal'
-import { formatoDeCifra } from './textos'
+import { formatFigure } from './textos'
 
-// La cuenta atrás usa `setTimeout`, así que todo el fichero corre con relojes
-// falsos: si no, cada partida costaría tres segundos reales de test.
+// The countdown uses `setTimeout`, so the whole file runs with fake
+// timers: otherwise each run would cost three real seconds of test.
 beforeEach(() => {
   vi.useFakeTimers()
-  // El récord se guarda en `localStorage`, que jsdom comparte entre tests: sin
-  // vaciarlo, una partida de un test daría por batido el récord de otro.
+  // The record is saved in `localStorage`, which jsdom shares between tests: without
+  // emptying it, a run of one test would count the record of another as beaten.
   localStorage.clear()
-  // Los volúmenes salen de los ajustes del arcade, que cachean lo leído para
-  // que `useSyncExternalStore` no repinte sin parar: vaciar `localStorage` a
-  // secas dejaría el caché con el valor de la prueba anterior. Se restablecen
-  // por la API, que es la que lo invalida.
+  // The volumes come from the hall's settings, which cache what was read so
+  // that `useSyncExternalStore` does not repaint endlessly: emptying `localStorage`
+  // alone would leave the cache with the value of the previous test. They are reset
+  // through the API, which is what invalidates it.
   setVolume('sfx', DEFAULT_VOLUMES.sfx)
   setVolume('ambience', DEFAULT_VOLUMES.ambience)
 })
@@ -34,11 +34,11 @@ afterEach(() => {
 })
 
 /**
- * Agota la cuenta atrás y deja la partida en juego.
+ * Runs out the countdown and leaves the run in play.
  *
- * Segundo a segundo, y no de un salto: cada tic reprograma el siguiente desde
- * un efecto, que no corre hasta que React vuelve a renderizar. Avanzar tres
- * segundos de golpe solo dispararía el primero.
+ * Second by second, and not in one jump: each tick reschedules the next from
+ * an effect, which does not run until React renders again. Advancing three
+ * seconds at once would only fire the first.
  */
 function runOutCountdown() {
   for (let second = 0; second < COUNTDOWN_SECONDS; second++) {
@@ -47,16 +47,16 @@ function runOutCountdown() {
 }
 
 /**
- * Abre el juego y deja elegida **la práctica**, que es lo que juegan casi todos estos tests: ahí
- * se eligen los palos y la velocidad. El menú abre en el reto (lo comprueba «práctica y desafío»).
+ * Opens the game and leaves **practice** chosen, which is what almost all these tests play: there
+ * the sticks and the speed are chosen. The menu opens on the challenge («practice and challenge» checks it).
  */
-function abrirEnPractica(opciones?: OpcionesDelSalon) {
-  const hook = renderHook(() => useGameStoreValue(opciones))
+function openInPractice(options?: HallOptions) {
+  const hook = renderHook(() => useGameStoreValue(options))
   act(() => hook.result.current.setGameMode('practice'))
   return hook
 }
 
-/** Arranca una partida y agota la cuenta atrás, dejándola en juego. */
+/** Starts a run and runs out the countdown, leaving it in play. */
 function startPlaying(store: {
   current: ReturnType<typeof useGameStoreValue>
 }) {
@@ -64,7 +64,7 @@ function startPlaying(store: {
   runOutCountdown()
 }
 
-/** Juega una partida entera atrapando `caught` palos y perdiendo el resto. */
+/** Plays a whole run catching `caught` sticks and missing the rest. */
 function playRound(
   store: { current: ReturnType<typeof useGameStoreValue> },
   total: number,
@@ -80,23 +80,23 @@ function playRound(
   }
 }
 
-describe('selección previa a la partida', () => {
-  it('arranca en el menú con los valores por defecto', () => {
-    const { result } = abrirEnPractica()
+describe('selection before the run', () => {
+  it('starts in the menu with the default values', () => {
+    const { result } = openInPractice()
     expect(result.current.gameState).toBe('menu')
     expect(result.current.stickCount).toBe(MIN_STICKS)
     expect(result.current.difficulty).toBe('easy')
     expect(result.current.score).toBe(0)
   })
 
-  it('acepta cualquier número de palos dentro del rango', () => {
-    const { result } = abrirEnPractica()
+  it('accepts any number of sticks within the range', () => {
+    const { result } = openInPractice()
     act(() => result.current.setStickCount(9))
     expect(result.current.stickCount).toBe(9)
   })
 
-  it('recorta los valores fuera de rango en vez de romper la escena', () => {
-    const { result } = abrirEnPractica()
+  it('clamps out-of-range values instead of breaking the scene', () => {
+    const { result } = openInPractice()
 
     act(() => result.current.setStickCount(MIN_STICKS - 3))
     expect(result.current.stickCount).toBe(MIN_STICKS)
@@ -108,8 +108,8 @@ describe('selección previa a la partida', () => {
     expect(result.current.stickCount).toBe(MIN_STICKS)
   })
 
-  it('redondea los decimales y descarta NaN', () => {
-    const { result } = abrirEnPractica()
+  it('rounds decimals and discards NaN', () => {
+    const { result } = openInPractice()
 
     act(() => result.current.setStickCount(7.4))
     expect(result.current.stickCount).toBe(7)
@@ -118,16 +118,16 @@ describe('selección previa a la partida', () => {
     expect(result.current.stickCount).toBe(MIN_STICKS)
   })
 
-  it('cambia de dificultad', () => {
-    const { result } = abrirEnPractica()
+  it('changes difficulty', () => {
+    const { result } = openInPractice()
     act(() => result.current.setDifficulty('impossible'))
     expect(result.current.difficulty).toBe('impossible')
   })
 })
 
-describe('ciclo de una partida', () => {
-  it('empieza a jugar con el marcador a cero', () => {
-    const { result } = abrirEnPractica()
+describe('life cycle of a run', () => {
+  it('starts playing with the scoreboard at zero', () => {
+    const { result } = openInPractice()
     startPlaying(result)
 
     expect(result.current.gameState).toBe('playing')
@@ -135,15 +135,15 @@ describe('ciclo de una partida', () => {
     expect(result.current.resolved).toBe(0)
   })
 
-  it('renueva el identificador de partida para remontar los palos', () => {
-    const { result } = abrirEnPractica()
+  it('renews the run identifier to remount the sticks', () => {
+    const { result } = openInPractice()
     const before = result.current.runId
     startPlaying(result)
     expect(result.current.runId).toBe(before + 1)
   })
 
-  it('suma los palos atrapados sin cerrar la partida antes de tiempo', () => {
-    const { result } = abrirEnPractica()
+  it('adds up the sticks caught without closing the run early', () => {
+    const { result } = openInPractice()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
 
@@ -154,8 +154,8 @@ describe('ciclo de una partida', () => {
     expect(result.current.gameState).toBe('playing')
   })
 
-  it('cuenta como resuelto el palo perdido, sin sumar al marcador', () => {
-    const { result } = abrirEnPractica()
+  it('counts the missed stick as resolved, without adding to the scoreboard', () => {
+    const { result } = openInPractice()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
     act(() => result.current.missStick())
@@ -164,8 +164,8 @@ describe('ciclo de una partida', () => {
     expect(result.current.resolved).toBe(1)
   })
 
-  it('termina la partida cuando se resuelve el último palo', () => {
-    const { result } = abrirEnPractica()
+  it('ends the run when the last stick is resolved', () => {
+    const { result } = openInPractice()
     playRound(result, 5, 3)
 
     expect(result.current.gameState).toBe('finished')
@@ -173,12 +173,12 @@ describe('ciclo de una partida', () => {
     expect(result.current.resolved).toBe(5)
   })
 
-  it('no se queda colgada si dos palos se resuelven de golpe', () => {
-    // Dos mandos XR sobre palos distintos, o el último palo tocando el suelo
-    // mientras se atrapa otro: ambas resoluciones caen en el mismo lote de
-    // React. El contador se actualiza en función del valor previo, así que
-    // ninguna se pierde.
-    const { result } = abrirEnPractica()
+  it('does not hang if two sticks are resolved at once', () => {
+    // Two XR controllers on different sticks, or the last stick touching the floor
+    // while another is caught: both resolutions land in the same React
+    // batch. The counter is updated from the previous value, so
+    // neither is lost.
+    const { result } = openInPractice()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
 
@@ -193,8 +193,8 @@ describe('ciclo de una partida', () => {
     expect(result.current.gameState).toBe('finished')
   })
 
-  it('sobrevive a una resolución de más sin volver al menú', () => {
-    const { result } = abrirEnPractica()
+  it('survives one resolution too many without going back to the menu', () => {
+    const { result } = openInPractice()
     playRound(result, 5, 5)
     act(() => result.current.missStick())
 
@@ -202,17 +202,17 @@ describe('ciclo de una partida', () => {
   })
 })
 
-describe('cuenta atrás', () => {
-  it('la partida no arranca de golpe: primero cuenta', () => {
-    const { result } = abrirEnPractica()
+describe('countdown', () => {
+  it('the run does not start at once: first it counts', () => {
+    const { result } = openInPractice()
     act(() => result.current.startGame())
 
     expect(result.current.gameState).toBe('countdown')
     expect(result.current.countdown).toBe(COUNTDOWN_SECONDS)
   })
 
-  it('va bajando un segundo cada vez', () => {
-    const { result } = abrirEnPractica()
+  it('goes down one second at a time', () => {
+    const { result } = openInPractice()
     act(() => result.current.startGame())
 
     act(() => void vi.advanceTimersByTime(1000))
@@ -223,62 +223,62 @@ describe('cuenta atrás', () => {
     expect(result.current.gameState).toBe('countdown')
   })
 
-  it('los palos no caen mientras se cuenta', () => {
-    // `StickMachine` los mantiene parados mirando la fase; si la cuenta atrás
-    // no fuera una fase propia, el primer palo saldría antes del "ya".
-    const { result } = abrirEnPractica()
+  it('the sticks do not fall while it counts', () => {
+    // `StickMachine` keeps them still by looking at the phase; if the countdown
+    // were not a phase of its own, the first stick would come out before the "go".
+    const { result } = openInPractice()
     act(() => result.current.startGame())
     expect(result.current.gameState).not.toBe('playing')
   })
 
-  it('al llegar a cero se empieza a jugar', () => {
-    const { result } = abrirEnPractica()
+  it('on reaching zero play starts', () => {
+    const { result } = openInPractice()
     act(() => result.current.startGame())
     runOutCountdown()
 
     expect(result.current.gameState).toBe('playing')
   })
 
-  it('volver al menú durante la cuenta la corta', () => {
-    const { result } = abrirEnPractica()
+  it('returning to the menu during the count cuts it short', () => {
+    const { result } = openInPractice()
     act(() => result.current.startGame())
     act(() => result.current.resetGame())
 
     expect(result.current.gameState).toBe('menu')
 
-    // Y no arranca sola después: un temporizador que quedara vivo no puede
-    // devolver al jugador a una partida que ha cancelado.
+    // And it does not start on its own afterwards: a timer left alive cannot
+    // send the player back to a run they have cancelled.
     act(() => void vi.advanceTimersByTime(5000))
     expect(result.current.gameState).toBe('menu')
   })
 })
 
-describe('tutorial de la primera vez', () => {
-  /** Pone las gafas: es lo que hace `XRSessionController` al abrirse la sesión. */
+describe('first-time tutorial', () => {
+  /** Puts the headset on: it is what `XRSessionController` does when the session opens. */
   function wearHeadset(store: {
     current: ReturnType<typeof useGameStoreValue>
   }) {
     act(() => store.current.setImmersive(true))
   }
 
-  /** Atrapa un palo, que es lo que supera los pasos de la lección. */
+  /** Catches a stick, which is what passes the steps of the lesson. */
   function catchOne(store: { current: ReturnType<typeof useGameStoreValue> }) {
     act(() => store.current.catchStick(0.5))
   }
 
-  /** Deja correr el plazo de seguridad del paso que esté puesto. */
+  /** Lets the safety deadline of the current step run out. */
   function waitOutStep(
     store: { current: ReturnType<typeof useGameStoreValue> },
     step: TutorialStepKey,
   ) {
-    act(() => void vi.advanceTimersByTime(PLAZO_DEL_PASO[step] * 1000))
+    act(() => void vi.advanceTimersByTime(STEP_DEADLINE[step] * 1000))
   }
 
-  it('con las gafas puestas, la primera partida va enseñando', () => {
-    // Y sin que nadie lo pida: quien llega por primera vez no sabe que hay algo
-    // que pedir. La decisión es del juego y no del botón que se pulse, porque
-    // dentro de la sesión también se empieza desde el overlay con el teclado.
-    const { result } = abrirEnPractica()
+  it('with the headset on, the first run goes along teaching', () => {
+    // And without anyone asking: whoever arrives for the first time does not know there is something
+    // to ask for. The decision is the game's and not the pressed button's, because
+    // inside the session a run is also started from the overlay with the keyboard.
+    const { result } = openInPractice()
     wearHeadset(result)
 
     act(() => result.current.startGame())
@@ -286,10 +286,10 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.tutorialStep).toBe('grab')
   })
 
-  it('pero la partida no se para: la lección corre encima', () => {
-    // Es la diferencia con la demostración de antes, que ponía la partida en
-    // cola: quien la miraba sin hacer nada salía igual que entró.
-    const { result } = abrirEnPractica()
+  it('but the run does not stop: the lesson runs on top', () => {
+    // It is the difference from the earlier demonstration, which put the run in a
+    // queue: whoever watched it doing nothing came out just as they went in.
+    const { result } = openInPractice()
     act(() => result.current.startGame({ tutorial: true }))
 
     expect(result.current.gameState).toBe('countdown')
@@ -300,10 +300,10 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.teaching).toBe(true)
   })
 
-  it('en escritorio no enseña nada, aunque no se haya visto', () => {
-    // Allí la pantalla de inicio lo explica con texto, que se lee antes de
-    // empezar y sin gafas puestas.
-    const { result } = abrirEnPractica()
+  it('on desktop it teaches nothing, even if it has not been seen', () => {
+    // There the start screen explains it with text, which is read before
+    // starting and without the headset on.
+    const { result } = openInPractice()
     act(() => result.current.startGame())
 
     expect(result.current.tutorialSeen).toBe(false)
@@ -311,20 +311,20 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.tutorialStep).toBeNull()
   })
 
-  it('con las gafas puestas pero ya vista, se juega directamente', () => {
+  it('with the headset on but already seen, play starts directly', () => {
     localStorage.setItem(TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
-    const { result } = abrirEnPractica()
+    const { result } = openInPractice()
     wearHeadset(result)
 
     act(() => result.current.startGame())
     expect(result.current.teaching).toBe(false)
   })
 
-  it('quien vio la lección vieja la vuelve a ver: no es la misma', () => {
-    // Lo guardado es la versión de la lección. La 1 era la demostración por
-    // reloj, que no se hacía jugando.
+  it('whoever saw the old lesson sees it again: it is not the same one', () => {
+    // What is saved is the version of the lesson. Version 1 was the clock-driven
+    // demonstration, which was not done by playing.
     localStorage.setItem(TUTORIAL_SEEN_KEY, '1')
-    const { result } = abrirEnPractica()
+    const { result } = openInPractice()
     wearHeadset(result)
 
     expect(result.current.tutorialSeen).toBe(false)
@@ -332,8 +332,8 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.teaching).toBe(true)
   })
 
-  it('cada paso se supera atrapando un palo, no mirando', () => {
-    const { result } = abrirEnPractica()
+  it('each step is passed by catching a stick, not by watching', () => {
+    const { result } = openInPractice()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
 
@@ -344,11 +344,11 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.tutorialStep).toBeNull()
   })
 
-  it('y al superarlos todos la lección se retira y queda vista', () => {
-    // Retirarla es quedarse sin paso: eso es lo que desmonta el panel, en el
-    // visor y en el overlay. Lo que se guarda es lo que la quita de las
-    // próximas partidas.
-    const { result } = abrirEnPractica()
+  it('and on passing them all the lesson is removed and stays seen', () => {
+    // Removing it is running out of steps: that is what unmounts the panel, in the
+    // headset and in the overlay. What is saved is what takes it out of the
+    // next runs.
+    const { result } = openInPractice()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
     catchOne(result)
@@ -358,11 +358,11 @@ describe('tutorial de la primera vez', () => {
     expect(localStorage.getItem(TUTORIAL_SEEN_KEY)).toBe(TUTORIAL_SEEN_VALUE)
   })
 
-  it('y no vuelve a salir en la siguiente partida de la misma visita', () => {
-    // Lo aprendido atrapando se anota fuera de React, así que `startGame` tiene
-    // que releerlo: mirando lo que se leyó al montar, la segunda partida de la
-    // misma visita volvería a enseñar lo ya aprendido.
-    const { result } = abrirEnPractica()
+  it('and it does not come up again in the next run of the same visit', () => {
+    // What is learnt by catching is noted outside React, so `startGame` has
+    // to re-read it: looking at what was read on mount, the second run of the
+    // same visit would teach again what was already learnt.
+    const { result } = openInPractice()
     wearHeadset(result)
     act(() => result.current.startGame())
     runOutCountdown()
@@ -375,8 +375,8 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.tutorialSeen).toBe(true)
   })
 
-  it('el botón de siguiente da el paso por pasado sin haberlo hecho', () => {
-    const { result } = abrirEnPractica()
+  it('the next button counts the step as passed without having done it', () => {
+    const { result } = openInPractice()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
 
@@ -386,10 +386,10 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.tutorialStep).toBeNull()
   })
 
-  it('y sin paso puesto no hace nada', () => {
-    // Sin lección en marcha no hay nada que pasar, y sumar a la cuenta de
-    // saltados dejaría el primer paso oculto en la próxima partida.
-    const { result } = abrirEnPractica()
+  it('and with no step up it does nothing', () => {
+    // With no lesson under way there is nothing to pass, and adding to the count of
+    // skipped ones would leave the first step hidden in the next run.
+    const { result } = openInPractice()
     act(() => result.current.startGame())
     runOutCountdown()
 
@@ -397,10 +397,10 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.tutorialStep).toBeNull()
   })
 
-  it('el plazo de seguridad pasa el paso solo, si el hito no llega', () => {
-    // Un paso que no se consiga —porque los palos se escapan— dejaría a alguien
-    // encerrado en él con el panel delante de la cara toda la partida.
-    const { result } = abrirEnPractica()
+  it('the safety deadline passes the step on its own, if the milestone does not come', () => {
+    // A step that is not achieved —because the sticks get away— would leave someone
+    // locked in it with the panel in front of their face the whole run.
+    const { result } = openInPractice()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
 
@@ -410,18 +410,18 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.tutorialStep).toBeNull()
   })
 
-  it('el plazo no corre mientras no se juega', () => {
-    // Con la cuenta atrás no hay palos que atrapar: gastar ahí el plazo del
-    // primer paso sería pasarlo antes de que nadie haya podido intentarlo.
-    const { result } = abrirEnPractica()
+  it('the deadline does not run while not playing', () => {
+    // During the countdown there are no sticks to catch: spending the deadline of the
+    // first step there would be passing it before anyone could have tried.
+    const { result } = openInPractice()
     act(() => result.current.startGame({ tutorial: true }))
 
-    act(() => void vi.advanceTimersByTime(PLAZO_DEL_PASO.grab * 1000))
+    act(() => void vi.advanceTimersByTime(STEP_DEADLINE.grab * 1000))
     expect(result.current.tutorialStep).toBe('grab')
   })
 
-  it('ni con la pregunta de salir en pantalla, que para la partida', () => {
-    const { result } = abrirEnPractica()
+  it('nor with the quit question on screen, which stops the run', () => {
+    const { result } = openInPractice()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
     act(() => result.current.askToQuit())
@@ -430,8 +430,8 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.tutorialStep).toBe('grab')
   })
 
-  it('saltarla cuenta como vista: ya ha decidido', () => {
-    const { result } = abrirEnPractica()
+  it('skipping it counts as seen: the decision is made', () => {
+    const { result } = openInPractice()
     act(() => result.current.startGame({ tutorial: true }))
     act(() => result.current.finishTutorial())
 
@@ -441,8 +441,8 @@ describe('tutorial de la primera vez', () => {
     expect(localStorage.getItem(TUTORIAL_SEEN_KEY)).toBe(TUTORIAL_SEEN_VALUE)
   })
 
-  it('y saltarla no toca la partida, que nunca llegó a pararse', () => {
-    const { result } = abrirEnPractica()
+  it('and skipping it does not touch the run, which never got to stop', () => {
+    const { result } = openInPractice()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
     act(() => result.current.catchStick(0.5))
@@ -452,8 +452,8 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.score).toBe(1)
   })
 
-  it('retirarla dos veces no vuelve a escribir nada', () => {
-    const { result } = abrirEnPractica()
+  it('removing it twice does not write anything again', () => {
+    const { result } = openInPractice()
     act(() => result.current.startGame({ tutorial: true }))
     act(() => result.current.finishTutorial())
     localStorage.removeItem(TUTORIAL_SEEN_KEY)
@@ -462,10 +462,10 @@ describe('tutorial de la primera vez', () => {
     expect(localStorage.getItem(TUTORIAL_SEEN_KEY)).toBeNull()
   })
 
-  it('dejarla a medias no cuenta como vista', () => {
-    // Volver al menú con el panel puesto no es haberla hecho: se la encontrará
-    // otra vez al darle a empezar.
-    const { result } = abrirEnPractica()
+  it('leaving it halfway does not count as seen', () => {
+    // Returning to the menu with the panel up is not having done it: they will find it
+    // again on pressing start.
+    const { result } = openInPractice()
     act(() => result.current.startGame({ tutorial: true }))
     runOutCountdown()
     act(() => result.current.resetGame())
@@ -475,17 +475,17 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.tutorialSeen).toBe(false)
     expect(localStorage.getItem(TUTORIAL_SEEN_KEY)).toBeNull()
 
-    // Y el plazo que quedara vivo no puede darla por vista desde el menú.
+    // And the deadline left alive cannot count it as seen from the menu.
     waitOutStep(result, 'grab')
     expect(result.current.gameState).toBe('menu')
     expect(result.current.tutorialSeen).toBe(false)
   })
 
-  it('y la siguiente partida empieza la lección desde el principio', () => {
-    // Los pasos dados por pasados se olvidan al volver al menú: si no, quien
-    // dejó la lección a medias se encontraría el segundo paso sin ver el
-    // primero.
-    const { result } = abrirEnPractica()
+  it('and the next run starts the lesson from the beginning', () => {
+    // The steps counted as passed are forgotten on returning to the menu: otherwise, whoever
+    // left the lesson halfway would find the second step without seeing the
+    // first.
+    const { result } = openInPractice()
     wearHeadset(result)
     act(() => result.current.startGame())
     runOutCountdown()
@@ -497,8 +497,8 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.tutorialStep).toBe('grab')
   })
 
-  it('una vez vista no vuelve a salir al empezar otra', () => {
-    const { result } = abrirEnPractica()
+  it('once seen it does not come up again on starting another', () => {
+    const { result } = openInPractice()
     wearHeadset(result)
     act(() => result.current.startGame())
     act(() => result.current.finishTutorial())
@@ -508,28 +508,28 @@ describe('tutorial de la primera vez', () => {
     expect(result.current.teaching).toBe(false)
   })
 
-  it('lo visto en otra visita sigue visto al volver', () => {
+  it('what was seen on another visit is still seen on coming back', () => {
     localStorage.setItem(TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
-    const { result } = abrirEnPractica()
+    const { result } = openInPractice()
 
     expect(result.current.tutorialSeen).toBe(true)
   })
 
-  it('se puede volver a ver aunque ya se conozca', () => {
-    // Es lo que hace el botón del menú inmersivo: pedirlo explícitamente vale
-    // más que lo que hubiera guardado.
+  it('it can be watched again even if already known', () => {
+    // It is what the immersive menu's button does: asking for it explicitly is worth
+    // more than whatever was saved.
     localStorage.setItem(TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
-    const { result } = abrirEnPractica()
+    const { result } = openInPractice()
 
     act(() => result.current.startGame({ tutorial: true }))
     expect(result.current.teaching).toBe(true)
     expect(result.current.tutorialStep).toBe('grab')
   })
 
-  it('con qué se juega lo apunta la sesión, y solo cambia lo que se enseña', () => {
-    // Con las manos desnudas no hay botón que nombrar: cambia la frase, no lo
-    // que hay que hacer.
-    const { result } = abrirEnPractica()
+  it('what is being played with is recorded by the session, and it only changes what is taught', () => {
+    // Bare-handed there is no button to name: the sentence changes, not what
+    // has to be done.
+    const { result } = openInPractice()
     expect(result.current.bareHanded).toBe(false)
 
     act(() => result.current.setBareHanded(true))
@@ -538,84 +538,84 @@ describe('tutorial de la primera vez', () => {
 })
 
 /**
- * El calentamiento (`warmup.ts`): la primera partida con el visor, en el reto y con la
- * lección delante, no cuenta.
+ * The warm-up (`warmup.ts`): the first run with the headset, in the challenge and with the
+ * lesson in front, does not count.
  */
-describe('el calentamiento', () => {
-  function enElReto(opciones?: OpcionesDelSalon) {
-    const hook = renderHook(() => useGameStoreValue(opciones))
+describe('the warm-up', () => {
+  function inTheChallenge(options?: HallOptions) {
+    const hook = renderHook(() => useGameStoreValue(options))
     act(() => hook.result.current.setImmersive(true))
     return hook
   }
 
-  it('tres palos al suelo con la lección delante dejan el reto intacto', () => {
-    const { result } = enElReto()
+  it('three sticks on the floor with the lesson in front leave the challenge intact', () => {
+    const { result } = inTheChallenge()
     act(() => result.current.startGame())
     runOutCountdown()
-    expect(result.current.calentando).toBe(true)
+    expect(result.current.warmingUp).toBe(true)
 
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
 
     expect(result.current.gameState).toBe('playing')
     expect(result.current.lives).toBe(3)
-    expect(result.current.cartel?.title).toBe('Warm-up · does not count for a medal')
-    expect(result.current.cartel?.subdued).toBe(true)
+    expect(result.current.sign?.title).toBe('Warm-up · does not count for a medal')
+    expect(result.current.sign?.subdued).toBe(true)
   })
 
-  it('al cerrarse la lección el reto empieza de cero y avisa de que ya cuenta', () => {
-    const { result } = enElReto({ objetivo: { medals: { bronze: 1900, silver: 3750, gold: 5200 }, better: 'higher', unit: 'points', record: null, mode: 'challenge' } })
+  it('when the lesson closes the challenge starts from scratch and warns that it now counts', () => {
+    const { result } = inTheChallenge({ goal: { medals: { bronze: 1900, silver: 3750, gold: 5200 }, better: 'higher', unit: 'points', record: null, mode: 'challenge' } })
     act(() => result.current.startGame())
     runOutCountdown()
     act(() => result.current.missStick())
     act(() => result.current.catchStick(0.5))
-    const antes = result.current.runId
+    const before = result.current.runId
 
-    // El segundo palo atrapado supera el último paso.
+    // The second stick caught passes the last step.
     act(() => result.current.catchStick(0.5))
 
-    expect(result.current.calentando).toBe(false)
+    expect(result.current.warmingUp).toBe(false)
     expect(result.current.teaching).toBe(false)
-    expect(result.current.runId).toBe(antes + 1)
+    expect(result.current.runId).toBe(before + 1)
     expect(result.current.gameState).toBe('countdown')
     expect([result.current.score, result.current.resolved, result.current.points, result.current.lives]).toEqual([0, 0, 0, 3])
-    expect(result.current.ahoraCuenta).toBe(true)
-    expect(result.current.cartel?.title).toBe('Now it counts for a medal')
-    expect(result.current.cartel?.detail).toBe('Bronze ≈ 13 sticks · Gold 5,200')
+    expect(result.current.nowItCounts).toBe(true)
+    expect(result.current.sign?.title).toBe('Now it counts for a medal')
+    expect(result.current.sign?.detail).toBe('Bronze ≈ 13 sticks · Gold 5,200')
 
-    // Hasta que se resuelve el primer palo del reto.
+    // Until the first stick of the challenge is resolved.
     runOutCountdown()
     act(() => result.current.missStick())
-    expect(result.current.ahoraCuenta).toBe(false)
+    expect(result.current.nowItCounts).toBe(false)
     expect(result.current.lives).toBe(2)
   })
 
-  it('saltar la lección también empieza el reto de cero', () => {
-    const { result } = enElReto()
+  it('skipping the lesson also starts the challenge from scratch', () => {
+    const { result } = inTheChallenge()
     act(() => result.current.startGame())
     runOutCountdown()
     act(() => result.current.missStick())
     act(() => result.current.finishTutorial())
 
-    expect([result.current.calentando, result.current.resolved, result.current.gameState]).toEqual([false, 0, 'countdown'])
+    expect([result.current.warmingUp, result.current.resolved, result.current.gameState]).toEqual([false, 0, 'countdown'])
   })
 
-  it('en la práctica, a dos y al volver al menú no hay calentamiento', () => {
-    const practica = abrirEnPractica()
-    act(() => practica.result.current.setImmersive(true))
-    act(() => practica.result.current.startGame())
-    expect(practica.result.current.calentando).toBe(false)
+  it('in practice, with two players and on returning to the menu there is no warm-up', () => {
+    const practice = openInPractice()
+    act(() => practice.result.current.setImmersive(true))
+    act(() => practice.result.current.startGame())
+    expect(practice.result.current.warmingUp).toBe(false)
 
-    const { result } = enElReto()
+    const { result } = inTheChallenge()
     act(() => result.current.startGame())
     act(() => result.current.resetGame())
-    expect([result.current.calentando, result.current.ahoraCuenta]).toEqual([false, false])
+    expect([result.current.warmingUp, result.current.nowItCounts]).toEqual([false, false])
   })
 })
 
-describe('práctica y desafío', () => {
+describe('practice and challenge', () => {
   /**
-   * Arranca una partida de desafío con `total` palos y la deja en juego. Pasa
-   * por el menú primero, como el jugador: el modo solo se cambia ahí.
+   * Starts a challenge run with `total` sticks and leaves it in play. It goes
+   * through the menu first, like the player: the mode is only changed there.
    */
   function startChallenge(
     store: { current: ReturnType<typeof useGameStoreValue> },
@@ -627,7 +627,7 @@ describe('práctica y desafío', () => {
     startPlaying(store)
   }
 
-  it('el menú abre en el reto, con sus tres vidas: Jugar sin tocar nada empieza la partida que da medalla', () => {
+  it('the menu opens on the challenge, with its three lives: Jugar without touching anything starts the run that gives a medal', () => {
     const { result } = renderHook(() => useGameStoreValue())
 
     expect(DEFAULT_GAME_MODE).toBe('challenge')
@@ -639,11 +639,11 @@ describe('práctica y desafío', () => {
     expect(result.current.gameMode).toBe('challenge')
     expect(result.current.activeStickCount).toBe(CHALLENGE_SETUP.stickCount)
     expect(result.current.activeDifficulty).toBe(CHALLENGE_SETUP.difficulty)
-    expect(result.current.faseDelCartel).toBe('before')
+    expect(result.current.signPhase).toBe('before')
   })
 
-  it('y se abre en el reto siempre: no se recuerda el último modo jugado', () => {
-    const first = abrirEnPractica()
+  it('and it always opens on the challenge: the last mode played is not remembered', () => {
+    const first = openInPractice()
     playRound(first.result, 5, 5)
 
     const reopened = renderHook(() => useGameStoreValue())
@@ -651,7 +651,7 @@ describe('práctica y desafío', () => {
     expect(reopened.result.current.gameMode).toBe('challenge')
   })
 
-  it('la práctica queda a un toque, sin vidas que perder', () => {
+  it('practice is one tap away, with no lives to lose', () => {
     const { result } = renderHook(() => useGameStoreValue())
 
     act(() => result.current.setGameMode('practice'))
@@ -660,8 +660,8 @@ describe('práctica y desafío', () => {
     expect(result.current.lives).toBeNull()
   })
 
-  it('en práctica, fallarlos todos no corta la partida antes de tiempo', () => {
-    const { result } = abrirEnPractica()
+  it('in practice, missing them all does not cut the run short', () => {
+    const { result } = openInPractice()
     act(() => result.current.setStickCount(13))
     startPlaying(result)
 
@@ -671,8 +671,8 @@ describe('práctica y desafío', () => {
     expect(result.current.lives).toBeNull()
   })
 
-  it('el desafío arranca con tres vidas y cada fallo cuesta una', () => {
-    const { result } = abrirEnPractica()
+  it('the challenge starts with three lives and each miss costs one', () => {
+    const { result } = openInPractice()
     startChallenge(result, 13)
     expect(result.current.lives).toBe(3)
 
@@ -684,8 +684,8 @@ describe('práctica y desafío', () => {
     expect(result.current.gameState).toBe('playing')
   })
 
-  it('atrapar palos no gasta vidas', () => {
-    const { result } = abrirEnPractica()
+  it('catching sticks does not spend lives', () => {
+    const { result } = openInPractice()
     startChallenge(result, 13)
 
     act(() => result.current.catchStick(0.5))
@@ -694,10 +694,10 @@ describe('práctica y desafío', () => {
     expect(result.current.lives).toBe(3)
   })
 
-  it('quedarse sin vidas cierra la partida aunque queden palos', () => {
-    // Es lo que distingue al desafío: la partida tiene un final que no depende
-    // de que caiga todo lo que hay colgado.
-    const { result } = abrirEnPractica()
+  it('running out of lives closes the run even if sticks remain', () => {
+    // It is what sets the challenge apart: the run has an ending that does not depend
+    // on everything that is hanging coming down.
+    const { result } = openInPractice()
     startChallenge(result, 13)
 
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
@@ -708,10 +708,10 @@ describe('práctica y desafío', () => {
     expect(result.current.resolved).toBeLessThan(result.current.stickCount)
   })
 
-  it('un fallo de más no deja las vidas en negativo', () => {
-    // Dos palos pueden tocar el suelo en el mismo lote justo al agotarse la
-    // última vida.
-    const { result } = abrirEnPractica()
+  it('one miss too many does not leave the lives negative', () => {
+    // Two sticks can touch the floor in the same batch just as the
+    // last life runs out.
+    const { result } = openInPractice()
     startChallenge(result, 13)
 
     act(() => {
@@ -722,8 +722,8 @@ describe('práctica y desafío', () => {
     expect(result.current.outcome).toBe('failed')
   })
 
-  it('resolver todos los palos con vidas es superar el reto', () => {
-    const { result } = abrirEnPractica()
+  it('resolving all the sticks with lives left is beating the challenge', () => {
+    const { result } = openInPractice()
     startChallenge(result, CHALLENGE_SETUP.stickCount)
 
     act(() => result.current.missStick())
@@ -734,8 +734,8 @@ describe('práctica y desafío', () => {
     expect(result.current.lives).toBe(2)
   })
 
-  it('la partida de práctica termina sin desenlace de reto', () => {
-    const { result } = abrirEnPractica()
+  it('the practice run ends with no challenge outcome', () => {
+    const { result } = openInPractice()
     playRound(result, 5, 3)
 
     expect(result.current.gameState).toBe('finished')
@@ -743,28 +743,28 @@ describe('práctica y desafío', () => {
     expect(result.current.lives).toBeNull()
   })
 
-  it('el modo sobrevive a la partida y a volver al menú', () => {
-    // Como el número de palos o la dificultad: elegirlo otra vez en cada
-    // revancha sería justo lo que estorba con el visor puesto.
-    const { result } = abrirEnPractica()
+  it('the mode survives the run and returning to the menu', () => {
+    // Like the number of sticks or the difficulty: choosing it again in every
+    // rematch would be exactly what gets in the way with the headset on.
+    const { result } = openInPractice()
     startChallenge(result, 5)
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
 
     act(() => result.current.resetGame())
 
     expect(result.current.gameMode).toBe('challenge')
-    // Y las vidas vuelven a estar enteras: en el menú son las que se ponen en
-    // juego, no las que quedaron de la anterior.
+    // And the lives are whole again: in the menu they are the ones put at
+    // stake, not the ones left from the previous one.
     expect(result.current.lives).toBe(3)
     expect(result.current.outcome).toBeNull()
   })
 
-  it('el modo solo se cambia entre partidas', () => {
-    // La puntuación y el modo en el que se hizo son un par: con el resumen en
-    // pantalla, cambiar de modo mandaba esos puntos al récord del otro modo,
-    // uno que no se ha jugado. Rompiendo la guarda, el récord de desafío
-    // aparece con los puntos de esta partida de práctica.
-    const { result } = abrirEnPractica()
+  it('the mode is only changed between runs', () => {
+    // The score and the mode in which it was made are a pair: with the summary on
+    // screen, changing mode sent those points to the record of the other mode,
+    // one that has not been played. Breaking the guard, the challenge record
+    // shows up with the points of this practice run.
+    const { result } = openInPractice()
     playRound(result, 5, 5)
     const points = result.current.points
     expect(points).toBeGreaterThan(0)
@@ -778,10 +778,10 @@ describe('práctica y desafío', () => {
     expect(result.current.bestPoints).toBe(0)
   })
 
-  it('cada modo lleva su propio récord', () => {
-    // Un desafío se corta al quedarse sin vidas, así que con una marca común
-    // nunca podría batir a la práctica equivalente.
-    const { result } = abrirEnPractica()
+  it('each mode keeps its own record', () => {
+    // A challenge is cut short on running out of lives, so with a shared best
+    // it could never beat the equivalent practice.
+    const { result } = openInPractice()
     playRound(result, 5, 5)
     const practiceRecord = result.current.bestPoints
     expect(practiceRecord).toBeGreaterThan(0)
@@ -789,8 +789,8 @@ describe('práctica y desafío', () => {
     startChallenge(result, 5)
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
 
-    // Una partida sin puntos no deja récord, pero el de práctica tampoco se
-    // asoma al desafío: aquí no hay nada hecho todavía.
+    // A run with no points leaves no record, but the practice one does not
+    // show up in the challenge either: nothing has been done here yet.
     expect(result.current.bestPoints).toBe(0)
     expect(result.current.isRecord).toBe(false)
 
@@ -799,11 +799,11 @@ describe('práctica y desafío', () => {
     expect(result.current.bestPoints).toBe(practiceRecord)
   })
 
-  it('un desafío bate su récord aunque quede lejos del de práctica', () => {
-    // Es el motivo de que haya dos marcas: un desafío se corta al quedarse sin
-    // vidas, así que con una sola nunca podría batir a la práctica y el modo
-    // con algo en juego sería el único sin nada que superar.
-    const { result } = abrirEnPractica()
+  it('a challenge beats its record even if it is far from the practice one', () => {
+    // It is the reason there are two bests: a challenge is cut short on running out of
+    // lives, so with only one it could never beat practice and the mode
+    // with something at stake would be the only one with nothing to beat.
+    const { result } = openInPractice()
     playRound(result, 5, 5)
     const practiceRecord = result.current.bestPoints
 
@@ -821,11 +821,11 @@ describe('práctica y desafío', () => {
   })
 })
 
-describe('el desafío va preconfigurado', () => {
-  it('juega siempre con lo que fija el modo, elija lo que se elija en práctica', () => {
-    // Su récord es el de la cabina: con la dificultad y los palos a elegir, dos récords del
-    // desafío no serían la misma partida.
-    const { result } = abrirEnPractica()
+describe('the challenge comes preconfigured', () => {
+  it('always plays with what the mode fixes, whatever is chosen in practice', () => {
+    // Its record is the cabinet's: with the difficulty and the sticks to choose, two records of the
+    // challenge would not be the same run.
+    const { result } = openInPractice()
     act(() => result.current.setDifficulty('impossible'))
     act(() => result.current.setStickCount(MAX_STICKS))
     act(() => result.current.setGameMode('challenge'))
@@ -833,34 +833,34 @@ describe('el desafío va preconfigurado', () => {
     expect(result.current.activeDifficulty).toBe(CHALLENGE_SETUP.difficulty)
     expect(result.current.activeStickCount).toBe(CHALLENGE_SETUP.stickCount)
 
-    // Y lo elegido sigue ahí para cuando se vuelva a la práctica.
+    // And what was chosen is still there for when practice is returned to.
     act(() => result.current.setGameMode('practice'))
     expect(result.current.activeDifficulty).toBe('impossible')
     expect(result.current.activeStickCount).toBe(MAX_STICKS)
   })
 })
 
-describe('el reto del salón', () => {
-  const RETO = { seed: 20260925 }
+describe('the challenge of the hall', () => {
+  const CHALLENGE = { seed: 20260925 }
 
-  function conReto(opciones: OpcionesDelSalon) {
-    return renderHook((props: OpcionesDelSalon) => useGameStoreValue(props), {
-      initialProps: opciones,
+  function withChallenge(options: HallOptions) {
+    return renderHook((props: HallOptions) => useGameStoreValue(props), {
+      initialProps: options,
     })
   }
 
-  it('sin opciones se queda en el menú, con el reto elegido pero sin ser el reto del salón', () => {
+  it('with no options it stays in the menu, with the challenge chosen but without being the challenge of the hall', () => {
     const { result } = renderHook(() => useGameStoreValue())
     expect(result.current.gameState).toBe('menu')
     expect(result.current.gameMode).toBe('challenge')
-    expect(result.current.enReto).toBe(false)
+    expect(result.current.inChallenge).toBe(false)
   })
 
-  it('con reto se entra contando, en el desafío y con lo que fija el modo', () => {
-    const { result } = conReto({ reto: RETO })
+  it('with a challenge it starts out counting, in the challenge and with what the mode fixes', () => {
+    const { result } = withChallenge({ challenge: CHALLENGE })
     expect(result.current.gameState).toBe('countdown')
     expect(result.current.gameMode).toBe('challenge')
-    expect(result.current.enReto).toBe(true)
+    expect(result.current.inChallenge).toBe(true)
     expect(result.current.activeDifficulty).toBe(CHALLENGE_SETUP.difficulty)
     expect(result.current.activeStickCount).toBe(CHALLENGE_SETUP.stickCount)
     expect(result.current.lives).toBe(3)
@@ -868,47 +868,47 @@ describe('el reto del salón', () => {
     expect(result.current.gameState).toBe('playing')
   })
 
-  it('sin lección, aunque se juegue con las gafas y no se haya visto nunca', () => {
-    const { result } = conReto({ reto: RETO })
+  it('with no lesson, even if it is played with the headset and has never been seen', () => {
+    const { result } = withChallenge({ challenge: CHALLENGE })
     act(() => result.current.setImmersive(true))
     runOutCountdown()
     expect(result.current.teaching).toBe(false)
     expect(result.current.tutorialStep).toBeNull()
   })
 
-  it('la misma semilla reparte los mismos palos, y otra semilla no', () => {
-    const uno = conReto({ reto: RETO }).result.current
-    const otro = conReto({ reto: RETO }).result.current
-    const distinto = conReto({ reto: { seed: RETO.seed + 1 } }).result.current
+  it('the same seed deals the same sticks, and another seed does not', () => {
+    const one = withChallenge({ challenge: CHALLENGE }).result.current
+    const other = withChallenge({ challenge: CHALLENGE }).result.current
+    const different = withChallenge({ challenge: { seed: CHALLENGE.seed + 1 } }).result.current
 
-    expect(uno.stickSeed).toBe(otro.stickSeed)
-    const reparto = (seed: number) =>
+    expect(one.stickSeed).toBe(other.stickSeed)
+    const layout = (seed: number) =>
       buildStickLayout(CHALLENGE_SETUP.stickCount, seed).map(({ delay }) => delay)
-    expect(reparto(uno.stickSeed)).toEqual(reparto(otro.stickSeed))
-    expect(reparto(distinto.stickSeed)).not.toEqual(reparto(uno.stickSeed))
+    expect(layout(one.stickSeed)).toEqual(layout(other.stickSeed))
+    expect(layout(different.stickSeed)).not.toEqual(layout(one.stickSeed))
   })
 
-  it('sin reto, cada partida estrena semilla', () => {
-    const { result } = abrirEnPractica()
+  it('with no challenge, each run gets a fresh seed', () => {
+    const { result } = openInPractice()
     startPlaying(result)
-    const primera = result.current.stickSeed
+    const first = result.current.stickSeed
     act(() => result.current.resetGame())
     startPlaying(result)
-    expect(result.current.stickSeed).not.toBe(primera)
+    expect(result.current.stickSeed).not.toBe(first)
   })
 
-  it('al acabar el reto avisa una vez, con sus puntos y como reto', () => {
+  it('on finishing the challenge it reports once, with its points and as a challenge', () => {
     const onFinish = vi.fn()
-    const { result, rerender } = conReto({ reto: RETO, onFinish })
+    const { result, rerender } = withChallenge({ challenge: CHALLENGE, onFinish })
     runOutCountdown()
     act(() => result.current.catchStick(0.5))
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
 
     expect(result.current.gameState).toBe('finished')
-    // Volver a pintar la pantalla final —con otro aviso, además— no la cuenta otra vez.
-    const otroAviso = vi.fn()
-    rerender({ reto: RETO, onFinish: otroAviso })
-    rerender({ reto: RETO, onFinish: otroAviso })
+    // Painting the final screen again —with another callback, besides— does not count it again.
+    const otherCallback = vi.fn()
+    rerender({ challenge: CHALLENGE, onFinish: otherCallback })
+    rerender({ challenge: CHALLENGE, onFinish: otherCallback })
 
     expect(onFinish).toHaveBeenCalledTimes(1)
     expect(onFinish).toHaveBeenCalledWith({
@@ -917,14 +917,14 @@ describe('el reto del salón', () => {
       challenge: true,
     })
     expect(result.current.points).toBeGreaterThan(0)
-    expect(otroAviso).not.toHaveBeenCalled()
+    expect(otherCallback).not.toHaveBeenCalled()
   })
 
-  it('un palo que se resuelve con la partida ya acabada no la cuenta otra vez', () => {
-    // Dos palos pueden resolverse en el mismo lote que agota la última vida: la pantalla final
-    // se vuelve a calcular con más puntos, pero la partida es la misma.
+  it('a stick resolved with the run already finished does not count it again', () => {
+    // Two sticks can be resolved in the same batch that uses up the last life: the final screen
+    // is computed again with more points, but the run is the same.
     const onFinish = vi.fn()
-    const { result } = conReto({ reto: RETO, onFinish })
+    const { result } = withChallenge({ challenge: CHALLENGE, onFinish })
     runOutCountdown()
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
     act(() => result.current.catchStick(0.5))
@@ -933,25 +933,25 @@ describe('el reto del salón', () => {
     expect(onFinish).toHaveBeenCalledTimes(1)
   })
 
-  it('otra partida tras el reto ya no es el reto, aunque sea el mismo modo', () => {
+  it('another run after the challenge is no longer the challenge, even if it is the same mode', () => {
     const onFinish = vi.fn()
-    const { result } = conReto({ reto: RETO, onFinish })
-    const semillaDelReto = result.current.stickSeed
+    const { result } = withChallenge({ challenge: CHALLENGE, onFinish })
+    const challengeSeed = result.current.stickSeed
     runOutCountdown()
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
 
     startPlaying(result)
-    expect(result.current.enReto).toBe(false)
-    expect(result.current.stickSeed).not.toBe(semillaDelReto)
+    expect(result.current.inChallenge).toBe(false)
+    expect(result.current.stickSeed).not.toBe(challengeSeed)
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
 
     expect(onFinish).toHaveBeenCalledTimes(2)
     expect(onFinish).toHaveBeenLastCalledWith({ mode: 'challenge', points: 0, challenge: false })
   })
 
-  it('avisa de cualquier partida con puntuación, no solo del desafío', () => {
+  it('reports any run with a score, not only the challenge', () => {
     const onFinish = vi.fn()
-    const { result } = abrirEnPractica({ onFinish })
+    const { result } = openInPractice({ onFinish })
     playRound(result, 5, 5)
     expect(onFinish).toHaveBeenCalledWith({
       mode: 'practice',
@@ -960,21 +960,21 @@ describe('el reto del salón', () => {
     })
   })
 
-  it('dejarla a medias no es acabarla: no avisa', () => {
+  it('leaving it halfway is not finishing it: it does not report', () => {
     const onFinish = vi.fn()
-    const { result } = conReto({ reto: RETO, onFinish })
+    const { result } = withChallenge({ challenge: CHALLENGE, onFinish })
     runOutCountdown()
     act(() => result.current.catchStick(0.5))
     act(() => result.current.askToQuit())
     act(() => result.current.resetGame())
 
     expect(result.current.gameState).toBe('menu')
-    expect(result.current.enReto).toBe(false)
+    expect(result.current.inChallenge).toBe(false)
     expect(onFinish).not.toHaveBeenCalled()
   })
 
-  it('sin aviso que dar, acabar sigue guardando el récord como siempre', () => {
-    const { result } = conReto({ reto: RETO })
+  it('with no callback to call, finishing still saves the record as always', () => {
+    const { result } = withChallenge({ challenge: CHALLENGE })
     runOutCountdown()
     act(() => result.current.catchStick(0.5))
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
@@ -982,16 +982,16 @@ describe('el reto del salón', () => {
   })
 })
 
-describe('escenario o passthrough', () => {
-  it('se entra con el escenario puesto', () => {
-    // Es la experiencia completa; quien prefiera ver su cuarto lo quita desde
-    // el menú inmersivo.
-    const { result } = abrirEnPractica()
+describe('scenery or passthrough', () => {
+  it('starts with the scenery on', () => {
+    // It is the full experience; whoever prefers to see their room takes it off from
+    // the immersive menu.
+    const { result } = openInPractice()
     expect(result.current.scenery).toBe('scene')
   })
 
-  it('se puede alternar en cualquier momento', () => {
-    const { result } = abrirEnPractica()
+  it('can be toggled at any time', () => {
+    const { result } = openInPractice()
 
     act(() => result.current.setScenery('passthrough'))
     expect(result.current.scenery).toBe('passthrough')
@@ -1000,10 +1000,10 @@ describe('escenario o passthrough', () => {
     expect(result.current.scenery).toBe('scene')
   })
 
-  it('la elección sobrevive a la partida', () => {
-    // Cambiar de decorado no es parte de la partida: quitarlo al empezar o al
-    // volver al menú obligaría a elegirlo cada vez.
-    const { result } = abrirEnPractica()
+  it('the choice survives the run', () => {
+    // Changing the set is not part of the run: removing it on starting or on
+    // returning to the menu would force choosing it every time.
+    const { result } = openInPractice()
     act(() => result.current.setScenery('passthrough'))
 
     playRound(result, 5, 3)
@@ -1013,10 +1013,10 @@ describe('escenario o passthrough', () => {
     expect(result.current.scenery).toBe('passthrough')
   })
 
-  it('el selector del menú escribe el escenario del arcade, con sus valores', () => {
-    // Una sola preferencia, la misma que enseña el panel del salón: `passthrough` se guarda
-    // como `room`, que es lo que el salón y los demás juegos entienden.
-    const { result } = abrirEnPractica()
+  it('the menu selector writes the scenery of the hall, with its values', () => {
+    // A single preference, the same one the hall's panel shows: `passthrough` is saved
+    // as `room`, which is what the hall and the other games understand.
+    const { result } = openInPractice()
 
     act(() => result.current.setScenery('passthrough'))
     expect(window.localStorage.getItem(SCENERY_KEY)).toBe('room')
@@ -1026,8 +1026,8 @@ describe('escenario o passthrough', () => {
     expect(window.localStorage.getItem(SCENERY_KEY)).toBeNull()
   })
 
-  it('lo que se elige en el salón llega a la partida sin recargar', () => {
-    const { result } = abrirEnPractica()
+  it('what is chosen in the hall reaches the run without reloading', () => {
+    const { result } = openInPractice()
 
     act(() => {
       window.localStorage.setItem(SCENERY_KEY, 'room')
@@ -1037,12 +1037,12 @@ describe('escenario o passthrough', () => {
     expect(result.current.scenery).toBe('passthrough')
   })
 
-  it('la clave propia del juego no manda y se borra al montar la partida, sin trasladarla', () => {
-    // Con passthrough guardado en la clave propia de esta cabina no se puede quedar sin plaza:
-    // manda lo que diga el salón, y sin nada elegido allí, el sitio dibujado.
+  it('the own key of the game does not rule and is deleted on mounting the run, without carrying it over', () => {
+    // With passthrough saved in this cabinet's own key it cannot be left without a square:
+    // what the hall says rules, and with nothing chosen there, the drawn place.
     window.localStorage.setItem(OWN_SCENERY_KEY, 'passthrough')
 
-    const { result } = abrirEnPractica()
+    const { result } = openInPractice()
 
     expect(result.current.scenery).toBe('scene')
     expect(window.localStorage.getItem(OWN_SCENERY_KEY)).toBeNull()
@@ -1050,18 +1050,18 @@ describe('escenario o passthrough', () => {
   })
 })
 
-describe('silencio', () => {
-  // Ya no es una preferencia del juego: sale del volumen de efectos que se
-  // elige en xrcade y vale para los doce (ver `ajustes.ts`). Lo que se
-  // comprueba aquí es que el store lo traduce bien y que se entera de los
-  // cambios, vengan del menú del arcade o de otra pestaña.
-  it('se entra con sonido', () => {
-    const { result } = abrirEnPractica()
+describe('silence', () => {
+  // It is no longer a preference of the game: it comes from the effects volume that is
+  // chosen in xrcade and holds for all twelve (see `settings.ts`). What is
+  // checked here is that the store translates it well and that it finds out about the
+  // changes, whether they come from the hall's menu or from another tab.
+  it('starts with sound', () => {
+    const { result } = openInPractice()
     expect(result.current.muted).toBe(false)
   })
 
-  it('se puede silenciar y volver a activar', () => {
-    const { result } = abrirEnPractica()
+  it('can be muted and turned back on', () => {
+    const { result } = openInPractice()
 
     act(() => setVolume('sfx', 0))
     expect(result.current.muted).toBe(true)
@@ -1070,11 +1070,11 @@ describe('silencio', () => {
     expect(result.current.muted).toBe(false)
   })
 
-  it('la elección sobrevive a la partida', () => {
-    // Silenciar es una preferencia del jugador, no un ajuste de la ronda:
-    // devolver el sonido al empezar o al volver al menú obligaría a apagarlo
-    // cada vez, que es justo lo que molesta con el visor puesto.
-    const { result } = abrirEnPractica()
+  it('the choice survives the run', () => {
+    // Muting is a preference of the player, not a setting of the round:
+    // giving the sound back on starting or on returning to the menu would force turning it off
+    // every time, which is exactly what annoys with the headset on.
+    const { result } = openInPractice()
     act(() => setVolume('sfx', 0))
 
     playRound(result, 5, 3)
@@ -1084,33 +1084,33 @@ describe('silencio', () => {
     expect(result.current.muted).toBe(true)
   })
 
-  it('la elección sobrevive a la visita', () => {
-    // Es para lo que se guarda: en el visor, apagar el sonido cada vez que uno
-    // se pone las gafas es el gesto más incómodo que hay.
-    const first = abrirEnPractica()
+  it('the choice survives the visit', () => {
+    // It is what it is saved for: in the headset, turning the sound off every time you
+    // put the headset on is the most awkward gesture there is.
+    const first = openInPractice()
     act(() => setVolume('sfx', 0))
     first.unmount()
 
-    const { result } = abrirEnPractica()
+    const { result } = openInPractice()
     expect(result.current.muted).toBe(true)
   })
 
-  it('volver al sonido también se recuerda', () => {
-    // El otro lado del mismo trato: quien lo enciende no se encuentra el juego
-    // mudo otra vez en la visita siguiente.
-    const first = abrirEnPractica()
+  it('going back to sound is also remembered', () => {
+    // The other side of the same deal: whoever turns it on does not find the game
+    // muted again on the next visit.
+    const first = openInPractice()
     act(() => setVolume('sfx', 0))
     act(() => setVolume('sfx', DEFAULT_VOLUMES.sfx))
     first.unmount()
 
-    const { result } = abrirEnPractica()
+    const { result } = openInPractice()
     expect(result.current.muted).toBe(false)
   })
 
-  it('lo que silencie otra pestaña se ve aquí', () => {
-    // El navegador cuenta con el evento `storage` que otra pestaña ha escrito.
-    // Sin escucharlo, silenciar en una dejaría la otra sonando.
-    const { result } = abrirEnPractica()
+  it('what another tab mutes is seen here', () => {
+    // The browser tells, with the `storage` event, that another tab has written.
+    // Without listening to it, muting in one would leave the other sounding.
+    const { result } = openInPractice()
 
     act(() => {
       localStorage.setItem(VOLUME_KEYS.sfx, '0')
@@ -1121,15 +1121,15 @@ describe('silencio', () => {
   })
 })
 
-describe('altura del aro', () => {
-  it('sin visor y sin corrección guardada, el aro está donde siempre', () => {
-    const { result } = abrirEnPractica()
+describe('hoop height', () => {
+  it('with no headset and no saved correction, the hoop is where it always is', () => {
+    const { result } = openInPractice()
     expect(result.current.hoopAdjustment).toBe(0)
     expect(result.current.hoopHeight).toBeCloseTo(MACHINE_HEIGHT, 6)
   })
 
-  it('sube y baja a pasos, y el aro le sigue', () => {
-    const { result } = abrirEnPractica()
+  it('goes up and down in steps, and the hoop follows', () => {
+    const { result } = openInPractice()
 
     act(() => result.current.adjustHoop(1))
     expect(result.current.hoopAdjustment).toBeCloseTo(HOOP_ADJUST_STEP, 6)
@@ -1142,10 +1142,10 @@ describe('altura del aro', () => {
     expect(result.current.hoopAdjustment).toBeCloseTo(-HOOP_ADJUST_STEP, 6)
   })
 
-  it('no se pasa del tope por mucho que se insista', () => {
-    // Es la valla que pide el enunciado: desde el menú no se puede dejar el aro
-    // ni por las nubes ni dentro del suelo.
-    const { result } = abrirEnPractica()
+  it('does not go past the limit however much one insists', () => {
+    // It is the fence the brief asks for: from the menu the hoop cannot be left
+    // either up in the clouds or inside the floor.
+    const { result } = openInPractice()
 
     for (let i = 0; i < 20; i++) act(() => result.current.adjustHoop(1))
     expect(result.current.hoopAdjustment).toBeCloseTo(HOOP_ADJUST_RANGE, 6)
@@ -1154,21 +1154,21 @@ describe('altura del aro', () => {
     expect(result.current.hoopAdjustment).toBeCloseTo(-HOOP_ADJUST_RANGE, 6)
   })
 
-  it('la corrección se guarda y sigue ahí en la visita siguiente', () => {
-    const { result, unmount } = abrirEnPractica()
+  it('the correction is saved and is still there on the next visit', () => {
+    const { result, unmount } = openInPractice()
     act(() => result.current.adjustHoop(-2))
     const chosen = result.current.hoopAdjustment
     unmount()
 
-    // Otra visita: el store nace leyendo lo guardado, sin pasar por el menú.
-    const { result: later } = abrirEnPractica()
+    // Another visit: the store is born reading what was saved, without going through the menu.
+    const { result: later } = openInPractice()
     expect(later.current.hoopAdjustment).toBeCloseTo(chosen, 6)
   })
 
-  it('no escribe nada cuando la pulsación no cambia el valor', () => {
-    // En el tope el botón se apaga, pero un mando que insista no puede acabar
-    // escribiendo en el almacenamiento en cada pulsación.
-    const { result } = abrirEnPractica()
+  it('writes nothing when the press does not change the value', () => {
+    // At the limit the button goes off, but a controller that insists cannot end up
+    // writing to storage on every press.
+    const { result } = openInPractice()
     for (let i = 0; i < 4; i++) act(() => result.current.adjustHoop(1))
 
     const setItem = vi.spyOn(Storage.prototype, 'setItem')
@@ -1177,8 +1177,8 @@ describe('altura del aro', () => {
     setItem.mockRestore()
   })
 
-  it('la corrección sobrevive a la partida', () => {
-    const { result } = abrirEnPractica()
+  it('the correction survives the run', () => {
+    const { result } = openInPractice()
     act(() => result.current.adjustHoop(-1))
     const chosen = result.current.hoopAdjustment
 
@@ -1189,22 +1189,22 @@ describe('altura del aro', () => {
     expect(result.current.hoopAdjustment).toBeCloseTo(chosen, 6)
   })
 
-  it('con el visor midiendo, el aro se planta sobre los ojos del jugador', () => {
-    const { result } = abrirEnPractica()
+  it('with the headset measuring, the hoop is set above the eyes of the player', () => {
+    const { result } = openInPractice()
 
     act(() => result.current.setPlayerEyeHeight(1.2))
     const seated = result.current.hoopHeight
     expect(seated).toBeLessThan(MACHINE_HEIGHT)
 
-    // Y la corrección manual se suma a lo medido, no lo sustituye.
+    // And the manual correction is added to what was measured, it does not replace it.
     act(() => result.current.adjustHoop(1))
     expect(result.current.hoopHeight).toBeCloseTo(seated + HOOP_ADJUST_STEP, 6)
   })
 
-  it('al cerrarse la sesión el aro vuelve a su altura de referencia', () => {
-    // Fuera del visor no hay a quién medir, y la medida de la última sesión no
-    // dice nada de quien juegue después.
-    const { result } = abrirEnPractica()
+  it('when the session closes the hoop goes back to its reference height', () => {
+    // Outside the headset there is nobody to measure, and the measurement of the last session
+    // says nothing about whoever plays next.
+    const { result } = openInPractice()
     act(() => result.current.setPlayerEyeHeight(1.9))
     expect(result.current.hoopHeight).toBeGreaterThan(MACHINE_HEIGHT)
 
@@ -1212,10 +1212,10 @@ describe('altura del aro', () => {
     expect(result.current.hoopHeight).toBeCloseTo(MACHINE_HEIGHT, 6)
   })
 
-  it('la medida del visor queda a la vista, no solo dentro del aro', () => {
-    // La interfaz inmersiva también cuelga de los ojos del jugador (ver
-    // `xrUiRise` en `xrLayout.ts`), así que necesita el mismo dato.
-    const { result } = abrirEnPractica()
+  it('the headset measurement stays in view, not only inside the hoop', () => {
+    // The immersive UI also hangs from the player's eyes (see
+    // `xrUiRise` in `xrLayout.ts`), so it needs the same datum.
+    const { result } = openInPractice()
     expect(result.current.playerEyeHeight).toBeNull()
 
     act(() => result.current.setPlayerEyeHeight(1.2))
@@ -1225,16 +1225,16 @@ describe('altura del aro', () => {
     expect(result.current.playerEyeHeight).toBeNull()
   })
 
-  it('una medida imposible del visor no mueve el aro', () => {
-    const { result } = abrirEnPractica()
+  it('an impossible measurement from the headset does not move the hoop', () => {
+    const { result } = openInPractice()
     act(() => result.current.setPlayerEyeHeight(Number.NaN))
     expect(result.current.hoopHeight).toBeCloseTo(MACHINE_HEIGHT, 6)
   })
 })
 
-describe('puntuación y racha', () => {
-  it('atrapar suma puntos; fallar no', () => {
-    const { result } = abrirEnPractica()
+describe('score and streak', () => {
+  it('catching adds points; missing does not', () => {
+    const { result } = openInPractice()
     startPlaying(result)
 
     act(() => result.current.catchStick(0.5))
@@ -1245,24 +1245,24 @@ describe('puntuación y racha', () => {
     expect(result.current.points).toBe(afterCatch)
   })
 
-  it('cogerlo pronto puntúa más que rescatarlo del suelo', () => {
-    const early = abrirEnPractica()
+  it('catching it early scores more than rescuing it from the floor', () => {
+    const early = openInPractice()
     startPlaying(early.result)
     act(() => early.result.current.catchStick(0))
 
-    const late = abrirEnPractica()
+    const late = openInPractice()
     startPlaying(late.result)
     act(() => late.result.current.catchStick(1))
 
     expect(early.result.current.points).toBeGreaterThan(late.result.current.points)
   })
 
-  it('la misma partida renta más en una dificultad alta', () => {
-    const easy = abrirEnPractica()
+  it('the same run pays more on a high difficulty', () => {
+    const easy = openInPractice()
     startPlaying(easy.result)
     act(() => easy.result.current.catchStick(0.5))
 
-    const hard = abrirEnPractica()
+    const hard = openInPractice()
     act(() => hard.result.current.setDifficulty('impossible'))
     startPlaying(hard.result)
     act(() => hard.result.current.catchStick(0.5))
@@ -1270,8 +1270,8 @@ describe('puntuación y racha', () => {
     expect(hard.result.current.points).toBeGreaterThan(easy.result.current.points)
   })
 
-  it('la racha crece al encadenar y se rompe al fallar', () => {
-    const { result } = abrirEnPractica()
+  it('the streak grows on chaining and breaks on missing', () => {
+    const { result } = openInPractice()
     act(() => result.current.setStickCount(9))
     startPlaying(result)
 
@@ -1286,8 +1286,8 @@ describe('puntuación y racha', () => {
     expect(result.current.streak).toBe(1)
   })
 
-  it('guarda la mejor racha aunque luego se rompa', () => {
-    const { result } = abrirEnPractica()
+  it('keeps the best streak even if it breaks later', () => {
+    const { result } = openInPractice()
     act(() => result.current.setStickCount(9))
     startPlaying(result)
 
@@ -1300,11 +1300,11 @@ describe('puntuación y racha', () => {
     expect(result.current.bestStreak).toBe(3)
   })
 
-  it('dos palos atrapados en el mismo lote puntúan cada uno por su racha', () => {
-    // Los dos mandos XR pueden resolver a la vez. Si la racha se leyera del
-    // render anterior, ambos cobrarían el mismo bonus y el segundo saldría
-    // barato.
-    const batched = abrirEnPractica()
+  it('two sticks caught in the same batch each score by their streak', () => {
+    // The two XR controllers can resolve at once. If the streak were read from the
+    // previous render, both would collect the same bonus and the second would come
+    // cheap.
+    const batched = openInPractice()
     act(() => batched.result.current.setStickCount(9))
     startPlaying(batched.result)
     act(() => {
@@ -1312,7 +1312,7 @@ describe('puntuación y racha', () => {
       batched.result.current.catchStick(0.5)
     })
 
-    const sequential = abrirEnPractica()
+    const sequential = openInPractice()
     act(() => sequential.result.current.setStickCount(9))
     startPlaying(sequential.result)
     act(() => sequential.result.current.catchStick(0.5))
@@ -1322,8 +1322,8 @@ describe('puntuación y racha', () => {
     expect(batched.result.current.points).toBe(sequential.result.current.points)
   })
 
-  it('empezar otra partida borra puntos y racha', () => {
-    const { result } = abrirEnPractica()
+  it('starting another run clears points and streak', () => {
+    const { result } = openInPractice()
     playRound(result, 5, 5)
     expect(result.current.points).toBeGreaterThan(0)
 
@@ -1335,17 +1335,17 @@ describe('puntuación y racha', () => {
   })
 })
 
-describe('mejor puntuación', () => {
-  it('se empieza sin récord', () => {
-    const { result } = abrirEnPractica()
+describe('best score', () => {
+  it('starts with no record', () => {
+    const { result } = openInPractice()
     expect(result.current.bestPoints).toBe(0)
     expect(result.current.isRecord).toBe(false)
   })
 
-  it('la marca a batir no se mueve mientras se juega', () => {
-    // Si el récord se actualizara palo a palo, al terminar sería siempre igual
-    // a los puntos de la partida y nunca se podría decir que se ha batido.
-    const { result } = abrirEnPractica()
+  it('the best to beat does not move while playing', () => {
+    // If the record were updated stick by stick, on finishing it would always be equal
+    // to the points of the run and it could never be said that it has been beaten.
+    const { result } = openInPractice()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
 
@@ -1356,16 +1356,16 @@ describe('mejor puntuación', () => {
     expect(result.current.isRecord).toBe(false)
   })
 
-  it('al terminar, la puntuación pasa a ser el récord', () => {
-    const { result } = abrirEnPractica()
+  it('on finishing, the score becomes the record', () => {
+    const { result } = openInPractice()
     playRound(result, 5, 5)
 
     expect(result.current.bestPoints).toBe(result.current.points)
     expect(result.current.isRecord).toBe(true)
   })
 
-  it('una partida peor no baja el récord ni lo anuncia', () => {
-    const { result } = abrirEnPractica()
+  it('a worse run does not lower the record nor announce it', () => {
+    const { result } = openInPractice()
     playRound(result, 5, 5)
     const record = result.current.bestPoints
 
@@ -1376,52 +1376,52 @@ describe('mejor puntuación', () => {
     expect(result.current.isRecord).toBe(false)
   })
 
-  it('el récord sobrevive a volver al menú y a la siguiente partida', () => {
-    const { result } = abrirEnPractica()
+  it('the record survives returning to the menu and the next run', () => {
+    const { result } = openInPractice()
     playRound(result, 5, 5)
     const record = result.current.bestPoints
 
     act(() => result.current.resetGame())
     expect(result.current.bestPoints).toBe(record)
-    // Y el anuncio se apaga: pertenece a la partida que acaba de terminar.
+    // And the announcement goes off: it belongs to the run that has just ended.
     expect(result.current.isRecord).toBe(false)
 
     startPlaying(result)
     expect(result.current.bestPoints).toBe(record)
   })
 
-  it('una partida sin atrapar nada no cuenta como récord', () => {
-    const { result } = abrirEnPractica()
+  it('a run catching nothing does not count as a record', () => {
+    const { result } = openInPractice()
     playRound(result, 5, 0)
 
     expect(result.current.bestPoints).toBe(0)
     expect(result.current.isRecord).toBe(false)
   })
 
-  it('el récord sigue ahí al volver a abrir el juego', () => {
-    // Es lo que separa "entre partidas" de "entre visitas": el segundo store
-    // no comparte nada con el primero salvo el almacenamiento del navegador.
-    const first = abrirEnPractica()
+  it('the record is still there on opening the game again', () => {
+    // It is what separates "between runs" from "between visits": the second store
+    // shares nothing with the first except the browser's storage.
+    const first = openInPractice()
     playRound(first.result, 5, 5)
     const record = first.result.current.bestPoints
     expect(record).toBeGreaterThan(0)
 
-    const reopened = abrirEnPractica()
+    const reopened = openInPractice()
 
     expect(reopened.result.current.bestPoints).toBe(record)
-    // Recuperado, no recién batido: nadie ha jugado todavía en esta visita.
+    // Recovered, not just beaten: nobody has played yet on this visit.
     expect(reopened.result.current.isRecord).toBe(false)
   })
 
-  it('sin poder guardar no se anuncia un récord que no existe', () => {
-    // Modo privado: `localStorage` existe pero lanza al escribir. Ahí la marca
-    // a batir se queda a cero para siempre, así que sin comprobar que el
-    // récord llegó a guardarse toda partida con puntos sería "nuevo récord".
+  it('without being able to save, a record that does not exist is not announced', () => {
+    // Private mode: `localStorage` exists but throws on writing. There the best
+    // to beat stays at zero forever, so without checking that the
+    // record got saved every run with points would be a "new record".
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new DOMException('bloqueado', 'SecurityError')
+      throw new DOMException('blocked', 'SecurityError')
     })
 
-    const { result } = abrirEnPractica()
+    const { result } = openInPractice()
     playRound(result, 5, 5)
 
     expect(result.current.points).toBeGreaterThan(0)
@@ -1429,11 +1429,11 @@ describe('mejor puntuación', () => {
     expect(result.current.isRecord).toBe(false)
   })
 
-  it('no anuncia récord si otra pestaña guardó algo mejor mientras se jugaba', () => {
-    // La marca a batir se congela al empezar, así que una partida puede superar
-    // esa y aun así quedarse por debajo de lo guardado. Anunciarla sería
-    // prometer un récord que el menú va a desmentir en cuanto se vuelva.
-    const { result } = abrirEnPractica()
+  it('does not announce a record if another tab saved something better while playing', () => {
+    // The best to beat is frozen at the start, so a run can beat
+    // that one and still fall short of what is saved. Announcing it would be
+    // promising a record that the menu is going to deny as soon as it is returned to.
+    const { result } = openInPractice()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
 
@@ -1450,22 +1450,22 @@ describe('mejor puntuación', () => {
     expect(result.current.isRecord).toBe(false)
   })
 
-  it('un récord ilegible en el navegador no rompe el juego', () => {
-    localStorage.setItem('stick-rush:best-points', 'lo que sea')
+  it('an unreadable record in the browser does not break the game', () => {
+    localStorage.setItem('stick-rush:best-points', 'whatever')
 
-    const { result } = abrirEnPractica()
+    const { result } = openInPractice()
 
     expect(result.current.bestPoints).toBe(0)
 
-    // Y la primera partida lo deja bien escrito.
+    // And the first run leaves it properly written.
     playRound(result, 5, 5)
     expect(result.current.bestPoints).toBe(result.current.points)
   })
 })
 
-describe('vuelta al menú y revancha', () => {
-  it('vuelve al menú conservando la configuración elegida', () => {
-    const { result } = abrirEnPractica()
+describe('back to the menu and rematch', () => {
+  it('returns to the menu keeping the chosen configuration', () => {
+    const { result } = openInPractice()
     act(() => result.current.setDifficulty('hard'))
     playRound(result, 6, 2)
 
@@ -1478,8 +1478,8 @@ describe('vuelta al menú y revancha', () => {
     expect(result.current.difficulty).toBe('hard')
   })
 
-  it('no se queda en "terminada" al encadenar otra partida', () => {
-    const { result } = abrirEnPractica()
+  it('does not stay in "finished" on chaining another run', () => {
+    const { result } = openInPractice()
     playRound(result, 5, 5)
     expect(result.current.gameState).toBe('finished')
 
@@ -1490,27 +1490,27 @@ describe('vuelta al menú y revancha', () => {
     expect(result.current.resolved).toBe(0)
   })
 
-  it('no da por terminada una partida que no ha empezado', () => {
-    const { result } = abrirEnPractica()
+  it('does not count as finished a run that has not started', () => {
+    const { result } = openInPractice()
     act(() => result.current.missStick())
     expect(result.current.gameState).toBe('menu')
   })
 })
 
-describe('práctica sin fin', () => {
-  it('al resolver la tanda la máquina se recarga en vez de acabar, y termina el jugador', () => {
-    const { result } = abrirEnPractica()
+describe('endless practice', () => {
+  it('on resolving the round the machine reloads instead of ending, and the player ends it', () => {
+    const { result } = openInPractice()
     act(() => result.current.setEndless(true))
     act(() => result.current.setStickCount(5))
     startPlaying(result)
-    const primerReparto = result.current.stickSeed
+    const firstLayout = result.current.stickSeed
 
     for (let i = 0; i < 5; i++) act(() => result.current.catchStick(0.5))
 
     expect(result.current.gameState).toBe('playing')
     expect(result.current.score).toBe(5)
-    // Tanda nueva: palos nuevos, contador de tanda a cero, el de la partida sigue.
-    expect(result.current.stickSeed).not.toBe(primerReparto)
+    // New round: new sticks, round counter at zero, the run's one goes on.
+    expect(result.current.stickSeed).not.toBe(firstLayout)
     expect(result.current.waveResolved).toBe(0)
     expect(result.current.waveScore).toBe(0)
 
@@ -1519,16 +1519,16 @@ describe('práctica sin fin', () => {
 
     expect(result.current.gameState).toBe('finished')
     expect(result.current.outcome).toBe('cleared')
-    // La marca de este modo es la racha, no los puntos.
+    // The best of this mode is the streak, not the points.
     expect(result.current.bestPoints).toBe(6)
     expect(result.current.isRecord).toBe(true)
     expect(localStorage.getItem(HIGH_SCORE_KEYS.practice)).toBeNull()
   })
 })
 
-describe('modo niveles', () => {
-  it('juega el nivel más alto desbloqueado con sus palos y velocidad, sin vidas', () => {
-    const { result } = abrirEnPractica()
+describe('levels mode', () => {
+  it('plays the highest unlocked level with its sticks and speed, with no lives', () => {
+    const { result } = openInPractice()
     act(() => result.current.setGameMode('levels'))
     act(() => result.current.setDifficulty('impossible'))
 
@@ -1538,8 +1538,8 @@ describe('modo niveles', () => {
     expect(result.current.lives).toBeNull()
   })
 
-  it('superar el nivel da estrellas y desbloquea el siguiente, sin mover el jugado', () => {
-    const { result } = abrirEnPractica()
+  it('passing the level gives stars and unlocks the next, without moving the one played', () => {
+    const { result } = openInPractice()
     act(() => result.current.setGameMode('levels'))
     startPlaying(result)
 
@@ -1555,8 +1555,8 @@ describe('modo niveles', () => {
     expect(result.current.activeStickCount).toBe(9)
   })
 
-  it('no superar no abre nada, y no se elige más allá de lo desbloqueado', () => {
-    const { result } = abrirEnPractica()
+  it('not passing unlocks nothing, and nothing beyond what is unlocked can be chosen', () => {
+    const { result } = openInPractice()
     act(() => result.current.setGameMode('levels'))
     act(() => result.current.setLevel(9))
     expect(result.current.activeLevel).toBe(1)
@@ -1570,11 +1570,11 @@ describe('modo niveles', () => {
   })
 })
 
-describe('terminar el tutorial cuando ya no está', () => {
-  it('no hace nada', () => {
-    // El botón de saltar y el reloj del tutorial llaman a lo mismo: sin esto,
-    // el que llegue segundo arrancaría otra cuenta atrás a media partida.
-    const { result } = abrirEnPractica()
+describe('finishing the tutorial when it is no longer there', () => {
+  it('does nothing', () => {
+    // The skip button and the tutorial's clock call the same thing: without this,
+    // whichever arrives second would start another countdown mid-run.
+    const { result } = openInPractice()
 
     act(() => result.current.finishTutorial())
 
@@ -1583,36 +1583,36 @@ describe('terminar el tutorial cuando ya no está', () => {
   })
 })
 
-describe('usar el store sin haberlo montado', () => {
-  it('avisa con un error claro en vez de romper en otro sitio', () => {
+describe('using the store without having mounted it', () => {
+  it('warns with a clear error instead of breaking somewhere else', () => {
     expect(() => renderHook(() => useGame())).toThrow(/GameProvider/)
   })
 })
 
-describe('elegir nivel a media partida', () => {
-  it('no se puede: el nivel que se juega es el de cuando empezó', () => {
-    // Cambiarlo por debajo cambiaría los palos y la velocidad a mitad de tanda.
-    const { result } = abrirEnPractica()
+describe('choosing a level mid-run', () => {
+  it('is not possible: the level played is the one from when it started', () => {
+    // Changing it underneath would change the sticks and the speed mid-round.
+    const { result } = openInPractice()
     act(() => result.current.setGameMode('levels'))
     act(() => result.current.startGame())
-    const jugando = result.current.activeLevel
+    const playing = result.current.activeLevel
 
     act(() => result.current.setLevel(1))
 
-    expect(result.current.activeLevel).toBe(jugando)
+    expect(result.current.activeLevel).toBe(playing)
   })
 })
 
 /**
- * Dejar la partida pregunta antes.
+ * Leaving the run asks first.
  *
- * **Se pulsa sin querer y se pierde lo hecho.** Con el visor puesto no se ve lo que hay a
- * los lados y la mano va a por los palos. Lo que hace que preguntar no salga caro es que la
- * partida se para: no cae ningún palo mientras la pregunta está en pantalla.
+ * **It gets pressed by accident and what was done is lost.** With the headset on you cannot see what
+ * is at your sides and the hand goes for the sticks. What keeps asking from being costly is that the
+ * run stops: no stick falls while the question is on screen.
  */
-describe('dejar la partida', () => {
-  it('pregunta en vez de salir', () => {
-    const hook = abrirEnPractica()
+describe('leaving the run', () => {
+  it('asks instead of quitting', () => {
+    const hook = openInPractice()
     act(() => hook.result.current.startGame())
 
     act(() => hook.result.current.askToQuit())
@@ -1621,8 +1621,8 @@ describe('dejar la partida', () => {
     expect(hook.result.current.gameState).not.toBe('menu')
   })
 
-  it('seguir jugando la devuelve donde estaba', () => {
-    const hook = abrirEnPractica()
+  it('keep playing puts it back where it was', () => {
+    const hook = openInPractice()
     act(() => hook.result.current.startGame())
     act(() => hook.result.current.askToQuit())
 
@@ -1631,8 +1631,8 @@ describe('dejar la partida', () => {
     expect(hook.result.current.prompt).toBeNull()
   })
 
-  it('y confirmar sí sale', () => {
-    const hook = abrirEnPractica()
+  it('and confirming does quit', () => {
+    const hook = openInPractice()
     act(() => hook.result.current.startGame())
     act(() => hook.result.current.askToQuit())
 
@@ -1642,8 +1642,8 @@ describe('dejar la partida', () => {
     expect(hook.result.current.gameState).toBe('menu')
   })
 
-  it('empezar otra se lleva la pregunta por delante', () => {
-    const hook = abrirEnPractica()
+  it('starting another sweeps the question away', () => {
+    const hook = openInPractice()
     act(() => hook.result.current.startGame())
     act(() => hook.result.current.askToQuit())
 
@@ -1653,29 +1653,29 @@ describe('dejar la partida', () => {
   })
 })
 
-describe('la partida a dos', () => {
+describe('the two-player match', () => {
   type Store = { current: ReturnType<typeof useGameStoreValue> }
 
-  /** Una tanda del desafío entera: atrapa `atrapa` palos y pierde el resto, hasta que se acaba. */
-  function unaTanda(store: Store, atrapa: number) {
+  /** A whole round of the challenge: catches `catches` sticks and misses the rest, until it ends. */
+  function oneRound(store: Store, catches: number) {
     startPlaying(store)
     for (let i = 0; i < CHALLENGE_SETUP.stickCount && store.current.gameState === 'playing'; i++) {
       act(() => {
-        if (i < atrapa) store.current.catchStick(0.5)
+        if (i < catches) store.current.catchStick(0.5)
         else store.current.missStick()
       })
     }
   }
 
-  function aDos(onFinish?: OpcionesDelSalon['onFinish']) {
+  function twoPlayers(onFinish?: HallOptions['onFinish']) {
     const hook = renderHook(() => useGameStoreValue({ onFinish }))
     act(() => hook.result.current.setGameMode('challenge'))
     act(() => hook.result.current.setPlayers(2))
     return hook
   }
 
-  it('solo, el desafío es el de siempre: sin partida a dos', () => {
-    const { result } = abrirEnPractica()
+  it('alone, the challenge is the usual one: with no two-player match', () => {
+    const { result } = openInPractice()
     act(() => result.current.setGameMode('challenge'))
     expect(result.current.players).toBe(1)
     startPlaying(result)
@@ -1683,198 +1683,198 @@ describe('la partida a dos', () => {
     expect(result.current.player).toBeNull()
   })
 
-  it('a dos fuera del desafío no cuenta: se juega solo', () => {
-    const { result } = abrirEnPractica()
+  it('two players outside the challenge does not count: it is played alone', () => {
+    const { result } = openInPractice()
     act(() => result.current.setPlayers(2))
     startPlaying(result)
     expect(result.current.duel).toBeNull()
   })
 
-  it('empieza el primero, y al acabar su tanda le pasa el mando al segundo', () => {
-    const { result } = aDos()
+  it('the first starts, and on finishing their round passes the controller to the second', () => {
+    const { result } = twoPlayers()
     startPlaying(result)
     expect(result.current.player).toBe(0)
 
     for (let i = 0; i < CHALLENGE_SETUP.stickCount; i++) act(() => result.current.catchStick(0.5))
-    const primero = result.current.points
+    const first = result.current.points
     expect(result.current.gameState).toBe('finished')
-    // Su tanda ya está apuntada, y el mando es del segundo.
-    expect(result.current.duel?.points).toEqual([primero, null])
+    // Their round is already recorded, and the controller is the second's.
+    expect(result.current.duel?.points).toEqual([first, null])
     expect(result.current.player).toBe(1)
-    expect(result.current.celebra).toBe(false)
+    expect(result.current.celebrates).toBe(false)
   })
 
-  it('los dos juegan la misma tanda: la misma semilla, los mismos palos', () => {
-    const { result } = aDos()
-    unaTanda(result, 0)
-    const semilla = result.current.stickSeed
-    const palos = buildStickLayout(CHALLENGE_SETUP.stickCount, semilla)
+  it('both play the same round: the same seed, the same sticks', () => {
+    const { result } = twoPlayers()
+    oneRound(result, 0)
+    const seed = result.current.stickSeed
+    const sticks = buildStickLayout(CHALLENGE_SETUP.stickCount, seed)
 
     startPlaying(result)
-    expect(result.current.stickSeed).toBe(semilla)
-    expect(buildStickLayout(CHALLENGE_SETUP.stickCount, result.current.stickSeed)).toEqual(palos)
+    expect(result.current.stickSeed).toBe(seed)
+    expect(buildStickLayout(CHALLENGE_SETUP.stickCount, result.current.stickSeed)).toEqual(sticks)
     expect(result.current.player).toBe(1)
   })
 
-  it('gana quien más saca, se apunta a la pareja, suena a ganar y no toca el récord', () => {
+  it('whoever scores more wins, it is recorded for the pair, it sounds like winning and does not touch the record', () => {
     const onFinish = vi.fn()
-    const { result, rerender } = aDos(onFinish)
-    unaTanda(result, 5)
-    const primero = result.current.points
-    unaTanda(result, 1)
-    const segundo = result.current.points
+    const { result, rerender } = twoPlayers(onFinish)
+    oneRound(result, 5)
+    const first = result.current.points
+    oneRound(result, 1)
+    const second = result.current.points
 
-    expect(primero).toBeGreaterThan(segundo)
-    expect(result.current.duel?.points).toEqual([primero, segundo])
+    expect(first).toBeGreaterThan(second)
+    expect(result.current.duel?.points).toEqual([first, second])
     expect(result.current.duelTally).toEqual({ wins: [1, 0], ties: 0 })
-    expect(result.current.celebra).toBe(true)
+    expect(result.current.celebrates).toBe(true)
     expect(result.current.isRecord).toBe(false)
     expect(localStorage.getItem(HIGH_SCORE_KEYS.challenge)).toBeNull()
-    // Al salón, la partida entera y una sola vez, aunque se vuelva a pintar.
+    // To the hall, the whole match and only once, even if it is painted again.
     rerender()
     expect(onFinish).toHaveBeenCalledTimes(1)
-    expect(onFinish).toHaveBeenCalledWith({ mode: 'duel', points: primero, challenge: false })
+    expect(onFinish).toHaveBeenCalledWith({ mode: 'duel', points: first, challenge: false })
   })
 
-  it('con los mismos puntos es empate', () => {
-    const { result } = aDos()
-    unaTanda(result, 0)
-    unaTanda(result, 0)
+  it('with the same points it is a tie', () => {
+    const { result } = twoPlayers()
+    oneRound(result, 0)
+    oneRound(result, 0)
     expect(result.current.duel?.points).toEqual([0, 0])
     expect(result.current.duelTally).toEqual({ wins: [0, 0], ties: 1 })
   })
 
-  it('otra vez tras una partida acabada empieza otra, con otra semilla', () => {
-    const { result } = aDos()
-    unaTanda(result, 0)
-    const semilla = result.current.stickSeed
-    unaTanda(result, 0)
+  it('again after a finished match another one starts, with another seed', () => {
+    const { result } = twoPlayers()
+    oneRound(result, 0)
+    const seed = result.current.stickSeed
+    oneRound(result, 0)
     startPlaying(result)
     expect(result.current.duel?.points).toEqual([null, null])
-    expect(result.current.stickSeed).not.toBe(semilla)
+    expect(result.current.stickSeed).not.toBe(seed)
     expect(result.current.player).toBe(0)
   })
 
-  it('volver al menú deja la partida: la siguiente empieza de cero', () => {
-    const { result } = aDos()
-    unaTanda(result, 0)
+  it('returning to the menu drops the match: the next one starts from scratch', () => {
+    const { result } = twoPlayers()
+    oneRound(result, 0)
     act(() => result.current.resetGame())
     expect(result.current.duel).toBeNull()
     startPlaying(result)
     expect(result.current.duel?.points).toEqual([null, null])
   })
 
-  it('cambiar a jugar solo a media partida la deja', () => {
-    const { result } = aDos()
-    unaTanda(result, 0)
+  it('switching to playing alone mid-match drops it', () => {
+    const { result } = twoPlayers()
+    oneRound(result, 0)
     act(() => result.current.setPlayers(1))
     startPlaying(result)
     expect(result.current.duel).toBeNull()
   })
 })
 
-describe('las hazañas', () => {
+describe('the feats', () => {
   type Store = { current: ReturnType<typeof useGameStoreValue> }
 
-  function conAviso() {
+  function withCallback() {
     const onFinish = vi.fn()
-    const hook = abrirEnPractica({ onFinish })
+    const hook = openInPractice({ onFinish })
     return { ...hook, onFinish }
   }
 
-  /** Lo que se le contó al salón la última vez. */
-  function ultimo(onFinish: ReturnType<typeof vi.fn>) {
+  /** What the hall was told the last time. */
+  function last(onFinish: ReturnType<typeof vi.fn>) {
     return onFinish.mock.lastCall?.[0] as { feats?: readonly string[] } | undefined
   }
 
-  function bajarElAroDelTodo(store: Store) {
+  function lowerHoopFully(store: Store) {
     for (let i = 0; i < 20; i++) act(() => store.current.adjustHoop(-1))
   }
 
-  it('los trece de una tanda sin que se escape ninguno: SR_CLEAN_SWEEP, una sola vez', () => {
-    const { result, onFinish } = conAviso()
+  it('all thirteen of a round without any getting away: SR_CLEAN_SWEEP, only once', () => {
+    const { result, onFinish } = withCallback()
     playRound(result, MAX_STICKS, MAX_STICKS)
-    expect(ultimo(onFinish)?.feats).toEqual([HAZANAS.tandaLimpia])
-    expect(JSON.parse(localStorage.getItem(HAZANAS_KEY)!)).toEqual([HAZANAS.tandaLimpia])
+    expect(last(onFinish)?.feats).toEqual([FEATS.cleanSweep])
+    expect(JSON.parse(localStorage.getItem(FEATS_KEY)!)).toEqual([FEATS.cleanSweep])
 
-    // La segunda vez ya estaba: el resultado vuelve a ser el de siempre.
+    // The second time it was already there: the result is the usual one again.
     playRound(result, MAX_STICKS, MAX_STICKS)
     expect(onFinish).toHaveBeenCalledTimes(2)
-    expect(ultimo(onFinish)).not.toHaveProperty('feats')
+    expect(last(onFinish)).not.toHaveProperty('feats')
   })
 
-  it('doce de trece no la dan', () => {
-    const { result, onFinish } = conAviso()
+  it('twelve of thirteen do not give it', () => {
+    const { result, onFinish } = withCallback()
     playRound(result, MAX_STICKS, MAX_STICKS - 1)
     expect(onFinish).toHaveBeenCalledTimes(1)
-    expect(ultimo(onFinish)).not.toHaveProperty('feats')
+    expect(last(onFinish)).not.toHaveProperty('feats')
   })
 
-  it('en el desafío, la tanda entera sin perder una vida la da; quedarse sin vidas no', () => {
-    const { result, onFinish } = conAviso()
+  it('in the challenge, the whole round without losing a life gives it; running out of lives does not', () => {
+    const { result, onFinish } = withCallback()
     act(() => result.current.setGameMode('challenge'))
     startPlaying(result)
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
     expect(result.current.gameState).toBe('finished')
-    expect(ultimo(onFinish)).not.toHaveProperty('feats')
+    expect(last(onFinish)).not.toHaveProperty('feats')
 
     startPlaying(result)
     for (let i = 0; i < CHALLENGE_SETUP.stickCount; i++) act(() => result.current.catchStick(0.5))
-    expect(ultimo(onFinish)?.feats).toEqual([HAZANAS.tandaLimpia])
+    expect(last(onFinish)?.feats).toEqual([FEATS.cleanSweep])
   })
 
-  it('con el aro al mínimo, una tanda limpia de cinco: SR_LOW_HOOP', () => {
-    const { result, onFinish } = conAviso()
-    bajarElAroDelTodo(result)
+  it('with the hoop at the minimum, a clean round of five: SR_LOW_HOOP', () => {
+    const { result, onFinish } = withCallback()
+    lowerHoopFully(result)
     expect(result.current.hoopAdjustment).toBe(-HOOP_ADJUST_RANGE)
     playRound(result, 5, 5)
-    expect(ultimo(onFinish)?.feats).toEqual([HAZANAS.aroAlMinimo])
+    expect(last(onFinish)?.feats).toEqual([FEATS.lowHoop])
   })
 
-  it('con el aro un paso por encima del mínimo no, ni al mínimo con uno escapado', () => {
-    const { result, onFinish } = conAviso()
-    bajarElAroDelTodo(result)
+  it('with the hoop one step above the minimum no, nor at the minimum with one that got away', () => {
+    const { result, onFinish } = withCallback()
+    lowerHoopFully(result)
     act(() => result.current.adjustHoop(1))
     playRound(result, 5, 5)
-    expect(ultimo(onFinish)).not.toHaveProperty('feats')
+    expect(last(onFinish)).not.toHaveProperty('feats')
 
     act(() => result.current.adjustHoop(-1))
     playRound(result, 5, 4)
-    expect(ultimo(onFinish)).not.toHaveProperty('feats')
+    expect(last(onFinish)).not.toHaveProperty('feats')
   })
 
-  it('un palo cogido de espaldas: SR_BEHIND_BACK', () => {
-    const { result, onFinish } = conAviso()
+  it('a stick caught behind the back: SR_BEHIND_BACK', () => {
+    const { result, onFinish } = withCallback()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
     act(() => result.current.catchStick(0.5, true))
     for (let i = 0; i < 4; i++) act(() => result.current.missStick())
-    expect(ultimo(onFinish)?.feats).toEqual([HAZANAS.deEspaldas])
+    expect(last(onFinish)?.feats).toEqual([FEATS.behindBack])
   })
 
-  it('cogerlos todos de frente no la da', () => {
-    const { result, onFinish } = conAviso()
+  it('catching them all from the front does not give it', () => {
+    const { result, onFinish } = withCallback()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
     for (let i = 0; i < 5; i++) act(() => result.current.catchStick(0.5, false))
-    expect(ultimo(onFinish)).not.toHaveProperty('feats')
+    expect(last(onFinish)).not.toHaveProperty('feats')
   })
 
-  it('sin fin, cuenta cada tanda al recargar, y se da al terminar la partida', () => {
-    const { result, onFinish } = conAviso()
+  it('endless, it counts each round on reloading, and it is given on ending the run', () => {
+    const { result, onFinish } = withCallback()
     act(() => result.current.setEndless(true))
     act(() => result.current.setStickCount(MAX_STICKS))
     startPlaying(result)
     for (let i = 0; i < MAX_STICKS; i++) act(() => result.current.catchStick(0.5))
     expect(result.current.wave).toBe(1)
-    // La segunda tanda, a medias: no es tanda, pero la primera ya cuenta.
+    // The second round, halfway: it is not a round, but the first already counts.
     act(() => result.current.catchStick(0.5))
     act(() => result.current.endRun())
-    expect(ultimo(onFinish)?.feats).toEqual([HAZANAS.tandaLimpia])
+    expect(last(onFinish)?.feats).toEqual([FEATS.cleanSweep])
   })
 
-  it('sin fin, la tanda con uno escapado no cuenta', () => {
-    const { result, onFinish } = conAviso()
+  it('endless, the round with one that got away does not count', () => {
+    const { result, onFinish } = withCallback()
     act(() => result.current.setEndless(true))
     act(() => result.current.setStickCount(MAX_STICKS))
     startPlaying(result)
@@ -1882,22 +1882,22 @@ describe('las hazañas', () => {
     for (let i = 1; i < MAX_STICKS; i++) act(() => result.current.catchStick(0.5))
     expect(result.current.wave).toBe(1)
     act(() => result.current.endRun())
-    expect(ultimo(onFinish)).not.toHaveProperty('feats')
+    expect(last(onFinish)).not.toHaveProperty('feats')
   })
 
-  it('dejar la partida a medias pierde lo conseguido en ella', () => {
-    const { result, onFinish } = conAviso()
+  it('leaving the run halfway loses what was achieved in it', () => {
+    const { result, onFinish } = withCallback()
     act(() => result.current.setStickCount(5))
     startPlaying(result)
     act(() => result.current.catchStick(0.5, true))
     act(() => result.current.resetGame())
     playRound(result, 5, 4)
-    expect(ultimo(onFinish)).not.toHaveProperty('feats')
-    expect(localStorage.getItem(HAZANAS_KEY)).toBeNull()
+    expect(last(onFinish)).not.toHaveProperty('feats')
+    expect(localStorage.getItem(FEATS_KEY)).toBeNull()
   })
 
-  it('a dos, lo del primer turno se cuenta al salón al acabar el segundo', () => {
-    const { result, onFinish } = conAviso()
+  it('with two players, what the first turn did is told to the hall when the second ends', () => {
+    const { result, onFinish } = withCallback()
     act(() => result.current.setGameMode('challenge'))
     act(() => result.current.setPlayers(2))
     startPlaying(result)
@@ -1907,21 +1907,21 @@ describe('las hazañas', () => {
     startPlaying(result)
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
     expect(onFinish).toHaveBeenCalledTimes(1)
-    expect(ultimo(onFinish)).toMatchObject({ mode: 'duel', feats: [HAZANAS.tandaLimpia] })
+    expect(last(onFinish)).toMatchObject({ mode: 'duel', feats: [FEATS.cleanSweep] })
 
-    // La partida siguiente empieza de cero: lo de la anterior no se arrastra.
+    // The next match starts from scratch: what the previous one did is not carried over.
     startPlaying(result)
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
     startPlaying(result)
     act(() => result.current.catchStick(0.5, true))
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
-    expect(ultimo(onFinish)).toMatchObject({ mode: 'duel', feats: [HAZANAS.deEspaldas] })
+    expect(last(onFinish)).toMatchObject({ mode: 'duel', feats: [FEATS.behindBack] })
   })
 })
 
-describe('el cartel del objetivo', () => {
-  /** Los listones de Stick Rush en el salón. */
-  const OBJETIVO: Goal = {
+describe('the goal sign', () => {
+  /** The Stick Rush thresholds in the hall. */
+  const GOAL: Goal = {
     medals: { bronze: 1900, silver: 3750, gold: 5200 },
     better: 'higher',
     unit: 'points in challenge',
@@ -1933,155 +1933,155 @@ describe('el cartel del objetivo', () => {
     act(() => setLang('en'))
   })
 
-  function conObjetivo(objetivo: Goal | undefined = OBJETIVO) {
-    return renderHook(() => useGameStoreValue({ objetivo }))
+  function withGoal(goal: Goal | undefined = GOAL) {
+    return renderHook(() => useGameStoreValue({ goal }))
   }
 
-  it('al acabar compara con el récord del salón de antes, aunque el salón ya apunte la marca nueva', () => {
-    const conRecord = { ...OBJETIVO, record: 0 }
-    const hook = renderHook(({ objetivo }) => useGameStoreValue({ objetivo }), { initialProps: { objetivo: conRecord } })
+  it('on finishing it compares with the earlier hall record, even if the hall already records the new best', () => {
+    const withRecord = { ...GOAL, record: 0 }
+    const hook = renderHook(({ goal }) => useGameStoreValue({ goal }), { initialProps: { goal: withRecord } })
     startPlaying(hook.result)
     act(() => hook.result.current.catchStick(0.5))
     for (let i = 0; i < 3; i++) act(() => hook.result.current.missStick())
     expect(hook.result.current.gameState).toBe('finished')
-    const puntos = hook.result.current.points
-    expect(puntos).toBeGreaterThan(0)
-    // Lo que hace el salón al recibir el resultado: el objetivo vuelve con la marca nueva.
-    hook.rerender({ objetivo: { ...conRecord, record: puntos } })
+    const points = hook.result.current.points
+    expect(points).toBeGreaterThan(0)
+    // What the hall does on receiving the result: the goal comes back with the new best.
+    hook.rerender({ goal: { ...withRecord, record: points } })
 
-    expect(JSON.stringify(hook.result.current.cartel)).toContain('New record!')
-    expect(JSON.stringify(hook.result.current.cartel)).not.toContain('matched')
+    expect(JSON.stringify(hook.result.current.sign)).toContain('New record!')
+    expect(JSON.stringify(hook.result.current.sign)).not.toContain('matched')
   })
 
-  it('en el menú no hay cartel', () => {
-    const { result } = conObjetivo()
+  it('in the menu there is no sign', () => {
+    const { result } = withGoal()
 
-    expect(result.current.cartel).toBeNull()
-    expect(result.current.faseDelCartel).toBeNull()
-    expect(result.current.medalla).toBeNull()
+    expect(result.current.sign).toBeNull()
+    expect(result.current.signPhase).toBeNull()
+    expect(result.current.medal).toBeNull()
   })
 
-  it('al darle a Jugar sin tocar nada: la misión y el bronce en palos, hasta el primer palo', () => {
-    const { result } = conObjetivo()
+  it('on pressing Jugar without touching anything: the mission and the bronze in sticks, until the first stick', () => {
+    const { result } = withGoal()
     act(() => result.current.startGame())
 
-    expect(result.current.faseDelCartel).toBe('before')
-    // Sin récord, la primera vez: el bronce contado en palos, que es lo que cuenta la misión.
-    expect(result.current.cartel).toMatchObject({
+    expect(result.current.signPhase).toBe('before')
+    // With no record, the first time: the bronze counted in sticks, which is what the mission counts.
+    expect(result.current.sign).toMatchObject({
       title: 'Catch 13 sticks. Drop three and out',
       detail: 'Bronze ≈ 13 sticks · Gold 5,200',
     })
 
     runOutCountdown()
-    expect(result.current.faseDelCartel).toBe('before')
+    expect(result.current.signPhase).toBe('before')
 
     act(() => result.current.missStick())
-    expect(result.current.faseDelCartel).toBe('playing')
-    expect(result.current.cartel).toMatchObject({ title: 'Bronze at 1,900 · you have 0', detail: 'Lives ♥♥♡ · Sticks 12' })
+    expect(result.current.signPhase).toBe('playing')
+    expect(result.current.sign).toMatchObject({ title: 'Bronze at 1,900 · you have 0', detail: 'Lives ♥♥♡ · Sticks 12' })
   })
 
-  it('la medalla sube al cruzar cada listón, con los puntos de la partida', () => {
-    const { result } = conObjetivo({ ...OBJETIVO, medals: { bronze: 1, silver: 400, gold: 100000 } })
+  it('the medal goes up on crossing each threshold, with the points of the run', () => {
+    const { result } = withGoal({ ...GOAL, medals: { bronze: 1, silver: 400, gold: 100000 } })
     startPlaying(result)
-    expect(result.current.medalla).toBeNull()
+    expect(result.current.medal).toBeNull()
 
     act(() => result.current.catchStick(0.5))
     expect(result.current.points).toBeGreaterThan(0)
     expect(result.current.points).toBeLessThan(400)
-    expect(result.current.medalla).toBe('bronze')
+    expect(result.current.medal).toBe('bronze')
 
     for (let i = 0; i < 3; i++) act(() => result.current.catchStick(0.5))
     expect(result.current.points).toBeGreaterThanOrEqual(400)
-    expect(result.current.medalla).toBe('silver')
-    expect(result.current.cartel?.title).toBe(
-      `Gold at 100,000 · you have ${formatoDeCifra(result.current.points, 'en')}`,
+    expect(result.current.medal).toBe('silver')
+    expect(result.current.sign?.title).toBe(
+      `Gold at 100,000 · you have ${formatFigure(result.current.points, 'en')}`,
     )
   })
 
-  it('al acabar dice lo conseguido y lo que faltó, y otra partida empieza de nuevo por la misión', () => {
-    const { result } = conObjetivo()
+  it('on finishing it says what was achieved and what was missing, and another run starts again with the mission', () => {
+    const { result } = withGoal()
     startPlaying(result)
     act(() => result.current.catchStick(0.5))
-    const puntos = result.current.points
+    const points = result.current.points
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
 
     expect(result.current.gameState).toBe('finished')
-    expect(result.current.faseDelCartel).toBe('end')
-    expect(result.current.cartel).toMatchObject({
-      title: `No medal · ${puntos} points in challenge`,
-      detail: `${formatoDeCifra(1900 - puntos, 'en')} short of bronze`,
+    expect(result.current.signPhase).toBe('end')
+    expect(result.current.sign).toMatchObject({
+      title: `No medal · ${points} points in challenge`,
+      detail: `${formatFigure(1900 - points, 'en')} short of bronze`,
     })
 
-    // «Otra»: repetir el reto sin pasar por el menú.
+    // «Otra»: repeating the challenge without going through the menu.
     act(() => result.current.startGame())
     expect(result.current.gameMode).toBe('challenge')
-    expect(result.current.faseDelCartel).toBe('before')
-    expect(result.current.medalla).toBeNull()
+    expect(result.current.signPhase).toBe('before')
+    expect(result.current.medal).toBeNull()
   })
 
-  it('se dice en el idioma de quien juega', () => {
-    const { result } = conObjetivo()
+  it('it is said in the language of whoever plays', () => {
+    const { result } = withGoal()
     act(() => setLang('es'))
     act(() => result.current.startGame())
 
-    expect(result.current.cartel).toMatchObject({
+    expect(result.current.sign).toMatchObject({
       title: 'Atrapa 13 palos. Tres al suelo y fuera',
       detail: 'Bronce ≈ 13 palos · Oro 5200',
     })
   })
 
-  it('en la práctica, dentro del salón, dice que no cuenta y no lleva la cuenta', () => {
-    const { result } = conObjetivo()
+  it('in practice, inside the hall, it says it does not count and keeps no tally', () => {
+    const { result } = withGoal()
     act(() => result.current.setGameMode('practice'))
     startPlaying(result)
 
-    expect(result.current.cartel).toMatchObject({ title: 'Practice · does not count for a medal', subdued: true })
-    expect(result.current.faseDelCartel).toBeNull()
-    expect(result.current.medalla).toBeNull()
+    expect(result.current.sign).toMatchObject({ title: 'Practice · does not count for a medal', subdued: true })
+    expect(result.current.signPhase).toBeNull()
+    expect(result.current.medal).toBeNull()
   })
 
-  it('a dos tampoco cuenta, y al acabar la tanda el cartel se retira', () => {
-    const { result } = conObjetivo()
+  it('with two players it does not count either, and when the round ends the sign is removed', () => {
+    const { result } = withGoal()
     act(() => result.current.setPlayers(2))
     startPlaying(result)
 
-    expect(result.current.cartel?.title).toBe('Duel · does not count for a medal')
-    expect(result.current.faseDelCartel).toBeNull()
+    expect(result.current.sign?.title).toBe('Duel · does not count for a medal')
+    expect(result.current.signPhase).toBeNull()
 
     for (let i = 0; i < 3; i++) act(() => result.current.missStick())
     expect(result.current.gameState).toBe('finished')
-    expect(result.current.cartel).toBeNull()
+    expect(result.current.sign).toBeNull()
   })
 
-  it('con el juego abierto suelto: la misión y el récord guardado aquí, y fuera del reto nada', () => {
+  it('with the game opened on its own: the mission and the record saved here, and outside the challenge nothing', () => {
     localStorage.setItem(HIGH_SCORE_KEYS.challenge, '3100')
     const { result } = renderHook(() => useGameStoreValue())
     act(() => result.current.startGame())
 
-    expect(result.current.cartel).toMatchObject({
+    expect(result.current.sign).toMatchObject({
       title: 'Catch 13 sticks. Drop three and out',
       detail: 'Your record 3,100',
     })
-    expect(result.current.medalla).toBeNull()
+    expect(result.current.medal).toBeNull()
 
     act(() => result.current.resetGame())
     act(() => result.current.setGameMode('practice'))
     startPlaying(result)
-    expect(result.current.cartel).toBeNull()
+    expect(result.current.sign).toBeNull()
   })
 
-  it('con el reto del salón se entra ya con la misión delante', () => {
-    const { result } = renderHook(() => useGameStoreValue({ reto: { seed: 7 }, objetivo: OBJETIVO }))
+  it('with the challenge of the hall it starts already with the mission in front', () => {
+    const { result } = renderHook(() => useGameStoreValue({ challenge: { seed: 7 }, goal: GOAL }))
 
     expect(result.current.gameState).toBe('countdown')
-    expect(result.current.faseDelCartel).toBe('before')
-    expect(result.current.cartel?.detail).toBe('Bronze ≈ 13 sticks · Gold 5,200')
+    expect(result.current.signPhase).toBe('before')
+    expect(result.current.sign?.detail).toBe('Bronze ≈ 13 sticks · Gold 5,200')
   })
 })
 
-describe('el gancho de los e2e comunes (`partidaDePrueba.ts`)', () => {
-  /** Los listones de ensayo de los e2e: el bronce a 10, sin récord. */
-  const ENSAYO: Goal = {
+describe('the hook of the shared e2e (`testRun.ts`)', () => {
+  /** The trial thresholds of the e2e: the bronze at 10, with no record. */
+  const TRIAL: Goal = {
     medals: { bronze: 10, silver: 20, gold: 30 },
     better: 'higher',
     unit: 'points in challenge',
@@ -2089,38 +2089,38 @@ describe('el gancho de los e2e comunes (`partidaDePrueba.ts`)', () => {
     mode: 'challenge',
   }
 
-  // Las escenas de los tests de antes siguen montadas: con el gancho pedido, también se dejarían.
+  // The scenes of the earlier tests are still mounted: with the hook requested, they would also be exposed.
   beforeEach(() => cleanup())
   afterEach(() => {
     delete window.__runStickRush
   })
 
-  it('sin pedirlo no se deja nada', () => {
-    renderHook(() => useGameStoreValue({ objetivo: ENSAYO }))
+  it('without asking for it nothing is left', () => {
+    renderHook(() => useGameStoreValue({ goal: TRIAL }))
     expect(window.__runStickRush).toBeUndefined()
   })
 
-  it('empieza el reto sin cuenta atrás, le pone los puntos, cruza el bronce y lo acaba contándoselo al salón', () => {
+  it('starts the challenge with no countdown, sets its points, crosses the bronze and ends it telling the hall', () => {
     window.__runStickRush = {}
     const onFinish = vi.fn()
-    const { result } = renderHook(() => useGameStoreValue({ objetivo: ENSAYO, onFinish }))
-    const partida = window.__runStickRush!
+    const { result } = renderHook(() => useGameStoreValue({ goal: TRIAL, onFinish }))
+    const run = window.__runStickRush!
 
-    expect(partida.sign!()).toBeNull()
-    act(() => partida.start!())
+    expect(run.sign!()).toBeNull()
+    act(() => run.start!())
     expect([result.current.gameState, result.current.gameMode, result.current.teaching]).toEqual(['playing', 'challenge', false])
-    expect(partida.sign!()?.detail).toBe('Bronze 10 · Silver 20 · Gold 30')
+    expect(run.sign!()?.detail).toBe('Bronze 10 · Silver 20 · Gold 30')
 
-    act(() => partida.score!(1))
-    expect(partida.sign!()?.title).toBe('Bronze at 10 · you have 1')
-    act(() => partida.score!(10))
-    expect(partida.sign!()?.cheer).toBe('Bronze!')
+    act(() => run.score!(1))
+    expect(run.sign!()?.title).toBe('Bronze at 10 · you have 1')
+    act(() => run.score!(10))
+    expect(run.sign!()?.cheer).toBe('Bronze!')
     expect(result.current.resolved).toBe(1)
 
-    act(() => partida.end!())
+    act(() => run.end!())
     expect(result.current.gameState).toBe('finished')
     expect(result.current.outcome).toBe('cleared')
-    expect(partida.sign!()?.title).toBe('Bronze · 10 points in challenge')
+    expect(run.sign!()?.title).toBe('Bronze · 10 points in challenge')
     expect(onFinish).toHaveBeenCalledWith(expect.objectContaining({ mode: 'challenge', points: 10 }))
   })
 })

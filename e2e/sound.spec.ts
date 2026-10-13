@@ -2,15 +2,15 @@ import { expect, test, type Page } from '@playwright/test'
 import { catchStick, openGame, startGame, waitForGameOver } from './helpers'
 
 /**
- * El sonido se sintetiza con la Web Audio API, así que no hay ficheros ni
- * peticiones que espiar: lo que se cuenta son los osciladores que el juego
- * pone a sonar. Es lo más cerca que se puede estar de "se oyó" sin oídos.
+ * The sound is synthesised with the Web Audio API, so there are no files nor
+ * requests to spy on: what is counted are the oscillators the game
+ * sets sounding. It is the closest one can get to "it was heard" without ears.
  */
 
 interface AudioSpy {
-  /** Contextos de audio creados. */
+  /** Audio contexts created. */
   contexts: number
-  /** Osciladores puestos a sonar. */
+  /** Oscillators set sounding. */
   oscillators: number
 }
 
@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-/** Instrumenta la Web Audio API antes de que cargue la página. */
+/** Instruments the Web Audio API before the page loads. */
 async function installAudioSpy(page: Page) {
   await page.addInitScript(() => {
     const spy: AudioSpy = { contexts: 0, oscillators: 0 }
@@ -45,24 +45,24 @@ async function readSpy(page: Page): Promise<AudioSpy> {
   return page.evaluate(() => window.__audioSpy ?? { contexts: 0, oscillators: 0 })
 }
 
-test.describe('Sonido', () => {
-  test('no arranca el audio antes de que el jugador toque nada', async ({
+test.describe('Sound', () => {
+  test('it does not start the audio before the player touches anything', async ({
     page,
   }) => {
-    // Crear el contexto sin un gesto previo lo deja suspendido para siempre:
-    // el juego se quedaría mudo el resto de la sesión.
+    // Creating the context without a previous gesture leaves it suspended for ever:
+    // the game would stay mute for the rest of the session.
     await installAudioSpy(page)
-    // Sin elegir modo: ese clic ya sería tocar algo.
+    // Without choosing a mode: that click would already be touching something.
     await openGame(page, '/', { mode: null })
 
     expect((await readSpy(page)).contexts).toBe(0)
   })
 
-  test('la cuenta atrás y los palos suenan de verdad', async ({ page }) => {
+  test('the countdown and the sticks really sound', async ({ page }) => {
     await installAudioSpy(page)
     await openGame(page)
 
-    // `startGame` pulsa "Jugar" y espera a que se agote la cuenta atrás.
+    // `startGame` presses "Jugar" and waits for the countdown to run out.
     await startGame(page, { sticks: 13, difficulty: 'Easy' })
 
     const afterCountdown = await readSpy(page)
@@ -71,40 +71,40 @@ test.describe('Sonido', () => {
 
     await catchStick(page)
 
-    // Se espera al sonido en vez de leerlo de golpe: el juego se pinta dentro
-    // del Canvas y R3F entrega sus actualizaciones en su propio ciclo, así que
-    // el marcador del DOM puede ir un fotograma por delante del oscilador.
-    // Lo que se comprueba sigue siendo lo mismo —que atrapar un palo suena—,
-    // no cuándo exactamente.
+    // The sound is waited for instead of being read at once: the game is painted inside
+    // the Canvas and R3F delivers its updates in its own cycle, so
+    // the DOM scoreboard can be one frame ahead of the oscillator.
+    // What is checked is still the same —that catching a stick sounds—,
+    // not when exactly.
     await expect
       .poll(async () => (await readSpy(page)).oscillators)
       .toBeGreaterThan(afterCountdown.oscillators)
   })
 
-  test('terminar la partida suena, que antes era silencio', async ({ page }) => {
-    // Se acababa el último palo y no sonaba nada: la pantalla de fin llegaba sin avisar, y
-    // con el visor puesto el marcador está donde uno no siempre está mirando.
+  test('finishing the run sounds, which used to be silence', async ({ page }) => {
+    // The last stick ended and nothing sounded: the end screen arrived without warning, and
+    // with the headset on the scoreboard is where one is not always looking.
     await installAudioSpy(page)
     await openGame(page)
-    // La partida más corta que se puede elegir, para llegar al final sin esperar de más.
+    // The shortest run that can be chosen, to reach the end without waiting more than needed.
     await startGame(page, { sticks: 5, difficulty: 'Easy' })
 
-    const jugando = await readSpy(page)
+    const playing = await readSpy(page)
     await waitForGameOver(page)
 
     await expect
       .poll(async () => (await readSpy(page)).oscillators, {
-        message: 'terminar la partida no puso a sonar nada',
+        message: 'finishing the run set nothing sounding',
       })
-      .toBeGreaterThan(jugando.oscillators)
+      .toBeGreaterThan(playing.oscillators)
   })
 
-  test('silenciado desde los ajustes del arcade, el juego no abre el audio', async ({
+  test('muted from the hall\'s settings, the game does not open the audio', async ({
     page,
   }) => {
-    // Silenciar no es bajar el volumen: sin contexto no hay nodos ni permiso
-    // de reproducción que pedir. El silencio ya no se elige aquí sino en
-    // xrcade, y viaja en el almacenamiento del navegador.
+    // Muting is not turning the volume down: with no context there are no nodes nor playback
+    // permission to ask for. Silence is no longer chosen here but in
+    // xrcade, and it travels in the browser's storage.
     await page.addInitScript(() => {
       window.localStorage.setItem('xrcade:volume:sfx', '0')
     })
@@ -117,12 +117,12 @@ test.describe('Sonido', () => {
     expect(await readSpy(page)).toEqual({ contexts: 0, oscillators: 0 })
   })
 
-  test('el silencio se recuerda en la visita siguiente', async ({ page }) => {
-    // Es para lo que se guarda: con el visor puesto, volver a apagar el sonido
-    // cada vez que uno se pone las gafas es el gesto más incómodo del juego.
-    // De paso vigila la consola: el botón se prerenderiza en el servidor, que
-    // no ve el almacenamiento, así que leer la preferencia por el camino
-    // equivocado daría un error de hidratación aunque el botón se vea bien.
+  test('the silence is remembered on the next visit', async ({ page }) => {
+    // It is what it is saved for: with the headset on, turning the sound off again
+    // every time one puts the goggles on is the most awkward gesture of the game.
+    // While at it, it watches the console: the button is prerendered on the server, which
+    // does not see the storage, so reading the preference by the wrong
+    // path would give a hydration error even though the button looks fine.
     const errors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') errors.push(message.text())
@@ -135,7 +135,7 @@ test.describe('Sonido', () => {
     })
     await openGame(page)
 
-    // Calla de verdad, no solo en el ajuste.
+    // It really goes quiet, not only in the setting.
     await startGame(page, { sticks: 5, difficulty: 'Easy' })
     await catchStick(page)
     expect(await readSpy(page)).toEqual({ contexts: 0, oscillators: 0 })
@@ -143,15 +143,15 @@ test.describe('Sonido', () => {
     expect(errors).toEqual([])
   })
 
-  test('sin poder leer el almacenamiento se juega con sonido, no en silencio', async ({ page }) => {
-    // Modo privado y visores con el almacenamiento vetado: `localStorage`
-    // existe pero lanza al tocarlo. Ahí no hay de dónde sacar los ajustes del
-    // arcade, y lo que no puede pasar es que el juego se quede mudo por eso.
+  test('without being able to read the storage it is played with sound, not in silence', async ({ page }) => {
+    // Private mode and headsets with storage vetoed: `localStorage`
+    // exists but throws on touching it. There there is nowhere to get the hall's
+    // settings from, and what cannot happen is the game staying mute because of that.
     await page.addInitScript(() => {
       Object.defineProperty(window, 'localStorage', {
         configurable: true,
         get() {
-          throw new DOMException('bloqueado', 'SecurityError')
+          throw new DOMException('blocked', 'SecurityError')
         },
       })
     })
@@ -166,17 +166,17 @@ test.describe('Sonido', () => {
     expect(spy.oscillators).toBeGreaterThan(0)
   })
 
-  test('quitar el silencio devuelve el sonido sin recargar', async ({ page }) => {
-    // El fallo caro de devolver el sonido: que el juego quede mudo el resto de
-    // la sesión porque el contexto nace ya suspendido.
-    // El unitario corre contra un contexto de mentira, así que esta —contra la
-    // política de reproducción de un navegador de verdad— es la comprobación
-    // que cuenta.
+  test('removing the silence gives the sound back without reloading', async ({ page }) => {
+    // The costly failure of giving the sound back: the game staying mute for the rest of
+    // the session because the context is born already suspended.
+    // The unit test runs against a fake context, so this one —against the
+    // playback policy of a real browser— is the check
+    // that counts.
     await installAudioSpy(page)
     await openGame(page)
 
-    // Se entra callado y se devuelve el sonido sin recargar, que es lo que
-    // pasa al tocar el volumen en el menú del arcade con el juego montado.
+    // It is entered quiet and the sound is given back without reloading, which is what
+    // happens on touching the volume in the hall's menu with the game mounted.
     await page.evaluate(() => {
       window.localStorage.setItem('xrcade:volume:sfx', '0')
       window.dispatchEvent(new Event('xrcade:ajustes'))
@@ -188,8 +188,8 @@ test.describe('Sonido', () => {
 
     await startGame(page, { sticks: 5, difficulty: 'Easy' })
 
-    // Uno solo: el clic que silencia no llega a abrirlo, y el que devuelve el
-    // sonido es el gesto que el navegador exige.
+    // Only one: the click that mutes does not get to open it, and the one that gives the
+    // sound back is the gesture the browser demands.
     const spy = await readSpy(page)
     expect(spy.contexts).toBe(1)
     expect(spy.oscillators).toBeGreaterThan(0)

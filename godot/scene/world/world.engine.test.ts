@@ -1,11 +1,11 @@
 /**
- * El mundo de Stick Rush en Godot contra la web: la máquina con las piezas que cuenta
- * `StickMachine.tsx`, a la altura del aro; los palos pintados donde los pone la tanda, con el
- * destello del acierto y el tinte del fallo; la feria con las piezas del kit donde las pone
- * `fairKit.ts`, el público de `crowdLayout.ts` y la noria; tu habitación; las ayudas con el guion de
- * la web; y lo que viaja en el paquete, que es lo de la web byte a byte.
+ * The world of Stick Rush in Godot against the web: the machine with the pieces `StickMachine.tsx`
+ * counts, at the height of the hoop; the painted sticks where the round puts them, with the flash
+ * of the catch and the tint of the miss; the fairground with the pieces of the kit where
+ * `fairKit.ts` puts them, the crowd of `crowdLayout.ts` and the Ferris wheel; your room; the hints
+ * with the script of the web; and what travels in the package, which is the web's byte for byte.
  *
- * Corre dentro del motor, con los tests de dominio.
+ * It runs inside the engine, with the domain tests.
  */
 import { Color, FileAccess, MeshInstance3D, Node3D, ProjectSettings, StandardMaterial3D, type MultiMeshInstance3D } from 'godot'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -14,120 +14,120 @@ import { SceneryRig, type RoomView } from '@kit/runtime/scene/scenery'
 import { RealController } from '@kit/runtime/ui/controller'
 
 import { crowdSpots } from '@/lib/crowdLayout'
-import { PIEZAS, colocaciones } from '@/lib/fairKit'
+import { PIECES, placements } from '@/lib/fairKit'
 import { MACHINE_HEIGHT, MAX_STICKS, STICK_CAUGHT_COLOR, STICK_MISS_Y, WOOD_TEXTURES } from '@/lib/gameConfig'
-import { GUION_DE_AYUDAS, caidaDelFantasma, paloDelFantasma } from '@/lib/hintScript'
+import { HINT_SCRIPT, ghostFall, ghostStick } from '@/lib/hintScript'
 import { WHEEL_CABIN_COUNT } from '@/lib/sceneryLayout'
-import { PALO_TRAS_EL_MENU, paloTapaElMenu } from '@/lib/xrLayout'
+import { STICK_BEHIND_MENU, stickCoversMenu } from '@/lib/xrLayout'
 import { gameStorage } from '@/lib/storage'
 
-import { Tanda } from '../game/round'
-import { AyudasDelJuego } from './hints'
-import { Feria } from './fairground'
-import { ARC_SEGMENTS, Maquina, TRUSS_POSTS, TUBE_RADIUS } from './machine'
-import { PalosPintados, rutaDeLaTextura } from './sticks'
+import { Round } from '../game/round'
+import { GameHints } from './hints'
+import { Fairground } from './fairground'
+import { ARC_SEGMENTS, Machine, TRUSS_POSTS, TUBE_RADIUS } from './machine'
+import { PaintedSticks, texturePath } from './sticks'
 
-const DIR_DE_LOS_MANDOS = 'res://games/stick-rush/mandos'
-const perfil = () => 'oculus-touch-v3'
+const CONTROLLERS_DIR = 'res://games/stick-rush/mandos'
+const profile = () => 'oculus-touch-v3'
 
-describe('la máquina', () => {
-  let padre: Node3D
+describe('the machine', () => {
+  let parent: Node3D
   beforeEach(() => {
-    padre = new Node3D()
+    parent = new Node3D()
   })
-  afterEach(() => padre.free())
+  afterEach(() => parent.free())
 
-  it('lleva las piezas que cuenta la web: el aro a rayas, los dos postes, la celosía y las bombillas', () => {
-    const maquina = new Maquina(padre)
-    maquina.colocar(MACHINE_HEIGHT)
-    // Aro de arriba, montantes, diagonales y los dos tirantes (`limits.truss`).
-    const celosia = ARC_SEGMENTS + TRUSS_POSTS + (TRUSS_POSTS - 1) + 2
-    expect(maquina.piezas).toEqual({ matte: ARC_SEGMENTS, frame: 2, truss: celosia, bulbs: TRUSS_POSTS - 1 })
+  it('carries the pieces the web counts: the striped hoop, the two posts, the truss and the bulbs', () => {
+    const machine = new Machine(parent)
+    machine.place(MACHINE_HEIGHT)
+    // Top ring, uprights, diagonals and the two braces (`limits.truss`).
+    const truss = ARC_SEGMENTS + TRUSS_POSTS + (TRUSS_POSTS - 1) + 2
+    expect(machine.pieces).toEqual({ matte: ARC_SEGMENTS, frame: 2, truss, bulbs: TRUSS_POSTS - 1 })
   })
 
-  it('se rehace al cambiar el aro de altura, y solo entonces', () => {
-    const maquina = new Maquina(padre)
-    maquina.colocar(MACHINE_HEIGHT)
-    const antes = maquina.nodo.get_child(0)
-    maquina.colocar(MACHINE_HEIGHT)
-    expect(maquina.nodo.get_child(0)).toBe(antes)
-    maquina.colocar(2.2)
-    expect(maquina.nodo.get_child(maquina.nodo.get_child_count() - 1)).not.toBe(antes)
+  it('is rebuilt when the hoop changes height, and only then', () => {
+    const machine = new Machine(parent)
+    machine.place(MACHINE_HEIGHT)
+    const before = machine.node.get_child(0)
+    machine.place(MACHINE_HEIGHT)
+    expect(machine.node.get_child(0)).toBe(before)
+    machine.place(2.2)
+    expect(machine.node.get_child(machine.node.get_child_count() - 1)).not.toBe(before)
   })
 })
 
-describe('los palos pintados', () => {
-  let padre: Node3D
+describe('the painted sticks', () => {
+  let parent: Node3D
   beforeEach(() => {
-    padre = new Node3D()
+    parent = new Node3D()
   })
-  afterEach(() => padre.free())
+  afterEach(() => parent.free())
 
-  it('cada palo de la tanda en su anclaje, con su gancho; los que sobran, fuera', () => {
-    const palos = new PalosPintados(padre)
-    const tanda = new Tanda('a', 5, 7, MACHINE_HEIGHT, false)
-    palos.pintar(tanda)
-    const grupos: Node3D[] = []
-    for (let i = 0; i < palos.nodo.get_child_count(); i++) {
-      const hijo = palos.nodo.get_child(i) as Node3D
-      if (String(hijo.get_name()).startsWith('Palo')) grupos.push(hijo)
+  it('each stick of the round at its anchor, with its hook; the spare ones, out', () => {
+    const sticks = new PaintedSticks(parent)
+    const round = new Round('a', 5, 7, MACHINE_HEIGHT, false)
+    sticks.paint(round)
+    const groups: Node3D[] = []
+    for (let i = 0; i < sticks.node.get_child_count(); i++) {
+      const child = sticks.node.get_child(i) as Node3D
+      if (String(child.get_name()).startsWith('Stick')) groups.push(child)
     }
-    expect(grupos.length).toBe(MAX_STICKS)
-    expect(grupos.filter((g) => g.visible).length).toBe(7)
-    const [x, y, z] = tanda.palos[3].layout.anchor
-    const sitio = grupos[3].position
-    expect([sitio.x, sitio.y, sitio.z].map((v) => Number(v.toFixed(4)))).toEqual([x, y, z].map((v) => Number(v.toFixed(4))))
-    // El cuerpo cuelga un hilo por debajo: el centro del palo, en el espacio del grupo.
-    expect(palos.cuerpo(3).position.y).toBeCloseTo(-0.11 - 0.39 / 2)
+    expect(groups.length).toBe(MAX_STICKS)
+    expect(groups.filter((g) => g.visible).length).toBe(7)
+    const [x, y, z] = round.sticks[3].layout.anchor
+    const placement = groups[3].position
+    expect([placement.x, placement.y, placement.z].map((v) => Number(v.toFixed(4)))).toEqual([x, y, z].map((v) => Number(v.toFixed(4))))
+    // The body hangs one cord below: the centre of the stick, in the space of the group.
+    expect(sticks.body(3).position.y).toBeCloseTo(-0.11 - 0.39 / 2)
     expect(TUBE_RADIUS).toBe(0.032)
   })
 
-  it('el atrapado se pone verde y crece; el perdido se queda en el suelo, rojo', () => {
-    const palos = new PalosPintados(padre)
-    const tanda = new Tanda('a', 5, 5, MACHINE_HEIGHT, false)
-    tanda.atrapar(1, false)
-    tanda.avanzar(0.2, { parada: true, velocidad: 1 })
-    palos.pintar(tanda)
-    const material = palos.cuerpo(1).material_override as StandardMaterial3D
-    const verde = Color.html(STICK_CAUGHT_COLOR)
-    expect([material.albedo_color.r, material.albedo_color.g].map((v) => Number(v.toFixed(3)))).toEqual([verde.r, verde.g].map((v) => Number(v.toFixed(3))))
+  it('the caught one turns green and grows; the missed one stays on the ground, red', () => {
+    const sticks = new PaintedSticks(parent)
+    const round = new Round('a', 5, 5, MACHINE_HEIGHT, false)
+    round.catchStick(1, false)
+    round.advance(0.2, { paused: true, speed: 1 })
+    sticks.paint(round)
+    const material = sticks.body(1).material_override as StandardMaterial3D
+    const green = Color.html(STICK_CAUGHT_COLOR)
+    expect([material.albedo_color.r, material.albedo_color.g].map((v) => Number(v.toFixed(3)))).toEqual([green.r, green.g].map((v) => Number(v.toFixed(3))))
     expect(material.emission_energy_multiplier).toBeGreaterThan(0)
-    const grupo = palos.cuerpo(1).get_parent() as Node3D
-    expect(grupo.scale.x).toBeGreaterThan(1)
-    // El perdido.
-    const perdida = new Tanda('b', 5, 5, MACHINE_HEIGHT, false)
-    for (let i = 0; i < 72 * 30; i++) perdida.avanzar(1 / 72, { parada: false, velocidad: 2.16 })
-    palos.pintar(perdida)
-    const rojo = palos.cuerpo(0).material_override as StandardMaterial3D
-    expect(rojo.albedo_color.r).toBeGreaterThan(rojo.albedo_color.g * 3)
-    expect((palos.cuerpo(0).get_parent() as Node3D).position.y).toBeCloseTo(STICK_MISS_Y)
+    const group = sticks.body(1).get_parent() as Node3D
+    expect(group.scale.x).toBeGreaterThan(1)
+    // The missed one.
+    const missed = new Round('b', 5, 5, MACHINE_HEIGHT, false)
+    for (let i = 0; i < 72 * 30; i++) missed.advance(1 / 72, { paused: false, speed: 2.16 })
+    sticks.paint(missed)
+    const red = sticks.body(0).material_override as StandardMaterial3D
+    expect(red.albedo_color.r).toBeGreaterThan(red.albedo_color.g * 3)
+    expect((sticks.body(0).get_parent() as Node3D).position.y).toBeCloseTo(STICK_MISS_Y)
   })
 
-  it('en el menú, los palos de delante de la columna se atenúan poco a poco y vuelven al jugar', () => {
-    const palos = new PalosPintados(padre)
-    const tanda = new Tanda('a', 5, 13, MACHINE_HEIGHT, false)
-    const tapan = tanda.palos.filter((palo) => paloTapaElMenu(palo.layout.anchor)).map((palo) => palo.indice)
-    const alfa = (i: number) => (palos.cuerpo(i).material_override as StandardMaterial3D).albedo_color.a
-    const hilo = (i: number) => (palos.cuerpo(i).get_parent() as Node3D).get_child(0) as MeshInstance3D
-    expect(tapan.length).toBeGreaterThan(0)
-    palos.pintar(tanda, 0.1, true)
-    // A medio camino: nada que se vea cambia de brillo de golpe.
-    expect(alfa(tapan[0])).toBeLessThan(1)
-    expect(alfa(tapan[0])).toBeGreaterThan(PALO_TRAS_EL_MENU)
-    for (let i = 0; i < 10; i++) palos.pintar(tanda, 0.1, true)
-    expect(alfa(tapan[0])).toBeCloseTo(PALO_TRAS_EL_MENU)
-    expect(hilo(tapan[0]).visible).toBe(false)
-    const delFrente = tanda.palos.find((palo) => !tapan.includes(palo.indice))!.indice
-    expect(alfa(delFrente)).toBe(1)
-    expect(hilo(delFrente).visible).toBe(true)
-    for (let i = 0; i < 10; i++) palos.pintar(tanda, 0.1, false)
-    expect(alfa(tapan[0])).toBe(1)
-    expect(hilo(tapan[0]).visible).toBe(true)
+  it('in the menu, the sticks in front of the column dim little by little and come back on playing', () => {
+    const sticks = new PaintedSticks(parent)
+    const round = new Round('a', 5, 13, MACHINE_HEIGHT, false)
+    const covering = round.sticks.filter((stick) => stickCoversMenu(stick.layout.anchor)).map((stick) => stick.index)
+    const alpha = (i: number) => (sticks.body(i).material_override as StandardMaterial3D).albedo_color.a
+    const cord = (i: number) => (sticks.body(i).get_parent() as Node3D).get_child(0) as MeshInstance3D
+    expect(covering.length).toBeGreaterThan(0)
+    sticks.paint(round, 0.1, true)
+    // Halfway: nothing that is seen changes brightness at once.
+    expect(alpha(covering[0])).toBeLessThan(1)
+    expect(alpha(covering[0])).toBeGreaterThan(STICK_BEHIND_MENU)
+    for (let i = 0; i < 10; i++) sticks.paint(round, 0.1, true)
+    expect(alpha(covering[0])).toBeCloseTo(STICK_BEHIND_MENU)
+    expect(cord(covering[0]).visible).toBe(false)
+    const inFront = round.sticks.find((stick) => !covering.includes(stick.index))!.index
+    expect(alpha(inFront)).toBe(1)
+    expect(cord(inFront).visible).toBe(true)
+    for (let i = 0; i < 10; i++) sticks.paint(round, 0.1, false)
+    expect(alpha(covering[0])).toBe(1)
+    expect(cord(covering[0]).visible).toBe(true)
   })
 
-  it('la madera lleva el relieve y la rugosidad de la web, sin su color', () => {
-    const palos = new PalosPintados(padre)
-    const material = palos.cuerpo(0).material_override as StandardMaterial3D
+  it('the wood carries the relief and the roughness of the web, without its colour', () => {
+    const sticks = new PaintedSticks(parent)
+    const material = sticks.body(0).material_override as StandardMaterial3D
     expect(material.normal_enabled).toBe(true)
     expect(material.normal_texture).not.toBe(null)
     expect(material.roughness_texture).not.toBe(null)
@@ -135,137 +135,137 @@ describe('los palos pintados', () => {
   })
 })
 
-describe('la feria y tu habitación', () => {
-  let escena: Node3D
-  let mundo: Node3D
-  let feria: Feria
-  let transparente: boolean[]
+describe('the fairground and your room', () => {
+  let scene: Node3D
+  let world: Node3D
+  let fairground: Fairground
+  let transparent: boolean[]
   let passthrough: boolean
-  const vista: RoomView = { hayPassthrough: () => passthrough, transparente: (si) => transparente.push(si) }
+  const view: RoomView = { hayPassthrough: () => passthrough, transparente: (on) => transparent.push(on) }
 
   beforeEach(() => {
     gameStorage()?.clear()
-    escena = new Node3D()
-    mundo = new Node3D()
-    escena.add_child(mundo)
-    feria = new Feria(escena, mundo)
-    transparente = []
+    scene = new Node3D()
+    world = new Node3D()
+    scene.add_child(world)
+    fairground = new Fairground(scene, world)
+    transparent = []
     passthrough = false
   })
-  afterEach(() => escena.free())
+  afterEach(() => scene.free())
 
-  it('las tres piezas del kit donde las pone `colocaciones()`, el público y la noria', () => {
-    const todas = colocaciones()
-    expect(feria.recuento).toEqual({
-      piezas: Object.fromEntries(PIEZAS.map((p) => [p, todas.filter((c) => c.pieza === p).length])),
-      siluetas: crowdSpots().length,
-      cabinas: WHEEL_CABIN_COUNT,
+  it('the three pieces of the kit where `placements()` puts them, the crowd and the Ferris wheel', () => {
+    const all = placements()
+    expect(fairground.counts).toEqual({
+      pieces: Object.fromEntries(PIECES.map((p) => [p, all.filter((c) => c.piece === p).length])),
+      silhouettes: crowdSpots().length,
+      cabins: WHEEL_CABIN_COUNT,
     })
   })
 
-  it('el color de las piezas del kit es el de sus vértices', () => {
-    const puesto = feria.recinto.find_child('Piezas-puesto', true, false) as MultiMeshInstance3D
-    expect((puesto.material_override as StandardMaterial3D).vertex_color_use_as_albedo).toBe(true)
-    expect(puesto.multimesh!.instance_count).toBe(colocaciones().filter((c) => c.pieza === 'puesto').length)
+  it('the colour of the pieces of the kit is that of their vertices', () => {
+    const stall = fairground.venue.find_child('Pieces-puesto', true, false) as MultiMeshInstance3D
+    expect((stall.material_override as StandardMaterial3D).vertex_color_use_as_albedo).toBe(true)
+    expect(stall.multimesh!.instance_count).toBe(placements().filter((c) => c.piece === 'puesto').length)
   })
 
-  it('con la racha las bombillas suben de brillo y la noria gira', () => {
-    const guirnaldas = feria.recinto.find_child('Guirnaldas', true, false) as MultiMeshInstance3D
-    const material = guirnaldas.material_override as StandardMaterial3D
-    const antes = material.albedo_color.r + material.albedo_color.g
-    for (let i = 0; i < 120; i++) feria.actualizar(1 / 60, 12)
-    expect(material.albedo_color.r + material.albedo_color.g).toBeGreaterThan(antes)
-    const rueda = feria.recinto.find_child('Rueda', true, false) as Node3D
-    expect(rueda.rotation.z).toBeGreaterThan(0)
+  it('with the streak the bulbs get brighter and the Ferris wheel turns', () => {
+    const garlands = fairground.venue.find_child('Garlands', true, false) as MultiMeshInstance3D
+    const material = garlands.material_override as StandardMaterial3D
+    const before = material.albedo_color.r + material.albedo_color.g
+    for (let i = 0; i < 120; i++) fairground.update(1 / 60, 12)
+    expect(material.albedo_color.r + material.albedo_color.g).toBeGreaterThan(before)
+    const wheel = fairground.venue.find_child('Wheel', true, false) as Node3D
+    expect(wheel.rotation.z).toBeGreaterThan(0)
   })
 
-  it('sin realidad aumentada se ve la plaza aunque el salón pida la habitación; con ella, la habitación', () => {
+  it('without augmented reality the square is seen even if the hall asks for the room; with it, the room', () => {
     gameStorage()?.setItem('xrcade:scenery', 'room')
-    const escenario = new SceneryRig({ mostrar: (si) => feria.enLaPlaza(si), vista })
-    escenario.actualizar()
-    expect([feria.recinto.visible, transparente]).toEqual([true, [false]])
+    const scenery = new SceneryRig({ mostrar: (on) => fairground.inSquare(on), vista: view })
+    scenery.actualizar()
+    expect([fairground.venue.visible, transparent]).toEqual([true, [false]])
     passthrough = true
-    escenario.releer()
-    escenario.actualizar()
-    expect([feria.recinto.visible, transparente]).toEqual([false, [false, true]])
-    escenario.elegir('place')
-    escenario.actualizar()
-    expect(feria.recinto.visible).toBe(true)
+    scenery.releer()
+    scenery.actualizar()
+    expect([fairground.venue.visible, transparent]).toEqual([false, [false, true]])
+    scenery.elegir('place')
+    scenery.actualizar()
+    expect(fairground.venue.visible).toBe(true)
   })
 })
 
-describe('las ayudas', () => {
-  let maquina: Node3D
-  let mando: RealController
-  let ayudas: AyudasDelJuego
+describe('the hints', () => {
+  let machine: Node3D
+  let controller: RealController
+  let hints: GameHints
   beforeEach(() => {
-    maquina = new Node3D()
-    mando = new RealController({ mano: 'right', dir: DIR_DE_LOS_MANDOS, perfil })
-    ayudas = new AyudasDelJuego(maquina, [mando])
+    machine = new Node3D()
+    controller = new RealController({ mano: 'right', dir: CONTROLLERS_DIR, perfil: profile })
+    hints = new GameHints(machine, [controller])
   })
-  afterEach(() => maquina.free())
+  afterEach(() => machine.free())
 
-  const sinHacer = { grab: false, cae: false }
+  const nothingDone = { grab: false, falling: false }
 
-  it('sin visor no sale ninguna', () => {
-    for (let i = 0; i < 60; i++) ayudas.actualizar(1 / 60, { dando: false, hechos: sinHacer, aro: MACHINE_HEIGHT, mano: 'right' })
-    expect(ayudas.visibles()).toEqual([])
-  })
-
-  it('con visor salen las tres del guion, y se apagan con lo hecho', () => {
-    for (let i = 0; i < 60; i++) ayudas.actualizar(1 / 60, { dando: true, hechos: sinHacer, aro: MACHINE_HEIGHT, mano: 'right' })
-    expect(ayudas.visibles()).toEqual(GUION_DE_AYUDAS.map((a) => a.id))
-    for (let i = 0; i < 60; i++) ayudas.actualizar(1 / 60, { dando: true, hechos: { grab: false, cae: true }, aro: MACHINE_HEIGHT, mano: 'right' })
-    expect(ayudas.visibles()).toEqual(['suelo'])
-    for (let i = 0; i < 60; i++) ayudas.actualizar(1 / 60, { dando: true, hechos: { grab: true, cae: true }, aro: MACHINE_HEIGHT, mano: 'right' })
-    expect(ayudas.visibles()).toEqual([])
+  it('without a headset none comes up', () => {
+    for (let i = 0; i < 60; i++) hints.update(1 / 60, { showing: false, facts: nothingDone, hoop: MACHINE_HEIGHT, hand: 'right' })
+    expect(hints.visible()).toEqual([])
   })
 
-  it('el palo fantasma cae desde el palo de delante como `caidaDelFantasma`', () => {
-    let reloj = 0
+  it('with a headset the three of the script come up, and they go off with what is done', () => {
+    for (let i = 0; i < 60; i++) hints.update(1 / 60, { showing: true, facts: nothingDone, hoop: MACHINE_HEIGHT, hand: 'right' })
+    expect(hints.visible()).toEqual(HINT_SCRIPT.map((a) => a.id))
+    for (let i = 0; i < 60; i++) hints.update(1 / 60, { showing: true, facts: { grab: false, falling: true }, hoop: MACHINE_HEIGHT, hand: 'right' })
+    expect(hints.visible()).toEqual(['ground'])
+    for (let i = 0; i < 60; i++) hints.update(1 / 60, { showing: true, facts: { grab: true, falling: true }, hoop: MACHINE_HEIGHT, hand: 'right' })
+    expect(hints.visible()).toEqual([])
+  })
+
+  it('the ghost stick falls from the front stick like `ghostFall`', () => {
+    let clock = 0
     for (let i = 0; i < 50; i++) {
-      ayudas.actualizar(1 / 60, { dando: true, hechos: sinHacer, aro: MACHINE_HEIGHT, mano: 'right' })
-      reloj += 1 / 60
+      hints.update(1 / 60, { showing: true, facts: nothingDone, hoop: MACHINE_HEIGHT, hand: 'right' })
+      clock += 1 / 60
     }
-    const fantasma = ayudas.nodo.find_child('PaloFantasma', true, false) as MeshInstance3D
-    const [, y] = paloDelFantasma(MACHINE_HEIGHT)
-    const { bajada } = caidaDelFantasma((reloj % 2.4) / 2.4)
-    expect(fantasma.position.y).toBeCloseTo(y - bajada, 3)
+    const ghost = hints.node.find_child('GhostStick', true, false) as MeshInstance3D
+    const [, y] = ghostStick(MACHINE_HEIGHT)
+    const { drop } = ghostFall((clock % 2.4) / 2.4)
+    expect(ghost.position.y).toBeCloseTo(y - drop, 3)
   })
 })
 
-describe('lo que viaja en el paquete es lo de la web, byte a byte', () => {
-  const delRepo = (ruta: string) => FileAccess.get_file_as_bytes(`${ProjectSettings.globalize_path('res://')}../${ruta}`)
-  const delPaquete = (ruta: string) => FileAccess.get_file_as_bytes(`res://games/stick-rush/${ruta}`)
+describe('what travels in the package is the web\'s, byte for byte', () => {
+  const fromRepo = (path: string) => FileAccess.get_file_as_bytes(`${ProjectSettings.globalize_path('res://')}../${path}`)
+  const fromPackage = (path: string) => FileAccess.get_file_as_bytes(`res://games/stick-rush/${path}`)
 
-  it.each([...PIEZAS])('la pieza del kit %s', (pieza) => {
-    const web = delRepo(`public/models/kit/${pieza}.glb`)
+  it.each([...PIECES])('the kit piece %s', (piece) => {
+    const web = fromRepo(`public/models/kit/${piece}.glb`)
     expect(web.size()).toBeGreaterThan(0)
-    expect(delPaquete(`feria/${pieza}.glb`).hex_encode()).toBe(web.hex_encode())
+    expect(fromPackage(`feria/${piece}.glb`).hex_encode()).toBe(web.hex_encode())
   })
 
-  it.each(Object.values(WOOD_TEXTURES))('el mapa de la madera %s', (ruta) => {
-    const web = delRepo(`public/${ruta}`)
+  it.each(Object.values(WOOD_TEXTURES))('the wood map %s', (path) => {
+    const web = fromRepo(`public/${path}`)
     expect(web.size()).toBeGreaterThan(0)
-    expect(FileAccess.get_file_as_bytes(rutaDeLaTextura(ruta)).hex_encode()).toBe(web.hex_encode())
+    expect(FileAccess.get_file_as_bytes(texturePath(path)).hex_encode()).toBe(web.hex_encode())
   })
 
-  it('el cielo y la música', () => {
-    for (const [paquete, web] of [
+  it('the sky and the music', () => {
+    for (const [packaged, web] of [
       ['hdri/plaza_pueblo_1k.exr', 'public/hdri/plaza_pueblo_1k.exr'],
       ['music/feria.mp3', 'public/audio/feria.mp3'],
     ]) {
-      const bytes = delRepo(web)
+      const bytes = fromRepo(web)
       expect(bytes.size(), web).toBeGreaterThan(0)
-      expect(delPaquete(paquete).hex_encode(), web).toBe(bytes.hex_encode())
+      expect(fromPackage(packaged).hex_encode(), web).toBe(bytes.hex_encode())
     }
   })
 
-  it.each(['meta-quest-touch-plus', 'oculus-touch-v3'])('el mando %s, sus dos manos y su perfil', (p) => {
+  it.each(['meta-quest-touch-plus', 'oculus-touch-v3'])('the controller %s, its two hands and its profile', (p) => {
     for (const f of ['profile.json', 'left.glb', 'right.glb']) {
-      const web = delRepo(`public/webxr-profiles/${p}/${f}`)
+      const web = fromRepo(`public/webxr-profiles/${p}/${f}`)
       expect(web.size(), f).toBeGreaterThan(0)
-      expect(delPaquete(`mandos/${p}/${f}`).hex_encode(), f).toBe(web.hex_encode())
+      expect(fromPackage(`mandos/${p}/${f}`).hex_encode(), f).toBe(web.hex_encode())
     }
   })
 })

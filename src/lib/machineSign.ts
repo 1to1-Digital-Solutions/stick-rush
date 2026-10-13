@@ -1,15 +1,15 @@
 /**
- * El cartel del objetivo en este juego: dónde se lee y qué partida le cuenta.
+ * The goal sign in this game: where it is read and which run it is told about.
  *
- * El cartel es común a todos los juegos del salón (`objetivo.ts` y `CartelDeObjetivo.tsx`); lo
- * que es de Stick Rush está aquí: que va **de frente y bajo la máquina**, encima del marcador
- * (`XR_CARTEL_POSITION`), y que la partida que cuenta es el reto —los trece palos a velocidad
- * media, con tres vidas—.
+ * The sign is common to all the games of the hall (`goal.ts` and `GoalSign.tsx`); what
+ * belongs to Stick Rush is here: that it goes **facing forward and under the machine**, above
+ * the scoreboard (`XR_SIGN_POSITION`), and that the run that counts is the challenge —the
+ * thirteen sticks at medium speed, with three lives—.
  *
- * Sin three ni React: la escena coloca lo que sale de aquí y los tests lo miden.
+ * With no three nor React: the scene places what comes out of here and the tests measure it.
  */
 
-import { AHORA_CUENTA, CALENTAMIENTO } from './warmup'
+import { NOW_IT_COUNTS, WARMUP } from './warmup'
 import { PLAYER_COUNT_LABELS } from './duel'
 import { CHALLENGE_LIVES, CHALLENGE_SETUP, GAME_MODE_LABELS, type GameMode } from './gameMode'
 import { REFERENCE_EYE_HEIGHT } from './hoopHeight'
@@ -18,197 +18,200 @@ import { plural } from './menuWords'
 import { stickPoints } from './scoring'
 import { distanceFromEyes, eyesAt, pointOnPanel, tiltTowardEyes, type PanelPose, type Point } from './panelReading'
 import { pulsesFor, type HandSide, type HandPulse, type HapticEvent } from './hapticFeedback'
-import { XR_CARTEL_POSITION, type Vec3 } from './xrLayout'
+import { XR_SIGN_POSITION, type Vec3 } from './xrLayout'
 
-/** El modo del que salen el récord de la cabina y las medallas del salón. */
-export const MODO_DE_LAS_MEDALLAS: GameMode = 'challenge'
+/** The mode the cabinet's record and the hall's medals come from. */
+export const MEDALS_MODE: GameMode = 'challenge'
 
 /**
- * Lo que se aparta de la mirada al frente algo que todavía se lee **sin girar la cabeza**, en
- * grados: bajando o subiendo los ojos se llega cómodo hasta ahí, y el visor enseña bastante más
- * (unos 48° hacia abajo). A CALIBRAR CON EL VISOR.
+ * How far something that is still read **without turning the head** strays from the gaze
+ * straight ahead, in degrees: lowering or raising the eyes gets there comfortably, and the
+ * headset shows quite a lot more (some 48° downwards). TO BE CALIBRATED WITH THE HEADSET.
  */
-export const VISTA_SIN_GIRAR = 35
+export const VIEW_WITHOUT_TURNING = 35
 
-/** Lo que mide el cartel por cada metro de distancia de lectura: su ancho y su alto. */
-export interface ProporcionDelCartel {
+/** What the sign measures for each metre of reading distance: its width and its height. */
+export interface SignAspect {
   readonly width: number
   readonly height: number
 }
 
-/** Dónde queda el cartel y cómo se orienta. */
-export interface SitioDelCartel {
-  /** Su centro, en el espacio de la interfaz (`−Z` es hacia donde se mira). */
+/** Where the sign ends up and how it is oriented. */
+export interface SignPlacement {
+  /** Its centre, in the space of the ui (`−Z` is where one looks). */
   readonly position: Vec3
-  /** Como el `rotation` de three: inclinado hacia los ojos, para leerse de frente. */
+  /** Like three's `rotation`: tilted towards the eyes, to be read head-on. */
   readonly rotation: readonly [number, number, number]
-  /** De los ojos al centro del cartel, en metros: de ahí sale su tamaño. */
-  readonly distancia: number
+  /** From the eyes to the centre of the sign, in metres: its size comes from there. */
+  readonly distance: number
 }
 
 /**
- * Dónde va el cartel: en `XR_CARTEL_POSITION`, de cara a los ojos de quien juega.
+ * Where the sign goes: at `XR_SIGN_POSITION`, facing the eyes of whoever plays.
  *
- * Se coloca para la persona de referencia y sube o baja con el resto de la interfaz
- * (`xrUiRise`), así que respecto de los ojos queda siempre igual.
+ * It is placed for the reference person and goes up or down with the rest of the ui
+ * (`xrUiRise`), so relative to the eyes it always ends up the same.
  */
-export function sitioDelCartel(ojos: number = REFERENCE_EYE_HEIGHT): SitioDelCartel {
-  const desde = eyesAt(ojos)
+export function signPlacement(eyes: number = REFERENCE_EYE_HEIGHT): SignPlacement {
+  const from = eyesAt(eyes)
   return {
-    position: XR_CARTEL_POSITION,
-    rotation: [tiltTowardEyes(XR_CARTEL_POSITION, desde), 0, 0],
-    distancia: distanceFromEyes(XR_CARTEL_POSITION, desde),
+    position: XR_SIGN_POSITION,
+    rotation: [tiltTowardEyes(XR_SIGN_POSITION, from), 0, 0],
+    distance: distanceFromEyes(XR_SIGN_POSITION, from),
   }
 }
 
-/** El cartel como panel, para medir lo que ocupa en el ojo lo que lleva escrito (`panelReading.ts`). */
-export function poseDelCartel(sitio: SitioDelCartel = sitioDelCartel()): PanelPose {
-  return { position: sitio.position, rotation: sitio.rotation }
+/** The sign as a panel, to measure what its writing takes up in the eye (`panelReading.ts`). */
+export function signPose(placement: SignPlacement = signPlacement()): PanelPose {
+  return { position: placement.position, rotation: placement.rotation }
 }
 
-/** Las cuatro esquinas del cartel ya colocado, en el espacio de quien juega. */
-export function esquinasDelCartel(proporcion: ProporcionDelCartel, sitio: SitioDelCartel = sitioDelCartel()): Point[] {
-  const pose = poseDelCartel(sitio)
-  const ancho = proporcion.width * sitio.distancia
-  const alto = proporcion.height * sitio.distancia
-  return [-1, 1].flatMap((x) => [-1, 1].map((y) => pointOnPanel(pose, (x * ancho) / 2, (y * alto) / 2)))
+/** The four corners of the sign already placed, in the space of whoever plays. */
+export function signCorners(aspect: SignAspect, placement: SignPlacement = signPlacement()): Point[] {
+  const pose = signPose(placement)
+  const width = aspect.width * placement.distance
+  const height = aspect.height * placement.distance
+  return [-1, 1].flatMap((x) => [-1, 1].map((y) => pointOnPanel(pose, (x * width) / 2, (y * height) / 2)))
 }
 
-/** Cuántos grados se aparta ese punto de la mirada al frente (horizontal, hacia `−Z`). */
-export function apartadoDeLaMirada(punto: Point, ojos: number = REFERENCE_EYE_HEIGHT): number {
-  const hacia = { x: punto.x, y: punto.y - ojos, z: punto.z }
-  return (Math.acos(-hacia.z / Math.hypot(hacia.x, hacia.y, hacia.z)) * 180) / Math.PI
+/** How many degrees that point strays from the gaze straight ahead (horizontal, towards `−Z`). */
+export function angleFromGaze(point: Point, eyes: number = REFERENCE_EYE_HEIGHT): number {
+  const toward = { x: point.x, y: point.y - eyes, z: point.z }
+  return (Math.acos(-toward.z / Math.hypot(toward.x, toward.y, toward.z)) * 180) / Math.PI
 }
 
 /**
- * La misión del reto en una frase. Los palos salen de las reglas; las vidas van escritas, y un
- * test avisa si dejan de ser tres.
+ * The mission of the challenge in one sentence. The sticks come from the rules; the lives are
+ * written out, and a test warns if they stop being three.
  *
- * **Corta a propósito**: el cartel escribe una sola línea y la encoge hasta que cabe. «Atrapa los
- * 13 palos. Tres al suelo y se acaba» salía a 0,82° y su versión inglesa a 0,69°, por debajo de lo
- * que se lee; así queda en un grado, como los tres listones de debajo
+ * **Short on purpose**: the sign writes a single line and shrinks it until it fits. «Atrapa los
+ * 13 palos. Tres al suelo y se acaba» came out at 0.82° and its English version at 0.69°, below
+ * what can be read; this way it stays at one degree, like the three thresholds below
  * (`machineSign.legible.test.ts`).
  */
-export const MISION_DEL_RETO = 'Catch {sticks} sticks. Drop three and out'
+export const CHALLENGE_MISSION = 'Catch {sticks} sticks. Drop three and out'
 
-/** Lo que queda, como se escribe en el cartel: «Lives ♥♥♡ · Sticks 9». */
-export function loQueQueda(vidas: number, palos: number, t: Translate): string {
-  const gastadas = Math.max(0, CHALLENGE_LIVES - vidas)
-  return `${t('Lives')} ${'♥'.repeat(CHALLENGE_LIVES - gastadas)}${'♡'.repeat(gastadas)} · ${t('Sticks')} ${palos}`
+/** What remains, as it is written on the sign: «Lives ♥♥♡ · Sticks 9». */
+export function remainingText(lives: number, sticks: number, t: Translate): string {
+  const spent = Math.max(0, CHALLENGE_LIVES - lives)
+  return `${t('Lives')} ${'♥'.repeat(CHALLENGE_LIVES - spent)}${'♡'.repeat(spent)} · ${t('Sticks')} ${sticks}`
 }
 
 /**
- * Lo que da un palo atrapado en el reto sin racha ni reflejos: lo menos que vale un palo. Es la
- * vara con la que se cuentan en palos los puntos de un listón.
+ * What a caught stick gives in the challenge with no streak nor reflexes: the least a stick is
+ * worth. It is the yardstick with which the points of a threshold are counted in sticks.
  */
-export const PUNTOS_DE_UN_PALO = stickPoints({ difficulty: CHALLENGE_SETUP.difficulty, streak: 1, fallProgress: 1 })
+export const POINTS_PER_STICK = stickPoints({ difficulty: CHALLENGE_SETUP.difficulty, streak: 1, fallProgress: 1 })
 
-/** Cuántos palos hay que atrapar, como mucho, para llegar a esos puntos: el bronce 1900 son 13. */
-export function palosPara(puntos: number): number {
-  return Math.ceil(puntos / PUNTOS_DE_UN_PALO)
+/** How many sticks have to be caught, at most, to reach those points: the bronze 1900 is 13. */
+export function sticksFor(points: number): number {
+  return Math.ceil(points / POINTS_PER_STICK)
 }
 
 /**
- * Los puntos de un listón dichos en palos, ya traducidos: `1900` → «≈ 13 palos». Es el `contable`
- * del cartel: la misión cuenta palos y el récord, puntos, y quien empieza no sabe cuánto es 1900.
+ * The points of a threshold said in sticks, already translated: `1900` → «≈ 13 palos». It is the
+ * sign's `asCount`: the mission counts sticks and the record, points, and whoever is starting
+ * does not know how much 1900 is.
  */
-export function enPalos(t: Translate): (puntos: number) => string {
-  return (puntos) => {
-    const n = palosPara(puntos)
+export function inSticks(t: Translate): (points: number) => string {
+  return (points) => {
+    const n = sticksFor(points)
     return t(plural(n, '≈ {n} stick', '≈ {n} sticks'), { n })
   }
 }
 
-/** Lo que el cartel necesita saber de lo que se está jugando. */
-export interface LoQueSeJuega {
-  /** Lo que pasó el salón, si lo pasó. */
-  objetivo?: Goal | null
+/** What the sign needs to know about what is being played. */
+export interface WhatIsPlayed {
+  /** What the hall passed, if it passed it. */
+  goal?: Goal | null
   gameMode: GameMode
-  /** Si se juega a dos pasándose el mando: una tanda a dos no es la marca de nadie. */
-  aDos: boolean
+  /** Whether two play passing the controller to each other: a round for two is nobody's best. */
+  twoPlayers: boolean
   gameState: 'menu' | 'countdown' | 'playing' | 'finished'
   points: number
-  /** Las vidas que quedan, o `null` en un modo que no se juega con ellas. */
+  /** The lives that remain, or `null` in a mode that is not played with them. */
   lives: number | null
-  /** Palos ya resueltos, atrapados o perdidos. */
+  /** Sticks already settled, caught or lost. */
   resolved: number
-  /** Palos que se pusieron en juego. */
+  /** Sticks that were put into play. */
   stickCount: number
-  /** El récord del reto guardado aquí al empezar; cero si no hay. */
+  /** The challenge's record stored here at the start; zero if there is none. */
   record: number
-  /** La lección corre sobre el reto: lo que pasa aún no cuenta (`warmup.ts`). */
-  calentando?: boolean
-  /** La lección se acaba de cerrar y el reto empieza de cero: hasta el primer palo, se avisa. */
-  ahoraCuenta?: boolean
+  /** The lesson runs over the challenge: what happens does not count yet (`warmup.ts`). */
+  warmingUp?: boolean
+  /** The lesson has just closed and the challenge starts from scratch: until the first stick, it is announced. */
+  nowItCounts?: boolean
 }
 
 /**
- * La partida que se le cuenta al cartel, o `null` si no hay nada que colgar.
+ * The run the sign is told about, or `null` if there is nothing to hang.
  *
- * La que cuenta es el reto —o el modo que diga el salón—, jugado solo: durante la cuenta atrás y
- * hasta que se resuelve el primer palo, la misión y los listones; después, el listón que falta,
- * las vidas y los palos que quedan; al acabar, lo que faltó. En cualquier otro modo, y a dos,
- * dentro del salón el cartel dice bajito que no cuenta para medalla mientras se juega; con el
- * juego abierto suelto no hay medalla de la que hablar y no se cuelga. En el menú, tampoco.
+ * The one that counts is the challenge —or the mode the hall says—, played alone: during the
+ * countdown and until the first stick is settled, the mission and the thresholds; afterwards, the
+ * threshold that is missing, the lives and the sticks that remain; at the end, what was missing.
+ * In any other mode, and with two players, inside the hall the sign says quietly that it does not
+ * count for a medal while it is played; with the game opened on its own there is no medal to talk
+ * about and it is not hung. In the menu, neither.
  *
- * **El calentamiento** dice bajito que no cuenta, con salón y sin él; y al cerrarse la lección, la
- * cuenta atrás del reto que empieza de cero dice «Ahora cuenta para medalla» en lugar de la misión
- * —que ya se ha jugado—, con los listones debajo.
+ * **The warm-up** says quietly that it does not count, with the hall and without it; and when the
+ * lesson closes, the countdown of the challenge that starts from scratch says «Ahora cuenta para
+ * medalla» instead of the mission —which has already been played—, with the thresholds below.
  */
-export function partidaDelCartel(juego: LoQueSeJuega, t: Translate): Run | null {
-  const { gameMode, gameState } = juego
+export function signRun(game: WhatIsPlayed, t: Translate): Run | null {
+  const { gameMode, gameState } = game
   if (gameState === 'menu') return null
-  const objetivo = juego.objetivo ?? null
-  if (juego.calentando === true) {
-    // Sin salón el cartel solo dice la misión, así que la misión es ya la frase entera.
-    const modo = t(CALENTAMIENTO)
-    const mision = t('{mode} · does not count for a medal', { mode: modo })
-    return { goal: objetivo, phase: 'playing', points: juego.points, mission: mision, counts: false, mode: modo }
+  const goal = game.goal ?? null
+  if (game.warmingUp === true) {
+    // With no hall the sign only says the mission, so the mission is already the whole sentence.
+    const mode = t(WARMUP)
+    const mission = t('{mode} · does not count for a medal', { mode })
+    return { goal, phase: 'playing', points: game.points, mission, counts: false, mode }
   }
-  const mision = t(MISION_DEL_RETO, { sticks: CHALLENGE_SETUP.stickCount })
-  const cuenta =
-    gameMode === MODO_DE_LAS_MEDALLAS && !juego.aDos && juego.lives != null && countsForMedal(objetivo, gameMode)
-  if (!cuenta) {
-    if (objetivo == null || gameState === 'finished') return null
-    const modo = t(juego.aDos ? PLAYER_COUNT_LABELS[2] : GAME_MODE_LABELS[gameMode])
-    return { goal: objetivo, phase: 'playing', points: 0, mission: mision, counts: false, mode: modo }
+  const mission = t(CHALLENGE_MISSION, { sticks: CHALLENGE_SETUP.stickCount })
+  const counts =
+    gameMode === MEDALS_MODE && !game.twoPlayers && game.lives != null && countsForMedal(goal, gameMode)
+  if (!counts) {
+    if (goal == null || gameState === 'finished') return null
+    const mode = t(game.twoPlayers ? PLAYER_COUNT_LABELS[2] : GAME_MODE_LABELS[gameMode])
+    return { goal, phase: 'playing', points: 0, mission, counts: false, mode }
   }
-  const sinEmpezar = gameState === 'countdown' || juego.resolved === 0
+  const notStarted = gameState === 'countdown' || game.resolved === 0
   return {
-    goal: objetivo,
-    phase: gameState === 'finished' ? 'end' : sinEmpezar ? 'before' : 'playing',
-    points: juego.points,
-    mission: juego.ahoraCuenta === true && sinEmpezar ? t(AHORA_CUENTA) : mision,
-    remaining: loQueQueda(juego.lives as number, juego.stickCount - juego.resolved, t),
-    record: juego.record > 0 ? juego.record : null,
-    // La primera vez, el bronce en palos. Con un bronce de un palo o menos, la cifra: «≈ 1 palo»
-    // es el primer atrape y no dice hasta dónde hay que llegar.
-    asCount: objetivo != null && palosPara(objetivo.medals.bronze) > 1 ? enPalos(t) : null,
+    goal,
+    phase: gameState === 'finished' ? 'end' : notStarted ? 'before' : 'playing',
+    points: game.points,
+    mission: game.nowItCounts === true && notStarted ? t(NOW_IT_COUNTS) : mission,
+    remaining: remainingText(game.lives as number, game.stickCount - game.resolved, t),
+    record: game.record > 0 ? game.record : null,
+    // The first time, the bronze in sticks. With a bronze of one stick or less, the figure: «≈ 1 palo»
+    // is the first catch and does not say how far one has to get.
+    asCount: goal != null && sticksFor(goal.medals.bronze) > 1 ? inSticks(t) : null,
   }
 }
 
-/** Si el cartel de esa partida dice ya los puntos y las vidas: entonces el marcador los calla. */
-export function llevaLaCuenta(partida: Run | null): partida is Run {
-  return partida != null && partida.counts !== false
+/** Whether the sign of that run already says the points and the lives: then the scoreboard keeps quiet about them. */
+export function runCounts(run: Run | null): run is Run {
+  return run != null && run.counts !== false
 }
 
 /**
- * Lo que tarda en notarse el listón después del atrape que lo cruzó, en milisegundos.
+ * How long the threshold takes to be noticed after the catch that crossed it, in milliseconds.
  *
- * El palo que cruza el listón ya vibra al cogerlo (`haptics.ts`) y `pulse()` no encola: los dos a
- * la vez serían uno. Con este hueco se sienten como dos toques. A CALIBRAR CON EL VISOR.
+ * The stick that crosses the threshold already vibrates on catching it (`haptics.ts`) and
+ * `pulse()` does not queue: the two at once would be one. With this gap they feel like two taps.
+ * TO BE CALIBRATED WITH THE HEADSET.
  */
-export const RETARDO_DEL_LISTON = 90
+export const THRESHOLD_DELAY = 90
 
 /**
- * Lo que se siente en la mano al cruzar un listón: algo ha llegado, más fuerte cuanto mejor es
- * la medalla. A CALIBRAR CON EL VISOR.
+ * What is felt in the hand on crossing a threshold: something has arrived, stronger the better
+ * the medal is. TO BE CALIBRATED WITH THE HEADSET.
  */
-export function tactoDelListon(medalla: Medal, mano: HandSide): HapticEvent {
-  return { type: 'arrival', hand: mano, strength: 0.5 + 0.25 * MEDALS.indexOf(medalla) }
+export function thresholdHaptic(medal: Medal, hand: HandSide): HapticEvent {
+  return { type: 'arrival', hand, strength: 0.5 + 0.25 * MEDALS.indexOf(medal) }
 }
 
-/** Los pulsos del listón cruzado, ya con su hueco tras el atrape. */
-export function pulsosDelListon(medalla: Medal, mano: HandSide): HandPulse[] {
-  return pulsesFor(tactoDelListon(medalla, mano)).map((pulso) => ({ ...pulso, delay: pulso.delay + RETARDO_DEL_LISTON }))
+/** The pulses of the crossed threshold, already with their gap after the catch. */
+export function thresholdPulses(medal: Medal, hand: HandSide): HandPulse[] {
+  return pulsesFor(thresholdHaptic(medal, hand)).map((pulse) => ({ ...pulse, delay: pulse.delay + THRESHOLD_DELAY }))
 }

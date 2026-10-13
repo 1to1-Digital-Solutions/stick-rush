@@ -1,10 +1,10 @@
 # AGENTS.md — stick-rush
 
-Las instrucciones del repo están en **`CLAUDE.md`** y el siguiente paso, en **`ESTADO.md`**.
+The repo's instructions are in **`CLAUDE.md`** and the next step is in **`ESTADO.md`**.
 
-Este fichero existe para alojar el bloque de reglas que `next dev` inyecta al detectar un
-agente: Next lo escribe en `AGENTS.md` cuando existe y solo se lo añade a `CLAUDE.md` cuando no.
-El bloque de abajo lo gestiona Next: no se edita a mano.
+This file exists to host the block of rules that `next dev` injects when it detects an agent:
+Next writes it into `AGENTS.md` when the file exists and only adds it to `CLAUDE.md` when it does
+not. The block below is managed by Next: do not edit it by hand.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

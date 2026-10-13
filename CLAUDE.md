@@ -1,23 +1,23 @@
 # CLAUDE.md — stick-rush
 
-**Qué es:** Aplicación web para ejcutar en navegadores de headset de realidad mixta. El juego consiste en hacer el juego de Falling Sticks Game, el tipico juego que hay unos palos (sticks) que caen hacia el suelo de forma aleatoria y el usuario tiene que intentar atraparlos. Voy intentar explicarlo, los palos cuelgan de una maquina en forma semicircular. Al acceder a la aplicacion el usuario decidira cuantos palos quiere, entre 5 y 13, tambien elegira la dificultad (facil, medio, dificil, experto, imposible), que modificara la velocidad con la que caen los sticks al suelo. Tienen que caer de forma escalonada y aleatoria.
-Si la aplicacion se juega desde un navegador normal (sin un headset), para "pillar los sticks" se hace haciendo click con el raton. Pero si se juega desde un visor de XR, la idea es que pueda seleccionar modo VR o AR. En modo VR tendra un escenario cargado. Si esta en AR, solo estara la maquina y el usuario. Para coger los palos se hace con los mandos de xr.
-Quiero que la app se construya con next.js, y librerias como drei, react three fiber y WebXR
+**What it is:** A web application to run in the browsers of mixed-reality headsets. The game is a take on the Falling Sticks Game, the typical game where some sticks drop to the ground at random and the player has to try to catch them. To explain it: the sticks hang from a semicircular machine. On opening the application the player decides how many sticks they want, between 5 and 13, and also picks the difficulty (easy, medium, hard, expert, impossible), which changes the speed at which the sticks fall to the ground. They have to fall staggered and at random.
+If the application is played from a regular browser (without a headset), the sticks are "caught" by clicking with the mouse. But if it is played from an XR headset, the idea is to be able to choose VR or AR mode. In VR mode there is a loaded scenery. In AR, there is only the machine and the player. The sticks are grabbed with the XR controllers.
+The app is to be built with next.js and libraries such as drei, react three fiber and WebXR.
 
-**Cómo se construye:** sigue las reglas de `.claude/rules/` (arquitectura, seguridad, diseño,
-git) en cada cambio. Lee primero el contexto del repo, haz el cambio mínimo y enfocado, reutiliza
-antes de crear y verifica (typecheck/lint/build/tests) antes de dar nada por terminado.
+**How it is built:** follow the rules in `.claude/rules/` (architecture, security, design, git) in
+every change. Read the repo's context first, make the smallest focused change, reuse before
+creating and verify (typecheck/lint/build/tests) before calling anything done.
 
-**Estado y siguiente paso:** ver **`ESTADO.md`** — ese fichero es el handoff entre sesiones e
-indica qué toca hacer ahora, corto a propósito. El **backlog** (todo lo que falta, hecho y
-pendiente) está en **`TODO.md`**. La historia tanda a tanda —qué se probó con las gafas y por
-qué se decidió cada cosa— vive en **`docs/historial.md`** y **solo se lee si la pregunta es
-«por qué está esto así»**: leerla entera al empezar cuesta más de lo que aporta.
+**Status and next step:** see **`ESTADO.md`** — that file is the handoff between sessions and
+says what to do now, short on purpose. The **backlog** (everything that is missing, done and
+pending) is in **`TODO.md`**. The history round by round —what was tried with the headset and why
+each thing was decided— lives in **`docs/historial.md`** and **is only read if the question is
+"why is this like this"**: reading it whole at the start costs more than it gives.
 
-**Decisiones firmes:**
-- (Documenta aquí las decisiones de stack y producto que no se renegocian: lenguaje, framework,
-  base de datos, despliegue, etc.)
-- Commits manuales: no commitear sin que se pida.
+**Firm decisions:**
+- (Document here the stack and product decisions that are not renegotiated: language, framework,
+  database, deployment, etc.)
+- Manual commits: do not commit unless asked.
 
-> Base instalada con la suite de Organízate. Las reglas comunes viven en `.claude/rules/`. La provenance de lo
-> instalado está en `.organizate/install-state.json`.
+> Base installed with the Organízate suite. The common rules live in `.claude/rules/`. The provenance of what was
+> installed is in `.organizate/install-state.json`.

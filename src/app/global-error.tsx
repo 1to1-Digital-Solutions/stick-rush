@@ -1,11 +1,11 @@
 'use client'
 import { useLang } from '../lib/settingsClient'
-import { traductor } from '../lib/textos'
+import { translator } from '../lib/textos'
 
 /**
- * Boundary de error global. Sustituye a la página interna que Next.js
- * autogenera, cuya prerenderización falla en algunas versiones de Next 16.
- * Debe renderizar sus propias etiquetas <html>/<body>.
+ * Global error boundary. It replaces the internal page Next.js
+ * autogenerates, whose prerendering fails in some versions of Next 16.
+ * It must render its own <html>/<body> tags.
  */
 export default function GlobalError({
   error,
@@ -15,7 +15,7 @@ export default function GlobalError({
   reset: () => void
 }) {
   const lang = useLang()
-  const t = traductor(lang)
+  const t = translator(lang)
 
   return (
     <html lang={lang}>

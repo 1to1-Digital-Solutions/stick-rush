@@ -1,23 +1,23 @@
 /**
- * La interfaz de Stick Rush en Godot, entera: el menú, el marcador, la cuenta atrás, volver al menú
- * y su aviso, terminar la partida sin fin y el tutorial, el cartel del objetivo, y la puntería que
- * los hace pulsables. Lo que en la web montan `XRMenu`, `XRHud`, `CartelDeLaMaquina`, `XRCountdown` y
- * `XRTutorial` dentro de `XRGazeAnchor`.
+ * Stick Rush's ui in Godot, whole: the menu, the scoreboard, the countdown, back to menu
+ * and its notice, ending the endless run and the tutorial, the goal sign, and the aim that
+ * makes them pressable. What on the web `XRMenu`, `XRHud`, `MachineSign`, `XRCountdown` and
+ * `XRTutorial` mount inside `XRGazeAnchor`.
  *
- * **Con el visor, en las cotas de la web** (`lib/xrLayout.ts`): el menú en la columna de la izquierda
- * —a metro y medio, a 30° del frente y agrandado (`XR_MENU_POSE`)—, el marcador por debajo del aro, volver al menú
- * arriba a la izquierda, el aviso y la cuenta atrás delante y el tutorial por encima del marcador.
- * Todo cuelga de `raiz`, en el mundo del jugador (que ya se planta donde lo presta el salón y gira con
- * el stick), y sube o baja con los ojos de quien juega lo que el mundo no haya bajado ya
- * (`xrUiRiseOverWorld`). **Una diferencia**: la web la lleva además con la mirada (`XRGazeAnchor`,
- * con su zona muerta); aquí se queda donde se plantó el mundo, como en los demás ports.
+ * **With the headset, at the web's measurements** (`lib/xrLayout.ts`): the menu in the left column
+ * —a metre and a half away, 30° from the front and enlarged (`XR_MENU_POSE`)—, the scoreboard below the hoop, back to menu
+ * at the top left, the notice and the countdown in front and the tutorial above the scoreboard.
+ * Everything hangs from `root`, in the player's world (which already stands where the hall lends it and turns with
+ * the stick), and rises or drops with the player's eyes what the world has not already lowered
+ * (`xrUiRiseOverWorld`). **One difference**: the web also carries it with the gaze (`XRGazeAnchor`,
+ * with its dead zone); here it stays where the world was planted, as in the other ports.
  *
- * **En plano** la web no pinta estos paneles —pone su menú y su marcador en DOM—; aquí no hay DOM,
- * así que los mismos paneles se cuelgan **de la cámara** (`SITIOS_EN_PLANO`), cerca, para que nada de
- * la escena se meta por delante.
+ * **Flat**, the web does not paint these panels —it puts its menu and its scoreboard in the DOM—; here there is no DOM,
+ * so the same panels hang **from the camera** (`FLAT_PLACEMENTS`), close, so that nothing of
+ * the scene gets in front.
  *
- * **Quien manda es la partida** (`game/run.ts`, el `gameStore` de la web): esto solo la lee para
- * pintar y le pasa lo que se pulsa.
+ * **The one in charge is the run** (`game/run.ts`, the web's `gameStore`): this only reads it to
+ * paint and passes it what is pressed.
  */
 import { Node3D, Transform3D, Vector3, type Camera3D, type InputEvent } from 'godot'
 
@@ -27,16 +27,16 @@ import { MousePointer } from '@kit/runtime/ui/mouse'
 import type { MandoEnLaMano } from '@kit/runtime/ui/tutorial'
 
 import type { Lang, Scenery } from '@/lib/settings'
-import { sitioDelCartel } from '@/lib/machineSign'
+import { signPlacement } from '@/lib/machineSign'
 import type { Medal } from '@/lib/goal'
 import { startingLives } from '@/lib/gameMode'
-import { siguienteModo } from '@/lib/gameMenu'
+import { nextMode } from '@/lib/gameMenu'
 import { duelSummary } from '@/lib/duel'
 import { getDuelTally } from '@/lib/duelTally'
 import { scoreRatio } from '@/lib/scoring'
 import { sceneryModeOf, sceneryOf } from '@/lib/sceneryPreference'
 import { stickStatuses } from '@/lib/stickLayout'
-import { traductor } from '@/lib/textos'
+import { translator } from '@/lib/textos'
 import {
   XR_CONFIRM_POSITION,
   XR_COUNTDOWN_POSITION,
@@ -47,254 +47,254 @@ import {
   xrUiRiseOverWorld,
 } from '@/lib/xrLayout'
 
-import type { Partida } from '../game/run'
+import type { Run } from '../game/run'
 import { onLangChange, currentLang } from '@kit/runtime/settings'
-import { AvisoDeSalir, BotonDeTerminar, BotonDeVolver, CuentaAtras, PanelDelDuelo } from './notice'
-import { CARTEL, Cartel } from './sign'
-import { Marcador, SUBIDA_DEL_FINAL, type EstadoDelMarcador } from './scoreboard'
-import { MenuDelJuego, type EstadoDelMenu } from './menu'
-import { TutorialDelJuego } from './tutorial'
+import { QuitNotice, FinishButton, QuitButton, Countdown, DuelPanel } from './notice'
+import { SIGN, Sign } from './sign'
+import { Scoreboard, FINAL_RISE, type ScoreboardState } from './scoreboard'
+import { GameMenu, type MenuState } from './menu'
+import { GameTutorial } from './tutorial'
 
-/** Lo que la interfaz le pide a la escena, además de lo que le pide a la partida. */
-export interface EscenaDelJuego {
-  /** Volver al salón, o cerrar el juego. */
-  salir(): void
+/** What the ui asks of the scene, besides what it asks of the run. */
+export interface GameScene {
+  /** Back to the hall, or close the game. */
+  exit(): void
 }
 
-/** El escenario del salón visto desde el menú: qué hay elegido, si hay habitación y cómo cambiarlo. */
-export interface EscenarioDelMenu {
+/** The hall's scenery seen from the menu: what is chosen, whether there is a room and how to change it. */
+export interface MenuScenery {
   readonly elegido: Scenery
   readonly hayHabitacion: boolean
-  elegir(escenario: Scenery): void
+  elegir(scenery: Scenery): void
 }
 
-/** La altura de los ojos que mide el visor, y si el salón pide jugar a la altura de los ojos. */
-export interface OjosDeQuienJuega {
-  alto: number | null
-  aLaAlturaDeLosOjos: boolean
+/** The eye height the headset measures, and whether the hall asks to play at eye height. */
+export interface PlayerEyes {
+  height: number | null
+  atEyeHeight: boolean
 }
 
-export interface OpcionesDeLaInterfaz {
-  /** Donde cuelga: el mundo del jugador con visor, o la escena. */
-  padre: Node3D
-  /** La cámara de plano, de la que sale el rayo del ratón y de la que cuelgan los paneles. Con visor, `null`. */
-  camara: Camera3D | null
-  /** Los punteros del visor (`XRPlayer.punteros()`), además del ratón. */
-  punteros?: readonly Pointer[]
-  visor: boolean
-  /** Idioma forzado por la línea de órdenes (`--lang=es`), para mirar sin tocar el guardado. */
+export interface UiOptions {
+  /** Where it hangs: the player's world with a headset, or the scene. */
+  parent: Node3D
+  /** The flat camera, from which the mouse ray comes out and from which the panels hang. With a headset, `null`. */
+  camera: Camera3D | null
+  /** The headset's pointers (`XRPlayer.punteros()`), besides the mouse. */
+  pointers?: readonly Pointer[]
+  headset: boolean
+  /** Language forced from the command line (`--lang=es`), to look without touching what is saved. */
   lang?: string | null
-  /** Enseñar el tutorial también en plano (`--tutorial`). */
+  /** Show the tutorial flat as well (`--tutorial`). */
   tutorial?: boolean
-  /** El mando de verdad de cada mano, para el tutorial. */
-  manos?: readonly MandoEnLaMano[]
-  ojos?: () => OjosDeQuienJuega | null
-  escenario?: EscenarioDelMenu
+  /** The real controller of each hand, for the tutorial. */
+  hands?: readonly MandoEnLaMano[]
+  eyes?: () => PlayerEyes | null
+  scenery?: MenuScenery
 }
 
-/** Dónde se cuelga cada panel en plano, en el espacio de la cámara (`−Z` es hacia la máquina). */
-export interface SitioEnPlano {
-  posicion: readonly [number, number, number]
-  escala: number
+/** Where each panel hangs when flat, in camera space (`−Z` is towards the machine). */
+export interface FlatPlacement {
+  position: readonly [number, number, number]
+  scale: number
 }
 
 /**
- * Los paneles en plano, con la cámara de la web (52° de campo): el menú a la izquierda, dejando ver
- * la máquina; jugando, el marcador arriba a la derecha (donde la web tiene los puntos) y volver arriba
- * a la izquierda, fuera del aro; la pregunta y el final, en medio; la cuenta atrás, encima de la
- * máquina; el tutorial (`--tutorial`), a la derecha; el cartel del objetivo, arriba en medio, por
- * encima de la máquina (al acabar baja con el panel del final, justo encima de él).
+ * The panels when flat, with the web's camera (52° field of view): the menu on the left, letting the
+ * machine be seen; while playing, the scoreboard at the top right (where the web has the points) and back at the top
+ * left, outside the hoop; the question and the end, in the middle; the countdown, above the
+ * machine; the tutorial (`--tutorial`), on the right; the goal sign, at the top in the middle, above
+ * the machine (at the end it comes down with the end panel, just above it).
  */
-export const SITIOS_EN_PLANO = {
-  menu: { posicion: [-0.55, 0, -1.25], escala: 1 },
-  marcador: { posicion: [0.72, 0.5, -1.4], escala: 0.7 },
-  final: { posicion: [0, -0.02, -1.3], escala: 1 },
-  volver: { posicion: [-0.95, 0.48, -1.4], escala: 1 },
-  terminar: { posicion: [0.95, 0.12, -1.4], escala: 1 },
-  aviso: { posicion: [0, 0, -1.2], escala: 1 },
-  // A dos, encima del final: el aviso de pasar el mando o quién gana.
-  duelo: { posicion: [0, 0.4, -1.3], escala: 0.8 },
-  cuenta: { posicion: [0, 0.18, -1.4], escala: 1 },
-  // El cartel mide a esa distancia lo que mide a la de dibujo: los mismos grados que con el visor.
-  cartel: { posicion: [0, 0.56, -1.4], escala: 1.4 / CARTEL.distancia },
-  cartelDelFinal: { posicion: [0, 0.13, -1.3], escala: 1.3 / CARTEL.distancia },
-  tutorial: { posicion: [0.8, -0.1, -1.6], escala: 0.8 },
-} as const satisfies Record<string, SitioEnPlano>
+export const FLAT_PLACEMENTS = {
+  menu: { position: [-0.55, 0, -1.25], scale: 1 },
+  scoreboard: { position: [0.72, 0.5, -1.4], scale: 0.7 },
+  final: { position: [0, -0.02, -1.3], scale: 1 },
+  quit: { position: [-0.95, 0.48, -1.4], scale: 1 },
+  finish: { position: [0.95, 0.12, -1.4], scale: 1 },
+  notice: { position: [0, 0, -1.2], scale: 1 },
+  // With two players, above the end: the notice to pass the controller or who wins.
+  duel: { position: [0, 0.4, -1.3], scale: 0.8 },
+  count: { position: [0, 0.18, -1.4], scale: 1 },
+  // The sign measures at that distance what it measures at the drawing one: the same degrees as with the headset.
+  sign: { position: [0, 0.56, -1.4], scale: 1.4 / SIGN.distance },
+  finalSign: { position: [0, 0.13, -1.3], scale: 1.3 / SIGN.distance },
+  tutorial: { position: [0.8, -0.1, -1.6], scale: 0.8 },
+} as const satisfies Record<string, FlatPlacement>
 
-export class InterfazDelJuego {
-  readonly punteria: PointerAim
-  readonly raton: MousePointer | null
-  /** Lo que sube con los ojos, con visor. */
-  readonly raiz: Node3D
-  readonly menu: MenuDelJuego
-  readonly marcador: Marcador
-  /** El cartel del objetivo, encima del marcador. */
-  readonly cartel: Cartel
-  /** El listón de medalla cruzado en el último fotograma, para que la escena lo haga sonar y sentir. */
-  listonCruzado: Medal | null = null
-  readonly volver: BotonDeVolver
-  readonly terminar: BotonDeTerminar
-  readonly aviso: AvisoDeSalir
-  readonly duelo: PanelDelDuelo
-  readonly cuenta: CuentaAtras
-  readonly tutorial: TutorialDelJuego
-  private readonly visor: boolean
-  private readonly camara: Camera3D | null
-  private readonly langForzado: string | null
-  private readonly tutorialEnPlano: boolean
-  private readonly ojos: () => OjosDeQuienJuega | null
-  private readonly escenario: EscenarioDelMenu | null
-  private readonly dejarDeEscuchar: () => void
-  private pintadoMenu = ''
-  /** Lo plegado tras «Más opciones», pedido: es de la interfaz, y el menú vuelve a abrir plegado. */
-  private masOpciones = false
-  private pintadoMarcador = ''
-  private pintadoAviso = ''
-  private pintadoDuelo = ''
-  private colocadoEnPlano = ''
+export class GameUi {
+  readonly aim: PointerAim
+  readonly mouse: MousePointer | null
+  /** What rises with the eyes, with a headset. */
+  readonly root: Node3D
+  readonly menu: GameMenu
+  readonly scoreboard: Scoreboard
+  /** The goal sign, above the scoreboard. */
+  readonly sign: Sign
+  /** The medal threshold crossed in the last frame, so that the scene makes it sound and be felt. */
+  crossedThreshold: Medal | null = null
+  readonly quit: QuitButton
+  readonly finish: FinishButton
+  readonly notice: QuitNotice
+  readonly duel: DuelPanel
+  readonly count: Countdown
+  readonly tutorial: GameTutorial
+  private readonly headset: boolean
+  private readonly camera: Camera3D | null
+  private readonly forcedLang: string | null
+  private readonly flatTutorial: boolean
+  private readonly eyes: () => PlayerEyes | null
+  private readonly scenery: MenuScenery | null
+  private readonly stopListening: () => void
+  private paintedMenu = ''
+  /** What is folded behind «Más opciones», asked for: it belongs to the ui, and the menu opens folded again. */
+  private moreOptions = false
+  private paintedScoreboard = ''
+  private paintedNotice = ''
+  private paintedDuel = ''
+  private flatPlaced = ''
 
   constructor(
-    private readonly partida: Partida,
-    private readonly escena: EscenaDelJuego,
-    opciones: OpcionesDeLaInterfaz,
+    private readonly run: Run,
+    private readonly scene: GameScene,
+    options: UiOptions,
   ) {
-    this.visor = opciones.visor
-    this.camara = opciones.camara
-    this.langForzado = opciones.lang ?? null
-    this.tutorialEnPlano = opciones.tutorial ?? false
-    this.ojos = opciones.ojos ?? (() => null)
-    this.escenario = opciones.escenario ?? null
-    this.raton = opciones.camara == null ? null : new MousePointer(opciones.camara)
-    this.punteria = new PointerAim([...(this.raton == null ? [] : [this.raton]), ...(opciones.punteros ?? [])])
+    this.headset = options.headset
+    this.camera = options.camera
+    this.forcedLang = options.lang ?? null
+    this.flatTutorial = options.tutorial ?? false
+    this.eyes = options.eyes ?? (() => null)
+    this.scenery = options.scenery ?? null
+    this.mouse = options.camera == null ? null : new MousePointer(options.camera)
+    this.aim = new PointerAim([...(this.mouse == null ? [] : [this.mouse]), ...(options.pointers ?? [])])
 
-    this.raiz = new Node3D()
-    this.raiz.set_name('Interfaz')
-    opciones.padre.add_child(this.raiz)
+    this.root = new Node3D()
+    this.root.set_name('Ui')
+    options.parent.add_child(this.root)
 
-    const p = partida
-    this.menu = new MenuDelJuego(
+    const p = run
+    this.menu = new GameMenu(
       {
-        siguienteModo: () => p.setGameMode(siguienteModo(p.gameMode)),
-        elegirDificultad: (d) => p.setDifficulty(d),
-        elegirPalos: (n) => p.setStickCount(n),
-        alternarSinFin: () => p.setEndless(!p.endless),
-        alternarJugadores: () => p.setPlayers(p.players === 2 ? 1 : 2),
-        alternarOpciones: () => {
-          this.masOpciones = !this.masOpciones
+        nextMode: () => p.setGameMode(nextMode(p.gameMode)),
+        chooseDifficulty: (d) => p.setDifficulty(d),
+        chooseSticks: (n) => p.setStickCount(n),
+        toggleEndless: () => p.setEndless(!p.endless),
+        togglePlayers: () => p.setPlayers(p.players === 2 ? 1 : 2),
+        toggleOptions: () => {
+          this.moreOptions = !this.moreOptions
         },
-        elegirNivel: (n) => p.setLevel(n),
-        elegirEscenario: (modo) => this.escenario?.elegir(sceneryOf(modo)),
-        moverElAro: (pasos) => p.adjustHoop(pasos),
-        verElTutorial: () => p.startGame({ tutorial: true }),
-        jugar: () => p.startGame(),
-        salir: () => this.escena.salir(),
+        chooseLevel: (n) => p.setLevel(n),
+        chooseScenery: (mode) => this.scenery?.elegir(sceneryOf(mode)),
+        moveHoop: (steps) => p.adjustHoop(steps),
+        watchTutorial: () => p.startGame({ tutorial: true }),
+        play: () => p.startGame(),
+        exit: () => this.scene.exit(),
       },
-      this.punteria,
+      this.aim,
     )
-    this.raiz.add_child(this.menu.nodo)
-    this.marcador = new Marcador({ repetir: () => p.startGame(), volverAlMenu: () => p.resetGame() }, this.punteria)
-    this.raiz.add_child(this.marcador.nodo)
-    this.cartel = new Cartel()
-    this.raiz.add_child(this.cartel.nodo)
-    this.volver = new BotonDeVolver(() => p.askToQuit(), this.punteria)
-    this.raiz.add_child(this.volver.nodo)
-    this.terminar = new BotonDeTerminar(() => p.endRun(), this.punteria)
-    this.raiz.add_child(this.terminar.nodo)
-    this.aviso = new AvisoDeSalir({ dejar: () => p.resetGame(), seguir: () => p.keepPlaying() }, this.punteria)
-    this.raiz.add_child(this.aviso.nodo)
-    this.duelo = new PanelDelDuelo()
-    this.raiz.add_child(this.duelo.nodo)
-    this.cuenta = new CuentaAtras()
-    this.raiz.add_child(this.cuenta.nodo)
-    this.tutorial = new TutorialDelJuego({ siguiente: () => p.nextTutorialStep(), saltar: () => p.finishTutorial() }, this.punteria, opciones.manos)
-    this.raiz.add_child(this.tutorial.vista.nodo)
+    this.root.add_child(this.menu.node)
+    this.scoreboard = new Scoreboard({ repeat: () => p.startGame(), backToMenu: () => p.resetGame() }, this.aim)
+    this.root.add_child(this.scoreboard.node)
+    this.sign = new Sign()
+    this.root.add_child(this.sign.node)
+    this.quit = new QuitButton(() => p.askToQuit(), this.aim)
+    this.root.add_child(this.quit.node)
+    this.finish = new FinishButton(() => p.endRun(), this.aim)
+    this.root.add_child(this.finish.node)
+    this.notice = new QuitNotice({ leave: () => p.resetGame(), keepGoing: () => p.keepPlaying() }, this.aim)
+    this.root.add_child(this.notice.node)
+    this.duel = new DuelPanel()
+    this.root.add_child(this.duel.node)
+    this.count = new Countdown()
+    this.root.add_child(this.count.node)
+    this.tutorial = new GameTutorial({ next: () => p.nextTutorialStep(), skip: () => p.finishTutorial() }, this.aim, options.hands)
+    this.root.add_child(this.tutorial.view.nodo)
 
-    if (this.visor) {
+    if (this.headset) {
       const pose = menuPoseFor(true)
-      this.menu.nodo.position = new Vector3(...pose.position)
-      this.menu.nodo.rotation = new Vector3(0, pose.yaw, 0)
-      this.menu.nodo.scale = new Vector3(pose.scale, pose.scale, pose.scale)
-      this.marcador.nodo.position = new Vector3(...XR_HUD_POSITION)
-      this.cartel.colocar(sitioDelCartel())
-      this.aviso.nodo.position = new Vector3(...XR_CONFIRM_POSITION)
-      this.duelo.nodo.position = new Vector3(...XR_DUEL_POSITION)
-      this.cuenta.nodo.position = new Vector3(...XR_COUNTDOWN_POSITION)
-      // Delante del marcador: el fondo opaco del tutorial lo tapa donde se cruzan, como en la web.
-      this.tutorial.vista.nodo.position = new Vector3(XR_TUTORIAL_POSITION[0], XR_TUTORIAL_POSITION[1], XR_TUTORIAL_POSITION[2] + 0.03)
+      this.menu.node.position = new Vector3(...pose.position)
+      this.menu.node.rotation = new Vector3(0, pose.yaw, 0)
+      this.menu.node.scale = new Vector3(pose.scale, pose.scale, pose.scale)
+      this.scoreboard.node.position = new Vector3(...XR_HUD_POSITION)
+      this.sign.place(signPlacement())
+      this.notice.node.position = new Vector3(...XR_CONFIRM_POSITION)
+      this.duel.node.position = new Vector3(...XR_DUEL_POSITION)
+      this.count.node.position = new Vector3(...XR_COUNTDOWN_POSITION)
+      // In front of the scoreboard: the tutorial's opaque background covers it where they cross, as on the web.
+      this.tutorial.view.nodo.position = new Vector3(XR_TUTORIAL_POSITION[0], XR_TUTORIAL_POSITION[1], XR_TUTORIAL_POSITION[2] + 0.03)
     }
 
-    // Si el salón cambia el idioma con el juego abierto, se repinta al siguiente fotograma.
-    this.dejarDeEscuchar = onLangChange(() => {
-      this.pintadoMenu = ''
-      this.pintadoMarcador = ''
-      this.pintadoAviso = ''
-      this.pintadoDuelo = ''
+    // If the hall changes the language with the game open, it is repainted on the next frame.
+    this.stopListening = onLangChange(() => {
+      this.paintedMenu = ''
+      this.paintedScoreboard = ''
+      this.paintedNotice = ''
+      this.paintedDuel = ''
     })
-    this.actualizar(0)
+    this.update(0)
   }
 
-  /** El idioma de ahora: el forzado o el del salón. */
+  /** The language right now: the forced one or the hall's. */
   get lang(): Lang {
-    return currentLang(this.langForzado)
+    return currentLang(this.forcedLang)
   }
 
-  /** Un evento de entrada: el ratón lo lleva la puntería. */
-  recibir(evento: InputEvent): boolean {
-    return this.raton?.recibir(evento) ?? false
+  /** An input event: the mouse is handled by the aim. */
+  handleInput(event: InputEvent): boolean {
+    return this.mouse?.recibir(event) ?? false
   }
 
-  /** Si ese puntero está sobre un botón: entonces su clic es del botón, no un palo. */
-  apunta(puntero: string): boolean {
-    return this.punteria.apuntando(puntero) != null
+  /** Whether that pointer is over a button: then its click is the button's, not a stick. */
+  pointsAt(pointer: string): boolean {
+    return this.aim.apuntando(pointer) != null
   }
 
   /**
-   * Escape (y B/Y o menú en el mando): en el menú sale del juego; con la pregunta delante, sigue; en
-   * el final, al menú; jugando o contando, pregunta.
+   * Escape (and B/Y or menu on the controller): in the menu it exits the game; with the question in front, it keeps going; at
+   * the end, to the menu; playing or counting, it asks.
    */
   escape(): void {
-    const p = this.partida
+    const p = this.run
     if (p.prompt != null) p.keepPlaying()
-    else if (p.gameState === 'menu') this.escena.salir()
+    else if (p.gameState === 'menu') this.scene.exit()
     else if (p.gameState === 'finished') p.resetGame()
     else p.askToQuit()
   }
 
-  /** Lo que enseña el menú ahora mismo. */
-  estadoDelMenu(): EstadoDelMenu {
-    const p = this.partida
+  /** What the menu shows right now. */
+  menuState(): MenuState {
+    const p = this.run
     return {
       lang: this.lang,
-      modo: p.gameMode,
-      dificultad: p.activeDifficulty,
-      palos: p.stickCount,
-      sinFin: p.endless,
-      nivel: p.activeLevel,
-      abierto: p.unlockedLevel,
-      estrellas: p.levelStars,
-      ajusteDelAro: p.hoopAdjustment,
-      habitacion: this.escenario?.hayHabitacion ?? false,
-      escenario: sceneryModeOf(this.escenario?.elegido ?? 'place'),
-      jugadores: p.players,
-      masOpciones: this.masOpciones,
+      mode: p.gameMode,
+      difficulty: p.activeDifficulty,
+      sticks: p.stickCount,
+      endless: p.endless,
+      level: p.activeLevel,
+      unlocked: p.unlockedLevel,
+      stars: p.levelStars,
+      hoopAdjustment: p.hoopAdjustment,
+      room: this.scenery?.hayHabitacion ?? false,
+      scenery: sceneryModeOf(this.scenery?.elegido ?? 'place'),
+      players: p.players,
+      moreOptions: this.moreOptions,
     }
   }
 
-  /** Lo que enseña el marcador ahora mismo: lo de `XRHud.tsx`, y la letra del final de `HUD.tsx`. */
-  estadoDelMarcador(): EstadoDelMarcador {
-    const p = this.partida
-    const t = traductor(this.lang)
-    const sinFin = p.endlessRun
-    const terminada = p.gameState === 'finished'
+  /** What the scoreboard shows right now: that of `XRHud.tsx`, and the type of the end of `HUD.tsx`. */
+  scoreboardState(): ScoreboardState {
+    const p = this.run
+    const t = translator(this.lang)
+    const endless = p.endlessRun
+    const finished = p.gameState === 'finished'
     const n = p.activeStickCount
     const record = p.bestPoints
-    const lleno = sinFin ? Math.min(1, p.streak / Math.max(record, p.streak, 1)) : scoreRatio(p.points, p.activeDifficulty, n)
-    const marca = sinFin ? (record > 0 ? Math.min(1, record / Math.max(record, p.streak, 1)) : 0) : scoreRatio(record, p.activeDifficulty, n)
-    const nivel = p.levelResult
-    const titulo = p.levels
+    const fill = endless ? Math.min(1, p.streak / Math.max(record, p.streak, 1)) : scoreRatio(p.points, p.activeDifficulty, n)
+    const mark = endless ? (record > 0 ? Math.min(1, record / Math.max(record, p.streak, 1)) : 0) : scoreRatio(record, p.activeDifficulty, n)
+    const level = p.levelResult
+    const title = p.levels
       ? `${t('Level')} ${p.activeLevel}`
       : p.isRecord
-        ? t(sinFin ? 'Best streak!' : 'New record!')
+        ? t(endless ? 'Best streak!' : 'New record!')
         : p.gameMode !== 'challenge'
           ? t('Game over!')
           : p.outcome === 'cleared'
@@ -302,124 +302,124 @@ export class InterfazDelJuego {
             : t('You are out of lives')
     return {
       lang: this.lang,
-      modo: p.gameMode,
-      terminada,
-      fichas: stickStatuses(sinFin ? p.waveScore : p.score, sinFin ? p.waveResolved : p.resolved, n),
-      racha: p.streak,
-      lleno,
-      marca,
+      mode: p.gameMode,
+      finished,
+      tokens: stickStatuses(endless ? p.waveScore : p.score, endless ? p.waveResolved : p.resolved, n),
+      streak: p.streak,
+      fill,
+      mark,
       record: p.isRecord,
-      vidas: startingLives(p.gameMode) == null ? null : p.lives,
-      estrellas: terminada && nivel != null ? nivel.stars : null,
-      titulo,
-      puntos: p.points,
-      // Jugando, de quién es la tanda; al acabar lo dice el aviso de pasar el mando, encima.
-      jugador: terminada ? null : p.player,
-      // Con el cartel del objetivo encima, los puntos y las vidas se leen allí.
-      enElCartel: p.faseDelCartel != null,
+      lives: startingLives(p.gameMode) == null ? null : p.lives,
+      stars: finished && level != null ? level.stars : null,
+      title,
+      points: p.points,
+      // While playing, whose round it is; at the end the notice to pass the controller says it, above.
+      player: finished ? null : p.player,
+      // With the goal sign above, the points and the lives are read there.
+      onSign: p.signPhase != null,
     }
   }
 
-  /** Sube la interfaz con los ojos, lo que el mundo no haya bajado ya (`xrUiRiseOverWorld`). */
-  private subir(): void {
-    if (!this.visor) return
-    const ojos = this.ojos()
-    const subida = ojos == null ? 0 : xrUiRiseOverWorld(ojos.alto, ojos.aLaAlturaDeLosOjos)
-    this.raiz.position = new Vector3(0, subida, 0)
+  /** Raises the ui with the eyes, what the world has not already lowered (`xrUiRiseOverWorld`). */
+  private rise(): void {
+    if (!this.headset) return
+    const eyes = this.eyes()
+    const rise = eyes == null ? 0 : xrUiRiseOverWorld(eyes.height, eyes.atEyeHeight)
+    this.root.position = new Vector3(0, rise, 0)
   }
 
-  /** Un fotograma: la puntería (que puede cambiar la fase) y luego pintar lo que toca. */
-  actualizar(delta: number): void {
-    this.punteria.actualizar()
-    this.subir()
-    const p = this.partida
-    const fase = p.gameState
+  /** One frame: the aim (which may change the phase) and then paint what is due. */
+  update(delta: number): void {
+    this.aim.actualizar()
+    this.rise()
+    const p = this.run
+    const phase = p.gameState
     const lang = this.lang
-    const pregunta = p.prompt != null
+    const asking = p.prompt != null
 
-    this.menu.nodo.visible = fase === 'menu'
-    if (fase === 'menu') {
-      const estado = this.estadoDelMenu()
-      const clave = JSON.stringify(estado)
-      if (clave !== this.pintadoMenu) {
-        this.menu.pintar(estado)
-        this.pintadoMenu = clave
+    this.menu.node.visible = phase === 'menu'
+    if (phase === 'menu') {
+      const state = this.menuState()
+      const key = JSON.stringify(state)
+      if (key !== this.paintedMenu) {
+        this.menu.paint(state)
+        this.paintedMenu = key
       }
     } else {
-      this.pintadoMenu = ''
-      this.masOpciones = false
+      this.paintedMenu = ''
+      this.moreOptions = false
     }
 
-    this.marcador.nodo.visible = fase !== 'menu'
-    if (fase !== 'menu') {
-      const estado = this.estadoDelMarcador()
-      // Solo se reescribe cuando cambia: rehacer las etiquetas a cada fotograma es lo más caro.
-      const clave = JSON.stringify(estado)
-      if (clave !== this.pintadoMarcador) {
-        this.marcador.pintar(estado)
-        this.pintadoMarcador = clave
+    this.scoreboard.node.visible = phase !== 'menu'
+    if (phase !== 'menu') {
+      const state = this.scoreboardState()
+      // It is only rewritten when it changes: redoing the labels every frame is the most expensive thing.
+      const key = JSON.stringify(state)
+      if (key !== this.paintedScoreboard) {
+        this.scoreboard.paint(state)
+        this.paintedScoreboard = key
       }
-    } else this.pintadoMarcador = ''
+    } else this.paintedScoreboard = ''
 
-    // El cartel del objetivo: lo que toca decir y, al cruzar un listón, su celebración.
-    this.listonCruzado = this.cartel.actualizar(p.cartel(lang), p.medalla, lang, delta)
+    // The goal sign: what is due to be said and, on crossing a threshold, its celebration.
+    this.crossedThreshold = this.sign.update(p.sign(lang), p.medal, lang, delta)
 
-    const enPartida = fase === 'playing' || fase === 'countdown'
-    this.volver.nodo.visible = enPartida
-    this.terminar.nodo.visible = p.endlessRun && fase === 'playing'
-    this.aviso.nodo.visible = pregunta
-    if (pregunta && this.pintadoAviso !== lang) {
-      this.aviso.escribir(lang)
-      this.pintadoAviso = lang
+    const inRun = phase === 'playing' || phase === 'countdown'
+    this.quit.node.visible = inRun
+    this.finish.node.visible = p.endlessRun && phase === 'playing'
+    this.notice.node.visible = asking
+    if (asking && this.paintedNotice !== lang) {
+      this.notice.write(lang)
+      this.paintedNotice = lang
     }
-    // A dos, al acabar cada tanda: el aviso de pasar el mando o quién gana.
-    const duelo = fase === 'finished' ? p.duel : null
-    this.duelo.nodo.visible = duelo != null
-    if (duelo != null) {
-      const dicho = duelSummary(duelo, getDuelTally(), lang)
-      const clave = JSON.stringify(dicho)
-      if (clave !== this.pintadoDuelo) {
-        this.duelo.escribir(dicho)
-        this.pintadoDuelo = clave
+    // With two players, at the end of each round: the notice to pass the controller or who wins.
+    const duel = phase === 'finished' ? p.duel : null
+    this.duel.node.visible = duel != null
+    if (duel != null) {
+      const summary = duelSummary(duel, getDuelTally(), lang)
+      const key = JSON.stringify(summary)
+      if (key !== this.paintedDuel) {
+        this.duel.write(summary)
+        this.paintedDuel = key
       }
-    } else this.pintadoDuelo = ''
-    this.cuenta.mostrar(fase === 'countdown' ? p.countdown : 0, delta)
+    } else this.paintedDuel = ''
+    this.count.show(phase === 'countdown' ? p.countdown : 0, delta)
 
-    const enseña = (this.visor || this.tutorialEnPlano) && fase === 'playing'
-    this.tutorial.actualizar(enseña ? p.tutorialStep : null, lang, p.bareHanded, delta)
-    this.colocarEnPlano()
+    const shows = (this.headset || this.flatTutorial) && phase === 'playing'
+    this.tutorial.update(shows ? p.tutorialStep : null, lang, p.bareHanded, delta)
+    this.placeFlat()
   }
 
-  /** En plano, cada panel colgado de la cámara: se recoloca solo al cambiar de fase. */
-  private colocarEnPlano(): void {
-    const camara = this.camara
-    if (this.visor || camara == null) return
-    const terminada = this.partida.gameState === 'finished'
-    if (this.colocadoEnPlano === String(terminada)) return
-    this.colocadoEnPlano = String(terminada)
-    const colgar = (nodo: Node3D, sitio: SitioEnPlano, subida = 0) => {
-      const [x, y, z] = sitio.posicion
-      const k = sitio.escala
-      nodo.global_transform = new Transform3D(camara.global_basis.scaled(new Vector3(k, k, k)), camara.to_global(new Vector3(x, y - subida * k, z)))
+  /** When flat, each panel hung from the camera: it is only placed again when the phase changes. */
+  private placeFlat(): void {
+    const camera = this.camera
+    if (this.headset || camera == null) return
+    const finished = this.run.gameState === 'finished'
+    if (this.flatPlaced === String(finished)) return
+    this.flatPlaced = String(finished)
+    const hang = (node: Node3D, placement: FlatPlacement, rise = 0) => {
+      const [x, y, z] = placement.position
+      const k = placement.scale
+      node.global_transform = new Transform3D(camera.global_basis.scaled(new Vector3(k, k, k)), camera.to_global(new Vector3(x, y - rise * k, z)))
     }
-    colgar(this.menu.nodo, SITIOS_EN_PLANO.menu)
-    // El final crece por arriba: se baja lo que sube para que quede en medio.
-    if (terminada) colgar(this.marcador.nodo, SITIOS_EN_PLANO.final, SUBIDA_DEL_FINAL / 2)
-    else colgar(this.marcador.nodo, SITIOS_EN_PLANO.marcador)
-    colgar(this.volver.nodo, SITIOS_EN_PLANO.volver)
-    colgar(this.terminar.nodo, SITIOS_EN_PLANO.terminar)
-    colgar(this.aviso.nodo, SITIOS_EN_PLANO.aviso)
-    colgar(this.duelo.nodo, SITIOS_EN_PLANO.duelo)
-    colgar(this.cuenta.nodo, SITIOS_EN_PLANO.cuenta)
-    // El cartel lleva su propia escala (crece y vuelve al celebrar un listón): se cuelga y se le dice.
-    const cartel = terminada ? SITIOS_EN_PLANO.cartelDelFinal : SITIOS_EN_PLANO.cartel
-    colgar(this.cartel.nodo, { ...cartel, escala: 1 })
-    this.cartel.escalar(cartel.escala)
-    colgar(this.tutorial.vista.nodo, SITIOS_EN_PLANO.tutorial)
+    hang(this.menu.node, FLAT_PLACEMENTS.menu)
+    // The end grows at the top: it is lowered by what it rises so that it stays in the middle.
+    if (finished) hang(this.scoreboard.node, FLAT_PLACEMENTS.final, FINAL_RISE / 2)
+    else hang(this.scoreboard.node, FLAT_PLACEMENTS.scoreboard)
+    hang(this.quit.node, FLAT_PLACEMENTS.quit)
+    hang(this.finish.node, FLAT_PLACEMENTS.finish)
+    hang(this.notice.node, FLAT_PLACEMENTS.notice)
+    hang(this.duel.node, FLAT_PLACEMENTS.duel)
+    hang(this.count.node, FLAT_PLACEMENTS.count)
+    // The sign carries its own scale (it grows and comes back when celebrating a threshold): it is hung and told.
+    const sign = finished ? FLAT_PLACEMENTS.finalSign : FLAT_PLACEMENTS.sign
+    hang(this.sign.node, { ...sign, scale: 1 })
+    this.sign.setScale(sign.scale)
+    hang(this.tutorial.view.nodo, FLAT_PLACEMENTS.tutorial)
   }
 
-  /** Deja de escuchar el guardado: al salir de la escena. */
-  soltar(): void {
-    this.dejarDeEscuchar()
+  /** Stops listening to what is saved: on leaving the scene. */
+  release(): void {
+    this.stopListening()
   }
 }

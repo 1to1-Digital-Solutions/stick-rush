@@ -28,194 +28,194 @@ import {
 } from './gameConfig'
 
 /**
- * Que nada de la máquina deje al mando sin poder señalar el menú.
+ * That nothing of the machine leaves the controller unable to point at the menu.
  *
- * Reportado con el visor puesto: «a veces seleccionando el menú de config es como que hay un
- * objeto delante mía y el cursor se corta. Es un objeto invisible que no veo y no me permite
- * seleccionar la opción que quiero».
+ * Reported with the headset on: «sometimes when selecting the config menu it is as if there
+ * were an object in front of me and the cursor gets cut off. It is an invisible object I cannot
+ * see and it does not let me select the option I want».
  *
- * El objeto invisible es **un palo ya atrapado**: al cogerlo se apaga con `visible` —no se
- * desmonta, para no tirar su material y que haya que recompilar el shader—, pero sigue
- * teniendo sus `onPointerDown`, y al sistema de punteros la visibilidad no le dice nada. Como
- * quien juega está DENTRO de la máquina, esos palos cuelgan a 57 cm alrededor y el menú se
- * planta a 95 cm: siempre hay uno entre la mano y el botón.
+ * The invisible object is **a stick already caught**: on catching it, it is switched off with
+ * `visible` —it is not unmounted, so as not to throw away its material and have to recompile
+ * the shader—, but it still has its `onPointerDown`, and to the pointer system visibility says
+ * nothing. Since whoever plays is INSIDE the machine, those sticks hang 57 cm around and the
+ * menu is planted at 95 cm: there is always one between the hand and the button.
  *
- * Aquí se monta lo mismo que monta la librería por cada mando del salón —un puntero de agarre
- * y un rayo combinados, el rayo por defecto— con las piezas de verdad de
- * `@pmndrs/pointer-events`, sin React ni navegador. Enfrente, lo que importa de esta escena:
- * el mundo con un palo, la cortina del cambio de escenario y un botón del menú.
+ * Here the same thing is mounted that the library mounts for each controller of the hall —a
+ * grab pointer and a ray combined, the ray by default— with the real parts of
+ * `@pmndrs/pointer-events`, with no React nor browser. Opposite, what matters of this scene:
+ * the world with a stick, the curtain of the scenery change and a button of the menu.
  */
 
-/** Dónde está la mano mientras se elige en el menú: delante del pecho, dentro de la máquina. */
-const MANO = [0, 1.2, 0] as const
-/** Y a qué distancia se planta el panel del menú, delante de la cara. */
+/** Where the hand is while choosing in the menu: in front of the chest, inside the machine. */
+const HAND = [0, 1.2, 0] as const
+/** And at what distance the menu panel is planted, in front of the face. */
 const MENU_Z = -0.95
 
-interface Montaje {
+interface Setup {
   scene: Scene
-  boton: Mesh
-  palo: Mesh
-  cortina: Mesh
+  button: Mesh
+  stick: Mesh
+  curtain: Mesh
   grab: ReturnType<typeof createGrabPointer>
   ray: ReturnType<typeof createRayPointer>
-  mover: () => void
+  move: () => void
 }
 
 /**
- * La escena, con o sin las reglas puestas.
+ * The scene, with or without the rules in place.
  *
- * @param conLasReglas Si el mundo se declara fuera del alcance del rayo, el palo dice si se
- *   puede coger y la interfaz va por delante en el orden.
- * @param catchable    Si el palo se puede coger ahora mismo. Atrapado o en el menú, no.
+ * @param withTheRules Whether the world declares itself out of the ray's reach, the stick says
+ *   whether it can be caught and the ui goes first in the order.
+ * @param catchable    Whether the stick can be caught right now. Caught or in the menu, no.
  */
-function montar({
-  conLasReglas,
+function mount({
+  withTheRules,
   catchable = false,
 }: {
-  conLasReglas: boolean
+  withTheRules: boolean
   catchable?: boolean
-}): Montaje {
+}): Setup {
   const scene = new Scene()
 
-  // El mundo: la máquina, el decorado y la cortina del cambio de escenario.
-  const mundo = new Group()
-  if (conLasReglas) mundo.pointerEvents = DECOR_POINTER_EVENTS
+  // The world: the machine, the scenery and the curtain of the scenery change.
+  const world = new Group()
+  if (withTheRules) world.pointerEvents = DECOR_POINTER_EVENTS
 
-  // La cortina: una esfera de 35 cm alrededor de la cabeza, apagada con `visible`.
-  const cortina = new Mesh(
+  // The curtain: a 35 cm sphere around the head, switched off with `visible`.
+  const curtain = new Mesh(
     new SphereGeometry(0.35, 16, 12),
     new MeshBasicMaterial({ side: BackSide }),
   )
-  cortina.visible = false
-  cortina.position.set(MANO[0], MANO[1], MANO[2])
-  mundo.add(cortina)
+  curtain.visible = false
+  curtain.position.set(HAND[0], HAND[1], HAND[2])
+  world.add(curtain)
 
-  // Un palo, colgando entre la mano y el panel. Sin poder cogerse está además invisible,
-  // porque ya se atrapó: es exactamente el estado en el que se reportó el fallo, y escuchando
-  // igual.
-  const paloEntero = new Group()
-  paloEntero.visible = catchable
-  if (conLasReglas) paloEntero.pointerEvents = stickPointerEvents(catchable)
-  const palo = new Mesh(
+  // A stick, hanging between the hand and the panel. When it cannot be caught it is also
+  // invisible, because it was already caught: it is exactly the state in which the bug was
+  // reported, and listening all the same.
+  const wholeStick = new Group()
+  wholeStick.visible = catchable
+  if (withTheRules) wholeStick.pointerEvents = stickPointerEvents(catchable)
+  const stick = new Mesh(
     new CylinderGeometry(STICK_RADIUS, STICK_RADIUS, STICK_LENGTH, 16),
     new MeshBasicMaterial(),
   )
-  palo.addEventListener('pointerdown', () => {})
-  paloEntero.position.set(MANO[0], MANO[1], MANO[2] - MACHINE_RADIUS)
-  paloEntero.add(palo)
-  mundo.add(paloEntero)
+  stick.addEventListener('pointerdown', () => {})
+  wholeStick.position.set(HAND[0], HAND[1], HAND[2] - MACHINE_RADIUS)
+  wholeStick.add(stick)
+  world.add(wholeStick)
 
-  scene.add(mundo)
+  scene.add(world)
 
-  // La interfaz inmersiva, con su botón delante de la cara.
-  const interfaz = new Group()
-  if (conLasReglas) interfaz.pointerEventsOrder = MENU_POINTER_ORDER
-  const boton = new Mesh(new BoxGeometry(0.2, 0.1, 0.02), new MeshBasicMaterial())
-  boton.position.set(MANO[0], MANO[1], MENU_Z)
-  boton.addEventListener('pointerdown', () => {})
-  interfaz.add(boton)
-  scene.add(interfaz)
+  // The immersive ui, with its button in front of the face.
+  const ui = new Group()
+  if (withTheRules) ui.pointerEventsOrder = MENU_POINTER_ORDER
+  const button = new Mesh(new BoxGeometry(0.2, 0.1, 0.02), new MeshBasicMaterial())
+  button.position.set(HAND[0], HAND[1], MENU_Z)
+  button.addEventListener('pointerdown', () => {})
+  ui.add(button)
+  scene.add(ui)
 
-  // El espacio del mando, mirando al −Z como el de WebXR.
-  const mando = new Object3D()
-  mando.position.set(...MANO)
-  scene.add(mando)
+  // The controller's space, looking at −Z like WebXR's.
+  const controller = new Object3D()
+  controller.position.set(...HAND)
+  scene.add(controller)
   scene.updateMatrixWorld(true)
 
-  // Lo que monta el salón por cada mando: agarre y rayo, con el rayo por defecto.
+  // What the hall mounts for each controller: grab and ray, with the ray by default.
   const camera = new PerspectiveCamera()
-  const space = { current: mando }
+  const space = { current: controller }
   const grab = createGrabPointer(() => camera, space, {})
   const ray = createRayPointer(() => camera, space, {}, { minDistance: 0.2 })
-  const combinado = new CombinedPointer(false)
-  combinado.register(grab)
-  combinado.register(ray, true)
+  const combined = new CombinedPointer(false)
+  combined.register(grab)
+  combined.register(ray, true)
 
   return {
     scene,
-    boton,
-    palo,
-    cortina,
+    button,
+    stick,
+    curtain,
     grab,
     ray,
-    mover: () => combinado.move(scene, { timeStamp: performance.now() }),
+    move: () => combined.move(scene, { timeStamp: performance.now() }),
   }
 }
 
-describe('el rayo del mando dentro de la máquina', () => {
-  it('sin la regla, un palo ya atrapado e invisible se queda con el mando', () => {
-    // El fallo tal cual. Se deja reproducido para que, si un día la librería empieza a saltarse
-    // lo invisible, esto avise de que la regla quizá sobra en vez de seguir pasando en vacío.
-    const { ray, palo, boton, mover } = montar({ conLasReglas: false })
-    mover()
+describe('the ray of the controller inside the machine', () => {
+  it('without the rule, a stick already caught and invisible keeps the controller', () => {
+    // The bug as is. It is left reproduced so that, if one day the library starts skipping
+    // what is invisible, this warns that the rule is perhaps not needed instead of carrying on passing emptily.
+    const { ray, stick, button, move } = mount({ withTheRules: false })
+    move()
 
-    // El rayo se para en el palo, a 57 cm, y el botón que hay detrás a 95 no se entera.
-    expect(ray.getIntersection()?.object).toBe(palo)
-    expect(ray.getIntersection()?.object).not.toBe(boton)
+    // The ray stops at the stick, at 57 cm, and the button behind it at 95 does not find out.
+    expect(ray.getIntersection()?.object).toBe(stick)
+    expect(ray.getIntersection()?.object).not.toBe(button)
   })
 
-  it('y uno pegado a la mano apaga el rayo entero: el cursor desaparece', () => {
-    // Quien juega está dentro del arco de palos, así que la mano acaba junto a uno. El puntero
-    // de agarre da por tocado a distancia cero lo que la envuelve y deja el rayo apagado: es
-    // lo mismo que rompió skeet, con un palo de 39 cm en vez de una burbuja de 120 m.
-    const montaje = montar({ conLasReglas: false })
-    montaje.palo.parent!.position.set(...MANO)
-    montaje.scene.updateMatrixWorld(true)
-    montaje.mover()
+  it('and one right next to the hand switches the whole ray off: the cursor disappears', () => {
+    // Whoever plays is inside the arc of sticks, so the hand ends up next to one. The grab
+    // pointer takes as touched at distance zero whatever wraps it and leaves the ray switched
+    // off: it is the same thing that broke skeet, with a 39 cm stick instead of a 120 m bubble.
+    const setup = mount({ withTheRules: false })
+    setup.stick.parent!.position.set(...HAND)
+    setup.scene.updateMatrixWorld(true)
+    setup.move()
 
-    expect(montaje.grab.getEnabled()).toBe(true)
-    expect(montaje.grab.getIntersection()?.object).toBe(montaje.palo)
-    expect(montaje.grab.getIntersection()?.distance).toBe(0)
-    expect(montaje.ray.getEnabled()).toBe(false)
+    expect(setup.grab.getEnabled()).toBe(true)
+    expect(setup.grab.getIntersection()?.object).toBe(setup.stick)
+    expect(setup.grab.getIntersection()?.distance).toBe(0)
+    expect(setup.ray.getEnabled()).toBe(false)
   })
 
-  it('con la regla, el rayo llega al botón del menú', () => {
-    const { boton, grab, ray, mover } = montar({ conLasReglas: true })
-    mover()
+  it('with the rule, the ray reaches the button of the menu', () => {
+    const { button, grab, ray, move } = mount({ withTheRules: true })
+    move()
 
     expect(ray.getEnabled()).toBe(true)
-    expect(ray.getIntersection()?.object).toBe(boton)
+    expect(ray.getIntersection()?.object).toBe(button)
     expect(grab.getEnabled()).toBe(false)
   })
 
-  it('y con un palo que SÍ se puede coger delante, el botón se lleva el rayo igual', () => {
-    // La pregunta de salir sale en plena partida, con palos cayendo entre la mano y el botón:
-    // ahí no vale apagar el palo, tiene que ganar el orden.
-    const { boton, ray, mover } = montar({ conLasReglas: true, catchable: true })
-    mover()
+  it('and with a stick that CAN be caught in front, the button takes the ray all the same', () => {
+    // The exit question comes up in the middle of a run, with sticks falling between the hand
+    // and the button: there switching the stick off will not do, the order has to win.
+    const { button, ray, move } = mount({ withTheRules: true, catchable: true })
+    move()
 
     expect(ray.getEnabled()).toBe(true)
-    expect(ray.getIntersection()?.object).toBe(boton)
+    expect(ray.getIntersection()?.object).toBe(button)
   })
 
-  it('pero sin nada de menú delante, el palo que se puede coger sigue cogiéndose', () => {
-    // Negarle el rayo al decorado no puede costar la partida: el palo vuelve a encenderse solo.
-    const montaje = montar({ conLasReglas: true, catchable: true })
-    montaje.scene.remove(montaje.boton.parent!)
-    montaje.mover()
+  it('but with nothing of the menu in front, the stick that can be caught is still caught', () => {
+    // Denying the ray to the scenery cannot cost the run: the stick switches back on by itself.
+    const setup = mount({ withTheRules: true, catchable: true })
+    setup.scene.remove(setup.button.parent!)
+    setup.move()
 
-    expect(montaje.ray.getIntersection()?.object ?? montaje.grab.getIntersection()?.object).toBe(
-      montaje.palo,
+    expect(setup.ray.getIntersection()?.object ?? setup.grab.getIntersection()?.object).toBe(
+      setup.stick,
     )
   })
 
-  it('y la cortina del cambio de escenario no envuelve el mando', () => {
-    // Una esfera de 35 cm alrededor de la cabeza pasa de sobra el filtro de agarre del salón
-    // (medio metro): si algún día escuchara algo, se quedaría el mando entero.
-    const { cortina, grab, ray, mover } = montar({ conLasReglas: true })
-    mover()
+  it('and the curtain of the scenery change does not wrap the controller', () => {
+    // A 35 cm sphere around the head easily passes the hall's grab filter
+    // (half a metre): if one day it listened to anything, it would keep the whole controller.
+    const { curtain, grab, ray, move } = mount({ withTheRules: true })
+    move()
 
-    expect(grab.getIntersection()?.object).not.toBe(cortina)
-    expect(ray.getIntersection()?.object).not.toBe(cortina)
+    expect(grab.getIntersection()?.object).not.toBe(curtain)
+    expect(ray.getIntersection()?.object).not.toBe(curtain)
   })
 })
 
-describe('la regla del palo', () => {
-  it('lo enciende explícitamente cuando se puede coger, porque hereda el «none» del mundo', () => {
+describe('the rule of the stick', () => {
+  it('switches it on explicitly when it can be caught, because it inherits the «none» of the world', () => {
     expect(stickPointerEvents(true)).toBe('auto')
   })
 
-  it('y lo apaga cuando no', () => {
+  it('and switches it off when not', () => {
     expect(stickPointerEvents(false)).toBe('none')
   })
 })

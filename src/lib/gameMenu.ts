@@ -1,80 +1,81 @@
-import { eligeJugadores } from './duel'
+import { picksPlayers } from './duel'
 import { GAME_MODE_ORDER, picksSetup, type GameMode } from './gameMode'
 import { MENU_EN } from './menuWords'
 import { challengeFirst, foldRows, type FoldedRows, type RowRole } from './menuTemplate'
 
 /**
- * Las filas del menú de Stick Rush según la plantilla común (`plantillaDelMenu.ts`): qué filas
- * tiene cada modo, qué papel tiene cada una y cuáles quedan detrás de «Más opciones».
+ * The rows of Stick Rush's menu according to the common template (`menuTemplate.ts`): which rows
+ * each mode has, which role each one has and which ones stay behind «Más opciones».
  *
- * Lo usan los tres menús —el panel del visor (`XRMenu.tsx`), la portada de la web
- * (`StartScreen.tsx`) y el del port de Godot (`godot/scene/ui/menu.ts`)—, para que los tres
- * plieguen lo mismo.
+ * The three menus use it —the headset's panel (`XRMenu.tsx`), the web's front page
+ * (`StartScreen.tsx`) and the one of the Godot port (`godot/scene/ui/menu.ts`)—, so that the three
+ * fold the same.
  *
- * - **Modo**: el interruptor de modo y, en los niveles, la escalera con la velocidad del nivel,
- *   que es lo que concreta el modo elegido.
- * - **Jugadores**: solo o a dos, solo en el reto (`eligeJugadores`).
- * - **Lo demás**: la tanda o sin fin, los palos y la velocidad de la práctica, y en el visor la
- *   altura del aro y lo que se ve alrededor. El reto es una partida fija: con él elegido, lo demás
- *   no se enseña ni hay botón para pedirlo.
+ * - **Mode**: the mode switch and, in the levels, the ladder with the level's speed, which is
+ *   what makes the chosen mode concrete.
+ * - **Players**: alone or two, only in the challenge (`picksPlayers`).
+ * - **The rest**: the round or endless, the sticks and the speed of practice, and in the headset
+ *   the height of the hoop and what is seen around. The challenge is a fixed run: with it chosen,
+ *   the rest is not shown and there is no button to ask for it.
  *
- * Sin nada del navegador ni del motor: se porta a Godot tal cual.
+ * With nothing from the browser nor from the engine: it is ported to Godot as is.
  */
 
 /**
- * Los modos en el orden de la fila «Modo»: el reto, el que da medalla, el primero. El interruptor
- * del visor los recorre en este orden y la portada los pone así; `GAME_MODE_ORDER`, del más suave
- * al más exigente, se queda para lo demás.
+ * The modes in the order of the «Modo» row: the challenge, the one that gives a medal, first. The
+ * headset's switch goes through them in this order and the front page lays them out like this;
+ * `GAME_MODE_ORDER`, from the gentlest to the most demanding, stays for the rest.
  */
-export const MODOS_DEL_MENU: readonly GameMode[] = challengeFirst(GAME_MODE_ORDER, (modo) => modo === 'challenge')
+export const MENU_MODES: readonly GameMode[] = challengeFirst(GAME_MODE_ORDER, (mode) => mode === 'challenge')
 
-/** El modo que sigue a ese al pulsar el interruptor del visor: del último, vuelta al primero. */
-export function siguienteModo(modo: GameMode): GameMode {
-  return MODOS_DEL_MENU[(MODOS_DEL_MENU.indexOf(modo) + 1) % MODOS_DEL_MENU.length]
+/** The mode that follows that one when the headset's switch is pressed: from the last, back to the first. */
+export function nextMode(mode: GameMode): GameMode {
+  return MENU_MODES[(MENU_MODES.indexOf(mode) + 1) % MENU_MODES.length]
 }
 
-/** Una fila del menú: `levels` es la escalera de los niveles con su velocidad, que no se elige. */
-export type FilaDelMenu = 'mode' | 'levels' | 'players' | 'endless' | 'sticks' | 'speed' | 'hoop' | 'around'
+/** A row of the menu: `levels` is the ladder of the levels with its speed, which is not chosen. */
+export type MenuRow = 'mode' | 'levels' | 'players' | 'endless' | 'sticks' | 'speed' | 'hoop' | 'around'
 
-/** Dónde se pinta el menú: el visor lleva además el aro y lo de alrededor. */
-export type MenuDe = 'visor' | 'portada'
+/** Where the menu is drawn: the headset also carries the hoop and what is around. */
+export type MenuKind = 'headset' | 'page'
 
-/** El papel de cada fila en la plantilla. */
-export function papelDeLaFila(fila: FilaDelMenu): RowRole {
-  if (fila === 'mode' || fila === 'levels') return 'mode'
-  return fila === 'players' ? 'players' : 'other'
+/** The role of each row in the template. */
+export function rowRole(row: MenuRow): RowRole {
+  if (row === 'mode' || row === 'levels') return 'mode'
+  return row === 'players' ? 'players' : 'other'
 }
 
-/** Las filas que tiene el menú con ese modo elegido, todas, en el orden de la plantilla. */
-export function filasDelModo(modo: GameMode, donde: MenuDe): FilaDelMenu[] {
-  const filas: FilaDelMenu[] = ['mode']
-  if (modo === 'levels') filas.push('levels')
-  if (eligeJugadores(modo)) filas.push('players')
-  if (picksSetup(modo)) filas.push('endless', 'sticks', 'speed')
-  if (donde === 'visor') filas.push('hoop', 'around')
-  return filas
+/** The rows the menu has with that mode chosen, all of them, in the order of the template. */
+export function modeRows(mode: GameMode, where: MenuKind): MenuRow[] {
+  const rows: MenuRow[] = ['mode']
+  if (mode === 'levels') rows.push('levels')
+  if (picksPlayers(mode)) rows.push('players')
+  if (picksSetup(mode)) rows.push('endless', 'sticks', 'speed')
+  if (where === 'headset') rows.push('hoop', 'around')
+  return rows
 }
 
-/** Lo que se enseña del menú: las filas a la vista y cuántas quedan plegadas. */
-export function filasALaVista(modo: GameMode, donde: MenuDe, masOpciones: boolean): FoldedRows<FilaDelMenu> {
-  return foldRows(filasDelModo(modo, donde), papelDeLaFila, { moreOptions: masOpciones, inChallenge: modo === 'challenge' })
+/** What is shown of the menu: the rows in view and how many stay folded. */
+export function visibleRows(mode: GameMode, where: MenuKind, moreOptions: boolean): FoldedRows<MenuRow> {
+  return foldRows(modeRows(mode, where), rowRole, { moreOptions, inChallenge: mode === 'challenge' })
 }
 
 /**
- * Lo que dice el botón de plegar, o `null` si no lleva: «Más opciones» con algo plegado, «Menos
- * opciones» con todo a la vista si hay algo que volver a plegar, y nada en el reto.
+ * What the fold button says, or `null` if there is none: «Más opciones» with something folded,
+ * «Menos opciones» with everything in view if there is something to fold again, and nothing in the
+ * challenge.
  */
-export function botonDeOpciones(
-  modo: GameMode,
-  donde: MenuDe,
-  masOpciones: boolean,
+export function optionsButton(
+  mode: GameMode,
+  where: MenuKind,
+  moreOptions: boolean,
 ): typeof MENU_EN.moreOptions | typeof MENU_EN.fewerOptions | null {
-  const plegable = filasALaVista(modo, donde, false).folded > 0
-  if (!plegable) return null
-  return masOpciones ? MENU_EN.fewerOptions : MENU_EN.moreOptions
+  const foldable = visibleRows(mode, where, false).folded > 0
+  if (!foldable) return null
+  return moreOptions ? MENU_EN.fewerOptions : MENU_EN.moreOptions
 }
 
-/** Si esa fila se ve con ese modo y ese plegado. */
-export function seVe(fila: FilaDelMenu, modo: GameMode, donde: MenuDe, masOpciones: boolean): boolean {
-  return filasALaVista(modo, donde, masOpciones).rows.includes(fila)
+/** Whether that row is seen with that mode and that fold. */
+export function isShown(row: MenuRow, mode: GameMode, where: MenuKind, moreOptions: boolean): boolean {
+  return visibleRows(mode, where, moreOptions).rows.includes(row)
 }

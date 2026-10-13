@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dibujarElAviso } from './XRHud'
+import { drawNotice } from './XRHud'
 import { LINE_HEIGHT } from './canvasPanel'
 import {
   CONFIRM_BOXES,
@@ -16,72 +16,72 @@ import {
   unreadableTexts,
   worstReadingDistance,
 } from '../../lib/panelReading'
-import { traductor } from '../../lib/textos'
+import { translator } from '../../lib/textos'
 
 /**
- * El aviso de dejar la partida, medido en vez de mirado.
+ * The notice to leave the run, measured instead of looked at.
  *
- * Es uno de los dos paneles que el propio `legibilidad.ts` nombra como sitios donde el
- * problema ya pasó —«el texto se superpone», «no se entiende nada»— y no lo medía nadie en
- * este juego. Se mide en los dos idiomas: el español es más largo que el inglés casi
- * siempre, y es donde el texto se sale.
+ * It is one of the two panels that `legibility.ts` itself names as places where the
+ * problem already happened —«the text overlaps», «nothing can be understood»— and nobody measured it in
+ * this game. It is measured in the two languages: Spanish is longer than English almost
+ * always, and is where the text runs off.
  *
- * Y desde donde se juega: delante de los ojos, donde el menú, a tres alturas de ojos.
+ * And from where it is played: in front of the eyes, where the menu is, at three eye heights.
  */
 
-const IDIOMAS = ['en', 'es'] as const
-const VISTAS = xrPanelViews(XR_CONFIRM_POSITION)
+const LANGUAGES = ['en', 'es'] as const
+const VIEWS = xrPanelViews(XR_CONFIRM_POSITION)
 
-function medir(lang: (typeof IDIOMAS)[number]): DrawnText[] {
-  const { ctx, drawnTexts: escritos } = recordingCanvas()
-  dibujarElAviso(ctx, traductor(lang))
-  return escritos
+function measure(lang: (typeof LANGUAGES)[number]): DrawnText[] {
+  const { ctx, drawnTexts } = recordingCanvas()
+  drawNotice(ctx, translator(lang))
+  return drawnTexts
 }
 
-describe('el aviso de dejar la partida', () => {
-  it('se lee en los dos idiomas', () => {
-    for (const lang of IDIOMAS) {
-      const escritos = medir(lang)
+describe('the notice to leave the run', () => {
+  it('reads in the two languages', () => {
+    for (const lang of LANGUAGES) {
+      const drawnTexts = measure(lang)
 
-      expect(escritos.length, 'no se ha medido nada').toBeGreaterThan(0)
+      expect(drawnTexts.length, 'nothing was measured').toBeGreaterThan(0)
       const panel = { width: CONFIRM_SIZE[0], height: CONFIRM_SIZE[1] }
-      const distancia = Math.max(...VISTAS.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, LINE_HEIGHT)))
-      expect(legibilityProblems(escritos, { panel, distance: distancia }), lang).toEqual([])
+      const distance = Math.max(...VIEWS.map(({ pose, eyes }) => worstReadingDistance(drawnTexts, pose, eyes, LINE_HEIGHT)))
+      expect(legibilityProblems(drawnTexts, { panel, distance }), lang).toEqual([])
     }
   })
 })
 
-describe('cada letra del aviso se lee de un vistazo', () => {
-  it(`ninguna baja de ${MIN_READING_DEGREES}°, en los dos idiomas y a cualquier altura de ojos`, () => {
-    for (const lang of IDIOMAS) {
-      for (const vista of VISTAS) {
-        expect(unreadableTexts(medir(lang), vista.pose, vista.ojos, LINE_HEIGHT), `${lang}, ${vista.donde}`).toEqual([])
+describe('every letter of the notice reads at a glance', () => {
+  it(`none drops below ${MIN_READING_DEGREES}°, in the two languages and at any eye height`, () => {
+    for (const lang of LANGUAGES) {
+      for (const view of VIEWS) {
+        expect(unreadableTexts(measure(lang), view.pose, view.eyes, LINE_HEIGHT), `${lang}, ${view.where}`).toEqual([])
       }
     }
   })
 
-  it('y todas se escriben con un tamaño de la lista, sin encogerse', () => {
-    // «Seguir jugando» no cabía en su botón y se encogía a 33 mm.
-    for (const lang of IDIOMAS) {
-      expect(sizesOffList(medir(lang), LINE_HEIGHT, Object.values(CONFIRM_TEXT)), lang).toEqual([])
+  it('and all of them are written with a size from the list, without shrinking', () => {
+    // «Seguir jugando» did not fit in its button and shrank to 33 mm.
+    for (const lang of LANGUAGES) {
+      expect(sizesOffList(measure(lang), LINE_HEIGHT, Object.values(CONFIRM_TEXT)), lang).toEqual([])
     }
   })
 
-  it('y la pregunta no se mete en los botones, ni la etiqueta de uno en el otro', () => {
-    const botones = Object.values(CONFIRM_BOXES).map(({ position, size }) => ({
+  it('and the question does not get into the buttons, nor the label of one into the other', () => {
+    const buttons = Object.values(CONFIRM_BOXES).map(({ position, size }) => ({
       x: position[0],
       y: position[1],
       width: size[0],
       height: size[1],
     }))
-    for (const lang of IDIOMAS) {
-      expect(textsOnButtons(medir(lang), botones), lang).toEqual([])
+    for (const lang of LANGUAGES) {
+      expect(textsOnButtons(measure(lang), buttons), lang).toEqual([])
     }
   })
 
-  it('el control: una etiqueta encogida a 24 mm no llegaría', () => {
-    const salir = medir('es').find((e) => e.text === 'Salir')!
-    const vista = VISTAS[0]
-    expect(unreadableTexts([{ ...salir, height: 0.024 * LINE_HEIGHT }], vista.pose, vista.ojos, LINE_HEIGHT)).toHaveLength(1)
+  it('the control: a label shrunk to 24 mm would not make it', () => {
+    const leave = measure('es').find((e) => e.text === 'Salir')!
+    const view = VIEWS[0]
+    expect(unreadableTexts([{ ...leave, height: 0.024 * LINE_HEIGHT }], view.pose, view.eyes, LINE_HEIGHT)).toHaveLength(1)
   })
 })

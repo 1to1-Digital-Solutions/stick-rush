@@ -1,19 +1,19 @@
 /**
- * Lo que se pulsa y se lee durante la partida, fuera del marcador: el botón de volver al menú, el de
- * terminar la partida sin fin, el aviso que pregunta antes de dejarla y la cuenta atrás. Lo de la web
- * (`XRQuitButton`, `XRQuitConfirm` de `XRHud.tsx` y `XRCountdown.tsx`), con sus cotas:
+ * What is pressed and read during the run, outside the scoreboard: the back-to-menu button, the one
+ * that ends the endless run, the notice that asks before leaving it and the countdown. The web's
+ * (`XRQuitButton`, `XRQuitConfirm` of `XRHud.tsx` and `XRCountdown.tsx`), with its measurements:
  *
- * - **Volver al menú va arriba y a la izquierda** (`XR_QUIT_POSITION`), girado hacia quien juega
- *   (`XR_QUIT_YAW`): a la altura del pecho caía por donde va la mano a por un palo. También durante
- *   la cuenta atrás, que es la última ocasión de cambiar de opciones.
- * - **Terminar la partida sin fin**, en la punta contraria (`XR_END_RUN_POSITION`): son las dos
- *   salidas de la partida y una a cada lado no se confunden.
- * - **No se sale de golpe**: salir pierde lo hecho. Se para la partida y se pregunta delante, a la
- *   altura de la vista; mientras se pregunta no cae ningún palo. Seguir jugando va a la derecha y
- *   más grande: es la respuesta que no pierde nada.
- * - **La cuenta atrás, sin cifras** como en la web: un anillo por segundo que se apaga, y el que está
- *   a punto de caer late.
- * - **A dos, el final de cada tanda** (`PanelDelDuelo`): el aviso de pasar el mando o quién gana.
+ * - **Back to menu goes at the top left** (`XR_QUIT_POSITION`), turned towards the player
+ *   (`XR_QUIT_YAW`): at chest height it fell where the hand goes for a stick. Also during
+ *   the countdown, which is the last chance to change options.
+ * - **Ending the endless run**, at the opposite end (`XR_END_RUN_POSITION`): they are the two
+ *   ways out of the run and one on each side cannot be confused.
+ * - **You do not leave all at once**: leaving loses what was done. The run stops and the question
+ *   is asked in front, at eye level; while it is asked no stick falls. Keep playing goes on the right
+ *   and bigger: it is the answer that loses nothing.
+ * - **The countdown, without figures** like the web: one ring per second that goes dark, and the one
+ *   about to fall beats.
+ * - **With two players, the end of each round** (`DuelPanel`): the notice to pass the controller or who wins.
  */
 import { Node3D, Vector3, type MeshInstance3D } from 'godot'
 
@@ -26,7 +26,7 @@ import { RENDER_ORDER } from '@kit/runtime/ui/text3d'
 
 import type { Lang } from '@/lib/settings'
 import { LIFE_COLOR } from '@/lib/gameConfig'
-import { traductor } from '@/lib/textos'
+import { translator } from '@/lib/textos'
 import { XR_HOME_ICON } from '@/lib/xrIcons'
 import type { DuelSummary } from '@/lib/duel'
 import {
@@ -43,169 +43,169 @@ import {
 } from '@/lib/xrLayout'
 
 import { COUNTDOWN_SECONDS } from '../game/run'
-import { huecosDeForma, iconoDeCasa, iconoDeVisto } from './icons'
-import { COLORES } from './menu'
+import { shapeHoles, homeIcon, checkIcon } from './icons'
+import { COLORS } from './menu'
 
-/** Un botón suelto, que no cuelga de un panel, en su sitio de la interfaz y girado hacia quien juega. */
-function botonSuelto(id: string, sitio: Vec3, giro: number, color: string, alPulsar: () => void): Button {
-  const boton = new Button({ id, caja: { x: 0, y: 0, width: 0.16, height: 0.14 }, z: 0, color, opacidad: 0, alPulsar })
-  boton.nodo.position = new Vector3(...sitio)
-  boton.nodo.rotation = new Vector3(0, giro, 0)
-  return boton
+/** A loose button, which hangs from no panel, in its place in the ui and turned towards the player. */
+function looseButton(id: string, place: Vec3, turn: number, color: string, onPress: () => void): Button {
+  const button = new Button({ id, caja: { x: 0, y: 0, width: 0.16, height: 0.14 }, z: 0, color, opacidad: 0, alPulsar: onPress })
+  button.nodo.position = new Vector3(...place)
+  button.nodo.rotation = new Vector3(0, turn, 0)
+  return button
 }
 
-/** La placa de la web (0,12 × 0,1), más pequeña que la zona sensible: lo que se ve del botón. */
-function placa(color: string): MeshInstance3D {
+/** The web's plate (0.12 × 0.1), smaller than the hit area: what is seen of the button. */
+function plate(color: string): MeshInstance3D {
   return shape([[-0.06, -0.05], [0.06, -0.05], [0.06, 0.05], [-0.06, -0.05], [0.06, 0.05], [-0.06, 0.05]], color)
 }
 
-export class BotonDeVolver {
-  readonly boton: Button
-  constructor(alPulsar: () => void, punteria: PointerAim) {
-    this.boton = botonSuelto('quit', XR_QUIT_POSITION, XR_QUIT_YAW, COLORES.neutro, alPulsar)
-    this.boton.dibujo(placa(COLORES.neutro), COLORES.neutro, 1, { prioridad: RENDER_ORDER.placa })
-    this.boton.dibujo(iconoDeCasa(0.028, '#ffffff'), '#ffffff')
-    const puerta = huecosDeForma(XR_HOME_ICON, 0.028, COLORES.neutro)
-    if (puerta != null) this.boton.dibujo(puerta, COLORES.neutro)
-    punteria.anadir(this.boton)
+export class QuitButton {
+  readonly button: Button
+  constructor(onPress: () => void, aim: PointerAim) {
+    this.button = looseButton('quit', XR_QUIT_POSITION, XR_QUIT_YAW, COLORS.neutral, onPress)
+    this.button.dibujo(plate(COLORS.neutral), COLORS.neutral, 1, { prioridad: RENDER_ORDER.placa })
+    this.button.dibujo(homeIcon(0.028, '#ffffff'), '#ffffff')
+    const door = shapeHoles(XR_HOME_ICON, 0.028, COLORS.neutral)
+    if (door != null) this.button.dibujo(door, COLORS.neutral)
+    aim.anadir(this.button)
   }
 
-  get nodo(): Node3D {
-    return this.boton.nodo
-  }
-}
-
-export class BotonDeTerminar {
-  readonly boton: Button
-  constructor(alPulsar: () => void, punteria: PointerAim) {
-    this.boton = botonSuelto('end-run', XR_END_RUN_POSITION, XR_END_RUN_YAW, COLORES.jugar, alPulsar)
-    this.boton.dibujo(placa(COLORES.jugar), COLORES.jugar, 1, { prioridad: RENDER_ORDER.placa })
-    this.boton.dibujo(iconoDeVisto(0.028, '#ffffff'), '#ffffff')
-    punteria.anadir(this.boton)
-  }
-
-  get nodo(): Node3D {
-    return this.boton.nodo
+  get node(): Node3D {
+    return this.button.nodo
   }
 }
 
-export class AvisoDeSalir {
+export class FinishButton {
+  readonly button: Button
+  constructor(onPress: () => void, aim: PointerAim) {
+    this.button = looseButton('end-run', XR_END_RUN_POSITION, XR_END_RUN_YAW, COLORS.play, onPress)
+    this.button.dibujo(plate(COLORS.play), COLORS.play, 1, { prioridad: RENDER_ORDER.placa })
+    this.button.dibujo(checkIcon(0.028, '#ffffff'), '#ffffff')
+    aim.anadir(this.button)
+  }
+
+  get node(): Node3D {
+    return this.button.nodo
+  }
+}
+
+export class QuitNotice {
   readonly panel: Panel
-  readonly nodo: Node3D
-  readonly dejar: Button
-  readonly seguir: Button
+  readonly node: Node3D
+  readonly leave: Button
+  readonly keepGoing: Button
 
-  constructor(acciones: { dejar(): void; seguir(): void }, punteria: PointerAim) {
-    this.panel = new Panel({ ancho: XR_CONFIRM_SIZE[0], alto: XR_CONFIRM_SIZE[1], fondo: COLORES.panel, opacidad: 1 })
-    this.nodo = this.panel.nodo
-    const caja = (box: { position: Vec3; size: Vec3 }) => ({ x: box.position[0], y: box.position[1], width: box.size[0], height: box.size[1] })
-    this.dejar = this.panel.boton(new Button({ id: 'confirm:leave', caja: caja(CONFIRM_BOXES.leave), color: COLORES.ficha, alPulsar: () => acciones.dejar() }))
-    this.seguir = this.panel.boton(new Button({ id: 'confirm:stay', caja: caja(CONFIRM_BOXES.stay), color: LIFE_COLOR, alPulsar: () => acciones.seguir() }))
-    punteria.anadir(this.dejar, this.seguir)
-    this.nodo.visible = false
+  constructor(actions: { leave(): void; keepGoing(): void }, aim: PointerAim) {
+    this.panel = new Panel({ ancho: XR_CONFIRM_SIZE[0], alto: XR_CONFIRM_SIZE[1], fondo: COLORS.panel, opacidad: 1 })
+    this.node = this.panel.nodo
+    const boxOf = (box: { position: Vec3; size: Vec3 }) => ({ x: box.position[0], y: box.position[1], width: box.size[0], height: box.size[1] })
+    this.leave = this.panel.boton(new Button({ id: 'confirm:leave', caja: boxOf(CONFIRM_BOXES.leave), color: COLORS.chip, alPulsar: () => actions.leave() }))
+    this.keepGoing = this.panel.boton(new Button({ id: 'confirm:stay', caja: boxOf(CONFIRM_BOXES.stay), color: LIFE_COLOR, alPulsar: () => actions.keepGoing() }))
+    aim.anadir(this.leave, this.keepGoing)
+    this.node.visible = false
   }
 
-  /** Lo escribe en un idioma: el `dibujarElAviso` de la web. */
-  escribir(lang: Lang): void {
-    const t = traductor(lang)
+  /** Writes it in a language: the web's `drawNotice`. */
+  write(lang: Lang): void {
+    const t = translator(lang)
     const { panel } = this
-    const ancho = XR_CONFIRM_SIZE[0] - 0.08
+    const width = XR_CONFIRM_SIZE[0] - 0.08
     panel.borrarTextos()
-    panel.parrafo(t('Leave the game?'), 0, 0.1, { alto: CONFIRM_TEXT.title, color: COLORES.claro, anchoMax: ancho })
-    panel.parrafo(t('You lose what you have got so far.'), 0, 0.02, { alto: CONFIRM_TEXT.body, color: COLORES.suave, anchoMax: ancho })
-    panel.escribir(t('Leave'), this.dejar.caja.x, this.dejar.caja.y, {
+    panel.parrafo(t('Leave the game?'), 0, 0.1, { alto: CONFIRM_TEXT.title, color: COLORS.light, anchoMax: width })
+    panel.parrafo(t('You lose what you have got so far.'), 0, 0.02, { alto: CONFIRM_TEXT.body, color: COLORS.dim, anchoMax: width })
+    panel.escribir(t('Leave'), this.leave.caja.x, this.leave.caja.y, {
       alto: CONFIRM_TEXT.button,
-      color: COLORES.claro,
-      anchoMax: this.dejar.caja.width - 0.03,
-      en: this.dejar,
+      color: COLORS.light,
+      anchoMax: this.leave.caja.width - 0.03,
+      en: this.leave,
     })
-    panel.escribir(t('Keep playing'), this.seguir.caja.x, this.seguir.caja.y, {
+    panel.escribir(t('Keep playing'), this.keepGoing.caja.x, this.keepGoing.caja.y, {
       alto: CONFIRM_TEXT.button,
       color: '#3b1d00',
-      anchoMax: this.seguir.caja.width - 0.03,
-      en: this.seguir,
+      anchoMax: this.keepGoing.caja.width - 0.03,
+      en: this.keepGoing,
     })
   }
 }
 
 /**
- * El final de una tanda a dos: **el aviso de pasar el mando** o, con las dos jugadas, quién gana, los
- * puntos de los dos y lo que lleva la pareja. El `XRDuelPanel` de la web, en el sitio del aviso de
- * salir (`XR_DUEL_POSITION`), con los renglones de su `dibujarElDuelo`; los botones del marcador
- * siguen debajo, y el de jugar empieza la tanda del otro.
+ * The end of a two-player round: **the notice to pass the controller** or, with both played, who
+ * wins, the points of both and what the pair has so far. The web's `XRDuelPanel`, in the place of the
+ * quit notice (`XR_DUEL_POSITION`), with the lines of its `drawDuel`; the scoreboard's buttons
+ * stay below, and the play one starts the other player's round.
  */
-export class PanelDelDuelo {
+export class DuelPanel {
   readonly panel: Panel
-  readonly nodo: Node3D
+  readonly node: Node3D
 
   constructor() {
-    this.panel = new Panel({ ancho: XR_DUEL_SIZE[0], alto: XR_DUEL_SIZE[1], fondo: COLORES.panel, opacidad: 1 })
-    this.nodo = this.panel.nodo
-    this.nodo.visible = false
+    this.panel = new Panel({ ancho: XR_DUEL_SIZE[0], alto: XR_DUEL_SIZE[1], fondo: COLORS.panel, opacidad: 1 })
+    this.node = this.panel.nodo
+    this.node.visible = false
   }
 
-  /** Lo escribe: las frases vienen ya dichas (`duelSummary`). */
-  escribir(dicho: DuelSummary): void {
+  /** Writes it: the sentences come already worded (`duelSummary`). */
+  write(summary: DuelSummary): void {
     const { panel } = this
-    const ancho = XR_DUEL_SIZE[0] - 0.04
+    const width = XR_DUEL_SIZE[0] - 0.04
     panel.borrarTextos()
-    panel.escribir(dicho.title, 0, 0.08, { alto: DUEL_TEXT.title, color: dicho.winner != null ? COLORES.estrella : '#ffffff', anchoMax: ancho })
-    if (dicho.pass != null) {
-      panel.escribir(dicho.pass, 0, 0.015, { alto: DUEL_TEXT.body, color: '#4ade80', anchoMax: ancho })
+    panel.escribir(summary.title, 0, 0.08, { alto: DUEL_TEXT.title, color: summary.winner != null ? COLORS.star : '#ffffff', anchoMax: width })
+    if (summary.pass != null) {
+      panel.escribir(summary.pass, 0, 0.015, { alto: DUEL_TEXT.body, color: '#4ade80', anchoMax: width })
       return
     }
-    // Un renglón por jugador: juntos en uno no caben a la letra del panel.
-    dicho.lines.forEach((linea, i) => {
-      panel.escribir(linea.text, 0, 0.025 - i * 0.045, {
+    // One line per player: together in one they do not fit at the panel's type size.
+    summary.lines.forEach((line, i) => {
+      panel.escribir(line.text, 0, 0.025 - i * 0.045, {
         alto: DUEL_TEXT.body,
-        color: linea.player === dicho.winner ? COLORES.estrella : COLORES.claro,
-        anchoMax: ancho,
+        color: line.player === summary.winner ? COLORS.star : COLORS.light,
+        anchoMax: width,
       })
     })
-    if (dicho.tally != null) panel.escribir(dicho.tally, 0, -0.08, { alto: DUEL_TEXT.body, color: COLORES.suave, anchoMax: ancho })
+    if (summary.tally != null) panel.escribir(summary.tally, 0, -0.08, { alto: DUEL_TEXT.body, color: COLORS.dim, anchoMax: width })
   }
 }
 
-/** Los anillos de la cuenta atrás (`RING_RADIUS`, `RING_GAP` de `XRCountdown.tsx`). */
+/** The rings of the countdown (`RING_RADIUS`, `RING_GAP` of `XRCountdown.tsx`). */
 const RING_RADIUS = 0.055
 const RING_GAP = 0.135
 
-export class CuentaAtras {
-  readonly nodo = new Node3D()
-  private readonly anillos: MeshInstance3D[] = []
-  private reloj = 0
+export class Countdown {
+  readonly node = new Node3D()
+  private readonly rings: MeshInstance3D[] = []
+  private clock = 0
 
   constructor() {
-    this.nodo.set_name('CuentaAtras')
-    const ancho = (COUNTDOWN_SECONDS - 1) * RING_GAP
-    const tubo = RING_RADIUS * 0.16
+    this.node.set_name('Countdown')
+    const width = (COUNTDOWN_SECONDS - 1) * RING_GAP
+    const tube = RING_RADIUS * 0.16
     for (let i = 0; i < COUNTDOWN_SECONDS; i++) {
-      const anillo = shape(arcTriangles(RING_RADIUS - tubo, RING_RADIUS + tubo, 0, Math.PI * 2, 28), '#22c55e', 0.85)
-      anillo.position = new Vector3(i * RING_GAP - ancho / 2, 0, 0)
-      this.nodo.add_child(anillo)
-      this.anillos.push(anillo)
+      const ring = shape(arcTriangles(RING_RADIUS - tube, RING_RADIUS + tube, 0, Math.PI * 2, 28), '#22c55e', 0.85)
+      ring.position = new Vector3(i * RING_GAP - width / 2, 0, 0)
+      this.node.add_child(ring)
+      this.rings.push(ring)
     }
-    this.nodo.visible = false
+    this.node.visible = false
   }
 
-  /** Enseña la cuenta (3, 2, 1) o nada con 0: gastados, el que corre latiendo y los que quedan. */
-  mostrar(cuenta: number, delta: number): void {
-    this.nodo.visible = cuenta > 0
-    if (cuenta <= 0) return
-    this.reloj += delta
-    this.anillos.forEach((anillo, i) => {
-      const segundo = COUNTDOWN_SECONDS - i
-      if (cuenta < segundo) {
-        paint(anillo, '#475569', 0.12)
-        anillo.scale = new Vector3(0.8, 0.8, 1)
-      } else if (cuenta === segundo) {
-        const pulso = 0.5 + 0.5 * Math.sin(this.reloj * Math.PI * 2)
-        paint(anillo, '#22c55e', 0.6 + pulso * 0.4)
-        const k = 1.12 + pulso * 0.12
-        anillo.scale = new Vector3(k, k, 1)
+  /** Shows the count (3, 2, 1) or nothing with 0: the spent ones, the running one beating and the ones left. */
+  show(count: number, delta: number): void {
+    this.node.visible = count > 0
+    if (count <= 0) return
+    this.clock += delta
+    this.rings.forEach((ring, i) => {
+      const second = COUNTDOWN_SECONDS - i
+      if (count < second) {
+        paint(ring, '#475569', 0.12)
+        ring.scale = new Vector3(0.8, 0.8, 1)
+      } else if (count === second) {
+        const pulse = 0.5 + 0.5 * Math.sin(this.clock * Math.PI * 2)
+        paint(ring, '#22c55e', 0.6 + pulse * 0.4)
+        const k = 1.12 + pulse * 0.12
+        ring.scale = new Vector3(k, k, 1)
       } else {
-        paint(anillo, '#22c55e', 0.85)
-        anillo.scale = Vector3.ONE
+        paint(ring, '#22c55e', 0.85)
+        ring.scale = Vector3.ONE
       }
     })
   }

@@ -5,16 +5,16 @@ import { useCallback } from 'react'
 
 import { useLang } from '../../lib/settingsClient'
 import { useGame } from '../../lib/gameStore'
-import { traductor, type TextKey } from '../../lib/textos'
+import { translator, type TextKey } from '../../lib/textos'
 import {
-  FRASES,
-  FRASES_CON_LAS_MANOS,
+  PHRASES,
+  PHRASES_WITH_HANDS,
   TUTORIAL_BUTTONS,
   TUTORIAL_STEPS,
   type TutorialStepKey,
 } from '../../lib/tutorial'
 import {
-  TUTORIAL_BOTON,
+  TUTORIAL_BUTTON,
   TUTORIAL_PANEL,
   TUTORIAL_TEXT,
   XR_TUTORIAL_NEXT_OFFSET,
@@ -25,84 +25,84 @@ import { NO_RAYCAST } from '../raycast'
 import { ButtonHighlight, useButtonFeedback } from './buttonHighlight'
 import { CanvasPanel, paragraphHeight, drawParagraph, drawText, roundedRect } from './canvasPanel'
 import { RealController } from './RealController'
-import { dibujarMando } from './drawnController'
-import { dibujarMano } from './drawnHand'
+import { drawController } from './drawnController'
+import { drawHand } from './drawnHand'
 import { PANEL_COLOR } from './XRUi'
 
 /**
- * Cómo se atrapa un palo, dentro del visor y solo la primera vez.
+ * How a stick is caught, inside the headset and only the first time.
  *
- * **Se aprende haciendo, no mirando.** Cada paso se supera atrapando un palo de verdad, y la
- * partida **no se para** mientras tanto: la máquina suelta palos y el panel espera. Antes
- * era una demostración por reloj con la partida en cola —un mando de mentira cogiendo un
- * palo de mentira—, y quien la miraba sin hacer nada salía igual que entró.
+ * **It is learnt by doing, not by watching.** Each step is passed by catching a real stick, and the
+ * run **does not stop** meanwhile: the machine drops sticks and the panel waits. Before, it
+ * was a demonstration on a clock with the run queued —a fake controller picking up a
+ * fake stick—, and whoever watched it without doing anything came out the same as they went in.
  *
- * **Y se enseña el gesto que le sirve a quien juega.** Con mandos, el botón de agarre
- * resaltado sobre el dibujo (`drawnController.ts`) **y sobre el mando que se tiene en la mano**
- * (`MandoDeVerdad.tsx`): con el visor puesto lo que hay ahí tiene cinco botones y ninguno con
- * su nombre escrito. Con las manos desnudas, el pellizco (`drawnHand.ts`), que es lo que
- * mueve el puntero de agarre cuando no hay mando: cambia la frase y cambia el dibujo.
+ * **And the gesture taught is the one that serves whoever plays.** With controllers, the grip button
+ * highlighted on the drawing (`drawnController.ts`) **and on the controller held in the hand**
+ * (`RealController.tsx`): with the headset on what there is there has five buttons and none with
+ * its name written on it. Bare-handed, the pinch (`drawnHand.ts`), which is what
+ * moves the grab pointer when there is no controller: the phrase changes and the drawing changes.
  *
- * **Siempre hay salida**: siguiente, saltar y un plazo por paso. Un hito que no llegue
- * —porque los palos se escapan— dejaría a alguien encerrado en su paso.
+ * **There is always a way out**: next, skip and a deadline per step. A milestone that does not arrive
+ * —because the sticks get away— would leave someone locked in their step.
  *
- * El guion vive en `lib/tutorial.ts`, probado sin navegador; aquí solo se pinta y se escucha.
+ * The script lives in `lib/tutorial.ts`, tested without a browser; here it is only painted and listened to.
  */
 
-/** Medidas del panel, en metros: lo dice `TUTORIAL_PANEL`. */
+/** Measurements of the panel, in metres: `TUTORIAL_PANEL` says them. */
 export const PANEL_WIDTH = TUTORIAL_PANEL.width
 export const PANEL_HEIGHT = TUTORIAL_PANEL.height
 
-/** Los dos botones, abajo del panel. */
-const BOTONES = [
-  { id: 'next' as const, offset: XR_TUTORIAL_NEXT_OFFSET, texto: 'Next' as TextKey },
-  { id: 'skip' as const, offset: XR_TUTORIAL_SKIP_OFFSET, texto: 'Skip tutorial' as TextKey },
+/** The two buttons, at the bottom of the panel. */
+const BUTTONS = [
+  { id: 'next' as const, offset: XR_TUTORIAL_NEXT_OFFSET, text: 'Next' as TextKey },
+  { id: 'skip' as const, offset: XR_TUTORIAL_SKIP_OFFSET, text: 'Skip tutorial' as TextKey },
 ]
 
 /**
- * Lo apagado del panel y lo que se lee encima: los mismos grises con los que escribe el menú
- * del visor, para que el tutorial no parezca de otro juego.
+ * What is dimmed on the panel and what is read on top: the same greys the headset's menu
+ * writes with, so the tutorial does not look like it belongs to another game.
  */
 const DIM_COLOR = '#94a3b8'
 const LIGHT_COLOR = '#e2e8f0'
 
-/** Cómo se llama la frase, para medirla igual que se pinta. */
-const FRASE = { size: TUTORIAL_TEXT.phrase, maxWidth: PANEL_WIDTH - 0.1 }
+/** What the phrase is drawn with, to measure it the same way it is painted. */
+const PHRASE = { size: TUTORIAL_TEXT.phrase, maxWidth: PANEL_WIDTH - 0.1 }
 
 /**
- * Dónde cae cada cosa en el panel de un paso.
+ * Where each thing falls on the panel of a step.
  *
- * Se calcula y no se escribe a mano porque **la frase no ocupa lo mismo en los dos
- * idiomas**: la misma línea son dos renglones en inglés y tres en español, y el dibujo tiene
- * que bajar con ella. Sale de aquí y no de dentro del dibujo para que el test pueda
- * comprobar los mismos números que se pintan, y no una copia suya.
+ * It is computed and not written by hand because **the phrase does not take up the same in the two
+ * languages**: the same line is two lines in English and three in Spanish, and the drawing has
+ * to go down with it. It comes out of here and not from inside the drawing so the test can
+ * check the same numbers that are painted, and not a copy of them.
  */
-export function repartoDelPaso(
+export function stepLayout(
   ctx: CanvasRenderingContext2D,
   step: TutorialStepKey,
-  frases: Record<TutorialStepKey, TextKey>,
-  t: (clave: TextKey) => string,
-): { techoDeLaFrase: number; sueloDeLaFrase: number; gesto: number } {
-  const techoDeLaFrase = PANEL_HEIGHT / 2 - 0.13
-  const sueloDeLaFrase = techoDeLaFrase - paragraphHeight(ctx, t(frases[step]), FRASE)
-  const techoDeLosBotones = XR_TUTORIAL_SKIP_OFFSET[1] + TUTORIAL_BOTON.height / 2
-  return { techoDeLaFrase, sueloDeLaFrase, gesto: (sueloDeLaFrase + techoDeLosBotones) / 2 }
+  phrases: Record<TutorialStepKey, TextKey>,
+  t: (key: TextKey) => string,
+): { phraseTop: number; phraseBottom: number; gesture: number } {
+  const phraseTop = PANEL_HEIGHT / 2 - 0.13
+  const phraseBottom = phraseTop - paragraphHeight(ctx, t(phrases[step]), PHRASE)
+  const buttonsTop = XR_TUTORIAL_SKIP_OFFSET[1] + TUTORIAL_BUTTON.height / 2
+  return { phraseTop, phraseBottom, gesture: (phraseBottom + buttonsTop) / 2 }
 }
 
 /**
- * El panel del tutorial: por qué paso va, lo que pide, el gesto que lo hace y los dos
- * botones de abajo.
+ * The tutorial's panel: which step it is on, what it asks for, the gesture that does it and the two
+ * buttons at the bottom.
  *
- * Sale del componente para que un test lo pueda medir con un lienzo de mentira
- * (`legibilidad.ts`): es texto que nadie ha visto aún con el visor puesto, y la frase larga
- * en español es donde se sale.
+ * It comes out of the component so a test can measure it with a fake canvas
+ * (`legibility.ts`): it is text nobody has yet seen with the headset on, and the long phrase
+ * in Spanish is where it runs off.
  */
-export function dibujarElPaso(
+export function drawStep(
   ctx: CanvasRenderingContext2D,
   step: TutorialStepKey | null,
-  frases: Record<TutorialStepKey, TextKey>,
-  t: (clave: TextKey) => string,
-  conLasManos: boolean,
+  phrases: Record<TutorialStepKey, TextKey>,
+  t: (key: TextKey) => string,
+  bareHanded: boolean,
 ): void {
   roundedRect(ctx, 0, 0, PANEL_WIDTH, PANEL_HEIGHT, 0.02)
   ctx.fillStyle = PANEL_COLOR
@@ -110,43 +110,43 @@ export function dibujarElPaso(
 
   if (step == null) return
 
-  // Por cuál se va, que es lo que dice cuánto queda.
+  // Which one it is on, which is what says how much is left.
   drawText(ctx, `${TUTORIAL_STEPS.indexOf(step) + 1}/${TUTORIAL_STEPS.length}`, 0, PANEL_HEIGHT / 2 - 0.05, {
     size: TUTORIAL_TEXT.counter,
     color: DIM_COLOR,
   })
 
-  // En párrafo y no en una línea: encogida hasta caber de una, la frase quedaba en letra de
-  // dos centímetros y con el visor puesto no se entendía nada.
+  // In a paragraph and not on one line: shrunk until it fitted on one, the phrase ended up in
+  // two-centimetre letters and with the headset on nothing could be understood.
   //
-  // **Anclado por arriba**, no centrado: centrado, la frase que pasa de dos líneas a tres
-  // crece hacia arriba y se mete debajo del contador. El español las tiene casi siempre.
-  const reparto = repartoDelPaso(ctx, step, frases, t)
-  drawParagraph(ctx, t(frases[step]), 0, reparto.techoDeLaFrase, {
-    ...FRASE,
+  // **Anchored at the top**, not centred: centred, the phrase that goes from two lines to three
+  // grows upwards and gets under the counter. Spanish almost always has them.
+  const layout = stepLayout(ctx, step, phrases, t)
+  drawParagraph(ctx, t(phrases[step]), 0, layout.phraseTop, {
+    ...PHRASE,
     color: LIGHT_COLOR,
     weight: '600',
     anchor: 'top',
   })
 
-  // Lo que quien juega tiene de verdad en la mano, y no lo que trae la mayoría.
-  const colores = { cuerpo: DIM_COLOR, resaltado: LIGHT_COLOR }
-  if (conLasManos) {
-    dibujarMano(ctx, 0, reparto.gesto, TUTORIAL_BUTTONS[step] != null, colores)
+  // What whoever plays really has in their hand, and not what most people bring.
+  const colors = { body: DIM_COLOR, highlighted: LIGHT_COLOR }
+  if (bareHanded) {
+    drawHand(ctx, 0, layout.gesture, TUTORIAL_BUTTONS[step] != null, colors)
   } else {
-    dibujarMando(ctx, 0, reparto.gesto, TUTORIAL_BUTTONS[step], colores)
+    drawController(ctx, 0, layout.gesture, TUTORIAL_BUTTONS[step], colors)
   }
 
-  for (const boton of BOTONES) {
-    const [bx, by] = boton.offset
-    roundedRect(ctx, bx, by, TUTORIAL_BOTON.width, TUTORIAL_BOTON.height, 0.016)
+  for (const button of BUTTONS) {
+    const [bx, by] = button.offset
+    roundedRect(ctx, bx, by, TUTORIAL_BUTTON.width, TUTORIAL_BUTTON.height, 0.016)
     ctx.fillStyle = DIM_COLOR
     ctx.fill()
-    drawText(ctx, t(boton.texto), bx, by, {
+    drawText(ctx, t(button.text), bx, by, {
       size: TUTORIAL_TEXT.button,
       color: PANEL_COLOR,
       weight: '700',
-      maxWidth: TUTORIAL_BOTON.width - 0.03,
+      maxWidth: TUTORIAL_BUTTON.width - 0.03,
     })
   }
 }
@@ -154,62 +154,62 @@ export function dibujarElPaso(
 export function XRTutorial() {
   const {
     gameState,
-    bareHanded: conLasManos,
+    bareHanded,
     tutorialStep: step,
     finishTutorial,
     nextTutorialStep,
   } = useGame()
-  const t = traductor(useLang())
-  const frases = conLasManos ? FRASES_CON_LAS_MANOS : FRASES
-  const enSesion = useXR((state) => state.mode != null)
-  // Apuntado y pulsado, que es lo que el botón tiene que contestar (`buttonHighlight.tsx`).
+  const t = translator(useLang())
+  const phrases = bareHanded ? PHRASES_WITH_HANDS : PHRASES
+  const inSession = useXR((state) => state.mode != null)
+  // Pointed at and pressed, which is what the button has to answer (`buttonHighlight.tsx`).
   const { stateOf, handlersFor } = useButtonFeedback()
 
-  // **El paso lo lleva el store**, que es quien ve los palos atrapados y quien cuenta los
-  // plazos: aquí solo se pinta. Y solo mientras se juega de verdad —durante la cuenta atrás
-  // no hay nada que atrapar, y encima del cartel de fin el panel taparía el resultado—.
-  const activo = enSesion && gameState === 'playing' && step !== null
+  // **The step is carried by the store**, which is the one that sees the sticks caught and counts the
+  // deadlines: here it is only painted. And only while really playing —during the countdown
+  // there is nothing to catch, and on top of the end sign the panel would cover the result—.
+  const active = inSession && gameState === 'playing' && step !== null
 
   const draw = useCallback(
-    (ctx: CanvasRenderingContext2D) => dibujarElPaso(ctx, step, frases, t, conLasManos),
-    [step, frases, t, conLasManos],
+    (ctx: CanvasRenderingContext2D) => drawStep(ctx, step, phrases, t, bareHanded),
+    [step, phrases, t, bareHanded],
   )
 
-  if (!activo) return null
+  if (!active) return null
 
   return (
     <>
-      {/* Fuera del grupo del panel a propósito: esto no vive en el panel, vive en la mano.
-          Se coloca solo, deshaciendo lo que le pongan sus padres. En las dos manos porque
-          aquí vale cualquiera de ellas: encender solo una sería decir que la otra no sirve.
-          Con las manos desnudas no hay mando que enseñar y no se monta nada. */}
+      {/* Outside the panel's group on purpose: this does not live on the panel, it lives in the hand.
+          It places itself, undoing whatever its parents put on it. On both hands because
+          here either of them will do: lighting only one would be saying the other is no good.
+          Bare-handed there is no controller to show and nothing is mounted. */}
       <RealController hand="left" button={TUTORIAL_BUTTONS[step]} />
       <RealController hand="right" button={TUTORIAL_BUTTONS[step]} />
       <group position={XR_TUTORIAL_POSITION}>
         <CanvasPanel width={PANEL_WIDTH} height={PANEL_HEIGHT} draw={draw} fallbackColor={PANEL_COLOR} />
-        {BOTONES.map((boton) => (
-          <group key={boton.id} position={[boton.offset[0], boton.offset[1], 0.002]}>
-            {/* Saltar no es «pasar todos los pasos»: es dar la lección por vista, lo que
-                además la retira de las próximas partidas. Quien la salta ya ha decidido. */}
+        {BUTTONS.map((button) => (
+          <group key={button.id} position={[button.offset[0], button.offset[1], 0.002]}>
+            {/* Skipping is not «going through all the steps»: it is taking the lesson as seen, which
+                also removes it from the next runs. Whoever skips it has already decided. */}
             <mesh
-              onClick={boton.id === 'next' ? nextTutorialStep : finishTutorial}
-              {...handlersFor(boton.id)}
+              onClick={button.id === 'next' ? nextTutorialStep : finishTutorial}
+              {...handlersFor(button.id)}
             >
-              <planeGeometry args={[TUTORIAL_BOTON.width, TUTORIAL_BOTON.height]} />
+              <planeGeometry args={[TUTORIAL_BUTTON.width, TUTORIAL_BUTTON.height]} />
               <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
-            {/* **Encenderse al apuntar es lo que dice que el botón responde.** El resto de
-                paneles del juego ya lo hacen. */}
+            {/* **Lighting up when pointed at is what says the button responds.** The rest of
+                the game's panels already do it. */}
             <ButtonHighlight
-              width={TUTORIAL_BOTON.width}
-              height={TUTORIAL_BOTON.height}
-              state={stateOf(boton.id)}
+              width={TUTORIAL_BUTTON.width}
+              height={TUTORIAL_BUTTON.height}
+              state={stateOf(button.id)}
               glow={LIGHT_COLOR}
               ink={PANEL_COLOR}
             />
           </group>
         ))}
-        {/* El panel no se puede pulsar entero: solo sus botones. */}
+        {/* The panel cannot be pressed as a whole: only its buttons. */}
         <mesh position={[0, 0, -0.001]} raycast={NO_RAYCAST}>
           <planeGeometry args={[PANEL_WIDTH, PANEL_HEIGHT]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />

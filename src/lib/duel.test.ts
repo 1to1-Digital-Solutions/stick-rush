@@ -4,7 +4,7 @@ import { CHALLENGE_SETUP, GAME_MODE_ORDER } from './gameMode'
 import { deriveSeed } from './seed'
 import { buildStickLayout, fallOrder } from './stickLayout'
 import {
-  MODO_DEL_DUELO,
+  DUEL_MODE,
   PLAYER_COUNTS,
   PLAYER_COUNT_HINTS,
   PLAYER_COUNT_LABELS,
@@ -15,107 +15,107 @@ import {
   duelTurn,
   duelSummary,
   duelWinner,
-  eligeJugadores,
-  juegaADos,
-  mejorDelDuelo,
+  picksPlayers,
+  playsAsDuel,
+  duelBest,
   otherPlayer,
   recordTurn,
 } from './duel'
 
 /**
- * La partida a dos: una tanda del desafío cada uno, con los mismos palos, y gana quien más puntos
- * saque.
+ * The two-player match: one round of the challenge each, with the same sticks, and whoever scores
+ * more points wins.
  *
- * Lo que se prueba es lo que la hace justa —que los dos jueguen la misma tanda— y lo que la
- * cierra: de quién es el turno, quién gana y qué pasa cuando empatan.
+ * What is tested is what makes it fair —that both play the same round— and what closes
+ * it: whose turn it is, who wins and what happens when they tie.
  */
 
-describe('a quién le toca', () => {
-  it('empieza el primero, sigue el segundo y con los dos jugados no le toca a nadie', () => {
+describe('whose turn it is', () => {
+  it('the first one starts, the second follows and with both played it is nobody\'s turn', () => {
     const duel = createDuel(7)
     expect(duelTurn(duel)).toBe(0)
     expect(controllerHolder(duel)).toBe(0)
 
-    const tras = recordTurn(duel, 1200)
-    expect(duelTurn(tras)).toBe(1)
-    expect(controllerHolder(tras)).toBe(1)
-    expect(duelOver(tras)).toBe(false)
+    const after = recordTurn(duel, 1200)
+    expect(duelTurn(after)).toBe(1)
+    expect(controllerHolder(after)).toBe(1)
+    expect(duelOver(after)).toBe(false)
 
-    const hecho = recordTurn(tras, 900)
-    expect(duelTurn(hecho)).toBeNull()
-    expect(duelOver(hecho)).toBe(true)
-    // Acabada, el mando sigue siendo de quien la cerró: el marcador enseña su tanda.
-    expect(controllerHolder(hecho)).toBe(1)
+    const done = recordTurn(after, 900)
+    expect(duelTurn(done)).toBeNull()
+    expect(duelOver(done)).toBe(true)
+    // Finished, the controller still belongs to whoever closed it: the scoreboard shows their round.
+    expect(controllerHolder(done)).toBe(1)
   })
 
-  it('una tercera tanda no es de nadie: no cambia lo que ya se ha visto', () => {
-    const hecho = recordTurn(recordTurn(createDuel(7), 1200), 900)
-    expect(recordTurn(hecho, 5000)).toBe(hecho)
+  it('a third round is nobody\'s: it does not change what has already been seen', () => {
+    const done = recordTurn(recordTurn(createDuel(7), 1200), 900)
+    expect(recordTurn(done, 5000)).toBe(done)
   })
 
-  it('la semilla es la misma para los dos: no se toca al apuntar', () => {
-    expect(recordTurn(recordTurn(createDuel(4242), 10), 20).semilla).toBe(4242)
+  it('the seed is the same for both: it is not touched when noting down', () => {
+    expect(recordTurn(recordTurn(createDuel(4242), 10), 20).seed).toBe(4242)
   })
 
-  it('el otro es el otro', () => {
+  it('the other one is the other one', () => {
     expect(otherPlayer(0)).toBe(1)
     expect(otherPlayer(1)).toBe(0)
   })
 })
 
-describe('quién gana', () => {
-  it('quien más puntos saca', () => {
+describe('who wins', () => {
+  it('whoever scores more points', () => {
     expect(duelWinner(recordTurn(recordTurn(createDuel(1), 1200), 900))).toBe(0)
     expect(duelWinner(recordTurn(recordTurn(createDuel(1), 900), 1200))).toBe(1)
   })
 
-  it('con los mismos puntos es empate: no se desempata por otra cifra', () => {
+  it('with the same points it is a tie: the tie is not broken by another figure', () => {
     expect(duelWinner(recordTurn(recordTurn(createDuel(1), 1000), 1000))).toBeNull()
     expect(duelWinner(recordTurn(recordTurn(createDuel(1), 0), 0))).toBeNull()
   })
 
-  it('sin las dos tandas jugadas no gana nadie todavía', () => {
+  it('without both rounds played nobody wins yet', () => {
     expect(duelWinner(createDuel(1))).toBeNull()
     expect(duelWinner(recordTurn(createDuel(1), 3000))).toBeNull()
   })
 
-  it('al salón se le cuenta lo mejor que se hizo en la partida', () => {
-    expect(mejorDelDuelo(recordTurn(recordTurn(createDuel(1), 1200), 900))).toBe(1200)
-    expect(mejorDelDuelo(recordTurn(createDuel(1), 40))).toBe(40)
-    expect(mejorDelDuelo(createDuel(1))).toBe(0)
+  it('the hall is told the best that was done in the match', () => {
+    expect(duelBest(recordTurn(recordTurn(createDuel(1), 1200), 900))).toBe(1200)
+    expect(duelBest(recordTurn(createDuel(1), 40))).toBe(40)
+    expect(duelBest(createDuel(1))).toBe(0)
   })
 })
 
-describe('la misma semilla, la misma tanda', () => {
-  it('los dos ven caer los mismos palos, en el mismo orden y en el mismo sitio', () => {
-    // La tanda del desafío es la tanda 0 de la partida: su reparto sale de la semilla y su número.
+describe('the same seed, the same round', () => {
+  it('both see the same sticks fall, in the same order and in the same place', () => {
+    // The challenge's round is round 0 of the match: its layout comes from the seed and its number.
     const duel = createDuel(98765)
-    const primero = deriveSeed(duel.semilla, 0)
-    const segundo = deriveSeed(recordTurn(duel, 1500).semilla, 0)
-    expect(segundo).toBe(primero)
-    expect(fallOrder(CHALLENGE_SETUP.stickCount, segundo)).toEqual(fallOrder(CHALLENGE_SETUP.stickCount, primero))
-    expect(buildStickLayout(CHALLENGE_SETUP.stickCount, segundo, 2)).toEqual(buildStickLayout(CHALLENGE_SETUP.stickCount, primero, 2))
+    const first = deriveSeed(duel.seed, 0)
+    const second = deriveSeed(recordTurn(duel, 1500).seed, 0)
+    expect(second).toBe(first)
+    expect(fallOrder(CHALLENGE_SETUP.stickCount, second)).toEqual(fallOrder(CHALLENGE_SETUP.stickCount, first))
+    expect(buildStickLayout(CHALLENGE_SETUP.stickCount, second, 2)).toEqual(buildStickLayout(CHALLENGE_SETUP.stickCount, first, 2))
   })
 
-  it('y otra partida es otra tanda: la siguiente no se repite', () => {
-    const una = fallOrder(CHALLENGE_SETUP.stickCount, deriveSeed(createDuel(1).semilla, 0))
-    const otra = fallOrder(CHALLENGE_SETUP.stickCount, deriveSeed(createDuel(2).semilla, 0))
-    expect(otra).not.toEqual(una)
+  it('and another match is another round: the next one is not repeated', () => {
+    const one = fallOrder(CHALLENGE_SETUP.stickCount, deriveSeed(createDuel(1).seed, 0))
+    const another = fallOrder(CHALLENGE_SETUP.stickCount, deriveSeed(createDuel(2).seed, 0))
+    expect(another).not.toEqual(one)
   })
 })
 
-describe('dónde se juega a dos', () => {
-  it('solo en el desafío: es la misma partida para todos', () => {
-    expect(GAME_MODE_ORDER.filter(eligeJugadores)).toEqual(['challenge'])
-    expect(MODO_DEL_DUELO).toBe('challenge')
-    expect(juegaADos('challenge', 2)).toBe(true)
-    expect(juegaADos('challenge', 1)).toBe(false)
-    // Fuera del desafío lo elegido no cuenta.
-    expect(juegaADos('practice', 2)).toBe(false)
-    expect(juegaADos('levels', 2)).toBe(false)
+describe('where two can play', () => {
+  it('only in the challenge: it is the same run for everyone', () => {
+    expect(GAME_MODE_ORDER.filter(picksPlayers)).toEqual(['challenge'])
+    expect(DUEL_MODE).toBe('challenge')
+    expect(playsAsDuel('challenge', 2)).toBe(true)
+    expect(playsAsDuel('challenge', 1)).toBe(false)
+    // Outside the challenge what was chosen does not count.
+    expect(playsAsDuel('practice', 2)).toBe(false)
+    expect(playsAsDuel('levels', 2)).toBe(false)
   })
 
-  it('cada opción tiene su nombre y su explicación, y cada jugador el suyo', () => {
+  it('each option has its name and its explanation, and each player their own', () => {
     for (const count of PLAYER_COUNTS) {
       expect(PLAYER_COUNT_LABELS[count].length).toBeGreaterThan(0)
       expect(PLAYER_COUNT_HINTS[count].length).toBeGreaterThan(0)
@@ -124,38 +124,38 @@ describe('dónde se juega a dos', () => {
   })
 })
 
-describe('lo que se dice al acabar una tanda a dos', () => {
-  const PAREJA = { wins: [3, 2] as const, ties: 1 }
+describe('what is said when a two-player round ends', () => {
+  const PAIR = { wins: [3, 2] as const, ties: 1 }
 
-  it('al acabar el primero: lo que ha sacado y el aviso de pasarle el mando al segundo', () => {
-    const dicho = duelSummary(recordTurn(createDuel(1), 1500), PAREJA, 'en')
-    expect(dicho.title).toBe('Player 1: 1,500 points')
-    expect(dicho.pass).toBe('Pass the controller to Player 2.')
-    expect(dicho.next).toBe(1)
-    expect(dicho.winner).toBeNull()
-    expect(dicho.tally).toBeNull()
-    expect(dicho.lines).toEqual([{ player: 0, text: 'Player 1: 1,500 points' }])
+  it('when the first one finishes: what they scored and the notice to pass the controller to the second', () => {
+    const summary = duelSummary(recordTurn(createDuel(1), 1500), PAIR, 'en')
+    expect(summary.title).toBe('Player 1: 1,500 points')
+    expect(summary.pass).toBe('Pass the controller to Player 2.')
+    expect(summary.next).toBe(1)
+    expect(summary.winner).toBeNull()
+    expect(summary.tally).toBeNull()
+    expect(summary.lines).toEqual([{ player: 0, text: 'Player 1: 1,500 points' }])
   })
 
-  it('al acabar los dos: quién gana, los puntos de los dos y lo que lleva la pareja', () => {
-    const dicho = duelSummary(recordTurn(recordTurn(createDuel(1), 1500), 1700), PAREJA, 'es')
-    expect(dicho.title).toBe('Gana Jugador 2')
-    expect(dicho.pass).toBeNull()
-    expect(dicho.next).toBeNull()
-    expect(dicho.winner).toBe(1)
-    expect(dicho.lines.map((l) => l.text)).toEqual(['Jugador 1: 1500 puntos', 'Jugador 2: 1700 puntos'])
-    expect(dicho.tally).toBe('Ganadas: 3–2 · empates: 1')
+  it('when both finish: who wins, the points of both and what the pair has so far', () => {
+    const summary = duelSummary(recordTurn(recordTurn(createDuel(1), 1500), 1700), PAIR, 'es')
+    expect(summary.title).toBe('Gana Jugador 2')
+    expect(summary.pass).toBeNull()
+    expect(summary.next).toBeNull()
+    expect(summary.winner).toBe(1)
+    expect(summary.lines.map((l) => l.text)).toEqual(['Jugador 1: 1500 puntos', 'Jugador 2: 1700 puntos'])
+    expect(summary.tally).toBe('Ganadas: 3–2 · empates: 1')
   })
 
-  it('con los mismos puntos, empate', () => {
-    const dicho = duelSummary(recordTurn(recordTurn(createDuel(1), 900), 900), PAREJA, 'en')
-    expect(dicho.title).toBe("It's a tie")
-    expect(dicho.winner).toBeNull()
+  it('with the same points, a tie', () => {
+    const summary = duelSummary(recordTurn(recordTurn(createDuel(1), 900), 900), PAIR, 'en')
+    expect(summary.title).toBe("It's a tie")
+    expect(summary.winner).toBeNull()
   })
 
-  it('sin nadie jugado todavía, el aviso es para el primero', () => {
-    const dicho = duelSummary(createDuel(1), PAREJA, 'en')
-    expect(dicho.pass).toBe('Pass the controller to Player 1.')
-    expect(dicho.lines).toEqual([])
+  it('with nobody played yet, the notice is for the first one', () => {
+    const summary = duelSummary(createDuel(1), PAIR, 'en')
+    expect(summary.pass).toBe('Pass the controller to Player 1.')
+    expect(summary.lines).toEqual([])
   })
 })

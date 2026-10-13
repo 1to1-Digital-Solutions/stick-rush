@@ -2,15 +2,15 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
 /**
- * Tests unitarios de la lógica del juego (`src/lib`), del estado en React y del paquete
- * que se publica (`scripts/`: lo que declara el `package.json` y qué puede haber dentro
- * de la lógica que se lleva el puerto a Godot).
- * Los tests de extremo a extremo viven en `e2e/` y los corre Playwright, que
- * necesita un navegador real por el Canvas WebGL.
+ * Unit tests of the game's logic (`src/lib`), of the state in React and of the package
+ * that is published (`scripts/`: what the `package.json` declares and what there can be
+ * inside the logic the Godot port takes along).
+ * The end-to-end tests live in `e2e/` and are run by Playwright, which
+ * needs a real browser because of the WebGL Canvas.
  *
- * Sin `@vitejs/plugin-react` a propósito: aquí no hace falta Fast Refresh y su
- * copia de Vite choca con la que trae Vitest. El JSX lo transforma esbuild con
- * el runtime automático que ya declara `tsconfig.json`.
+ * No `@vitejs/plugin-react` on purpose: Fast Refresh is not needed here and its
+ * copy of Vite clashes with the one Vitest brings. The JSX is transformed by
+ * esbuild with the automatic runtime `tsconfig.json` already declares.
  */
 export default defineConfig({
   resolve: {
@@ -24,17 +24,17 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       provider: 'v8',
-      // Lo que se mide es **el dominio**: `src/lib` es donde vive lo que decide
-      // algo y es lo único que se puede probar sin un navegador con WebGL. Los
-      // componentes de la escena se prueban de extremo a extremo, en un
-      // navegador de verdad, y contarlos aquí solo bajaría el número sin decir
-      // nada de si están probados.
+      // What is measured is **the domain**: `src/lib` is where what decides
+      // something lives and it is the only thing that can be tested without a
+      // browser with WebGL. The scene's components are tested end to end, in a
+      // real browser, and counting them here would only lower the number without
+      // saying anything about whether they are tested.
       include: ['src/lib/**/*.{ts,tsx}'],
       exclude: ['**/*.test.{ts,tsx}'],
       reporter: ['text-summary', 'html'],
-      // El dominio está cubierto entero, así que el suelo es el techo: lo que
-      // se añada sin probar rompe el build. Las ramas que no puede alcanzar
-      // ningún test llevan `v8 ignore` con el motivo escrito al lado.
+      // The domain is fully covered, so the floor is the ceiling: whatever is
+      // added untested breaks the build. The branches no test can reach carry
+      // `v8 ignore` with the reason written next to it.
       thresholds: { lines: 100, statements: 100, functions: 100, branches: 100 },
     },
   },

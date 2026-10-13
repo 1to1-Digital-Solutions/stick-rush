@@ -1,116 +1,117 @@
 /**
- * La partida a dos: dos personas, un mando y la misma tanda de palos.
+ * The two-player match: two people, one controller and the same round of sticks.
  *
- * **Por qué por tandas y no palo a palo.** Sin red, dos personas solo pueden turnarse el mando, y
- * pasarse el visor —quitárselo, ajustarlo, colocarse bajo el aro— entre palo y palo convertiría la
- * partida en una sucesión de esperas. Los hermanos que tienen modo a dos cambian de turno por una
- * unidad entera de su juego (un cuadro en bolos, un hoyo en minigolf, un partido en ping pong), y
- * aquí la unidad natural es **la tanda**: la máquina cargada, que se vacía entera antes de pasar el
- * mando.
+ * **Why by rounds and not stick by stick.** Without a network, two people can only take turns with
+ * the controller, and passing the headset —taking it off, adjusting it, standing under the hoop—
+ * between stick and stick would turn the match into a succession of waits. The siblings that have a
+ * two-player mode change turns by a whole unit of their game (a frame in bowling, a hole in
+ * minigolf, a match in ping pong), and here the natural unit is **the round**: the loaded machine,
+ * which empties completely before the controller is passed.
  *
- * **La del desafío, y con la misma semilla.** El desafío se juega siempre igual —Medio y los trece
- * palos, con tres vidas (`CHALLENGE_SETUP`)—, que es justo lo que hace falta para que dos tandas se
- * puedan comparar sin ponerse de acuerdo en el menú. Y los palos que caen, y en qué orden, salen de
- * la semilla de la partida (`stickSeed`): los dos ven caer **los mismos palos en el mismo orden**,
- * así que nadie juega una tanda con más suerte. Es la regla de table-tennis —misma máquina, misma
- * semilla, gana quien le saque más— con la máquina de los palos de rival.
+ * **The challenge's one, and with the same seed.** The challenge is always played the same way
+ * —Medium and the thirteen sticks, with three lives (`CHALLENGE_SETUP`)—, which is exactly what is
+ * needed for two rounds to be comparable without agreeing on anything in the menu. And the sticks
+ * that fall, and in which order, come from the match's seed (`stickSeed`): both see **the same
+ * sticks fall in the same order**, so nobody plays a luckier round. It is the table-tennis rule
+ * —same machine, same seed, whoever gets more out of it wins— with the stick machine as the rival.
  *
- * **Gana quien más puntos saque**, que en este juego ya premian coger pronto y encadenar
- * (`scoring.ts`): son la medida de lo bien que se ha jugado, no solo de cuántos. Quedarse sin vidas
- * a media tanda es dejar palos sin puntuar, y eso ya lo dicen los puntos. Con los mismos puntos es
- * empate: desempatar por otra cifra sería premiar algo que nadie buscaba.
+ * **Whoever scores more points wins**, and in this game they already reward catching early and
+ * chaining (`scoring.ts`): they are the measure of how well it was played, not only of how many.
+ * Running out of lives halfway through a round is leaving sticks unscored, and the points already
+ * say that. With the same points it is a tie: breaking the tie by another figure would be rewarding
+ * something nobody was after.
  *
- * Los récords de cada uno no se tocan: una tanda a dos no es la marca de nadie (la regla de
- * tower-tumble). Lo que cuenta entre dos es quién gana, y eso se apunta aparte (`duelTally.ts`).
+ * Each one's records are not touched: a two-player round is nobody's best (the tower-tumble
+ * rule). What counts between two is who wins, and that is noted separately (`duelTally.ts`).
  *
- * Función pura, sin React: la partida a dos se prueba entera sin montar el juego, y el port de
- * Godot la usa tal cual.
+ * Pure function, no React: the two-player match is tested whole without mounting the game, and the
+ * Godot port uses it as is.
  */
 
 import type { Lang } from './settings'
 import type { DuelTally } from './duelTally'
 import type { GameMode } from './gameMode'
 import { MENU_EN } from './menuWords'
-import { formatea, formatoDeCifra, texto, type TextKey } from './textos'
+import { formatText, formatFigure, texto, type TextKey } from './textos'
 
 export type Player = 0 | 1
 
-/** Cómo se llama cada uno en pantalla, en inglés: es la clave con la que se traduce. */
+/** What each one is called on screen, in English: it is the key it is translated with. */
 export const PLAYER_LABELS = ['Player 1', 'Player 2'] as const satisfies readonly [string, string]
 
-/** Cuántos juegan: solo, o dos por turnos con el mismo mando. */
+/** How many play: alone, or two taking turns with the same controller. */
 export const PLAYER_COUNTS = [1, 2] as const
 export type PlayerCount = (typeof PLAYER_COUNTS)[number]
 
-/** Etiqueta visible de cada opción, en inglés (ver `textos.ts`). */
+/** Visible label of each option, in English (see `textos.ts`). */
 export const PLAYER_COUNT_LABELS = {
   1: MENU_EN.solo,
   2: MENU_EN.duel,
 } as const satisfies Record<PlayerCount, string>
 
-/** Qué promete cada opción, en una línea, para el menú. */
+/** What each option promises, in one line, for the menu. */
 export const PLAYER_COUNT_HINTS = {
   1: 'Your three lives against your record.',
   2: 'Pass the controller: same sticks, most points wins.',
 } as const satisfies Record<PlayerCount, string>
 
 /**
- * El modo en el que se puede jugar a dos: el desafío.
+ * The mode in which two can play: the challenge.
  *
- * En la práctica cada uno elegiría palos y velocidad, y la partida sin fin la corta quien juega:
- * dos tandas así no se comparan. En Niveles cada uno va por su escalera. El desafío es la misma
- * partida para todos, y por eso es también la del reto del salón.
+ * In practice each one would choose sticks and speed, and the endless run is cut short by whoever
+ * plays: two rounds like that do not compare. In Levels each one climbs their own ladder. The
+ * challenge is the same run for everyone, and that is why it is also the one of the hall's challenge.
  */
-export const MODO_DEL_DUELO: GameMode = 'challenge'
+export const DUEL_MODE: GameMode = 'challenge'
 
-/** ¿Pregunta este modo cuántos juegan? */
-export function eligeJugadores(mode: GameMode): boolean {
-  return mode === MODO_DEL_DUELO
+/** Does this mode ask how many play? */
+export function picksPlayers(mode: GameMode): boolean {
+  return mode === DUEL_MODE
 }
 
-/** ¿Se juega a dos con esto elegido? Fuera del desafío, lo elegido no cuenta. */
-export function juegaADos(mode: GameMode, players: PlayerCount): boolean {
-  return eligeJugadores(mode) && players === 2
+/** Is it played by two with this chosen? Outside the challenge, what was chosen does not count. */
+export function playsAsDuel(mode: GameMode, players: PlayerCount): boolean {
+  return picksPlayers(mode) && players === 2
 }
 
-/** La partida a dos: la semilla que comparten y los puntos de cada uno, `null` mientras no ha jugado. */
+/** The two-player match: the seed they share and each one's points, `null` while they have not played. */
 export interface Duel {
-  readonly semilla: number
+  readonly seed: number
   readonly points: readonly [number | null, number | null]
 }
 
-/** Una partida a dos sin empezar, con la semilla que van a jugar los dos: le toca al primero. */
-export function createDuel(semilla: number): Duel {
-  return { semilla, points: [null, null] }
+/** A two-player match not yet started, with the seed both are going to play: it is the first one's turn. */
+export function createDuel(seed: number): Duel {
+  return { seed, points: [null, null] }
 }
 
-/** A quién le toca, o `null` si los dos han jugado ya. */
+/** Whose turn it is, or `null` if both have already played. */
 export function duelTurn(duel: Duel): Player | null {
   if (duel.points[0] == null) return 0
   if (duel.points[1] == null) return 1
   return null
 }
 
-/** ¿Han jugado los dos? */
+/** Have both played? */
 export function duelOver(duel: Duel): boolean {
   return duelTurn(duel) == null
 }
 
 /**
- * Quién tiene el mando: a quien le toca o, con las dos tandas jugadas, el último que jugó.
+ * Who holds the controller: whoever's turn it is or, with both rounds played, the last one who played.
  *
- * Es lo que dice el marcador —de quién es la tanda que se ve— y siempre es alguien: una partida
- * acabada sigue enseñando la tanda que la cerró.
+ * It is what the scoreboard says —whose round is the one on view— and it is always someone: a
+ * finished match still shows the round that closed it.
  */
 export function controllerHolder(duel: Duel): Player {
   return duelTurn(duel) ?? 1
 }
 
 /**
- * Apunta los puntos de quien tenía el turno.
+ * Notes down the points of whoever had the turn.
  *
- * Con los dos jugados no apunta nada: una tercera tanda no es de nadie, y sobrescribir una de las
- * dos cambiaría el resultado de algo que ya se ha visto.
+ * With both played it notes nothing: a third round is nobody's, and overwriting one of the
+ * two would change the result of something that has already been seen.
  */
 export function recordTurn(duel: Duel, points: number): Duel {
   const turn = duelTurn(duel)
@@ -118,65 +119,65 @@ export function recordTurn(duel: Duel, points: number): Duel {
   return { ...duel, points: turn === 0 ? [points, duel.points[1]] : [duel.points[0], points] }
 }
 
-/** Quién ha ganado, o `null` si no han jugado los dos o van empatados. */
+/** Who has won, or `null` if both have not played or they are tied. */
 export function duelWinner(duel: Duel): Player | null {
   const [one, two] = duel.points
   if (one == null || two == null || one === two) return null
   return one > two ? 0 : 1
 }
 
-/** El otro. */
+/** The other one. */
 export function otherPlayer(player: Player): Player {
   return player === 0 ? 1 : 0
 }
 
 /**
- * Los puntos que se le cuentan al salón de una partida a dos: los de quien más sacó. El salón paga
- * por partida terminada y enseña lo último que se jugó; la partida es de los dos, y lo que se
- * enseña de ella es lo mejor que se hizo.
+ * The points of a two-player match that are reported to the hall: those of whoever scored more. The
+ * hall pays per finished run and shows the last thing that was played; the match belongs to both,
+ * and what is shown of it is the best that was done.
  */
-export function mejorDelDuelo(duel: Duel): number {
+export function duelBest(duel: Duel): number {
   return Math.max(duel.points[0] ?? 0, duel.points[1] ?? 0)
 }
 
-/** Lo que se dice al acabar una tanda de la partida a dos. */
+/** What is said when a round of the two-player match ends. */
 export interface DuelSummary {
-  /** Quién acaba de jugar y lo que ha sacado, o, con los dos jugados, quién ha ganado. */
+  /** Who has just played and what they scored, or, with both played, who has won. */
   readonly title: string
-  /** El aviso de pasar el mando, mientras le quede la tanda a alguien; si no, `null`. */
+  /** The notice to pass the controller, while someone still has their round left; otherwise, `null`. */
   readonly pass: string | null
-  /** A quién le toca, para el botón de empezar; `null` con la partida acabada. */
+  /** Whose turn it is, for the start button; `null` with the match finished. */
   readonly next: Player | null
-  /** Los puntos de cada uno que ya ha jugado, en orden de jugador. */
+  /** The points of each one who has already played, in player order. */
   readonly lines: readonly { readonly player: Player; readonly text: string }[]
-  /** Quién ha ganado, o `null` mientras no han jugado los dos o si han empatado. */
+  /** Who has won, or `null` while both have not played or if they have tied. */
   readonly winner: Player | null
-  /** Las partidas que lleva la pareja, con la de ahora ya contada; solo al acabar la partida. */
+  /** The matches the pair has so far, with the current one already counted; only when the match ends. */
   readonly tally: string | null
 }
 
 /**
- * El final de una tanda a dos, dicho igual en la web, en el visor y en el port de Godot: de quién
- * era y a quién le pasa el mando o, con las dos jugadas, quién gana y lo que lleva la pareja.
+ * The end of a two-player round, said the same on the web, in the headset and in the Godot port:
+ * whose it was and who the controller passes to or, with both played, who wins and what the pair has so far.
  *
- * El marcador de la pareja ya incluye la partida que acaba de terminar: se apunta al acabar
- * (`saveDuelResult`), antes de pintar esto.
+ * The pair's scoreboard already includes the match that has just finished: it is noted on finishing
+ * (`saveDuelResult`), before painting this.
  */
 export function duelSummary(duel: Duel, tally: DuelTally, lang: Lang): DuelSummary {
-  const t = (key: TextKey, valores: Record<string, string | number> = {}) => formatea(texto(lang, key), valores)
-  const nombre = (player: Player) => texto(lang, PLAYER_LABELS[player])
-  const puntos = (player: Player, points: number) =>
-    t('{player}: {points} points', { player: nombre(player), points: formatoDeCifra(points, lang) })
+  const t = (key: TextKey, values: Record<string, string | number> = {}) => formatText(texto(lang, key), values)
+  const name = (player: Player) => texto(lang, PLAYER_LABELS[player])
+  const pointsLine = (player: Player, points: number) =>
+    t('{player}: {points} points', { player: name(player), points: formatFigure(points, lang) })
   const lines = ([0, 1] as const).flatMap((player) => {
     const points = duel.points[player]
-    return points == null ? [] : [{ player, text: puntos(player, points) }]
+    return points == null ? [] : [{ player, text: pointsLine(player, points) }]
   })
   const turn = duelTurn(duel)
   if (turn != null) {
-    const acaba = otherPlayer(turn)
+    const finished = otherPlayer(turn)
     return {
-      title: puntos(acaba, duel.points[acaba] ?? 0),
-      pass: t('Pass the controller to {player}.', { player: nombre(turn) }),
+      title: pointsLine(finished, duel.points[finished] ?? 0),
+      pass: t('Pass the controller to {player}.', { player: name(turn) }),
       next: turn,
       lines,
       winner: null,
@@ -185,7 +186,7 @@ export function duelSummary(duel: Duel, tally: DuelTally, lang: Lang): DuelSumma
   }
   const winner = duelWinner(duel)
   return {
-    title: winner == null ? t("It's a tie") : t('{player} wins', { player: nombre(winner) }),
+    title: winner == null ? t("It's a tie") : t('{player} wins', { player: name(winner) }),
     pass: null,
     next: null,
     lines,

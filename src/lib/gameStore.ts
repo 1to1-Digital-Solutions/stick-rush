@@ -38,8 +38,8 @@ import {
   createDuel,
   duelOver,
   duelWinner,
-  juegaADos,
-  mejorDelDuelo,
+  playsAsDuel,
+  duelBest,
   recordTurn,
   type Duel,
   type Player,
@@ -59,7 +59,7 @@ import {
 } from './progress'
 import { volumeFactor } from './settings'
 import { setScenery as setArcadeScenery, useLang, useScenery, useVolumes } from './settingsClient'
-import { llevaLaCuenta, partidaDelCartel } from './machineSign'
+import { runCounts, signRun } from './machineSign'
 import {
   goalSign,
   medalToCelebrate,
@@ -68,7 +68,7 @@ import {
   type Goal,
   type GoalSignView,
 } from './goal'
-import { traductorSuave } from './textos'
+import { softTranslator } from './textos'
 import { exposeTestRun } from './testRun'
 import {
   HOOP_ADJUST_STEP,
@@ -78,272 +78,272 @@ import {
   saveHoopAdjustment,
 } from './hoopHeight'
 import {
-  SIN_HAZANAS,
-  conHazanas,
-  contarAtrape,
-  contarTanda,
-  estrenarHazanas,
-  type CuentaDeHazanas,
-  type ResultadoConHazanas,
+  NO_FEATS,
+  withFeats,
+  countCatch,
+  countRound,
+  earnFeats,
+  type FeatCount,
+  type ResultWithFeats,
 } from './feats'
 import { forgetOwnScenery, sceneryModeOf, sceneryOf } from './sceneryPreference'
 import { gameStorage } from './storage'
 import { randomSeed, deriveSeed, type Challenge } from './seed'
 import { stickPoints } from './scoring'
 import {
-  PLAZO_DEL_PASO,
+  STEP_DEADLINE,
   type TutorialStepKey,
-  hitosAtrapando,
+  milestonesFromCatches,
   markTutorialSeen,
-  saltarPaso,
-  tutorialSeen as leerTutorialVisto,
-  tutorialStep as pasoDelTutorial,
+  skipStep,
+  tutorialSeen as readTutorialSeen,
+  tutorialStep as currentTutorialStep,
 } from './tutorial'
-import { enCalentamiento } from './warmup'
+import { inWarmup } from './warmup'
 
 export type GameState = 'menu' | 'countdown' | 'playing' | 'finished'
 
 /**
- * Qué se ve alrededor de la máquina en una sesión inmersiva.
+ * What is seen around the machine in an immersive session.
  *
- * - `scene`: el escenario del juego (la plaza de noche). Es el «modo VR».
- * - `passthrough`: la habitación real del jugador. Es el «modo AR».
+ * - `scene`: the game's scenery (the square at night). It is the "VR mode".
+ * - `passthrough`: the player's real room. It is the "AR mode".
  *
- * No son dos tipos de sesión de WebXR sino dos formas de pintar la misma:
- * cambiar de `immersive-vr` a `immersive-ar` obligaría a cerrar la sesión y
- * abrir otra, con su parpadeo y su permiso. Entrando siempre en `immersive-ar`
- * —cuando el visor la soporta— basta con dibujar el decorado o no para pasar de
- * uno a otro al instante.
+ * They are not two kinds of WebXR session but two ways of painting the same one:
+ * switching from `immersive-vr` to `immersive-ar` would mean closing the session and
+ * opening another, with its flicker and its permission. By always entering `immersive-ar`
+ * —when the headset supports it— drawing the set or not is enough to go from
+ * one to the other instantly.
  */
 export type SceneryMode = 'scene' | 'passthrough'
 
-/** Segundos de cuenta atrás entre pulsar "Jugar" y el primer palo. */
+/** Seconds of countdown between pressing "Jugar" and the first stick. */
 export const COUNTDOWN_SECONDS = 3
 
 /**
- * El modo que se juega con el `reto` del salón: el del récord de la cabina
- * (`stick-rush:best-points:challenge`), con lo que ese modo fija (`CHALLENGE_SETUP`).
+ * The mode played with the hall's `challenge`: the one of the cabinet's record
+ * (`stick-rush:best-points:challenge`), with what that mode fixes (`CHALLENGE_SETUP`).
  */
-const MODO_DEL_RETO: GameMode = 'challenge'
+const CHALLENGE_MODE: GameMode = 'challenge'
 
 /**
- * Lo que el salón le pasa al store a través de la escena (ver `StickRushScene`).
+ * What the hall passes to the store through the scene (see `StickRushScene`).
  *
- * Todo opcional: sin nada, el juego arranca en el menú y sortea como en su propia web.
+ * All optional: with nothing, the game starts in the menu and draws at random as on its own website.
  */
-export interface OpcionesDelSalon {
+export interface HallOptions {
   /**
-   * Jugar este reto: se entra **directamente** en una partida del desafío, sin lección, con los
-   * palos que caen y su turno sacados de la semilla. Se lee al montar; otro reto es otro montaje.
+   * Play this challenge: it goes **straight** into a run of the challenge, with no lesson, with the
+   * sticks that fall and their turn taken from the seed. Read on mount; another challenge is another mount.
    */
-  reto?: Challenge
+  challenge?: Challenge
   /**
-   * Se llama una vez al acabar cada partida con puntuación (no al dejarla a medias), con las
-   * hazañas estrenadas en ella si hay alguna (`feats.ts`).
+   * Called once when each run with a score ends (not when it is left halfway), with the
+   * feats first earned in it if there are any (`feats.ts`).
    */
-  onFinish?: (resultado: ResultadoConHazanas) => void
+  onFinish?: (result: ResultWithFeats) => void
   /**
-   * Los listones de medalla del juego y la marca de quien juega, para el cartel de encima del
-   * marcador (`objetivo.ts`). Sin él —el juego abierto suelto— el cartel dice la misión y el
-   * récord guardado en este navegador.
+   * The game's medal thresholds and the best of whoever is playing, for the sign above the
+   * scoreboard (`goal.ts`). Without it —the game opened on its own— the sign says the mission and the
+   * record saved in this browser.
    */
-  objetivo?: Goal
+  goal?: Goal
 }
 
 export interface GameStore {
-  /** Número de palos elegido (5–13). */
+  /** Number of sticks chosen (5–13). */
   stickCount: number
-  /** Dificultad seleccionada. */
+  /** Selected difficulty. */
   difficulty: Difficulty
-  /** Práctica, niveles o desafío (ver `gameMode.ts`). */
+  /** Practice, levels or challenge (see `gameMode.ts`). */
   gameMode: GameMode
   /**
-   * Práctica sin fin: cuando se resuelve la tanda de palos la máquina vuelve a
-   * cargar otra, hasta que el jugador termina. El récord es la mejor racha.
+   * Endless practice: when the round of sticks is resolved the machine loads
+   * another one, until the player finishes. The record is the best streak.
    */
   endless: boolean
   /**
-   * Cuántos juegan: solo, o dos por turnos con el mismo mando. Solo cuenta en el desafío
-   * (`juegaADos`), que es la misma partida para todos.
+   * How many play: alone, or two taking turns with the same controller. It only counts in the challenge
+   * (`playsAsDuel`), which is the same run for everyone.
    */
   players: PlayerCount
   /**
-   * La partida a dos en marcha, con la tanda recién acabada ya apuntada, o `null` si se juega
-   * solo. Con ella, el final de una tanda es el aviso de pasar el mando o el de quién ha ganado.
+   * The two-player match under way, with the round just finished already recorded, or `null` if playing
+   * alone. With it, the end of a round is the notice to pass the controller or the one of who has won.
    */
   duel: Duel | null
-  /** Quién tiene el mando en la partida a dos, o `null` si se juega solo. */
+  /** Who holds the controller in the two-player match, or `null` if playing alone. */
   player: Player | null
-  /** Las partidas a dos que lleva ganadas cada uno de la pareja que esté delante. */
+  /** The two-player matches each one of the pair in front has won so far. */
   duelTally: DuelTally
   /**
-   * Si el final suena a ganar encima del cierre: un récord batido, o el final de una partida a
-   * dos, que siempre la gana alguien de los que están delante —o empatan— y se celebra.
+   * Whether the ending sounds like winning on top of the close: a beaten record, or the end of a
+   * two-player match, which someone of those in front always wins —or they tie— and is celebrated.
    */
-  celebra: boolean
-  /** Nivel elegido en Niveles, o `null` = el más alto desbloqueado. */
+  celebrates: boolean
+  /** Level chosen in Levels, or `null` = the highest unlocked. */
   level: number | null
-  /** El nivel que se juega: el elegido, o el más alto desbloqueado. */
+  /** The level being played: the chosen one, or the highest unlocked. */
   activeLevel: number
-  /** Hasta qué nivel se puede jugar, recordado entre visitas. */
+  /** Up to which level can be played, remembered between visits. */
   unlockedLevel: number
-  /** Estrellas de cada nivel, del primero al último. */
+  /** Stars of each level, from the first to the last. */
   levelStars: readonly Stars[]
-  /** Cómo acabó el nivel jugado, solo con la partida terminada en Niveles. */
+  /** How the level played ended, only with the run finished in Levels. */
   levelResult: { stars: Stars; passed: boolean; unlocked: number | null } | null
-  /** Velocidad a la que se juega: la elegida, o la del nivel en Niveles. */
+  /** Speed it is played at: the chosen one, or the level's in Levels. */
   activeDifficulty: Difficulty
-  /** Palos que cuelgan de la máquina en esta tanda: los elegidos, o los del nivel. */
+  /** Sticks hanging from the machine in this round: the chosen ones, or the level's. */
   activeStickCount: number
   /**
-   * Semilla del reparto de palos de la tanda en curso: sale de la de la partida y del número
-   * de tanda (`semillaDe`), así que en la partida sin fin cada recarga trae palos nuevos y en
-   * el reto todos los que lo juegan ven caer los mismos palos en el mismo orden.
+   * Seed of the stick layout of the current round: it comes from the run's seed and the round
+   * number (`deriveSeed`), so in the endless run each reload brings new sticks and in
+   * the challenge everyone who plays it sees the same sticks fall in the same order.
    */
   stickSeed: number
   /**
-   * Lo que se juega ahora es el `reto` que pasó el salón. Deja de serlo en cuanto se empieza
-   * otra partida o se vuelve al menú.
+   * What is being played now is the `challenge` the hall passed. It stops being so as soon as
+   * another run is started or the menu is returned to.
    */
-  enReto: boolean
+  inChallenge: boolean
   /**
-   * La lección corre sobre el reto: **lo que pasa aún no cuenta** (`warmup.ts`). Los palos
-   * perdidos no quitan vidas y la partida no se acaba; al cerrarse la lección el reto empieza de
-   * cero.
+   * The lesson runs on top of the challenge: **what happens does not count yet** (`warmup.ts`). Missed
+   * sticks take no lives and the run does not end; when the lesson closes the challenge starts from
+   * scratch.
    */
-  calentando: boolean
-  /** La lección se acaba de cerrar y aún no se ha resuelto el primer palo del reto: se avisa. */
-  ahoraCuenta: boolean
-  /** Tanda en curso de la partida sin fin, empezando en 0; siempre 0 si no. */
+  warmingUp: boolean
+  /** The lesson has just closed and the challenge's first stick is not resolved yet: a notice is shown. */
+  nowItCounts: boolean
+  /** Current round of the endless run, starting at 0; always 0 otherwise. */
   wave: number
-  /** Palos atrapados y resueltos de la TANDA en curso; en sin fin, no de la partida. */
+  /** Sticks caught and resolved in the current ROUND; in endless, not in the run. */
   waveScore: number
   waveResolved: number
   /**
-   * Vidas que quedan en la partida, o `null` en un modo que no se juega con
-   * ellas. En el menú son las de salida: es lo que se pone en juego al empezar.
+   * Lives left in the run, or `null` in a mode that is not played with
+   * them. In the menu they are the starting ones: it is what is at stake when starting.
    */
   lives: number | null
   /**
-   * Cómo ha acabado la partida, o `null` mientras sigue viva. Es lo que
-   * distingue superar el reto de quedarse sin vidas en la pantalla de fin.
+   * How the run has ended, or `null` while it is still alive. It is what
+   * tells beating the challenge from running out of lives on the end screen.
    */
   outcome: RunOutcome | null
   /**
-   * Lo que dice el cartel del objetivo (`objetivo.ts`), ya traducido, o `null` si no hay nada que
-   * colgar: en el menú, y fuera del reto con el juego abierto suelto.
+   * What the goal sign says (`goal.ts`), already translated, or `null` if there is nothing to
+   * hang: in the menu, and outside the challenge with the game opened on its own.
    */
-  cartel: GoalSignView | null
+  sign: GoalSignView | null
   /**
-   * En qué momento va la partida que cuenta para medalla —antes de resolverse el primer palo,
-   * jugando o acabada—, o `null` si lo que se juega no cuenta. Con ella el cartel ya dice los
-   * puntos y las vidas, y el marcador de debajo los calla.
+   * What moment the run that counts for a medal is at —before the first stick is resolved,
+   * playing or finished—, or `null` if what is being played does not count. With it the sign already
+   * says the points and the lives, and the scoreboard below keeps quiet about them.
    */
-  faseDelCartel: GoalPhase | null
-  /** La medalla que ya es de quien juega en esta partida: cuando sube, se celebra el listón. */
-  medalla: Medal | null
-  /** Palos atrapados en la partida actual. */
+  signPhase: GoalPhase | null
+  /** The medal that is already whoever plays' in this run: when it goes up, the threshold is celebrated. */
+  medal: Medal | null
+  /** Sticks caught in the current run. */
   score: number
   /**
-   * Palos ya resueltos (atrapados + perdidos) en la partida actual. Es estado
-   * y no un contador interno porque el HUD 3D de XR lo pinta palo a palo.
+   * Sticks already resolved (caught + missed) in the current run. It is state
+   * and not an internal counter because the XR 3D HUD paints it stick by stick.
    */
   resolved: number
-  /** Puntos acumulados (ver `scoring.ts`). */
+  /** Points accumulated (see `scoring.ts`). */
   points: number
-  /** Palos seguidos atrapados sin fallar ninguno. */
+  /** Sticks caught in a row without missing any. */
   streak: number
-  /** La mejor racha de la partida, para el resumen final. */
+  /** The best streak of the run, for the final summary. */
   bestStreak: number
   /**
-   * Mejor puntuación conseguida **en el modo elegido**, guardada entre visitas
-   * (ver `highScore.ts`). Durante una partida es la marca a batir: no incorpora
-   * los puntos en curso hasta que la partida termina.
+   * Best score achieved **in the chosen mode**, saved between visits
+   * (see `highScore.ts`). During a run it is the best to beat: it does not include
+   * the points in progress until the run ends.
    */
   bestPoints: number
   /**
-   * La partida recién terminada ha superado el récord anterior. Se apaga al
-   * empezar la siguiente o al volver al menú.
+   * The run just finished has beaten the previous record. It goes off when
+   * the next one starts or on returning to the menu.
    */
   isRecord: boolean
-  /** Fase del juego. */
+  /** Phase of the game. */
   gameState: GameState
   /**
-   * Segundos que faltan para que se suelte el primer palo. Solo tiene sentido
-   * en `countdown`; fuera de esa fase vale 0.
+   * Seconds left until the first stick is released. It only makes sense
+   * in `countdown`; outside that phase it is 0.
    */
   countdown: number
   /**
-   * Identificador de partida. Se incrementa al iniciar una nueva para
-   * forzar el remontaje de los sticks y reiniciar sus animaciones.
+   * Run identifier. It is incremented when a new one starts to
+   * force the sticks to remount and restart their animations.
    */
   runId: number
-  /** Escenario o passthrough en sesión inmersiva. */
+  /** Scenery or passthrough in an immersive session. */
   scenery: SceneryMode
   /**
-   * Juego en silencio, porque los efectos están a cero en los ajustes del
-   * arcade. Ya no es una preferencia del juego: se elige una vez en xrcade y
-   * vale para los doce (ver `ajustes.ts`). Aquí se deja derivado porque media
-   * escena pregunta «¿estoy mudo?» y no «¿a cuánto están los efectos?».
+   * Game in silence, because the effects are at zero in the hall's
+   * settings. It is no longer a preference of the game: it is chosen once in xrcade and
+   * holds for all twelve (see `settings.ts`). Here it is left derived because half the
+   * scene asks "am I muted?" and not "how loud are the effects?".
    */
   muted: boolean
-  /** Volumen de los efectos, de 0 a 1, tal y como lo quiere la Web Audio API. */
+  /** Volume of the effects, from 0 to 1, just as the Web Audio API wants it. */
   sfxVolume: number
-  /** Música de fondo encendida: el ambiente de los ajustes, por encima de cero. */
+  /** Background music on: the ambience of the settings, above zero. */
   music: boolean
-  /** Volumen del ambiente, de 0 a 1. */
+  /** Volume of the ambience, from 0 to 1. */
   ambienceVolume: number
   /**
-   * Altura del aro, en metros, ya acomodada a quien juega: sale de la altura
-   * del visor más la corrección manual (ver `hoopHeight.ts`).
+   * Height of the hoop, in metres, already fitted to whoever is playing: it comes from the height
+   * of the headset plus the manual correction (see `hoopHeight.ts`).
    */
   hoopHeight: number
-  /** Corrección manual sobre esa altura, en metros. Se guarda entre visitas. */
+  /** Manual correction on that height, in metres. It is saved between visits. */
   hoopAdjustment: number
   /**
-   * Altura de ojos que ha medido el visor, o `null` cuando no hay sesión, aún
-   * no ha dado tiempo a medir o su espacio de referencia no permite saberla. La
-   * usa el aro y también la interfaz inmersiva, que cuelga de los ojos del
-   * jugador y no del suelo (ver `xrUiRise` en `xrLayout.ts`).
+   * Eye height the headset has measured, or `null` when there is no session, there has
+   * not been time to measure yet or its reference space does not let it be known. The
+   * hoop uses it and so does the immersive UI, which hangs from the player's eyes
+   * and not from the floor (see `xrUiRise` in `xrLayout.ts`).
    */
   playerEyeHeight: number | null
   /**
-   * Si el tutorial del visor ya se vio en este navegador. Se guarda entre
-   * visitas: es lo que hace que se enseñe una sola vez.
+   * Whether the headset tutorial has already been seen in this browser. It is saved between
+   * visits: it is what makes it be shown only once.
    */
   tutorialSeen: boolean
   /**
-   * Si esta partida arrancó enseñando a jugar. Lo decide `startGame` y lo apaga
-   * `finishTutorial`; la lección corre **con la partida en marcha**, así que no
-   * es un estado del juego sino un acompañante suyo (ver `tutorial.ts`).
+   * Whether this run started out teaching how to play. `startGame` decides it and
+   * `finishTutorial` turns it off; the lesson runs **with the run under way**, so it is not
+   * a state of the game but a companion of it (see `tutorial.ts`).
    *
-   * Superados los pasos no se apaga: lo que retira el panel es quedarse sin
-   * paso que enseñar, y es `tutorialStep` quien lo dice.
+   * Once the steps are passed it does not go off: what removes the panel is running out of
+   * a step to teach, and it is `tutorialStep` that says so.
    */
   teaching: boolean
   /**
-   * Qué paso del tutorial toca enseñar, o `null` si no hay lección o ya no
-   * queda nada. Se **deduce** de los palos atrapados, así que avanza solo al
-   * atrapar; el plazo de seguridad de cada paso también lo lleva el store, para
-   * que la lección no dependa de que el Canvas pinte a tiempo.
+   * Which step of the tutorial is to be taught, or `null` if there is no lesson or nothing
+   * is left. It is **deduced** from the sticks caught, so it advances on its own on
+   * catching; the safety deadline of each step is also kept by the store, so
+   * that the lesson does not depend on the Canvas painting in time.
    *
-   * Lo leen los dos sitios que la enseñan: el panel del visor y su reflejo en
-   * el overlay, que tienen que ir por el mismo paso.
+   * The two places that teach it read it: the headset's panel and its mirror in
+   * the overlay, which have to be on the same step.
    */
   tutorialStep: TutorialStepKey | null
-  /** Da por pasado el paso de ahora. Lo llama el botón de siguiente. */
+  /** Counts the current step as passed. The next button calls it. */
   nextTutorialStep: () => void
-  /** Si hay una sesión inmersiva abierta, es decir, si se juega con gafas. */
+  /** Whether an immersive session is open, that is, whether it is played with the headset on. */
   immersive: boolean
   /**
-   * Si se está jugando con las manos desnudas, sin mandos (ver
-   * `playingBareHanded`). Cambia **lo que hay que enseñar**, no lo que hay que
-   * hacer: los palos se cogen igual, pero el gesto se llama de otra manera.
+   * Whether it is being played bare-handed, with no controllers (see
+   * `playingBareHanded`). It changes **what has to be taught**, not what has to be
+   * done: the sticks are caught the same way, but the gesture has another name.
    *
-   * Vive aquí, y no solo dentro del Canvas, porque lo necesitan los dos sitios
-   * que enseñan la lección: el panel del visor y su reflejo en el overlay, que
-   * es DOM y no alcanza el estado de la sesión. Lo pone al día
-   * `XRSessionController`, que es quien ya mira lo que hay conectado.
+   * It lives here, and not only inside the Canvas, because the two places
+   * that teach the lesson need it: the headset's panel and its mirror in the overlay, which
+   * is DOM and cannot reach the session's state. It is kept up to date by
+   * `XRSessionController`, which is the one already watching what is connected.
    */
   bareHanded: boolean
 
@@ -351,71 +351,71 @@ export interface GameStore {
   setStickCount: (count: number) => void
   setDifficulty: (difficulty: Difficulty) => void
   /**
-   * Elige modo. **Solo desde el menú**: con una partida en marcha, o con su
-   * resumen en pantalla, no hace nada (ver el porqué en la implementación).
+   * Chooses the mode. **Only from the menu**: with a run under way, or with its
+   * summary on screen, it does nothing (see why in the implementation).
    */
   setGameMode: (mode: GameMode) => void
   setEndless: (endless: boolean) => void
-  /** Solo, o a dos pasándose el mando. Se lee al empezar cada partida. */
+  /** Alone, or two passing the controller. Read at the start of each run. */
   setPlayers: (players: PlayerCount) => void
-  /** Elige nivel entre los desbloqueados; lo que no lo está se recorta. */
+  /** Chooses a level among the unlocked ones; what is not unlocked is clamped. */
   setLevel: (level: number) => void
-  /** Termina la partida sin fin a voluntad: es su única salida con resumen. */
+  /** Ends the endless run at will: it is its only way out with a summary. */
   endRun: () => void
   /**
-   * Sube (pasos positivos) o baja (negativos) el aro. Cada paso son
-   * `HOOP_ADJUST_STEP` metros y el recorrido está acotado, así que el aro no
-   * puede acabar fuera del alcance ni dentro del suelo.
+   * Raises (positive steps) or lowers (negative) the hoop. Each step is
+   * `HOOP_ADJUST_STEP` metres and the travel is bounded, so the hoop
+   * cannot end up out of reach or inside the floor.
    */
   adjustHoop: (steps: number) => void
   /**
-   * Altura de ojos que mide el visor, o `null` cuando no hay sesión o su
-   * espacio de referencia no permite saberla.
+   * Eye height the headset measures, or `null` when there is no session or its
+   * reference space does not let it be known.
    */
   setPlayerEyeHeight: (height: number | null) => void
-  /** Apunta si se está jugando dentro del visor. Lo lleva al día la sesión. */
+  /** Records whether it is being played inside the headset. The session keeps it up to date. */
   setImmersive: (immersive: boolean) => void
-  /** Apunta si se juega con las manos desnudas. Lo lleva al día la sesión. */
+  /** Records whether it is played bare-handed. The session keeps it up to date. */
   setBareHanded: (bareHanded: boolean) => void
   /**
-   * Lo que se está preguntando ahora mismo, o `null` si no se pregunta nada.
+   * What is being asked right now, or `null` if nothing is being asked.
    *
-   * Dejar la partida a medias **pierde lo que se lleve hecho**, y el botón se pulsa sin
-   * querer: con el visor puesto no se ve lo que hay a los lados y el brazo pasa por donde
-   * pasa. Así que no se sale de golpe: se para y se pregunta. Mientras se pregunta no cae
-   * ningún palo, porque si no, decidir costaría puntos.
+   * Leaving the run halfway **loses what has been done so far**, and the button gets pressed by
+   * accident: with the headset on you cannot see what is at your sides and the arm passes where
+   * it passes. So it does not quit at once: it stops and asks. While it asks no
+   * stick falls, because otherwise deciding would cost points.
    */
   prompt: 'quit' | null
-  /** Para la partida y pregunta si de verdad se quiere dejar. */
+  /** Stops the run and asks whether quitting is really wanted. */
   askToQuit: () => void
-  /** No: se sigue jugando desde donde estaba. */
+  /** No: play goes on from where it was. */
   keepPlaying: () => void
 
   /**
-   * Empieza una partida.
+   * Starts a run.
    *
-   * Por su cuenta enciende la lección de cómo se juega cuando toca: con las
-   * gafas puestas y sin haberla visto nunca. Es del juego y no del botón que se
-   * pulse, porque dentro de la sesión también se puede empezar desde el overlay
-   * con el teclado. `tutorial` fuerza la decisión en los dos sentidos: lo usa el
-   * botón de volver a verla desde el menú.
+   * On its own it turns on the lesson on how to play when it is due: with the
+   * headset on and never having seen it. It belongs to the game and not to the button
+   * pressed, because inside the session a run can also be started from the overlay
+   * with the keyboard. `tutorial` forces the decision both ways: the
+   * button to watch it again from the menu uses it.
    */
   startGame: (options?: { tutorial?: boolean }) => void
   /**
-   * Retira el tutorial y lo da por visto. Lo llaman el botón de saltar y el
-   * propio final de la lección: las dos cosas cuentan, así que a partir de ahí
-   * no vuelve a salir. **No toca la partida**, que sigue donde estaba.
+   * Removes the tutorial and counts it as seen. The skip button and the
+   * lesson's own ending call it: both count, so from then on
+   * it does not come up again. **It does not touch the run**, which carries on where it was.
    */
   finishTutorial: () => void
   /**
-   * Palo atrapado. `fallProgress` (fracción de su tiempo de caída: 0 recién
-   * soltado, 1 a ras de suelo) decide el bonus por reflejos. `espaldas`, si se
-   * cogió de espaldas a él (`deEspaldas` de `feats.ts`): solo cuenta para su hazaña.
+   * Stick caught. `fallProgress` (fraction of its fall time: 0 just
+   * released, 1 level with the floor) decides the reflex bonus. `behind`, whether it was
+   * caught with the back to it (`isBehindBack` in `feats.ts`): it only counts for its feat.
    */
-  catchStick: (fallProgress: number, espaldas?: boolean) => void
+  catchStick: (fallProgress: number, behind?: boolean) => void
   /**
-   * Palo perdido: rompe la racha, cuenta para cerrar la partida y, en desafío,
-   * cuesta una vida.
+   * Stick missed: it breaks the streak, counts towards closing the run and, in challenge,
+   * costs a life.
    */
   missStick: () => void
   resetGame: () => void
@@ -423,41 +423,41 @@ export interface GameStore {
 
 export const GameContext = createContext<GameStore | null>(null)
 
-/** Restringe el número de palos al rango permitido. */
+/** Restricts the number of sticks to the allowed range. */
 function clampStickCount(count: number): number {
   if (Number.isNaN(count)) return MIN_STICKS
   return Math.min(MAX_STICKS, Math.max(MIN_STICKS, Math.round(count)))
 }
 
-export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon = {}): GameStore {
+export function useGameStoreValue({ challenge, onFinish, goal }: HallOptions = {}): GameStore {
   const [stickCount, setStickCountState] = useState(MIN_STICKS)
   const [difficulty, setDifficulty] = useState<Difficulty>('easy')
-  // Se abre en el reto, con salón o sin él (`DEFAULT_GAME_MODE`): Jugar sin tocar nada empieza la
-  // partida que da medalla, y la práctica está a un toque, en el mismo sitio. Con el reto del
-  // salón el modo es ese mismo: el del récord de la cabina.
+  // It opens on the challenge, with the hall or without it (`DEFAULT_GAME_MODE`): Jugar without touching
+  // anything starts the run that gives a medal, and practice is one tap away, in the same place. With
+  // the hall's challenge the mode is that same one: the one of the cabinet's record.
   const [gameMode, setGameModeState] = useState<GameMode>(DEFAULT_GAME_MODE)
-  // El reto se mira una sola vez, al montar: es lo que decide con qué se arranca.
-  const [enReto, setEnReto] = useState(() => reto != null)
-  // De dónde sale el reparto de la partida en marcha. La del reto si se juega el reto; si no,
-  // una nueva en cada partida (`startGame`), que sigue siendo distinta cada vez. En el menú da
-  // igual cuál: los palos cuelgan quietos.
-  const [semilla, setSemilla] = useState(() => reto?.seed ?? 0)
+  // The challenge is looked at only once, on mount: it is what decides what it starts with.
+  const [inChallenge, setInChallenge] = useState(() => challenge != null)
+  // Where the layout of the run under way comes from. The challenge's if the challenge is played; if not,
+  // a new one in each run (`startGame`), which is still different every time. In the menu it does
+  // not matter which: the sticks hang still.
+  const [seed, setSeed] = useState(() => challenge?.seed ?? 0)
   const [endless, setEndless] = useState(false)
   const [players, setPlayers] = useState<PlayerCount>(1)
   /**
-   * La partida a dos con las tandas **ya cerradas** apuntadas. La que se acaba de jugar no se
-   * apunta al acabar —sería escribir estado desde un efecto—: se deduce de la partida terminada
-   * (`duelAhora`) y se apunta al empezar la siguiente.
+   * The two-player match with the rounds **already closed** recorded. The one just played is not
+   * recorded on finishing —that would be writing state from an effect—: it is deduced from the
+   * finished run (`currentDuel`) and recorded when the next one starts.
    */
   const [duel, setDuel] = useState<Duel | null>(null)
   const duelTally = useDuelTally()
-  // `null` es «el más alto desbloqueado»: así el menú enseña el nivel que toca
-  // sin leer el almacenamiento en el primer render, que no está en el servidor.
+  // `null` is "the highest unlocked": that way the menu shows the level that is due
+  // without reading storage on the first render, which is not on the server.
   const [level, setLevelState] = useState<number | null>(null)
-  // La partida sin fin la termina el jugador: es lo único que la cierra.
+  // The endless run is ended by the player: it is the only thing that closes it.
   const [endedByPlayer, setEndedByPlayer] = useState(false)
-  // Tanda de la partida sin fin, y con qué marcador empezó: el marcador de la
-  // partida sigue subiendo mientras la máquina se recarga.
+  // Round of the endless run, and with what scoreboard it started: the scoreboard of the
+  // run keeps going up while the machine reloads.
   const [wave, setWave] = useState(0)
   const [waveStart, setWaveStart] = useState({ score: 0, resolved: 0 })
   const [score, setScore] = useState(0)
@@ -465,35 +465,35 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
   const [points, setPoints] = useState(0)
   const [streak, setStreak] = useState(0)
   const [bestStreak, setBestStreak] = useState(0)
-  // El récord no es estado de React: vive en el navegador y el juego se
-  // suscribe a él. Así no hay que sincronizarlo con efectos ni queda una copia
-  // que pueda discrepar de lo guardado. Cada modo tiene el suyo, así que la
-  // lectura cambia con el modo elegido.
+  // The record is not React state: it lives in the browser and the game
+  // subscribes to it. That way there is no need to sync it with effects and no copy is left
+  // that could disagree with what is saved. Each mode has its own, so the
+  // read changes with the chosen mode.
   const readRecord = useCallback(() => getBestPoints(gameMode), [gameMode])
   const bestPoints = useSyncExternalStore(
     subscribeBestPoints,
     readRecord,
     getServerBestPoints,
   )
-  // La marca a batir se congela al empezar: en cuanto la partida termina y se
-  // guarda, `bestPoints` ya incluye lo recién hecho y no serviría para saber si
-  // se ha superado nada.
+  // The best to beat is frozen at the start: as soon as the run ends and is
+  // saved, `bestPoints` already includes what was just done and would be no use for knowing
+  // whether anything has been beaten.
   const [recordToBeat, setRecordToBeat] = useState(() =>
-    reto != null ? getBestPoints(MODO_DEL_RETO) : 0,
+    challenge != null ? getBestPoints(CHALLENGE_MODE) : 0,
   )
   /**
-   * El récord del salón, tomado al empezar como el local: al acabar, el salón apunta la marca
-   * nueva y vuelve a pasar `objetivo` con ella (`onFinish`), y el cartel compararía la partida
-   * consigo misma («Has igualado tu récord»).
+   * The hall's record, taken at the start like the local one: on finishing, the hall records the new
+   * best and passes `goal` again with it (`onFinish`), and the sign would compare the run
+   * with itself («Has igualado tu récord»).
    */
-  const recordDelSalon = objetivo?.record ?? null
-  const salonVivo = useRef(recordDelSalon)
+  const hallRecord = goal?.record ?? null
+  const liveHallRecord = useRef(hallRecord)
   useEffect(() => {
-    salonVivo.current = recordDelSalon
-  }, [recordDelSalon])
-  const [salonAlEmpezar, setSalonAlEmpezar] = useState(recordDelSalon)
-  // El progreso de Niveles y la racha sin fin tampoco son estado de React: viven
-  // en el navegador y se leen suscritos, como el récord.
+    liveHallRecord.current = hallRecord
+  }, [hallRecord])
+  const [hallRecordAtStart, setHallRecordAtStart] = useState(hallRecord)
+  // The Levels progress and the endless streak are not React state either: they live
+  // in the browser and are read subscribed, like the record.
   const unlockedLevel = useSyncExternalStore(
     subscribeUnlockedLevel,
     getUnlockedLevel,
@@ -509,75 +509,75 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
     getBestEndlessStreak,
     getServerBestEndlessStreak,
   )
-  // Hasta dónde se podía jugar al empezar, y con qué nivel se empezó. El nivel
-  // se congela al empezar: al superarlo se desbloquea el siguiente en el acto, y
-  // si el activo siguiera al desbloqueado la partida terminada se convertiría en
-  // la siguiente a medias, con más palos que resolver y el resumen esfumado.
+  // How far could be played at the start, and with what level it started. The level
+  // is frozen at the start: on passing it the next one is unlocked on the spot, and
+  // if the active one followed the unlocked one the finished run would turn into
+  // the next one halfway, with more sticks to resolve and the summary vanished.
   const [unlockedAtStart, setUnlockedAtStart] = useState(1)
   const [levelAtStart, setLevelAtStart] = useState(1)
-  // Lo único que se guarda es si hay partida en marcha. Las tres fases de una
-  // partida —contando, jugando y terminada— se derivan de la cuenta atrás y de
-  // los palos resueltos, así no hay fuentes de verdad que sincronizar ni
-  // efectos que cambien de fase provocando renders en cascada.
+  // The only thing stored is whether a run is under way. The three phases of a
+  // run —counting, playing and finished— are derived from the countdown and from
+  // the sticks resolved, so there are no sources of truth to sync nor
+  // effects that change phase causing cascading renders.
   //
-  // Con reto se entra jugando: el salón ya ha elegido juego y modo por quien juega.
-  const [running, setRunning] = useState(() => reto != null)
-  // Si esta partida empezó calentando (`warmup.ts`). Se apaga solo al volver a empezar el
-  // reto de cero: mientras tanto la partida no se acaba, aunque la lección ya se haya retirado.
-  const [calentamiento, setCalentamiento] = useState(false)
-  const [avisoDeQueCuenta, setAvisoDeQueCuenta] = useState(false)
-  // El escenario tampoco es estado de React, y además no es del juego: es el
-  // escenario del arcade (`xrcade:scenery`), traducido a `scene`/`passthrough` en
-  // el borde (`sceneryPreference.ts`). Se cambia desde el panel del salón y desde
-  // el menú de aquí, y los dos tienen que ver lo mismo a la vez. Que diga
-  // passthrough no basta para servirlo: en una sesión sin habitación real detrás,
-  // quien pinta la escena lo ignora y mantiene el escenario.
+  // With a challenge it starts out playing: the hall has already chosen game and mode for whoever plays.
+  const [running, setRunning] = useState(() => challenge != null)
+  // Whether this run started warming up (`warmup.ts`). It goes off only on starting the challenge
+  // again from scratch: meanwhile the run does not end, even if the lesson has already been removed.
+  const [warmingUp, setWarmingUp] = useState(false)
+  const [countsNotice, setCountsNotice] = useState(false)
+  // The scenery is not React state either, and besides it is not the game's: it is the
+  // hall's scenery (`xrcade:scenery`), translated to `scene`/`passthrough` at
+  // the edge (`sceneryPreference.ts`). It is changed from the hall's panel and from
+  // the menu here, and both have to see the same thing at once. Saying
+  // passthrough is not enough to serve it: in a session with no real room behind,
+  // whoever paints the scene ignores it and keeps the scenery.
   const scenery = sceneryModeOf(useScenery())
   const setScenery = useCallback(
     (value: SceneryMode) => setArcadeScenery(sceneryOf(value)),
     [],
   )
-  // La clave propia del juego se borra al montar el estado de la partida, sin
-  // trasladarla: la elección que manda es la del salón.
+  // The game's own key is deleted on mounting the run's state, without
+  // carrying it over: the choice that rules is the hall's.
   useEffect(() => {
     forgetOwnScenery(gameStorage())
   }, [])
-  // El sonido no es estado de este juego: sale de los ajustes del arcade, que
-  // se eligen una vez en xrcade y valen para los doce. Aquí solo se traduce a
-  // lo que la escena pregunta: si está mudo y a qué volumen (ver `ajustes.ts`).
+  // Sound is not this game's state: it comes from the hall's settings, which
+  // are chosen once in xrcade and hold for all twelve. Here it is only translated into
+  // what the scene asks: whether it is muted and at what volume (see `settings.ts`).
   const volumes = useVolumes()
   const muted = volumes.sfx === 0
   const sfxVolume = volumeFactor(volumes.sfx)
   const music = volumes.ambience > 0
   const ambienceVolume = volumeFactor(volumes.ambience)
-  const [countdown, setCountdown] = useState(() => (reto != null ? COUNTDOWN_SECONDS : 0))
+  const [countdown, setCountdown] = useState(() => (challenge != null ? COUNTDOWN_SECONDS : 0))
   const [prompt, setPrompt] = useState<'quit' | null>(null)
   const [runId, setRunId] = useState(0)
-  // Las hazañas de la partida en curso (`feats.ts`). No se pintan: se cuentan al atrapar y al
-  // resolverse cada tanda, y se le cuentan al salón al acabar. A dos, las de las dos tandas.
-  const hazanas = useRef<CuentaDeHazanas>(SIN_HAZANAS)
-  // La corrección de la altura del aro sale de lo guardado en visitas
-  // anteriores. En el servidor no hay almacenamiento y vale 0, pero eso no
-  // desajusta la hidratación: el aro solo se pinta dentro del Canvas, que se
-  // carga en cliente.
+  // The feats of the current run (`feats.ts`). They are not painted: they are counted on catching and
+  // when each round is resolved, and the hall is told at the end. With two players, those of both rounds.
+  const feats = useRef<FeatCount>(NO_FEATS)
+  // The correction of the hoop's height comes from what was saved on earlier
+  // visits. On the server there is no storage and it is 0, but that does not
+  // throw hydration off: the hoop is only painted inside the Canvas, which is
+  // loaded on the client.
   const [hoopAdjustment, setHoopAdjustmentState] = useState(getHoopAdjustment)
-  // Lo que mide el visor, mientras dure la sesión. Fuera de ella no hay a quién
-  // medir y el aro se queda a la altura de referencia.
+  // What the headset measures, while the session lasts. Outside it there is nobody to
+  // measure and the hoop stays at the reference height.
   const [playerEyeHeight, setPlayerEyeHeight] = useState<number | null>(null)
-  // El tutorial se ve una vez y se recuerda, como la altura del aro. Se lee al
-  // montar y no en cada consulta porque decide qué se pinta: leer el
-  // almacenamiento en mitad de un render lo volvería impredecible.
-  const [tutorialSeen, setTutorialSeen] = useState(() => leerTutorialVisto())
-  // Si esta partida va enseñando a jugar. **No para nada**: la lección se hace
-  // atrapando palos, así que corre en paralelo a la partida y se retira cuando
-  // se han superado sus pasos o cuando se salta (ver `tutorial.ts`).
+  // The tutorial is seen once and remembered, like the hoop's height. It is read on
+  // mount and not on every query because it decides what is painted: reading
+  // storage in the middle of a render would make it unpredictable.
+  const [tutorialSeen, setTutorialSeen] = useState(() => readTutorialSeen())
+  // Whether this run is teaching how to play. **It stops nothing**: the lesson is done
+  // by catching sticks, so it runs alongside the run and is removed when
+  // its steps have been passed or when it is skipped (see `tutorial.ts`).
   const [teaching, setTeaching] = useState(false)
-  // Los pasos que se han dado por pasados sin hacerlos: a botón o por plazo.
+  // The steps counted as passed without doing them: by button or by deadline.
   const [tutorialSkipped, setTutorialSkipped] = useState(0)
-  // Si hay gafas puestas. El juego lo necesita para saber a quién enseñar cómo
-  // se juega: en escritorio la pantalla de inicio ya lo explica con texto.
+  // Whether the headset is on. The game needs it to know whom to teach how
+  // to play: on desktop the start screen already explains it with text.
   const [immersive, setImmersive] = useState(false)
-  // Con qué se está jugando: mandos o manos desnudas. Solo cambia la lección.
+  // What is being played with: controllers or bare hands. It only changes the lesson.
   const [bareHanded, setBareHanded] = useState(false)
 
   const levels = gameMode === 'levels'
@@ -585,34 +585,34 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
   const selectedLevel = clampLevel(Math.min(level ?? unlockedLevel, unlockedLevel))
   const activeLevel = running ? levelAtStart : selectedLevel
   const currentLevel = levelSpec(activeLevel)
-  // Lo elegido solo cuenta en práctica: en Niveles lo dice el nivel, y el desafío va fijo
-  // (`CHALLENGE_SETUP`) para que su récord —el de la cabina— sea siempre la misma partida.
+  // What was chosen only counts in practice: in Levels the level says it, and the challenge is fixed
+  // (`CHALLENGE_SETUP`) so that its record —the cabinet's— is always the same run.
   const setup = levels ? currentLevel : gameMode === 'challenge' ? CHALLENGE_SETUP : { difficulty, stickCount }
   const activeDifficulty = setup.difficulty
   const activeStickCount = setup.stickCount
-  // Cada tanda, su semilla: sin fin, cada recarga reparte palos nuevos; en el resto de modos
-  // solo hay la tanda 0.
-  const stickSeed = deriveSeed(semilla, wave)
+  // Each round, its seed: in endless, each reload deals new sticks; in the rest of the modes
+  // there is only round 0.
+  const stickSeed = deriveSeed(seed, wave)
   const waveScore = score - waveStart.score
   const waveResolved = resolved - waveStart.resolved
 
-  // Los palos que se han escapado. Se deriva en vez de contarse aparte: un
-  // tercer contador que hay que mantener a la par de los otros dos es un
-  // desajuste esperando a pasar.
+  // The sticks that have got away. It is derived instead of counted separately: a
+  // third counter that has to be kept in step with the other two is a
+  // mismatch waiting to happen.
   const misses = resolved - score
-  // Cuándo se acaba una partida lo decide el modo (ver `gameMode.ts`): en
-  // práctica, el último palo; en desafío, también quedarse sin vidas. Sin fin
-  // no se acaba sola: la cierra el jugador.
-  const outcome = running && !calentamiento
+  // When a run ends is decided by the mode (see `gameMode.ts`): in
+  // practice, the last stick; in challenge, also running out of lives. Endless
+  // does not end on its own: the player closes it.
+  const outcome = running && !warmingUp
     ? endlessRun
       ? endedByPlayer
         ? 'cleared'
         : null
       : runOutcome({ mode: gameMode, resolved, misses, stickCount: activeStickCount })
     : null
-  // Calentando, los palos perdidos no cuestan vidas.
-  const lives = remainingLives(gameMode, calentamiento ? 0 : misses)
-  const ahoraCuenta = avisoDeQueCuenta && resolved === 0
+  // Warming up, missed sticks cost no lives.
+  const lives = remainingLives(gameMode, warmingUp ? 0 : misses)
+  const nowItCounts = countsNotice && resolved === 0
   const gameState: GameState = !running
     ? 'menu'
     : countdown > 0
@@ -621,26 +621,26 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
         ? 'finished'
         : 'playing'
 
-  // Por qué paso va la lección. Sale de lo que ya ha hecho quien juega —los
-  // palos que lleva atrapados— y de lo que se haya dado por pasado: una cuenta
-  // propia del tutorial acabaría discrepando de la partida, y aquí lo que manda
-  // es la partida.
+  // Which step the lesson is on. It comes from what whoever plays has already done —the
+  // sticks caught so far— and from what has been counted as passed: a count
+  // of the tutorial's own would end up disagreeing with the run, and here what rules
+  // is the run.
   const tutorialStep = teaching
-    ? pasoDelTutorial(hitosAtrapando(score), tutorialSkipped)
+    ? currentTutorialStep(milestonesFromCatches(score), tutorialSkipped)
     : null
 
-  // Un tic por segundo hasta soltar el primer palo. La cuenta atrás da tiempo a
-  // colocarse —en el visor uno acaba de pulsar un botón y tiene las manos donde
-  // no toca— y avisa de que la partida va a empezar de verdad.
+  // One tick per second until the first stick is released. The countdown gives time to
+  // get into place —in the headset you have just pressed a button and your hands are where
+  // they should not be— and warns that the run is really going to start.
   useEffect(() => {
     if (!running || countdown <= 0 || prompt !== null) return
     const timer = setTimeout(() => setCountdown((value) => value - 1), 1000)
     return () => clearTimeout(timer)
   }, [running, countdown, prompt])
 
-  // Saltarlo y terminarlo son la misma salida: en los dos casos quien juega ya
-  // ha decidido, y la lección no vuelve a salir. La partida no se toca, porque
-  // nunca llegó a pararse.
+  // Skipping it and finishing it are the same way out: in both cases whoever plays has already
+  // decided, and the lesson does not come up again. The run is not touched, because
+  // it never got to stop.
   const finishTutorial = useCallback(() => {
     if (!teaching) return
     markTutorialSeen()
@@ -648,106 +648,106 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
     setTeaching(false)
   }, [teaching])
 
-  // Superados todos los pasos, la lección queda anotada como vista. Es un
-  // efecto porque no lo dispara ningún gesto —lo dispara haber atrapado los
-  // palos que pedía—, y **solo escribe fuera de React**: el panel ya se retira
-  // solo, porque lo que lo monta es el paso y el paso se ha quedado en `null`.
-  // Apagar además `teaching` desde aquí sería pedir un render de más para algo
-  // que no se ve.
+  // Once all the steps are passed, the lesson is noted as seen. It is an
+  // effect because no gesture triggers it —having caught the sticks it asked for
+  // triggers it—, and **it only writes outside React**: the panel already removes
+  // itself, because what mounts it is the step and the step has stayed at `null`.
+  // Turning `teaching` off from here as well would be asking for one render more for something
+  // that is not seen.
   useEffect(() => {
     if (!teaching || tutorialStep !== null) return
     markTutorialSeen()
   }, [teaching, tutorialStep])
 
-  // El plazo de seguridad del paso: si el hito no llega —porque los palos se
-  // escapan, o porque quien juega se queda leyendo—, se pasa solo. Corre solo
-  // mientras se juega de verdad: con la cuenta atrás no hay palos que atrapar,
-  // y con la pregunta de salir en pantalla la partida está parada.
+  // The step's safety deadline: if the milestone does not come —because the sticks get
+  // away, or because whoever plays stays reading—, it passes on its own. It only runs
+  // while it is really being played: during the countdown there are no sticks to catch,
+  // and with the quit question on screen the run is stopped.
   useEffect(() => {
     if (tutorialStep === null || gameState !== 'playing' || prompt !== null) return
-    const plazo = setTimeout(
-      () => setTutorialSkipped((pasados) => saltarPaso(pasados, tutorialStep)),
-      PLAZO_DEL_PASO[tutorialStep] * 1000,
+    const deadline = setTimeout(
+      () => setTutorialSkipped((skipped) => skipStep(skipped, tutorialStep)),
+      STEP_DEADLINE[tutorialStep] * 1000,
     )
-    return () => clearTimeout(plazo)
+    return () => clearTimeout(deadline)
   }, [tutorialStep, gameState, prompt])
 
   const nextTutorialStep = useCallback(() => {
     if (tutorialStep === null) return
-    setTutorialSkipped((pasados) => saltarPaso(pasados, tutorialStep))
+    setTutorialSkipped((skipped) => skipStep(skipped, tutorialStep))
   }, [tutorialStep])
 
-  // Sin fin: tanda resuelta, la máquina se recarga. Se apunta de qué tanda se
-  // pasó para que dos ejecuciones del efecto —Strict Mode las provoca— no
-  // salten dos.
+  // Endless: round resolved, the machine reloads. Which round was passed is noted
+  // so that two executions of the effect —Strict Mode causes them— do not
+  // skip two.
   const advancedWave = useRef(-1)
   useEffect(() => {
     if (!running || !endlessRun || gameState !== 'playing') return
     if (waveResolved < activeStickCount) return
-    // Dos ejecuciones del efecto por la misma tanda —Strict Mode las provoca en
-    // desarrollo— sumarían dos veces lo hecho.
+    // Two executions of the effect for the same round —Strict Mode causes them in
+    // development— would add what was done twice.
     /* v8 ignore next */
     if (advancedWave.current === wave) return
     advancedWave.current = wave
-    hazanas.current = contarTanda(hazanas.current, {
-      palos: activeStickCount,
-      atrapados: waveScore,
-      ajusteDelAro: hoopAdjustment,
+    feats.current = countRound(feats.current, {
+      sticks: activeStickCount,
+      caught: waveScore,
+      hoopAdjustment,
     })
     setWaveStart({ score, resolved })
     setWave((value) => value + 1)
   }, [running, endlessRun, gameState, waveResolved, waveScore, activeStickCount, wave, score, resolved, hoopAdjustment])
 
-  // Cómo acabó el nivel, solo con la partida terminada en Niveles.
+  // How the level ended, only with the run finished in Levels.
   const levelResult = useMemo(() => {
     if (!levels || gameState !== 'finished') return null
     const stars = levelStars(score, activeStickCount)
     const passed = levelPassed(stars)
-    const abre = passed && activeLevel + 1 > unlockedAtStart && activeLevel < LEVEL_COUNT
-    return { stars, passed, unlocked: abre ? activeLevel + 1 : null }
+    const unlocksNext = passed && activeLevel + 1 > unlockedAtStart && activeLevel < LEVEL_COUNT
+    return { stars, passed, unlocked: unlocksNext ? activeLevel + 1 : null }
   }, [levels, gameState, score, activeStickCount, activeLevel, unlockedAtStart])
 
-  // Cada modo guarda lo suyo al terminar: puntos, racha o estrellas. Guardar
-  // solo hace algo si mejora lo que había, así que repetirlo no cambia nada. Se
-  // guarda al final y no palo a palo para que durante la partida el récord siga
-  // siendo la marca a batir.
+  // Each mode saves its own on finishing: points, streak or stars. Saving
+  // only does something if it improves what there was, so repeating it changes nothing. It is
+  // saved at the end and not stick by stick so that during the run the record remains
+  // the best to beat.
   //
-  // Y aquí mismo se le cuenta al salón, una vez por partida y aunque no sea récord. Este efecto
-  // se rehace con cada render de la pantalla final (y dos veces en desarrollo): la partida de la
-  // que ya se avisó se apunta para no contarla dos veces. El aviso se lee del último render y no
-  // entra en las dependencias: un anfitrión que pasa una función nueva en cada render no tiene
-  // por qué rehacer nada.
-  const avisada = useRef(-1)
-  const avisar = useRef(onFinish)
+  // And right here the hall is told, once per run and even if it is not a record. This effect
+  // is redone with every render of the final screen (and twice in development): the run that was
+  // already reported is noted so as not to report it twice. The callback is read from the last render
+  // and does not go into the dependencies: a host that passes a new function on every render has no
+  // reason to redo anything.
+  const reportedRun = useRef(-1)
+  const report = useRef(onFinish)
   useEffect(() => {
-    avisar.current = onFinish
+    report.current = onFinish
   }, [onFinish])
-  // La partida a dos con la tanda que acaba de terminar ya apuntada: el aviso de pasar el mando y
-  // el de quién ha ganado salen de aquí.
-  const duelAhora = duel !== null && gameState === 'finished' ? recordTurn(duel, points) : duel
+  // The two-player match with the round that has just ended already recorded: the notice to pass the
+  // controller and the one of who has won come from here.
+  const currentDuel = duel !== null && gameState === 'finished' ? recordTurn(duel, points) : duel
   useEffect(() => {
     if (gameState !== 'finished') return
-    // La tanda de la partida, si se ha resuelto entera: la que acaba sin vidas no. La partida sin
-    // fin cuenta cada tanda al recargar, y la que se deja a medias al terminarla no es tanda.
-    // Contarla otra vez en el siguiente render no cambia nada.
+    // The run's round, if it has been resolved whole: the one that ends with no lives is not. The endless
+    // run counts each round on reloading, and the one left halfway on ending it is not a round.
+    // Counting it again on the next render changes nothing.
     if (!endlessRun && resolved === activeStickCount) {
-      hazanas.current = contarTanda(hazanas.current, {
-        palos: activeStickCount,
-        atrapados: score,
-        ajusteDelAro: hoopAdjustment,
+      feats.current = countRound(feats.current, {
+        sticks: activeStickCount,
+        caught: score,
+        hoopAdjustment,
       })
     }
-    // A dos no hay récord que guardar: una tanda a dos no es la marca de nadie. Lo que cuenta es
-    // quién gana, y se apunta al acabar la segunda, una vez por partida; al salón, la partida
-    // entera y no cada tanda, con lo mejor que se hizo.
-    if (duelAhora !== null) {
-      if (!duelOver(duelAhora) || avisada.current === runId) return
-      avisada.current = runId
-      saveDuelResult(duelWinner(duelAhora))
-      avisar.current?.(
-        conHazanas(
-          { mode: 'duel', points: mejorDelDuelo(duelAhora), challenge: false },
-          estrenarHazanas(hazanas.current.logradas),
+    // With two players there is no record to save: a two-player round is nobody's best. What counts is
+    // who wins, and it is recorded at the end of the second, once per match; to the hall, the whole
+    // match and not each round, with the best that was done.
+    if (currentDuel !== null) {
+      if (!duelOver(currentDuel) || reportedRun.current === runId) return
+      reportedRun.current = runId
+      saveDuelResult(duelWinner(currentDuel))
+      report.current?.(
+        withFeats(
+          { mode: 'duel', points: duelBest(currentDuel), challenge: false },
+          earnFeats(feats.current.earned),
         ),
       )
       return
@@ -755,10 +755,10 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
     if (levelResult) saveLevelResult(activeLevel, levelResult.stars)
     else if (endlessRun) saveBestEndlessStreak(bestStreak)
     else saveBestPoints(gameMode, points)
-    if (avisada.current === runId) return
-    avisada.current = runId
-    avisar.current?.(
-      conHazanas({ mode: gameMode, points: points, challenge: enReto }, estrenarHazanas(hazanas.current.logradas)),
+    if (reportedRun.current === runId) return
+    reportedRun.current = runId
+    report.current?.(
+      withFeats({ mode: gameMode, points: points, challenge: inChallenge }, earnFeats(feats.current.earned)),
     )
   }, [
     gameState,
@@ -769,30 +769,30 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
     levelResult,
     activeLevel,
     runId,
-    enReto,
-    duelAhora,
+    inChallenge,
+    currentDuel,
     resolved,
     activeStickCount,
     score,
     hoopAdjustment,
   ])
 
-  // La marca de este modo: puntos, o la racha en la partida sin fin. En Niveles
-  // no hay marca que batir: hay estrellas.
+  // The best of this mode: points, or the streak in the endless run. In Levels
+  // there is no best to beat: there are stars.
   const bestForMode = endlessRun ? bestEndlessStreak : levels ? 0 : bestPoints
   const scoreForRecord = endlessRun ? bestStreak : points
-  // La partida ha batido el récord con el que empezó *y* lo guardado es
-  // exactamente esta puntuación. Sin esa segunda condición, con el
-  // almacenamiento bloqueado la marca a batir se quedaría a cero para siempre y
-  // cada partida con puntos se anunciaría como récord. Y se exige la igualdad y
-  // no "al menos": con dos pestañas abiertas, la otra puede haber guardado algo
-  // mejor mientras se jugaba, y entonces esta partida supera la marca que
-  // congeló al empezar pero no la que hay guardada. Derivado y no guardado:
-  // dura lo que dure la pantalla de fin de partida.
+  // The run has beaten the record it started with *and* what is saved is
+  // exactly this score. Without that second condition, with
+  // storage blocked the best to beat would stay at zero forever and
+  // every run with points would be announced as a record. And equality is required and
+  // not "at least": with two tabs open, the other one may have saved something
+  // better while this was being played, and then this run beats the best it
+  // froze at the start but not the one saved. Derived and not stored:
+  // it lasts as long as the end-of-run screen lasts.
   const isRecord =
     gameState === 'finished' &&
     !levels &&
-    duelAhora === null &&
+    currentDuel === null &&
     scoreForRecord > recordToBeat &&
     bestForMode === scoreForRecord
   const hoopHeight = hoopHeightFor({
@@ -800,44 +800,44 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
     adjustment: hoopAdjustment,
   })
 
-  // El cartel del objetivo: qué hay que superar y cuánto falta. Se arma ya traducido, como lo
-  // pide `objetivo.ts`: sus frases son plantillas y partirlas fuera no vale para dos idiomas.
+  // The goal sign: what has to be beaten and how much is left. It is built already translated, as
+  // `goal.ts` asks: its sentences are templates and splitting them outside does not work for two languages.
   const lang = useLang()
-  const aDos = duelAhora !== null
-  const partidaQueSeCuenta = useMemo(
+  const twoPlayers = currentDuel !== null
+  const runForTheSign = useMemo(
     () =>
-      partidaDelCartel(
+      signRun(
         {
-          objetivo: objetivo == null ? objetivo : { ...objetivo, record: salonAlEmpezar },
+          goal: goal == null ? goal : { ...goal, record: hallRecordAtStart },
           gameMode,
-          aDos,
+          twoPlayers,
           gameState,
           points,
           lives,
           resolved,
           stickCount: activeStickCount,
           record: recordToBeat,
-          calentando: calentamiento,
-          ahoraCuenta,
+          warmingUp,
+          nowItCounts,
         },
-        traductorSuave(lang),
+        softTranslator(lang),
       ),
-    [objetivo, salonAlEmpezar, gameMode, aDos, gameState, points, lives, resolved, activeStickCount, recordToBeat, calentamiento, ahoraCuenta, lang],
+    [goal, hallRecordAtStart, gameMode, twoPlayers, gameState, points, lives, resolved, activeStickCount, recordToBeat, warmingUp, nowItCounts, lang],
   )
-  const cartel = useMemo(
-    () => (partidaQueSeCuenta == null ? null : goalSign(partidaQueSeCuenta, traductorSuave(lang))),
-    [partidaQueSeCuenta, lang],
+  const sign = useMemo(
+    () => (runForTheSign == null ? null : goalSign(runForTheSign, softTranslator(lang))),
+    [runForTheSign, lang],
   )
-  const faseDelCartel = llevaLaCuenta(partidaQueSeCuenta) ? partidaQueSeCuenta.phase : null
-  const medalla = partidaQueSeCuenta == null ? null : medalToCelebrate(partidaQueSeCuenta)
+  const signPhase = runCounts(runForTheSign) ? runForTheSign.phase : null
+  const medal = runForTheSign == null ? null : medalToCelebrate(runForTheSign)
 
   const setStickCount = useCallback((count: number) => {
     setStickCountState(clampStickCount(count))
   }, [])
 
-  // Se guarda al tocarlo y no al salir: en el visor no hay "salir", uno se
-  // quita las gafas. Y solo cuando el valor cambia de verdad, para no escribir
-  // en cada pulsación una vez alcanzado el tope.
+  // It is saved on touching it and not on leaving: in the headset there is no "leave", you
+  // take the headset off. And only when the value really changes, so as not to write
+  // on every press once the limit is reached.
   const adjustHoop = useCallback(
     (steps: number) => {
       const next = clampHoopAdjustment(hoopAdjustment + steps * HOOP_ADJUST_STEP)
@@ -849,14 +849,14 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
   )
 
   /**
-   * El modo es de la partida entera, así que solo se cambia entre partidas.
+   * The mode belongs to the whole run, so it is only changed between runs.
    *
-   * No es una precaución teórica: los puntos conseguidos y el modo en el que se
-   * consiguieron son un par, y el récord se guarda leyendo los dos. Con el
-   * resumen en pantalla —donde la puntuación sigue viva— cambiar de modo
-   * copiaría esa puntuación al récord del otro, que no se ha jugado. Hoy ningún
-   * menú se ve en esa fase, pero la regla es del juego y no de dónde esté el
-   * botón.
+   * It is not a theoretical precaution: the points scored and the mode in which they were
+   * scored are a pair, and the record is saved reading both. With the
+   * summary on screen —where the score is still alive— changing mode
+   * would copy that score to the record of the other one, which has not been played. Today no
+   * menu is seen in that phase, but the rule belongs to the game and not to where the
+   * button is.
    */
   const setGameMode = useCallback(
     (mode: GameMode) => {
@@ -890,73 +890,73 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
   const startGame = useCallback(
     (options?: { tutorial?: boolean }) => {
       setPrompt(null)
-      // Con las gafas puestas y sin haberla visto nunca, la partida va
-      // enseñando. La cuenta atrás no cambia: la lección se aprende atrapando
-      // palos, así que empieza cuando empiezan a caer y no antes.
+      // With the headset on and never having seen it, the run goes along
+      // teaching. The countdown does not change: the lesson is learnt by catching
+      // sticks, so it starts when they start to fall and not before.
       //
-      // Se **relee** del almacenamiento en vez de mirar lo que se leyó al
-      // montar: la lección que se termina atrapando queda anotada sin pasar por
-      // React, así que el estado se habría quedado atrás y la segunda partida
-      // de la misma visita volvería a enseñar lo ya aprendido.
-      const visto = leerTutorialVisto()
-      setTutorialSeen(visto)
+      // It is **re-read** from storage instead of looking at what was read on
+      // mount: the lesson that is finished by catching is noted without going through
+      // React, so the state would have been left behind and the second run
+      // of the same visit would teach again what was already learnt.
+      const seen = readTutorialSeen()
+      setTutorialSeen(seen)
       clearRun()
-      // Lo que viene es otra partida: ya no es el reto del salón aunque se juegue en el mismo
-      // modo, y estrena semilla. A dos, el segundo juega **la semilla del primero**: los mismos
-      // palos en el mismo orden. Con la partida acabada, o sin ninguna, empieza otra.
-      setEnReto(false)
-      const partida = !juegaADos(gameMode, players)
+      // What comes is another run: it is no longer the hall's challenge even if it is played in the same
+      // mode, and it gets a fresh seed. With two players, the second plays **the first one's seed**: the
+      // same sticks in the same order. With the match finished, or with none, another one starts.
+      setInChallenge(false)
+      const match = !playsAsDuel(gameMode, players)
         ? null
-        : duelAhora === null || duelOver(duelAhora)
+        : currentDuel === null || duelOver(currentDuel)
           ? createDuel(randomSeed())
-          : duelAhora
-      setDuel(partida)
-      // Las hazañas empiezan de cero con cada partida, salvo el segundo turno de una a dos: la
-      // partida es de los dos turnos y se le cuenta al salón entera al acabar el segundo.
-      if (partida === null || partida !== duelAhora) hazanas.current = SIN_HAZANAS
-      setSemilla(partida?.semilla ?? randomSeed())
+          : currentDuel
+      setDuel(match)
+      // The feats start from scratch with each run, except the second turn of a two-player one: the
+      // match belongs to both turns and the hall is told about it whole when the second ends.
+      if (match === null || match !== currentDuel) feats.current = NO_FEATS
+      setSeed(match?.seed ?? randomSeed())
       setRecordToBeat(
         gameMode === 'practice' && endless ? getBestEndlessStreak() : getBestPoints(gameMode),
       )
-      setSalonAlEmpezar(salonVivo.current)
+      setHallRecordAtStart(liveHallRecord.current)
       setUnlockedAtStart(getUnlockedLevel())
       setLevelAtStart(selectedLevel)
       setRunId((id) => id + 1)
-      const ensenando = options?.tutorial ?? (immersive && !visto)
-      setTeaching(ensenando)
-      setCalentamiento(enCalentamiento({ ensenando, gameMode, aDos: partida !== null, enReto: false }))
-      setAvisoDeQueCuenta(false)
+      const willTeach = options?.tutorial ?? (immersive && !seen)
+      setTeaching(willTeach)
+      setWarmingUp(inWarmup({ teaching: willTeach, gameMode, twoPlayers: match !== null, inChallenge: false }))
+      setCountsNotice(false)
       setTutorialSkipped(0)
       setCountdown(COUNTDOWN_SECONDS)
       setRunning(true)
     },
-    [clearRun, gameMode, players, duelAhora, endless, selectedLevel, immersive],
+    [clearRun, gameMode, players, currentDuel, endless, selectedLevel, immersive],
   )
 
-  // **La lección se cierra y el reto empieza de cero** (`warmup.ts`): por sus pasos, por
-  // «Siguiente», por «Saltar» o por su plazo, que en los cuatro casos deja el paso en `null`. La
-  // lección ya queda anotada como vista (`finishTutorial` o el efecto de arriba), así que la
-  // partida nueva no enseña; y avisa de que ahora cuenta hasta que se resuelva su primer palo.
+  // **The lesson closes and the challenge starts from scratch** (`warmup.ts`): by its steps, by
+  // «Siguiente», by «Saltar» or by its deadline, which in all four cases leaves the step at `null`. The
+  // lesson is already noted as seen (`finishTutorial` or the effect above), so the
+  // new run does not teach; and it warns that now it counts until its first stick is resolved.
   //
-  // Una vez por partida: dos ejecuciones del efecto —Strict Mode las provoca— empezarían dos.
-  const reempezada = useRef(-1)
+  // Once per run: two executions of the effect —Strict Mode causes them— would start two.
+  const restartedRun = useRef(-1)
   useEffect(() => {
-    if (!calentamiento || !running || tutorialStep !== null) return
+    if (!warmingUp || !running || tutorialStep !== null) return
     /* v8 ignore next */
-    if (reempezada.current === runId) return
-    reempezada.current = runId
+    if (restartedRun.current === runId) return
+    restartedRun.current = runId
     startGame({ tutorial: false })
-    setAvisoDeQueCuenta(true)
-  }, [calentamiento, running, tutorialStep, startGame, runId])
+    setCountsNotice(true)
+  }, [warmingUp, running, tutorialStep, startGame, runId])
 
   const catchStick = useCallback(
-    (fallProgress: number, espaldas = false) => {
-      hazanas.current = contarAtrape(hazanas.current, { espaldas })
+    (fallProgress: number, behind = false) => {
+      feats.current = countCatch(feats.current, { behind })
       setScore((value) => value + 1)
       setResolved((value) => value + 1)
-      // La racha se calcula aquí y no fuera porque los puntos dependen de ella:
-      // con dos palos resolviéndose en el mismo lote, leer `streak` del render
-      // anterior daría el mismo bonus a los dos.
+      // The streak is computed here and not outside because the points depend on it:
+      // with two sticks being resolved in the same batch, reading `streak` from the previous
+      // render would give the same bonus to both.
       setStreak((previous) => {
         const next = previous + 1
         setBestStreak((best) => Math.max(best, next))
@@ -974,33 +974,33 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
     setStreak(0)
   }, [])
 
-  // El gancho de los e2e comunes (`partidaDePrueba.ts`): solo hace algo si el test lo ha pedido.
-  // Lee el estado vigente de una referencia, no el del render en que se dejó puesto.
-  const enCurso = useRef({ cartel, resolved, score })
+  // The hook of the shared e2e (`testRun.ts`): it only does something if the test has asked for it.
+  // It reads the current state from a ref, not that of the render in which it was set.
+  const inProgress = useRef({ sign, resolved, score })
   useEffect(() => {
-    enCurso.current = { cartel, resolved, score }
-  }, [cartel, resolved, score])
+    inProgress.current = { sign, resolved, score }
+  }, [sign, resolved, score])
   useEffect(() => {
     exposeTestRun({
       start: () => {
         startGame({ tutorial: false })
         setCountdown(0)
       },
-      score: (puntos) => {
-        setPoints(puntos)
-        // Como si ya se hubiera atrapado un palo: hasta el primero, el cartel dice la misión.
-        if (enCurso.current.resolved === 0) {
+      score: (newPoints) => {
+        setPoints(newPoints)
+        // As if a stick had already been caught: until the first one, the sign says the mission.
+        if (inProgress.current.resolved === 0) {
           setResolved(1)
           setScore(1)
         }
       },
       end: () => {
-        // Los palos que quedan, atrapados: el reto se supera y se le cuenta al salón.
-        const { resolved: hechos, score: atrapados } = enCurso.current
-        setScore(atrapados + activeStickCount - hechos)
+        // The remaining sticks, caught: the challenge is beaten and the hall is told.
+        const { resolved: done, score: caught } = inProgress.current
+        setScore(caught + activeStickCount - done)
         setResolved(activeStickCount)
       },
-      sign: () => enCurso.current.cartel,
+      sign: () => inProgress.current.sign,
     })
   }, [startGame, activeStickCount])
 
@@ -1011,17 +1011,17 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
     setPrompt(null)
     clearRun()
     setCountdown(0)
-    // Dejar la lección a medias no cuenta como haberla visto: quien vuelve al
-    // menú con el panel puesto se la encuentra otra vez al empezar.
+    // Leaving the lesson halfway does not count as having seen it: whoever returns to the
+    // menu with the panel up finds it again on starting.
     setTeaching(false)
-    setCalentamiento(false)
-    setAvisoDeQueCuenta(false)
+    setWarmingUp(false)
+    setCountsNotice(false)
     setTutorialSkipped(0)
-    setEnReto(false)
-    // Volver al menú deja la partida a dos: la siguiente empieza de cero. Lo conseguido en la
-    // partida dejada a medias no se cuenta, como sus puntos.
+    setInChallenge(false)
+    // Returning to the menu drops the two-player match: the next one starts from scratch. What was
+    // achieved in the run left halfway is not counted, like its points.
     setDuel(null)
-    hazanas.current = SIN_HAZANAS
+    feats.current = NO_FEATS
     setRunning(false)
   }, [clearRun])
 
@@ -1035,10 +1035,10 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
       gameMode,
       endless,
       players,
-      duel: duelAhora,
-      player: duelAhora === null ? null : controllerHolder(duelAhora),
+      duel: currentDuel,
+      player: currentDuel === null ? null : controllerHolder(currentDuel),
       duelTally,
-      celebra: isRecord || (duelAhora !== null && duelOver(duelAhora)),
+      celebrates: isRecord || (currentDuel !== null && duelOver(currentDuel)),
       level,
       activeLevel,
       unlockedLevel,
@@ -1047,17 +1047,17 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
       activeDifficulty,
       activeStickCount,
       stickSeed,
-      enReto,
-      calentando: calentamiento,
-      ahoraCuenta,
+      inChallenge,
+      warmingUp,
+      nowItCounts,
       wave,
       waveScore,
       waveResolved,
       lives,
       outcome,
-      cartel,
-      faseDelCartel,
-      medalla,
+      sign,
+      signPhase,
+      medal,
       score,
       resolved,
       points,
@@ -1109,7 +1109,7 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
       gameMode,
       endless,
       players,
-      duelAhora,
+      currentDuel,
       duelTally,
       level,
       activeLevel,
@@ -1119,17 +1119,17 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
       activeDifficulty,
       activeStickCount,
       stickSeed,
-      enReto,
-      calentamiento,
-      ahoraCuenta,
+      inChallenge,
+      warmingUp,
+      nowItCounts,
       wave,
       waveScore,
       waveResolved,
       lives,
       outcome,
-      cartel,
-      faseDelCartel,
-      medalla,
+      sign,
+      signPhase,
+      medal,
       score,
       resolved,
       points,

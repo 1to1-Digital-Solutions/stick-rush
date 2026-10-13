@@ -1,42 +1,42 @@
-# Créditos del paquete de Godot
+# Credits of the Godot package
 
-Lo que viaja en el `.pck` de Stick Rush y viene de fuera del proyecto. Es lo mismo que la web sirve
-desde `public/` (su `public/CREDITS.md`), copiado al paquete: la máquina, los palos, las guirnaldas,
-el público y la noria son geometría generada en código, y los efectos se renderizan del `sound.ts`
-de la web (`npm run godot:sfx`).
+What travels in the Stick Rush `.pck` and comes from outside the project. It is the same as what
+the web serves from `public/` (its `public/CREDITS.md`), copied into the package: the machine, the
+sticks, the garlands, the crowd and the Ferris wheel are geometry generated in code, and the
+effects are rendered from the web's `sound.ts` (`npm run godot:sfx`).
 
-## La plaza de noche — `hdri/plaza_pueblo_1k.exr`
+## The night square — `hdri/plaza_pueblo_1k.exr`
 
-Night Environment HDRI 009 de ambientCG (<https://ambientcg.com/view?id=NightEnvironmentHDRI009>),
-**CC0 1.0**. El fondo y los reflejos de la escena. Se acredita por cortesía.
+Night Environment HDRI 009 by ambientCG (<https://ambientcg.com/view?id=NightEnvironmentHDRI009>),
+**CC0 1.0**. The background and the reflections of the scene. Credited as a courtesy.
 
-## La madera de los palos — `texturas/wood_{nor,rough}_1k.jpg`
+## The wood of the sticks — `texturas/wood_{nor,rough}_1k.jpg`
 
-Fine Grained Wood de Poly Haven (<https://polyhaven.com/a/fine_grained_wood>), **CC0 1.0**: los
-mapas de normales y de rugosidad, sin su mapa de color. Se acredita por cortesía.
+Fine Grained Wood by Poly Haven (<https://polyhaven.com/a/fine_grained_wood>), **CC0 1.0**: the
+normal and roughness maps, without its colour map. Credited as a courtesy.
 
-## El recinto — `feria/{puesto,farol,banderola}.glb`
+## The venue — `feria/{puesto,farol,banderola}.glb`
 
-Fantasy Town Kit 2.0 de Kenney (<https://kenney.nl/assets/fantasy-town-kit>), **CC0 1.0**: `stall-red`,
-`lantern` y `banner-red`, pasadas por el kit compartido de xrcade (`xrcade/kit/`), que les pone el
-color en los vértices. Son las mismas de `public/models/kit/`, byte a byte (lo comprueba
-`scene/world/world.engine.test.ts`).
+Fantasy Town Kit 2.0 by Kenney (<https://kenney.nl/assets/fantasy-town-kit>), **CC0 1.0**: `stall-red`,
+`lantern` and `banner-red`, passed through xrcade's shared kit (`xrcade/kit/`), which puts the
+colour in their vertices. They are the same as those in `public/models/kit/`, byte for byte
+(`scene/world/world.engine.test.ts` checks it).
 
-## Música de fondo — `music/feria.mp3`
+## Background music — `music/feria.mp3`
 
-Upbeat Chiptune Theme, de nihilocrat (<https://opengameart.org/content/upbeat-chiptune-theme>),
-**CC0 1.0**. Se acredita por cortesía.
+Upbeat Chiptune Theme, by nihilocrat (<https://opengameart.org/content/upbeat-chiptune-theme>),
+**CC0 1.0**. Credited as a courtesy.
 
-## Mandos — `mandos/`
+## Controllers — `mandos/`
 
-Los modelos y los perfiles de los mandos de Quest de
-[@webxr-input-profiles/assets](https://github.com/immersive-web/webxr-input-profiles), del grupo
-Immersive Web del W3C: los que enseña el tutorial en las dos manos y las ayudas junto al palo
-fantasma, con el botón que toca encendido. Los copia `npm run godot:controllers` desde
+The models and the profiles of the Quest controllers from
+[@webxr-input-profiles/assets](https://github.com/immersive-web/webxr-input-profiles), by the W3C
+Immersive Web group: the ones the tutorial shows in both hands and the hints show beside the ghost
+stick, with the relevant button lit. `npm run godot:controllers` copies them from
 `public/webxr-profiles/`.
 
-Licencia **MIT**, que exige llevar el aviso en cada copia. Va entero en `mandos/LICENSE.md`, y
-aquí:
+**MIT** licence, which requires carrying the notice in every copy. It goes in full in
+`mandos/LICENSE.md`, and here:
 
 ```
 MIT License

@@ -1,18 +1,19 @@
 // @vitest-environment node
 
 /**
- * Que el paquete publicado lleve dentro lo que hace falta para montarlo.
+ * That the published package carries inside what is needed to mount it.
  *
- * `files` decide qué sube a npm, y lo que se deje fuera no falla al empaquetar
- * ni al construir: falla en la aplicación que instala el juego, que importa un
- * módulo que no está o sirve unos ficheros que nunca llegaron.
+ * `files` decides what goes up to npm, and whatever is left out does not fail
+ * on packing or on building: it fails in the application that installs the
+ * game, which imports a module that is not there or serves files that never
+ * arrived.
  *
- * El resto del `package.json` —`exports`, `peerDependencies`, `sideEffects`—
- * lo valida `npm run catalog:validate` desde xrcade al dar de alta el juego
- * (ver `docs/xrcade.md`). Aquí se comprueba lo que aquel no puede saber: que
- * las rutas que declara existen de verdad dentro del paquete, y que la entrada
- * llega con todo lo que importa detrás — que es lo que de verdad decide si el
- * anfitrión puede montarlo.
+ * The rest of the `package.json` —`exports`, `peerDependencies`, `sideEffects`—
+ * is validated by `npm run catalog:validate` from xrcade when registering the
+ * game (see `docs/xrcade.md`). Here what that one cannot know is checked: that
+ * the paths it declares really exist inside the package, and that the entry
+ * arrives with everything it imports behind it — which is what really decides
+ * whether the host can mount it.
  */
 
 import { execFile } from 'node:child_process'
@@ -32,7 +33,7 @@ interface PackageManifest {
   sideEffects?: string[]
 }
 
-/** Los ficheros que subirían a npm, según lo que declara `files`. */
+/** The files that would go up to npm, according to what `files` declares. */
 function packedFiles(): Promise<string[]> {
   return new Promise((resolve, reject) => {
     execFile(
@@ -52,12 +53,12 @@ function packedFiles(): Promise<string[]> {
 }
 
 /**
- * Módulos que un fichero fuente pide por su nombre: `from '…'`, un import
- * suelto por sus efectos, un `import('…')` diferido o un `require('…')`.
+ * Modules a source file asks for by name: `from '…'`, a bare import for its
+ * side effects, a deferred `import('…')` or a `require('…')`.
  */
 const SPECIFIER = /(?:\bfrom|\bimport|\brequire)\s*\(?\s*(['"])([^'"]+)\1/g
 
-/** Sufijos que prueba un empaquetador al resolver una ruta relativa. */
+/** Suffixes a bundler tries when resolving a relative path. */
 const RESOLUTION_ORDER = ['', '.ts', '.tsx', '/index.ts', '/index.tsx']
 
 function existsAsFile(candidate: string): boolean {
@@ -78,13 +79,13 @@ function resolveRelative(from: string, specifier: string): string | null {
 }
 
 /**
- * Todos los ficheros del propio proyecto a los que se llega desde unas entradas,
- * siguiendo sus imports relativos.
+ * All the files of the project itself that are reached from some entries,
+ * following their relative imports.
  *
- * Los que van por su nombre a secas (`three`, `react`) son los de
- * `peerDependencies` y los pone el anfitrión, así que aquí no cuentan. Un
- * especificador relativo que no resuelva se ignora en vez de fallar: eso ya lo
- * caza el typecheck, y aquí solo se pregunta por lo que se publica.
+ * Those that go by their bare name (`three`, `react`) are the ones in
+ * `peerDependencies` and the host provides them, so they do not count here. A
+ * relative specifier that does not resolve is ignored instead of failing: the
+ * typecheck already catches that, and here only what is published is asked about.
  */
 function reachableFrom(entries: string[]): string[] {
   const seen = new Set<string>()
@@ -108,7 +109,7 @@ function reachableFrom(entries: string[]): string[] {
   return [...seen]
 }
 
-/** Rutas relativas de todos los ficheros que hay bajo un directorio. */
+/** Relative paths of all the files there are under a directory. */
 async function filesIn(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { recursive: true, withFileTypes: true })
   return entries
@@ -118,48 +119,49 @@ async function filesIn(dir: string): Promise<string[]> {
 }
 
 /**
- * Lo que la lógica del juego no puede nombrar.
+ * What the game's logic cannot name.
  *
- * `src/lib` es el dominio: lo que decide algo y no depende del dibujo. Es también lo
- * único que se puede llevar tal cual al puerto a Godot, y allí el motor **no trae las
- * piezas del navegador**: no hay `Intl` —QuickJS-ng no lo lleva y el V8 de GodotJS se
- * compila sin ICU—, ni `window`, ni `document`, ni `navigator`. Un `toLocaleString` en
- * el marcador no falla aquí: falla allí, y de las dos maneras peores —o revienta, o
- * devuelve la cifra sin separadores y nadie se entera hasta que lo ve un jugador—.
+ * `src/lib` is the domain: what decides something and does not depend on the drawing. It is
+ * also the only thing that can be taken as is to the Godot port, and there the engine **does
+ * not bring the browser's parts**: there is no `Intl` —QuickJS-ng does not carry it and
+ * GodotJS's V8 is compiled without ICU—, nor `window`, nor `document`, nor `navigator`. A
+ * `toLocaleString` in the scoreboard does not fail here: it fails there, and in the two worst
+ * ways —either it blows up, or it returns the figure without separators and nobody finds out
+ * until a player sees it—.
  *
- * Por eso se comprueba sobre el código y no sobre los comentarios: explicar por qué no se
- * usa `Intl` no es usarlo.
+ * That is why it is checked on the code and not on the comments: explaining why `Intl` is
+ * not used is not using it.
  */
 const BROWSER_ONLY: { pattern: RegExp; missing: string }[] = [
-  { pattern: /\bIntl\b/, missing: '`Intl`, que el motor del puerto no lleva dentro' },
-  { pattern: /toLocale/, missing: '`toLocale…`, que necesita `Intl`' },
-  { pattern: /\bnavigator\b/, missing: '`navigator`, que fuera del navegador no existe' },
-  { pattern: /\bwindow\b/, missing: '`window`, que fuera del navegador no existe' },
-  { pattern: /\bdocument\b/, missing: '`document`, que fuera del navegador no existe' },
+  { pattern: /\bIntl\b/, missing: '`Intl`, which the engine of the port does not carry inside' },
+  { pattern: /toLocale/, missing: '`toLocale…`, which needs `Intl`' },
+  { pattern: /\bnavigator\b/, missing: '`navigator`, which does not exist outside the browser' },
+  { pattern: /\bwindow\b/, missing: '`window`, which does not exist outside the browser' },
+  { pattern: /\bdocument\b/, missing: '`document`, which does not exist outside the browser' },
 ]
 
-/** El código sin lo que se escribe para leerlo. */
+/** The code without what is written in order to read it. */
 function code(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 }
 /**
- * El puerto al navegador de este juego: los ficheros de `src/lib` que sí pueden usarlo.
+ * This game's port to the browser: the files of `src/lib` that can indeed use it.
  *
- * Van nombrados uno a uno y no por comodín a propósito: son exactamente lo que habrá que
- * reescribir para el motor nuevo, así que la lista tiene que costar de alargar. Añadir
- * uno es decir «esto no se porta tal cual», y eso se decide, no se hereda de un patrón.
+ * They are named one by one and not by wildcard on purpose: they are exactly what will have
+ * to be rewritten for the new engine, so the list has to be costly to lengthen. Adding one is
+ * saying "this is not ported as is", and that is decided, not inherited from a pattern.
  */
 const BROWSER_PORT = [
-  // Los ajustes del arcade vistos desde el navegador: la cookie del idioma y el
-  // almacenamiento, con el aviso a las demás pestañas.
+  // The hall's settings seen from the browser: the language cookie and the
+  // storage, with the notice to the other tabs.
   'settingsClient.ts',
-  // El récord guardado, que se entera si lo cambian desde otra pestaña.
+  // The saved record, which finds out if it is changed from another tab.
   'highScore.ts',
-  // La cuenta de montajes que solo existe si un test la ha pedido antes de cargar.
+  // The mount count that only exists if a test has asked for it before loading.
   'mountCount.ts',
-  // Dónde están los palos, escrito en `window` solo si el e2e ha pedido la sonda.
+  // Where the sticks are, written to `window` only if the e2e has asked for the probe.
   'sceneProbe.ts',
-  // El almacenamiento local, con el navegador que lo bloquea contemplado.
+  // The local storage, with the browser that blocks it accounted for.
   'storage.ts',
 ]
 
@@ -173,18 +175,18 @@ beforeAll(async () => {
       (raw) => JSON.parse(raw) as PackageManifest,
     ),
   ])
-  // Empaquetar arranca npm entero: en una máquina fría se pasa de los cinco
-  // segundos por defecto sin que nada vaya mal.
+  // Packing starts the whole of npm: on a cold machine it goes past the default
+  // five seconds without anything being wrong.
 }, 120_000)
 
-describe('lo que el paquete declara', () => {
-  it('tiene punto de entrada por defecto, sin el cual el hub no puede importarlo', () => {
+describe('what the package declares', () => {
+  it('has a default entry point, without which the hub cannot import it', () => {
     expect(manifest.exports['.']).toBeDefined()
   })
 
-  it('deja React y three al anfitrión', () => {
-    // Dos copias de React rompen los hooks y dos de three, la escena. Es el
-    // fallo caro porque no rompe el build: rompe la partida.
+  it('leaves React and three to the host', () => {
+    // Two copies of React break the hooks and two of three, the scene. It is the
+    // expensive bug because it does not break the build: it breaks the run.
     const shared = /^(react|react-dom|three)$|^@react-three\//
     const own = Object.keys(manifest.dependencies ?? {}).filter((name) =>
       shared.test(name),
@@ -195,13 +197,13 @@ describe('lo que el paquete declara', () => {
     ).toContain('three')
   })
 
-  it('marca los estilos como efecto para que el empaquetador no se los coma', () => {
+  it('marks the styles as a side effect so that the bundler does not swallow them', () => {
     expect(manifest.sideEffects).toContain('*.css')
   })
 })
 
-describe('el paquete que se publica', () => {
-  it('lleva dentro todo lo que apunta `exports`', () => {
+describe('the package that is published', () => {
+  it('carries inside everything `exports` points at', () => {
     const targets = Object.values(manifest.exports).map((target) =>
       target.replace(/^\.\//, ''),
     )
@@ -210,11 +212,12 @@ describe('el paquete que se publica', () => {
     expect(targets.filter((target) => !packed.includes(target))).toEqual([])
   })
 
-  it('lleva dentro los módulos que esa entrada importa, no solo la entrada', () => {
-    // Publicar el punto de entrada sin lo que hay debajo no falla al empaquetar
-    // ni al construir aquí: falla al instalarlo, importando un módulo que no
-    // subió. Y no hace falta borrar `src/lib` de `files` para provocarlo: basta
-    // con que el juego importe algo de `src/app`, que es de la web y no viaja.
+  it('carries inside the modules that entry imports, not only the entry', () => {
+    // Publishing the entry point without what is underneath does not fail on
+    // packing or on building here: it fails on installing it, importing a module
+    // that did not go up. And deleting `src/lib` from `files` is not needed to
+    // cause it: it is enough for the game to import something from `src/app`,
+    // which belongs to the website and does not travel.
     const entries = Object.values(manifest.exports)
       .map((target) => join(projectRoot, target.replace(/^\.\//, '')))
       .filter((target) => /\.tsx?$/.test(target))
@@ -223,13 +226,13 @@ describe('el paquete que se publica', () => {
       relative(projectRoot, file),
     )
 
-    // Si el rastreo dejara de seguir imports, se quedaría en las entradas y
-    // pasaría sin comprobar nada.
+    // If the crawl stopped following imports, it would stay at the entries and
+    // would pass without checking anything.
     expect(reachable.length).toBeGreaterThan(entries.length)
     expect(reachable.filter((file) => !packed.includes(file))).toEqual([])
   })
 
-  it('lleva dentro el ejecutable que copia los ficheros estáticos', () => {
+  it('carries inside the executable that copies the static files', () => {
     const targets = Object.values(manifest.bin).map((target) =>
       target.replace(/^\.\//, ''),
     )
@@ -238,10 +241,10 @@ describe('el paquete que se publica', () => {
     expect(targets.filter((target) => !packed.includes(target))).toEqual([])
   })
 
-  it('lleva dentro los ficheros estáticos que ese ejecutable copia', async () => {
-    // El ejecutable lee de `public/` dentro del paquete instalado: lo que no
-    // suba a npm no está ahí, y `stick-rush-assets` se para diciendo que el
-    // paquete llegó incompleto.
+  it('carries inside the static files that executable copies', async () => {
+    // The executable reads from `public/` inside the installed package: whatever
+    // does not go up to npm is not there, and `stick-rush-assets` stops saying
+    // the package arrived incomplete.
     const assets = (await filesIn(join(projectRoot, 'public'))).map(
       (file) => `public/${file}`,
     )
@@ -250,26 +253,26 @@ describe('el paquete que se publica', () => {
     expect(assets.filter((asset) => !packed.includes(asset))).toEqual([])
   })
 
-  it('y ese ejecutable copia todo lo que hay en `public/`', async () => {
-    // La lista de `copy-assets.mjs` se escribe a mano: un directorio nuevo en `public/` que no
-    // se añada ahí funciona en la web del juego y falta en el salón, donde el juego pide un
-    // fichero que nadie copió. Se lee del fuente porque importarlo lo ejecutaría.
-    const fuente = await readFile(join(projectRoot, 'scripts/copy-assets.mjs'), 'utf8')
-    const lista = /const ASSETS = \[([^\]]*)\]/.exec(fuente)
-    expect(lista, 'no encuentro la lista ASSETS en copy-assets.mjs').not.toBeNull()
-    const copiados = [...lista![1].matchAll(/'([^']+)'/g)].map(([, nombre]) => nombre)
+  it('and that executable copies everything there is in `public/`', async () => {
+    // The list of `copy-assets.mjs` is written by hand: a new directory in `public/` that is
+    // not added there works on the game's website and is missing in the hall, where the game
+    // requests a file nobody copied. It is read from the source because importing it would run it.
+    const source = await readFile(join(projectRoot, 'scripts/copy-assets.mjs'), 'utf8')
+    const list = /const ASSETS = \[([^\]]*)\]/.exec(source)
+    expect(list, 'cannot find the ASSETS list in copy-assets.mjs').not.toBeNull()
+    const copied = [...list![1].matchAll(/'([^']+)'/g)].map(([, name]) => name)
 
-    const enPublic = await readdir(join(projectRoot, 'public'))
-    expect(copiados.sort()).toEqual(enPublic.filter((nombre) => !nombre.startsWith('.')).sort())
+    const inPublic = await readdir(join(projectRoot, 'public'))
+    expect(copied.sort()).toEqual(inPublic.filter((name) => !name.startsWith('.')).sort())
   })
 
-  it('no lleva los tests, que no le sirven a quien lo monta', () => {
+  it('does not carry the tests, which are of no use to whoever mounts it', () => {
     expect(packed.filter((file) => /\.test\.tsx?$/.test(file))).toEqual([])
   })
 })
 
-describe('la lógica que se lleva el puerto a Godot', () => {
-  it('no llama a nada que solo exista dentro de un navegador', async () => {
+describe('the logic the Godot port takes along', () => {
+  it('calls nothing that only exists inside a browser', async () => {
     const lib = join(projectRoot, 'src/lib')
     const sources = (await filesIn(lib)).filter(
       (file) =>
@@ -278,23 +281,23 @@ describe('la lógica que se lleva el puerto a Godot', () => {
         !BROWSER_PORT.includes(file),
     )
 
-    // Si el barrido dejara de encontrar ficheros, pasaría sin comprobar nada.
+    // If the sweep stopped finding files, it would pass without checking anything.
     expect(sources.length).toBeGreaterThan(20)
 
     const found = sources.flatMap((file) => {
       const source = code(readFileSync(join(lib, file), 'utf8'))
       return BROWSER_ONLY.filter(({ pattern }) => pattern.test(source)).map(
-        ({ missing }) => `src/lib/${file} usa ${missing}`,
+        ({ missing }) => `src/lib/${file} uses ${missing}`,
       )
     })
 
     expect(
       found,
-      'La lógica del juego tiene que correr también fuera de un navegador: en el puerto a' +
-        ' Godot no hay Intl, ni window, ni document, ni navigator. Lo que necesite el' +
-        ' navegador se saca a src/components (como shareOrCopy.ts); una cifra con los miles' +
-        ' separados se pide a formatoDeCifra() de src/lib/textos.ts. Si un fichero de' +
-        ' src/lib es de verdad el puerto al navegador, va nombrado en BROWSER_PORT.',
+      'The logic of the game has to run outside a browser too: in the Godot port there is' +
+        ' no Intl, nor window, nor document, nor navigator. Whatever needs the browser is' +
+        ' moved out to src/components (like shareOrCopy.ts); a figure with the thousands' +
+        ' separated is asked of formatFigure() in src/lib/textos.ts. If a file of' +
+        ' src/lib really is the port to the browser, it is named in BROWSER_PORT.',
     ).toEqual([])
   })
 })

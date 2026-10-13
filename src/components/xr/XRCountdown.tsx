@@ -8,21 +8,21 @@ import { COUNTDOWN_SECONDS, useGame } from '../../lib/gameStore'
 import { XR_COUNTDOWN_POSITION } from '../../lib/xrLayout'
 
 /**
- * Cuenta atrás para las sesiones inmersivas.
+ * Countdown for immersive sessions.
  *
- * **Sin cifras**, como el resto de la interfaz del visor: `<Text>` de drei
- * descarga la fuente de un CDN que la CSP bloquea. Se cuenta con anillos, uno
- * por segundo, que se apagan de fuera hacia dentro; el que está a punto de
- * caer late para que se vea que el reloj corre y no es un adorno.
+ * **No figures**, like the rest of the headset's UI: drei's `<Text>`
+ * downloads the font from a CDN that the CSP blocks. It is counted with rings, one
+ * per second, that go out from the outside in; the one about to
+ * drop pulses so it shows that the clock is running and it is not an ornament.
  *
- * Va delante y algo por encima del aro, donde el jugador ya está mirando
- * cuando acaba de pulsar "empezar".
+ * It goes in front of and somewhat above the hoop, where the player is already looking
+ * when they have just pressed "start".
  */
 
 const RING_RADIUS = 0.055
 const RING_GAP = 0.135
 
-/** Un segundo de la cuenta. Late mientras es el que está corriendo. */
+/** One second of the count. It pulses while it is the one running. */
 function CountdownRing({
   x,
   spent,
@@ -55,7 +55,7 @@ function CountdownRing({
       return
     }
 
-    // El segundo en curso: crece y se apaga, como una cuenta que se consume.
+    // The second in progress: it grows and goes out, like a count being used up.
     const pulse = 0.5 + 0.5 * Math.sin(time.current * Math.PI * 2)
     material.opacity = 0.6 + pulse * 0.4
     group.scale.setScalar(1.12 + pulse * 0.12)
@@ -90,8 +90,8 @@ export function XRCountdown({ hasDomUi = false }: { hasDomUi?: boolean }) {
   return (
     <group position={XR_COUNTDOWN_POSITION}>
       {Array.from({ length: COUNTDOWN_SECONDS }, (_, index) => {
-        // El anillo `index` representa el segundo `COUNTDOWN_SECONDS - index`,
-        // así se apagan de izquierda a derecha conforme baja la cuenta.
+        // Ring `index` stands for second `COUNTDOWN_SECONDS - index`,
+        // so they go out from left to right as the count goes down.
         const second = COUNTDOWN_SECONDS - index
         return (
           <CountdownRing

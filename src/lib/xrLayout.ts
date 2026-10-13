@@ -3,54 +3,54 @@ import { GAME_MODE_LABELS, type GameMode } from './gameMode'
 import { REFERENCE_EYE_HEIGHT, isPlausibleEyeHeight } from './hoopHeight'
 import { EYE_HEIGHTS, eyesAt, type PanelPose, type Point } from './panelReading'
 import { MENU_DEGREES } from './menuTemplate'
-import { formatea, type TextKey } from './textos'
-import { seVe, type FilaDelMenu } from './gameMenu'
+import { formatText, type TextKey } from './textos'
+import { isShown, type MenuRow } from './gameMenu'
 
 /**
- * Dónde se coloca cada cosa de la interfaz inmersiva, en metros. Las alturas se
- * miden desde el suelo y son las de la persona de referencia
- * (`REFERENCE_EYE_HEIGHT`); lo que se conserva de ellas al cambiar de jugador
- * es su distancia a los ojos, porque el conjunto entero sube o baja con él (ver
+ * Where each thing of the immersive ui is placed, in metres. The heights are
+ * measured from the floor and are those of the reference person
+ * (`REFERENCE_EYE_HEIGHT`); what is kept of them when the player changes
+ * is their distance to the eyes, because the whole set goes up or down with them (see
  * `xrUiRise`).
  *
- * **El −Z de aquí es hacia donde mira el jugador**, no una dirección fija de la
- * sala: todo esto cuelga de `<XRGazeAnchor>`, que gira el conjunto con él (ver
- * `@/lib/xrAnchor`). Antes colgaba directamente de `<XROrigin>`, cuyo −Z lo
- * decide la calibración del espacio, y bastaba entrar mirando a otro lado para
- * que el menú apareciera a la espalda.
+ * **The −Z here is where the player is looking**, not a fixed direction of the
+ * room: all of this hangs from `<XRGazeAnchor>`, which turns the set with them (see
+ * `@/lib/xrAnchor`). It used to hang directly from `<XROrigin>`, whose −Z is
+ * decided by the calibration of the space, and entering while looking elsewhere was
+ * enough for the menu to appear behind your back.
  *
- * Vive aquí, y no dentro de los componentes, porque los tests de sesión
- * inmersiva tienen que apuntar el mando a estos mismos puntos: si el layout se
- * mueve, los tests lo siguen sin tocarlos. Los componentes solo pintan.
+ * It lives here, and not inside the components, because the immersive session
+ * tests have to point the controller at these same points: if the layout
+ * moves, the tests follow it without being touched. The components only paint.
  */
 
 export type Vec3 = [number, number, number]
 
 /**
- * Cuánto sube o baja toda la interfaz inmersiva para acomodarse a quien juega,
- * en metros.
+ * How much the whole immersive ui goes up or down to suit whoever plays,
+ * in metres.
  *
- * **El problema que resuelve.** El aro ya se planta sobre los ojos del jugador
- * (ver `hoopHeight.ts`), pero el panel seguía clavado a 1,40 m: quien juega
- * sentado se lo encontraba a la altura de la frente, con la fila de arriba
- * —justo la del ajuste del aro— por encima de la línea de visión cómoda.
+ * **The problem it solves.** The hoop already stands over the player's eyes
+ * (see `hoopHeight.ts`), but the panel was still nailed at 1.40 m: whoever plays
+ * seated found it at forehead height, with the top row
+ * —precisely the one of the hoop setting— above the comfortable line of sight.
  *
- * **Se sigue la altura de ojos entera, no una fracción.** El panel no toca el
- * suelo ni tiene nada que ver con él: es una hoja flotante que se mira, así que
- * lo único que importa es a qué altura quedan sus botones respecto a los ojos.
- * Seguir a medias dejaría la fila de arriba por encima de la cabeza de quien
- * juega sentado, que es exactamente el problema. Y no hacen falta los topes
- * absolutos que sí lleva el aro: dentro del margen de estaturas que se acepta
- * como persona, nada de la interfaz llega al suelo.
+ * **The whole eye height is followed, not a fraction.** The panel does not touch the
+ * floor nor has anything to do with it: it is a floating sheet that is looked at, so
+ * the only thing that matters is how high its buttons end up relative to the eyes.
+ * Following halfway would leave the top row above the head of whoever
+ * plays seated, which is exactly the problem. And the absolute limits
+ * that the hoop does carry are not needed: within the range of heights accepted
+ * as a person, nothing of the ui reaches the floor.
  *
- * Eso sí, no sobra: el panel del marcador se dibuja centrado en su cota y al
- * acabar una partida de desafío baja 24 cm, así que con el jugador más bajo su
- * borde se queda a un centímetro del suelo. Bajar una cota de aquí o hacer más
- * alto un panel obliga a volver sobre ese número, y `xrInteraction.test.ts` lo
- * vigila.
+ * That said, there is nothing to spare: the scoreboard panel is drawn centred on its height and when
+ * a challenge run ends it drops 24 cm, so with the shortest player its
+ * edge stays one centimetre from the floor. Lowering a height here or making
+ * a panel taller means going back over that number, and `xrInteraction.test.ts`
+ * watches it.
  *
- * Cuando el visor no dice a qué altura está la cabeza no se inventa nada: la
- * interfaz se queda donde ha estado siempre.
+ * When the headset does not say how high the head is, nothing is made up: the
+ * ui stays where it has always been.
  */
 export function xrUiRise(eyeHeight: number | null | undefined): number {
   if (!isPlausibleEyeHeight(eyeHeight)) return 0
@@ -58,99 +58,99 @@ export function xrUiRise(eyeHeight: number | null | undefined): number {
 }
 
 /**
- * Lo que ocupa la línea que explica el modo elegido.
+ * What the line that explains the chosen mode takes up.
  *
- * El panel crece **solo hacia abajo** y no se mueve nada de lo que ya había. Subir las
- * filas para repartir el crecimiento no cabe aquí: la de arriba —el aro— ya está a 14 cm
- * de los ojos y el techo cómodo son 15 (`xrInteraction.test.ts`), así que nueve
- * centímetros más la dejarían donde hay que estirar el cuello para verla.
+ * The panel grows **only downwards** and nothing that was already there moves. Raising the
+ * rows to spread the growth does not fit here: the top one —the hoop— is already 14 cm
+ * from the eyes and the comfortable ceiling is 15 (`xrInteraction.test.ts`), so nine
+ * centimetres more would leave it where you have to crane your neck to see it.
  */
-export const BANDA_DE_LA_PISTA = 0.1
+export const HINT_BAND = 0.1
 
-/** Nada sube: la banda entera se saca por abajo. */
-export const SUBIDA_DE_LA_PISTA = 0
+/** Nothing goes up: the whole band is taken out at the bottom. */
+export const HINT_RISE = 0
 
-/** Dónde empieza la línea del modo, por su borde de arriba. */
-export const PISTA_Y = -0.395
+/** Where the mode line starts, by its top edge. */
+export const HINT_Y = -0.395
 
 /**
- * Lo ancho que se le deja.
+ * How wide it is allowed to be.
  *
- * Menos que el panel: en las dos puntas de esa fila están salir y silenciar, y la frase
- * pasaría por encima de los dos.
+ * Less than the panel: at the two ends of that row are exit and mute, and the sentence
+ * would run over both.
  */
-export const PISTA_ANCHO = 0.62
+export const HINT_WIDTH = 0.62
 
 /**
- * A qué tamaño se escribe cada cosa del panel del menú, en metros de alto de letra.
+ * At what size each thing of the menu panel is written, in metres of letter height.
  *
- * **Una sola lista para quien pinta y para quien mide.** `dibujarLosNombres` escribe con estos
- * tamaños y `menu.legible.test.ts` comprueba que todo lo que el lienzo apunta está en ella: una
- * letra escrita a mano, o encogida para caber, no pasa sin verse.
+ * **A single list for whoever paints and for whoever measures.** `drawNames` writes with these
+ * sizes and `menu.legible.test.ts` checks that everything the canvas notes down is in it: a
+ * letter written by hand, or shrunk to fit, does not go by unseen.
  *
- * La explicación del modo iba a 22 mm: abajo del todo, medio metro por debajo de los ojos y
- * medida en su fila con el escorzo, se quedaba en 0,92°. A 35 mm cabe en dos renglones; a 36, la
- * de los niveles pide tres y se sale del panel.
+ * The explanation of the mode was at 22 mm: at the very bottom, half a metre below the eyes and
+ * measured in its row with the foreshortening, it stayed at 0.92°. At 35 mm it fits in two lines; at 36, the
+ * one of the levels asks for three and runs out of the panel.
  */
 export const MENU_TEXT = { title: 0.042, label: 0.032, hint: 0.035 } as const
 
 /**
- * Cómo cuelga el panel del menú de la interfaz: dónde, de cara a quién y a qué escala.
+ * How the menu panel hangs from the ui: where, facing whom and at what scale.
  *
- * Los botones se declaran en coordenadas del panel (`XR_MENU_SPOT`, los `*_OFFSET`) y esta
- * pose los lleva al espacio de la interfaz (`onMenu`). Con la escala, el panel entero crece
- * con la distancia y conserva los ángulos: lo que se leía y se apuntaba a un metro se lee y
- * se apunta igual a metro y medio.
+ * The buttons are declared in panel coordinates (`XR_MENU_SPOT`, the `*_OFFSET`) and this
+ * pose takes them to the ui space (`onMenu`). With the scale, the whole panel grows
+ * with the distance and keeps the angles: what was read and pointed at from one metre is read and
+ * pointed at the same from a metre and a half.
  */
 export interface MenuPose {
   readonly position: Vec3
-  /** Giro alrededor de la vertical, como el `rotation.y` de three. */
+  /** Turn around the vertical, like three's `rotation.y`. */
   readonly yaw: number
   readonly scale: number
 }
 
 /**
- * Dónde va la columna de ajustes en el visor: la regla común de los juegos del salón
- * (`.claude/rules/xr.md`): el menú nace a `GRADOS_DEL_MENU` o menos del frente y se aparta al
- * empezar.
+ * Where the settings column goes in the headset: the common rule of the hall's games
+ * (`.claude/rules/xr.md`): the menu is born at `MENU_DEGREES` or less from the front and moves aside on
+ * starting.
  *
- * **Estuvo de frente, a 95 cm**: en medio del aro, justo donde caen los palos. Después se fue a 55°
- * a la izquierda, fuera de donde se mira jugando, y había que girar la cabeza para encontrarlo.
- * Va a metro y medio de los ojos y a 30° a la izquierda: se ve al entrar sin girarse, y los palos
- * que quedan entre los ojos y la placa se atenúan mientras se elige (`paloTapaElMenu`). Solo se
- * pinta en el menú: al empezar, el panel se va y queda el botón de volver (`XR_QUIT_POSITION`).
+ * **It used to be in front, at 95 cm**: in the middle of the hoop, right where the sticks fall. Then it went to 55°
+ * to the left, outside where you look while playing, and you had to turn your head to find it.
+ * It goes a metre and a half from the eyes and 30° to the left: it is seen on entering without turning, and the sticks
+ * that are left between the eyes and the plate are dimmed while choosing (`stickCoversMenu`). It is only
+ * painted in the menu: on starting, the panel goes away and the back button remains (`XR_QUIT_POSITION`).
  *
- * A CALIBRAR CON EL VISOR (distancia entre 1,4 y 1,6).
+ * TO BE CALIBRATED WITH THE HEADSET (distance between 1.4 and 1.6).
  */
 export const XR_COLUMN = { distance: 1.5, azimuth: (MENU_DEGREES * Math.PI) / 180 } as const
 
 /**
- * Cuánto crece el panel en la columna.
+ * How much the panel grows in the column.
  *
- * El panel se diseñó a 97 cm de los ojos (95 delante y 20 por debajo), pero no crece todo lo
- * que se aleja (1,5 / 0,97 = 1,55): a ese tamaño pasaba de metro y medio de alto. Crece lo que pide la letra más pequeña para seguir leyéndose de un vistazo
- * en los dos idiomas y a las tres alturas de ojos (`menu.legible.test.ts`): la que manda es
- * «Aro», arriba del todo y vista en escorzo, que con 1,31 ya se queda en 1,39°. A CALIBRAR
- * CON EL VISOR.
+ * The panel was designed at 97 cm from the eyes (95 in front and 20 below), but it does not grow as much
+ * as it moves away (1.5 / 0.97 = 1.55): at that size it went over a metre and a half tall. It grows what the smallest letter asks for to keep being read at a glance
+ * in both languages and at the three eye heights (`menu.legible.test.ts`): the one that rules is
+ * «Aro», at the very top and seen foreshortened, which with 1.31 already stays at 1.39°. TO BE CALIBRATED
+ * WITH THE HEADSET.
  */
 export const XR_MENU_SCALE = 1.35
 
-/** Lo que ocupa la placa del menú, en metros, antes de crecer con la pose. */
-export const MENU_PANEL: [number, number] = [1.06, 0.92 + BANDA_DE_LA_PISTA]
+/** What the menu plate takes up, in metres, before growing with the pose. */
+export const MENU_PANEL: [number, number] = [1.06, 0.92 + HINT_BAND]
 
 /**
- * El nombre de la cabina (`nombreDelJuego()`), arriba a la izquierda del panel, como en los demás
- * juegos del salón. Va en la franja libre que queda sobre la fila del aro: su rótulo, centrado,
- * acaba más abajo (`ROW_LABEL_RISE`), así que el nombre puede llegar hasta el borde derecho sin
- * pisarlo. `menu.legible.test.ts` lo mide en los dos idiomas y con un nombre largo.
+ * The name of the cabinet (`gameName()`), at the top left of the panel, as in the other
+ * games of the hall. It goes in the free strip left above the hoop row: its label, centred,
+ * ends lower down (`ROW_LABEL_RISE`), so the name can reach the right edge without
+ * stepping on it. `menu.legible.test.ts` measures it in both languages and with a long name.
  */
 export const MENU_TITLE = {
   x: -MENU_PANEL[0] / 2 + 0.05,
   y: 0.475,
-  ancho: MENU_PANEL[0] - 0.1,
+  width: MENU_PANEL[0] - 0.1,
 } as const
 
-/** La columna del menú en el visor: a la izquierda, a la altura de los ojos, de cara. */
+/** The menu column in the headset: to the left, at eye height, facing the player. */
 export const XR_MENU_POSE: MenuPose = {
   position: [
     -Math.sin(XR_COLUMN.azimuth) * XR_COLUMN.distance,
@@ -162,9 +162,9 @@ export const XR_MENU_POSE: MenuPose = {
 }
 
 /**
- * El menú sin visor: el salón de xrcade en escritorio, donde la interfaz de la escena es la
- * única que hay y no se puede girar la cabeza para buscarla. Ahí se queda delante, donde
- * estuvo siempre.
+ * The menu without a headset: the xrcade hall on desktop, where the scene's ui is the
+ * only one there is and you cannot turn your head to look for it. There it stays in front, where
+ * it always was.
  */
 export const XR_MENU_DESK_POSE: MenuPose = {
   position: [0, 1.4, -0.95],
@@ -172,115 +172,115 @@ export const XR_MENU_DESK_POSE: MenuPose = {
   scale: 1,
 }
 
-/** La pose del menú según haya sesión inmersiva o no. */
+/** The pose of the menu depending on whether there is an immersive session or not. */
 export function menuPoseFor(immersive: boolean): MenuPose {
   return immersive ? XR_MENU_POSE : XR_MENU_DESK_POSE
 }
 
 /**
- * **Los palos que tapan el menú se atenúan mientras se elige.** Quien juega está dentro del aro,
- * y el aro rodea todo lo que tiene delante: a la distancia y altura que sea, entre los ojos y la
- * columna siempre cuelgan palos (el emulador lo enseñó: el menú se leía entre barrotes
- * amarillos). Apartar la columna más de 90° la dejaría a la espalda, y la regla pide el menú
- * cerca del frente. Así que en el menú del visor esos palos se quedan casi transparentes, y
- * vuelven enteros en cuanto se pulsa Jugar: el resto de la máquina se sigue viendo colgar.
+ * **The sticks that cover the menu are dimmed while choosing.** Whoever plays is inside the hoop,
+ * and the hoop surrounds everything they have in front: at whatever distance and height, between the eyes and the
+ * column there are always sticks hanging (the emulator showed it: the menu was read between yellow
+ * bars). Moving the column more than 90° aside would leave it behind the back, and the rule asks for the menu
+ * near the front. So in the headset's menu those sticks stay almost transparent, and
+ * come back whole as soon as Play is pressed: the rest of the machine is still seen hanging.
  */
-export const PALO_TRAS_EL_MENU = 0.15
+export const STICK_BEHIND_MENU = 0.15
 
-/** Lo que tarda en atenuarse o volver un palo, a este ritmo por segundo: un cuarto de segundo. */
-export const ATENUAR_POR_SEGUNDO = 4
+/** What a stick takes to dim or come back, at this rate per second: a quarter of a second. */
+export const DIM_PER_SECOND = 4
 
 /**
- * El margen, en grados, a cada lado de la placa: el vaivén del palo colgado y su grosor, y algo
- * por si la cabeza no está justo donde se nace.
+ * The margin, in degrees, on each side of the plate: the sway of the hanging stick and its thickness, and something
+ * in case the head is not right where one is born.
  */
-export const MARGEN_DEL_MENU_GRADOS = 6
+export const MENU_MARGIN_DEGREES = 6
 
-/** Hacia dónde queda un punto del espacio de quien juega, en grados: positivo a la izquierda. */
-function rumbo(x: number, z: number): number {
+/** Which way a point of the player's space lies, in degrees: positive to the left. */
+function heading(x: number, z: number): number {
   return (Math.atan2(-x, -z) * 180) / Math.PI
 }
 
 /**
- * De qué rumbo a qué rumbo ocupa la placa del menú vista desde los ojos, en grados (positivo a la
- * izquierda), con el margen ya sumado.
+ * From which heading to which heading the menu plate takes up as seen from the eyes, in degrees (positive to the
+ * left), with the margin already added.
  */
-export function rumbosDelMenu(pose: MenuPose = XR_MENU_POSE): [number, number] {
-  const medio = (MENU_PANEL[0] * pose.scale) / 2
-  // El +X de la placa, girada `yaw` sobre la vertical como el `rotation.y` de three.
-  const dx = Math.cos(pose.yaw) * medio
-  const dz = -Math.sin(pose.yaw) * medio
+export function menuHeadings(pose: MenuPose = XR_MENU_POSE): [number, number] {
+  const half = (MENU_PANEL[0] * pose.scale) / 2
+  // The +X of the plate, turned `yaw` about the vertical like three's `rotation.y`.
+  const dx = Math.cos(pose.yaw) * half
+  const dz = -Math.sin(pose.yaw) * half
   const [x, , z] = pose.position
-  const a = rumbo(x - dx, z - dz)
-  const b = rumbo(x + dx, z + dz)
-  return [Math.min(a, b) - MARGEN_DEL_MENU_GRADOS, Math.max(a, b) + MARGEN_DEL_MENU_GRADOS]
+  const a = heading(x - dx, z - dz)
+  const b = heading(x + dx, z + dz)
+  return [Math.min(a, b) - MENU_MARGIN_DEGREES, Math.max(a, b) + MENU_MARGIN_DEGREES]
 }
 
 /**
- * Si el palo que cuelga de ese gancho se ve por delante de la placa del menú.
+ * Whether the stick that hangs from that hook is seen in front of the menu plate.
  *
- * El gancho viene en las coordenadas de la máquina (el centro del aro en el origen) y quien
- * juega está `PLAYER_OFFSET_Z` por detrás de él. Solo se mira el rumbo: la placa de la columna
- * mide más de un metro de alto y cubre, vista desde los ojos, toda la franja de donde cuelgan
- * los palos (`xrLayout.test.ts` lo comprueba).
+ * The hook comes in the machine's coordinates (the centre of the hoop at the origin) and whoever
+ * plays is `PLAYER_OFFSET_Z` behind it. Only the heading is looked at: the plate of the column
+ * is more than a metre tall and covers, seen from the eyes, the whole strip the sticks hang
+ * from (`xrLayout.test.ts` checks it).
  */
-export function paloTapaElMenu(gancho: Vec3, pose: MenuPose = XR_MENU_POSE): boolean {
-  const [x, , z] = gancho
-  const delPalo = rumbo(x, z - PLAYER_OFFSET_Z)
-  const lado = (Math.atan2(STICK_RADIUS, Math.hypot(x, z - PLAYER_OFFSET_Z)) * 180) / Math.PI
-  const [desde, hasta] = rumbosDelMenu(pose)
-  return delPalo + lado >= desde && delPalo - lado <= hasta
+export function stickCoversMenu(hook: Vec3, pose: MenuPose = XR_MENU_POSE): boolean {
+  const [x, , z] = hook
+  const stickHeading = heading(x, z - PLAYER_OFFSET_Z)
+  const side = (Math.atan2(STICK_RADIUS, Math.hypot(x, z - PLAYER_OFFSET_Z)) * 180) / Math.PI
+  const [from, to] = menuHeadings(pose)
+  return stickHeading + side >= from && stickHeading - side <= to
 }
 
 /**
- * La opacidad de un palo en este fotograma, yendo hacia la que le toca sin saltar: nada que se
- * vea grande cambia de brillo de golpe (`.claude/rules/xr.md`).
+ * The opacity of a stick in this frame, going towards the one it is due without jumping: nothing that
+ * looks big changes brightness all at once (`.claude/rules/xr.md`).
  */
-export function opacidadHacia(actual: number, objetivo: number, delta: number): number {
-  const paso = Math.max(0, delta) * ATENUAR_POR_SEGUNDO
-  return actual < objetivo ? Math.min(objetivo, actual + paso) : Math.max(objetivo, actual - paso)
+export function opacityToward(current: number, target: number, delta: number): number {
+  const step = Math.max(0, delta) * DIM_PER_SECOND
+  return current < target ? Math.min(target, current + step) : Math.max(target, current - step)
 }
 
-/** Centro del panel del menú en el visor. */
+/** Centre of the menu panel in the headset. */
 export const XR_MENU_POSITION: Vec3 = XR_MENU_POSE.position
-/** Marcador, por debajo del menú para no cruzarse con los palos. */
+/** Scoreboard, below the menu so as not to cross the sticks. */
 export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
 
 /**
- * Lo alto que se pone el panel del marcador, en metros.
+ * How tall the scoreboard panel is, in metres.
  *
- * Vive aquí y no dentro de `XRHud.tsx` porque **no es solo suyo**: el tutorial ahora se
- * enseña con la partida en marcha, así que los dos paneles están a la vez delante de la
- * misma cara y el de arriba tiene que dejar sitio al de abajo. Escrito dentro del
- * componente, ese reparto no se podría comprobar desde ningún test.
+ * It lives here and not inside `XRHud.tsx` because **it is not only its own**: the tutorial is now
+ * shown with the run in progress, so the two panels are in front of the
+ * same face at the same time and the top one has to leave room for the bottom one. Written inside the
+ * component, that layout could not be checked from any test.
  *
- * `run` es lo que ocupa jugando; `finished`, con el resultado y su fila de botones; y
- * `livesRow` lo que se le añade cuando lleva corazones o estrellas.
+ * `run` is what it takes up while playing; `finished`, with the result and its row of buttons; and
+ * `livesRow` what is added to it when it carries hearts or stars.
  */
 export const XR_HUD_PANEL = { run: 0.27, finished: 0.42, livesRow: 0.06 } as const
 
 /**
- * El cartel del objetivo (`lib/objetivo.ts`, `lib/machineSign.ts`): **de frente, justo
- * encima del marcador**, que es la franja que ya se miraba para saber cómo iba la partida.
+ * The goal sign (`lib/goal.ts`, `lib/machineSign.ts`): **in front, right
+ * above the scoreboard**, which is the strip that was already looked at to know how the run was going.
  *
- * Por debajo de la máquina y no encima del aro: los palos cuelgan y caen por delante de la cara,
- * y un cartel ahí arriba taparía la caída. Aquí queda a 27° por debajo de la mirada —se lee
- * bajando los ojos, sin mover la cabeza— y más lejos que cualquier palo (el del frente cae a 65 cm
- * y esto está a 85), así que ninguno queda detrás de él. Su borde de arriba se queda por debajo
- * del aviso de salir y del tutorial, que empiezan a 1,21 m.
+ * Below the machine and not above the hoop: the sticks hang and fall in front of the face,
+ * and a sign up there would cover the fall. Here it is 27° below the gaze —it is read
+ * by lowering the eyes, without moving the head— and farther than any stick (the front one falls at 65 cm
+ * and this is at 85), so none ends up behind it. Its top edge stays below
+ * the exit notice and the tutorial, which start at 1.21 m.
  *
- * A CALIBRAR CON EL VISOR (la altura: más arriba se lee mejor y se acerca al tutorial).
+ * TO BE CALIBRATED WITH THE HEADSET (the height: higher up it reads better and gets closer to the tutorial).
  */
-export const XR_CARTEL_POSITION: Vec3 = [0, 1.16, -0.85]
+export const XR_SIGN_POSITION: Vec3 = [0, 1.16, -0.85]
 
 /**
- * El marcador cuando el cartel de encima ya dice los puntos y las vidas: se queda con las fichas
- * de los palos y la racha —y, al acabar, los botones—, y su panel encoge a lo que lleva.
+ * The scoreboard when the sign above already says the points and the lives: it keeps the tokens
+ * of the sticks and the streak —and, at the end, the buttons—, and its panel shrinks to what it carries.
  *
- * `height` es lo alto del panel y `centre` dónde queda su centro respecto del sitio del marcador:
- * su borde de arriba no pasa de 13,5 cm, que es lo que deja libre al cartel. Las fichas no se
- * mueven al acabar (`content`): con el cartel encima no hay sitio hacia arriba, y los botones
- * ocupan lo que dejaron la barra y las vidas.
+ * `height` is how tall the panel is and `centre` where its centre ends up relative to the scoreboard's spot:
+ * its top edge does not go past 13.5 cm, which is what it leaves free for the sign. The tokens do not
+ * move at the end (`content`): with the sign above there is no room upwards, and the buttons
+ * take up what the bar and the lives left.
  */
 export const XR_HUD_WITH_SIGN = {
   content: 0.04,
@@ -288,7 +288,7 @@ export const XR_HUD_WITH_SIGN = {
   finished: { height: 0.33, centre: -0.03 },
 } as const
 
-/** Cómo se reparte el marcador: lo alto de su panel, dónde va su centro y a qué altura las fichas. */
+/** How the scoreboard is laid out: how tall its panel is, where its centre goes and at what height the tokens. */
 export interface HudLayout {
   readonly height: number
   readonly centre: number
@@ -296,11 +296,11 @@ export interface HudLayout {
 }
 
 /**
- * El reparto del marcador en cada momento.
+ * The layout of the scoreboard at each moment.
  *
- * @param finished con la partida acabada: el panel lleva además la fila de botones
- * @param row con fila de vidas o de estrellas bajo la barra
- * @param sign el cartel de encima ya dice los puntos y las vidas (`XR_HUD_WITH_SIGN`)
+ * @param finished with the run finished: the panel also carries the row of buttons
+ * @param row with a row of lives or of stars under the bar
+ * @param sign the sign above already says the points and the lives (`XR_HUD_WITH_SIGN`)
  */
 export function xrHudLayout({ finished, row, sign }: { finished: boolean; row: boolean; sign: boolean }): HudLayout {
   if (sign) return { content: XR_HUD_WITH_SIGN.content, ...(finished ? XR_HUD_WITH_SIGN.finished : XR_HUD_WITH_SIGN.run) }
@@ -311,120 +311,120 @@ export function xrHudLayout({ finished, row, sign }: { finished: boolean; row: b
   }
 }
 /**
- * Botón de volver al menú durante la partida —deja la partida, no la sesión:
- * el de salir del visor es `XR_MENU_EXIT_OFFSET`, y por eso llevan iconos
- * distintos—. Apartado a un lado para no cruzarse con los palos, pero dentro
- * del campo de visión: a 51° quedaba fuera de vista y no se encontraba.
+ * Button to go back to the menu during the run —it leaves the run, not the session:
+ * the one to leave the headset is `XR_MENU_EXIT_OFFSET`, and that is why they carry different
+ * icons—. Set to one side so as not to cross the sticks, but inside
+ * the field of view: at 51° it was out of sight and could not be found.
  *
- * **Arriba y a la izquierda**, por encima de la línea de los ojos: a la altura del pecho
- * caía justo por donde va la mano a coger un palo, y ahí se pulsa sin querer. Lo que se
- * juega pasa por delante y por abajo, así que arriba no estorba a nada. El apartado a un
- * lado se queda como estaba: más allá, mirarlo hace que la interfaz entera se recoloque
- * (`XR_ANCHOR_DEADZONE`) y el botón se escapa justo al ir a apuntarlo.
+ * **Up and to the left**, above the eye line: at chest height
+ * it fell right where the hand goes to grab a stick, and there it gets pressed by accident. What is
+ * played goes by in front and below, so up there it is in the way of nothing. The offset to one
+ * side stays as it was: farther out, looking at it makes the whole ui reposition itself
+ * (`XR_ANCHOR_DEADZONE`) and the button escapes just when you go to point at it.
  */
 export const XR_QUIT_POSITION: Vec3 = [-0.42, 1.62, -0.75]
 
 /**
- * El aviso de dejar la partida: **delante, a la altura de la vista**.
+ * The notice for leaving the run: **in front, at eye level**.
  *
- * Se pregunta con la partida parada, así que ocupa el sitio donde ya se está mirando y no
- * un rincón: lo que se decide aquí es perder lo que se lleve hecho. Era el sitio del menú;
- * el menú se ha ido a la columna de la izquierda y el aviso se queda delante.
+ * It is asked with the run stopped, so it takes the place where one is already looking and not
+ * a corner: what is decided here is losing what has been done so far. It was the menu's place;
+ * the menu has gone to the column on the left and the notice stays in front.
  */
 export const XR_CONFIRM_POSITION: Vec3 = [0, 1.4, -0.89]
 export const XR_CONFIRM_SIZE: [number, number] = [0.78, 0.38]
 
 /**
- * El final de una tanda a dos —el aviso de pasar el mando, o quién gana—: **en el sitio del aviso
- * de salir**, delante y a la vista, encima del marcador del final. Con la partida acabada no se
- * pregunta nada, así que los dos nunca coinciden; y el marcador, con sus botones de jugar y de
- * volver al menú, sigue debajo, donde se pulsa.
+ * The end of a two-player round —the notice to pass the controller, or who wins—: **in the place of the exit
+ * notice**, in front and in view, above the final scoreboard. With the run finished nothing
+ * is asked, so the two never coincide; and the scoreboard, with its buttons to play and to
+ * go back to the menu, is still below, where it is pressed.
  */
 export const XR_DUEL_POSITION: Vec3 = XR_CONFIRM_POSITION
 export const XR_DUEL_SIZE: [number, number] = [0.9, 0.26]
-/** A qué tamaño se escribe, en metros de alto de letra (`duel.legible.test.ts`). */
+/** At what size it is written, in metres of letter height (`duel.legible.test.ts`). */
 export const DUEL_TEXT = { title: 0.045, body: 0.034 } as const
 
 /**
- * A qué tamaño se escribe el aviso, en metros de alto de letra (`exit.legible.test.ts`).
+ * At what size the notice is written, in metres of letter height (`exit.legible.test.ts`).
  */
 export const CONFIRM_TEXT = { title: 0.05, body: 0.034, button: 0.034 } as const
 
 /**
- * Sus dos botones, en coordenadas del propio aviso.
+ * Its two buttons, in the notice's own coordinates.
  *
- * «Seguir jugando» no cabía en 32 cm con la letra de `CONFIRM_TEXT` y se encogía: el botón mide lo
- * que pide su etiqueta en español.
+ * «Seguir jugando» did not fit in 32 cm with the letter of `CONFIRM_TEXT` and shrank: the button measures what
+ * its label asks for in Spanish.
  */
 export const CONFIRM_BOXES = {
-  /** Seguir jugando va a la derecha y más grande: es la respuesta que no pierde nada. */
+  /** Keep playing goes on the right and bigger: it is the answer that loses nothing. */
   stay: { position: [0.17, -0.1, 0.02] as Vec3, size: [0.34, 0.11, 0.04] as Vec3 },
   leave: { position: [-0.19, -0.1, 0.02] as Vec3, size: [0.28, 0.11, 0.04] as Vec3 },
 }
 /**
- * Giro de ese botón para que su placa encare al jugador.
+ * Turn of that button so that its plate faces the player.
  *
- * Es el único elemento apartado a un lado, así que es el único que necesita
- * girar: de canto, un botón plano se estrecha y su icono se hunde en la propia
- * placa. Se deriva de la posición en vez de fijarlo a ojo, para que al mover el
- * botón el giro lo siga.
+ * It is the only element set to one side, so it is the only one that needs
+ * to turn: edge-on, a flat button narrows and its icon sinks into its own
+ * plate. It is derived from the position instead of being fixed by eye, so that when the
+ * button moves the turn follows it.
  */
 export const XR_QUIT_YAW = Math.atan2(
   -XR_QUIT_POSITION[0],
   -XR_QUIT_POSITION[2],
 )
 /**
- * Botón de salir del visor, **en la esquina de abajo a la derecha del panel del menú**.
+ * Button to leave the headset, **in the bottom right corner of the menu panel**.
  *
- * Esa esquina es la misma en los trece juegos y el porqué está en `lib/exitCorner.ts`: el
- * dibujo ya se había unificado —la flecha de volver— pero el sitio no, y con el visor puesto
- * eso se nota como que hay que buscarla en cada cabina. Aquí estaba en la punta izquierda de
- * la fila, así que las dos puntas se intercambiaron: la distancia entre ellas, que es lo que
- * evita pulsar una por otra a pulso, no cambia.
+ * That corner is the same in the thirteen games and the why is in `lib/exitCorner.ts`: the
+ * drawing had already been unified —the back arrow— but the place had not, and with the headset on
+ * that is felt as having to look for it in each cabinet. Here it was at the left end of
+ * the row, so the two ends were swapped: the distance between them, which is what
+ * avoids pressing one for the other with an unsteady hand, does not change.
  */
-export const XR_MENU_EXIT_OFFSET: Vec3 = [0.42, -0.37 + SUBIDA_DE_LA_PISTA, 0]
+export const XR_MENU_EXIT_OFFSET: Vec3 = [0.42, -0.37 + HINT_RISE, 0]
 /**
- * El botón de «Más opciones», en la esquina opuesta a la de salir del visor. Era el sitio del de
- * silenciar, que el salón cambió por sus volúmenes: los dos ajustes de la fila de abajo quedan uno
- * en cada punta, con el de empezar en medio, porque en el visor se apunta a pulso y un vecino a
- * pocos centímetros se pulsa por error. Lleva su nombre escrito en dos renglones
- * (`dibujarLosNombres`), medido en `menu.legible.test.ts`.
+ * The «Más opciones» button, in the corner opposite the one to leave the headset. It was the place of the
+ * mute one, which the hall replaced with its volumes: the two settings of the bottom row end up one
+ * at each end, with the start one in the middle, because in the headset you point freehand and a neighbour a
+ * few centimetres away gets pressed by mistake. It carries its name written in two lines
+ * (`drawNames`), measured in `menu.legible.test.ts`.
  */
-export const XR_MENU_OPCIONES_OFFSET: Vec3 = [-0.42, -0.37, 0]
-/** Lo ancho que se escribe su nombre: lo que mide su placa. */
-export const OPCIONES_ANCHO = 0.15
+export const XR_MENU_OPTIONS_OFFSET: Vec3 = [-0.42, -0.37, 0]
+/** How wide its name is written: what its plate measures. */
+export const OPTIONS_WIDTH = 0.15
 /**
- * Fila de ajustes, la primera bajo la del aro: a la izquierda a qué se juega
- * (práctica, niveles o desafío) y a la derecha qué se ve alrededor. **El menú
- * empieza por el modo**: es lo que decide si hay algo más que preguntar —solo la
- * práctica pregunta palos y velocidad, que salen debajo— o si ya se le puede dar
- * a empezar. Van a las dos puntas y no juntos en el centro por lo mismo que los
- * botones de la fila de abajo: en el visor se apunta a pulso y un vecino a pocos
- * centímetros se pulsa por error.
+ * Settings row, the first under the hoop one: on the left what is played
+ * (practice, levels or challenge) and on the right what is seen around. **The menu
+ * starts with the mode**: it is what decides whether there is anything else to ask —only
+ * practice asks sticks and speed, which come out below— or whether you can already hit
+ * start. They go at the two ends and not together in the centre for the same reason as the
+ * buttons of the bottom row: in the headset you point freehand and a neighbour a few
+ * centimetres away gets pressed by mistake.
  */
-const SETTINGS_ROW_Y = 0.168 + SUBIDA_DE_LA_PISTA
+const SETTINGS_ROW_Y = 0.168 + HINT_RISE
 /**
- * Interruptor de modo: recorre práctica, niveles y desafío, y enseña lo que
- * cada uno pone en juego (nada, estrellas, corazones).
+ * Mode switch: it cycles through practice, levels and challenge, and shows what
+ * each one puts at stake (nothing, stars, hearts).
  */
 export const XR_MODE_TOGGLE_OFFSET: Vec3 = [-0.26, SETTINGS_ROW_Y, 0]
 /**
- * Tanda o sin fin, en medio de la fila de ajustes y solo en práctica. Cabe
- * entre los otros dos porque sus cajas de pulsación no llegan a tocarse.
+ * Round or endless, in the middle of the settings row and only in practice. It fits
+ * between the other two because their hit boxes do not get to touch.
  */
 export const XR_ENDLESS_TOGGLE_OFFSET: Vec3 = [0, SETTINGS_ROW_Y, 0]
 /**
- * Contra quién —solo, o a dos pasándose el mando—, **en el mismo hueco** y solo en el desafío:
- * sin fin es de la práctica y contra quién del desafío (`duel.ts`), así que nunca se ven los dos, y
- * comparten la caja de pulsación (`XR_MENU_HIT.endless`).
+ * Against whom —alone, or two players passing the controller—, **in the same gap** and only in the challenge:
+ * endless belongs to practice and against whom to the challenge (`duel.ts`), so the two are never seen together, and
+ * they share the hit box (`XR_MENU_HIT.endless`).
  */
 export const XR_PLAYERS_TOGGLE_OFFSET: Vec3 = XR_ENDLESS_TOGGLE_OFFSET
-/** Selector de escenario o passthrough. */
+/** Scenery or passthrough picker. */
 export const XR_SCENERY_PICKER_OFFSET: Vec3 = [0.245, SETTINGS_ROW_Y, 0]
 /**
- * Botón de terminar la partida sin fin, a un lado como el de volver al menú
- * pero en la punta contraria: son las dos salidas de la partida y una a cada
- * lado no se confunden. Girado hacia el jugador por lo mismo que aquel.
+ * Button to finish the endless run, to one side like the one to go back to the menu
+ * but at the opposite end: they are the two ways out of the run and one on each
+ * side they are not confused. Turned towards the player for the same reason as that one.
  */
 export const XR_END_RUN_POSITION: Vec3 = [0.42, 1.15, -0.75]
 export const XR_END_RUN_YAW = Math.atan2(
@@ -432,152 +432,152 @@ export const XR_END_RUN_YAW = Math.atan2(
   -XR_END_RUN_POSITION[2],
 )
 /**
- * Fila del ajuste de altura del aro, arriba del todo del panel. Va sola y por
- * encima del resto porque es lo único que se toca **mirando la máquina**: con la
- * columna a la izquierda, el aro pasa por delante del panel, a la derecha de lo
- * que se mira, así que al pulsar se ve subir o bajar.
+ * Row of the hoop height setting, at the very top of the panel. It goes alone and
+ * above the rest because it is the only thing touched **while looking at the machine**: with the
+ * column on the left, the hoop goes by in front of the panel, to the right of what
+ * is looked at, so on pressing it is seen going up or down.
  */
 //
-// Medio centímetro más arriba de lo que estaba, lo que le queda antes de salirse de la altura
-// cómoda (`xrInteraction.test.ts`): es lo que deja a la fila del modo subir bajo ella sin que
-// el nombre de «Alrededor» —ancho en español— se meta en el botón de la música.
-const HOOP_ROW_Y = 0.345 + SUBIDA_DE_LA_PISTA
-/** Botón de bajar el aro, a la izquierda de su indicador. */
+// Half a centimetre higher than it was, what it has left before leaving the comfortable
+// height (`xrInteraction.test.ts`): it is what lets the mode row go up under it without
+// the name of «Alrededor» —wide in Spanish— getting into the music button.
+const HOOP_ROW_Y = 0.345 + HINT_RISE
+/** Button to lower the hoop, to the left of its indicator. */
 export const XR_HOOP_DOWN_OFFSET: Vec3 = [-0.13, HOOP_ROW_Y, 0]
-/** Botón de subir el aro, a la derecha de su indicador. */
+/** Button to raise the hoop, to the right of its indicator. */
 export const XR_HOOP_UP_OFFSET: Vec3 = [0.13, HOOP_ROW_Y, 0]
-/** Regla entre los dos botones: dónde está el aro dentro de su recorrido. */
+/** Ruler between the two buttons: where the hoop is within its travel. */
 export const XR_HOOP_GAUGE_OFFSET: Vec3 = [0, HOOP_ROW_Y, 0]
 /**
- * Botón de volver a ver el tutorial, en la esquina de arriba del panel. Va
- * lejos del de empezar a propósito: es una salida de emergencia para quien no
- * se acuerda de cómo se cogen los palos, no un paso del camino normal.
+ * Button to see the tutorial again, in the top corner of the panel. It goes
+ * far from the start one on purpose: it is an emergency exit for whoever does not
+ * remember how the sticks are grabbed, not a step of the normal path.
  */
 export const XR_MENU_TUTORIAL_OFFSET: Vec3 = [-0.4, HOOP_ROW_Y, 0]
 /**
- * Interruptor de la música de fondo, en la esquina de enfrente del tutorial.
+ * Background music switch, in the corner opposite the tutorial.
  *
- * Arriba y no al lado del de silenciar, que es donde lo pediría el parecido
- * entre los dos: la fila de abajo la ocupan salir, empezar y silenciar, y lo
- * que quedaba libre entre ellos son quince centímetros —en el visor se apunta a
- * pulso y ahí se pulsa el vecino—. Aquí arriba las dos esquinas son las dos
- * cosas que se tocan una vez y se olvidan.
+ * At the top and not next to the mute one, which is where the likeness
+ * between the two would ask for it: the bottom row is taken by exit, start and mute, and what
+ * was left free between them is fifteen centimetres —in the headset you point
+ * freehand and there the neighbour gets pressed—. Up here the two corners are the two
+ * things that are touched once and forgotten.
  */
 export const XR_MENU_MUSIC_OFFSET: Vec3 = [0.4, HOOP_ROW_Y, 0]
 
 /**
- * Cuenta atrás: al frente y a la altura de los ojos, que es donde el jugador
- * está mirando justo después de pulsar «empezar».
+ * Countdown: in front and at eye height, which is where the player
+ * is looking right after pressing «start».
  */
 export const XR_COUNTDOWN_POSITION: Vec3 = [0, 1.5, -0.9]
 
 /**
- * Lo que mide el panel del tutorial, en metros.
+ * What the tutorial panel measures, in metres.
  *
- * Las medidas de la flota, para que el panel sea el mismo en los quince: lleva contador,
- * frase, el gesto dibujado y dos botones, y la frase ocupa **tres líneas en español donde
- * ocupa dos en inglés**.
+ * The fleet's measurements, so that the panel is the same in the fifteen: it carries a counter,
+ * a sentence, the drawn gesture and two buttons, and the sentence takes **three lines in Spanish where
+ * it takes two in English**.
  */
 export const TUTORIAL_PANEL = { width: 0.78, height: 0.62 } as const
 
 /**
- * A qué tamaño se escribe cada cosa de ese panel, en metros de alto de letra.
+ * At what size each thing of that panel is written, in metres of letter height.
  *
- * Una sola lista para quien pinta y para quien mide (`tutorial.legible.test.ts`), como
- * `MENU_TEXT`: una letra escrita a mano, o encogida para caber, no pasa sin verse.
+ * A single list for whoever paints and for whoever measures (`tutorial.legible.test.ts`), like
+ * `MENU_TEXT`: a letter written by hand, or shrunk to fit, does not go by unseen.
  */
 export const TUTORIAL_TEXT = { counter: 0.03, phrase: 0.042, button: 0.032 } as const
 
-/** Lo que mide cada uno de sus dos botones: lo bastante ancho para «Saltar tutorial». */
-export const TUTORIAL_BOTON = { width: 0.33, height: 0.09 } as const
+/** What each of its two buttons measures: wide enough for «Saltar tutorial». */
+export const TUTORIAL_BUTTON = { width: 0.33, height: 0.09 } as const
 
 /**
- * Tutorial: al frente, **por encima del marcador**.
+ * Tutorial: in front, **above the scoreboard**.
  *
- * Ya no toma el relevo del menú —ahora se aprende jugando, con los palos cayendo—, así que
- * comparte pantalla con el marcador del visor (`XR_HUD_POSITION`) en vez de sustituirlo. De
- * ahí que suba: en el sitio del menú, su borde de abajo se metía en el borde de arriba del
- * marcador y el resultado era leer una cosa encima de la otra. Lo vigila
+ * It no longer takes over from the menu —now you learn by playing, with the sticks falling—, so
+ * it shares the screen with the headset's scoreboard (`XR_HUD_POSITION`) instead of replacing it. Hence
+ * it goes up: in the menu's place, its bottom edge got into the top edge of the
+ * scoreboard and the result was reading one thing on top of the other. It is watched by
  * `xrInteraction.test.ts`.
  */
 export const XR_TUTORIAL_POSITION: Vec3 = [0, 1.52, -0.95]
-/** Altura de la fila de botones dentro del panel, medida desde su centro. */
-const TUTORIAL_BOTON_Y = -TUTORIAL_PANEL.height / 2 + 0.08
+/** Height of the row of buttons inside the panel, measured from its centre. */
+const TUTORIAL_BUTTON_Y = -TUTORIAL_PANEL.height / 2 + 0.08
 /**
- * Botón de saltar el tutorial, abajo a la izquierda de su panel.
+ * Button to skip the tutorial, at the bottom left of its panel.
  *
- * Apartado de lo que se está enseñando, pero dentro del mismo panel: tiene que verse desde
- * el primer segundo sin competir con la lección. Y en la punta contraria a la de siguiente:
- * en el visor se apunta a pulso y un vecino a pocos centímetros se pulsa por error.
+ * Set apart from what is being taught, but inside the same panel: it has to be seen from
+ * the first second without competing with the lesson. And at the opposite end from the next one:
+ * in the headset you point freehand and a neighbour a few centimetres away gets pressed by mistake.
  */
-export const XR_TUTORIAL_SKIP_OFFSET: Vec3 = [-0.19, TUTORIAL_BOTON_Y, 0]
-/** Botón de pasar al paso siguiente, en la otra punta de esa fila. */
-export const XR_TUTORIAL_NEXT_OFFSET: Vec3 = [0.19, TUTORIAL_BOTON_Y, 0]
+export const XR_TUTORIAL_SKIP_OFFSET: Vec3 = [-0.19, TUTORIAL_BUTTON_Y, 0]
+/** Button to go on to the next step, at the other end of that row. */
+export const XR_TUTORIAL_NEXT_OFFSET: Vec3 = [0.19, TUTORIAL_BUTTON_Y, 0]
 
-/** Separación entre los palos del selector de cantidad. */
+/** Spacing between the sticks of the count picker. */
 export const XR_STICK_PICKER_SPACING = 0.055
 /**
- * Separación entre las casillas del selector de nivel, que ocupa la fila de
- * los palos en el modo Niveles: quince casillas en el ancho de trece palos.
+ * Spacing between the cells of the level picker, which takes the row of
+ * the sticks in the Levels mode: fifteen cells in the width of thirteen sticks.
  */
 export const XR_LEVEL_PICKER_SPACING = 0.047
-/** Separación entre las fichas de dificultad. */
+/** Spacing between the difficulty tokens. */
 export const XR_DIFFICULTY_SPACING = 0.17
 
 /**
- * Altura del selector de palos dentro del panel —y del de niveles, que ocupa su fila—, bajo
- * la fila del modo: lo que se pregunta sale **después** de elegir a qué se juega, y solo en
- * práctica (`picksSetup`).
+ * Height of the stick picker inside the panel —and of the levels one, which takes its row—, under
+ * the mode row: what is asked comes out **after** choosing what is played, and only in
+ * practice (`picksSetup`).
  *
- * Las cotas de las cuatro filas van apuradas al milímetro, y no es capricho: el aro no puede
- * subir más, empezar no puede bajar, y en medio caben justas tres filas con su nombre encima
- * sin que ningún nombre toque un botón ni ninguna caja pise la de la fila de al lado. Lo vigila
- * `xrLayout.test.ts` («el menú empieza por el modo») y `menu.legible.test.ts`.
+ * The heights of the four rows are cut to the millimetre, and it is not a whim: the hoop cannot
+ * go up any more, start cannot go down, and in between three rows just fit with their name on top
+ * without any name touching a button nor any box stepping on the one of the next row. It is watched by
+ * `xrLayout.test.ts` («the menu starts with the mode») and `menu.legible.test.ts`.
  *
- * El nombre de cada fila y sus botones salen de la misma cota. Los palos se pintaban tres
- * centímetros por debajo de la suya y las fichas de velocidad dos, así que el nombre del modo,
- * que iba debajo, quedaba tapado por la ficha elegida.
+ * The name of each row and its buttons come from the same height. The sticks were painted three
+ * centimetres below theirs and the speed tokens two, so the name of the mode,
+ * which went below, was covered by the chosen token.
  */
-export const XR_STICK_ROW_Y = -0.014 + SUBIDA_DE_LA_PISTA
-/** Altura del selector de dificultad dentro del panel: la última pregunta antes de empezar. */
-export const XR_DIFFICULTY_ROW_Y = -0.17 + SUBIDA_DE_LA_PISTA
+export const XR_STICK_ROW_Y = -0.014 + HINT_RISE
+/** Height of the difficulty picker inside the panel: the last question before starting. */
+export const XR_DIFFICULTY_ROW_Y = -0.17 + HINT_RISE
 /**
- * Lo alto que es la caja de pulsación de cada ficha de esas dos filas. Declarado aquí y no en
- * el componente para que el test de disposición compruebe que no se meten en las filas de al
- * lado: una caja invisible que pisa al vecino es un botón que no responde.
+ * How tall the hit box of each token of those two rows is. Declared here and not in
+ * the component so that the layout test checks that they do not get into the neighbouring
+ * rows: an invisible box that steps on its neighbour is a button that does not respond.
  */
 export const XR_ROW_HIT_HEIGHT = { sticks: 0.16, difficulty: 0.15 } as const
 const STICK_PICKER_Y = XR_STICK_ROW_Y
 const DIFFICULTY_Y = XR_DIFFICULTY_ROW_Y
 /**
- * Dónde va el botón de empezar dentro del panel.
+ * Where the start button goes inside the panel.
  *
- * Lo dice esta declaración y **no el componente**: lo tenía escrito a mano en los dos
- * sitios con tres centímetros de diferencia, y solo no se notaba porque su caja de
- * pulsación es más grande que él.
+ * This declaration says it and **not the component**: it had it written by hand in both
+ * places with three centimetres of difference, and it only went unnoticed because its hit
+ * box is bigger than it.
  *
- * Y **baja seis centímetros**. Su caja es 6 cm más alta que el botón que se ve, y por
- * arriba se metía en la fila de ajustes: los dos últimos centímetros del interruptor de
- * modo y el borde de «Sin fin» quedaban dentro de la caja de empezar, así que apuntarlos
- * no hacía nada. Es lo que se reportó del visor como «objetos invisibles que bloquean
- * opciones del menú», y ahora entre las dos filas hay justo lo que suman sus medias cajas.
+ * And **it goes down six centimetres**. Its box is 6 cm taller than the button that is seen, and at
+ * the top it got into the settings row: the last two centimetres of the mode
+ * switch and the edge of «Sin fin» were inside the start box, so pointing at them
+ * did nothing. It is what was reported from the headset as «invisible objects that block
+ * menu options», and now between the two rows there is exactly what their half boxes add up to.
  */
 export const XR_MENU_PLAY_OFFSET: Vec3 = [0, -0.32, 0]
 
-/** Lo que mide su caja de pulsación. */
+/** What its hit box measures. */
 export const XR_MENU_PLAY_HIT: Vec3 = [0.36, 0.13, 0.06]
 
 /**
- * Lo que ocupa la caja de pulsación de cada botón fijo del menú, en metros.
+ * What the hit box of each fixed button of the menu takes up, in metres.
  *
- * Estaba escrito dentro del componente, botón por botón, y una caja es **invisible**:
- * más grande que su botón se come al vecino y quien juega ve una opción que no responde
- * —lo que se reportó del visor como «hay algo que tapa el menú»—. Declaradas aquí se
- * pueden comparar entre sí, que es lo que hace `xrLayout.test.ts`.
+ * It was written inside the component, button by button, and a box is **invisible**:
+ * bigger than its button it eats the neighbour and whoever plays sees an option that does not respond
+ * —what was reported from the headset as «there is something covering the menu»—. Declared here they
+ * can be compared with each other, which is what `xrLayout.test.ts` does.
  */
 export const XR_MENU_HIT: Record<string, Vec3> = {
   exit: [0.16, 0.13, 0.06],
-  opciones: [0.16, 0.13, 0.06],
+  options: [0.16, 0.13, 0.06],
   tutorial: [0.14, 0.12, 0.06],
   music: [0.14, 0.12, 0.06],
   hoopDown: [0.13, 0.1, 0.06],
@@ -588,10 +588,10 @@ export const XR_MENU_HIT: Record<string, Vec3> = {
   play: [0.36, 0.13, 0.06],
 }
 
-/** Dónde va cada uno de esos botones. Mismo nombre, mismo orden. */
+/** Where each of those buttons goes. Same name, same order. */
 export const XR_MENU_SPOT: Record<keyof typeof XR_MENU_HIT, Vec3> = {
   exit: XR_MENU_EXIT_OFFSET,
-  opciones: XR_MENU_OPCIONES_OFFSET,
+  options: XR_MENU_OPTIONS_OFFSET,
   tutorial: XR_MENU_TUTORIAL_OFFSET,
   music: XR_MENU_MUSIC_OFFSET,
   hoopDown: XR_HOOP_DOWN_OFFSET,
@@ -603,20 +603,20 @@ export const XR_MENU_SPOT: Record<keyof typeof XR_MENU_HIT, Vec3> = {
 }
 
 /**
- * Cuánto sube el nombre de una fila por encima de sus botones, en metros.
+ * How much the name of a row goes up above its buttons, in metres.
  *
- * Las filas son palos, fichas de color e iconos, y un icono dice **qué pasa** pero no **de
- * qué es la fila**: cinco fichas en línea no se leen como «velocidad» hasta que alguien lo
- * dice. El panel creció para hacerles sitio, que quitárselo a los botones es quitárselo a
- * lo que cuesta apuntar.
+ * The rows are sticks, coloured tokens and icons, and an icon says **what happens** but not **what
+ * the row is about**: five tokens in a line are not read as «speed» until someone says
+ * so. The panel grew to make room for them, since taking it from the buttons is taking it from
+ * what is hard to point at.
  */
 export const ROW_LABEL_RISE = 0.095
 
 /**
- * Cómo se llama cada fila y sobre qué se centra, en coordenadas del panel.
+ * What each row is called and what it is centred over, in panel coordinates.
  *
- * La de ajustes lleva tres cosas distintas, así que lleva tres nombres, cada uno sobre lo
- * suyo. En inglés, que es la clave con la que se traducen.
+ * The settings one carries three different things, so it carries three names, each over its
+ * own. In English, which is the key they are translated with.
  */
 export const MENU_LABELS = [
   { text: 'Hoop', x: 0, y: HOOP_ROW_Y },
@@ -627,8 +627,8 @@ export const MENU_LABELS = [
   { text: 'Around', x: 0.245, y: SETTINGS_ROW_Y },
 ] as const
 
-/** La fila de cada rótulo: el de los palos y el de la velocidad nombran también la escalera de los niveles. */
-const FILAS_DEL_ROTULO: Record<(typeof MENU_LABELS)[number]['text'], readonly FilaDelMenu[]> = {
+/** The row of each label: the sticks one and the speed one also name the ladder of the levels. */
+const LABEL_ROWS: Record<(typeof MENU_LABELS)[number]['text'], readonly MenuRow[]> = {
   Hoop: ['hoop'],
   Sticks: ['sticks', 'levels'],
   Speed: ['speed', 'levels'],
@@ -638,27 +638,27 @@ const FILAS_DEL_ROTULO: Record<(typeof MENU_LABELS)[number]['text'], readonly Fi
 }
 
 /**
- * Los nombres de fila que se enseñan con cada modo: los de las filas a la vista
- * (`gameMenu.ts`). **Solo la práctica pregunta** palos y velocidad; en Niveles la fila de los
- * palos es la escalera y la velocidad se ve apagada, la del nivel; el desafío va fijo
- * (`CHALLENGE_SETUP`) y sus filas no se ven, así que tampoco sus nombres: un rótulo sobre un hueco
- * se lee como una opción que falta. Lo plegado tras «Más opciones», tampoco.
+ * The row names that are shown with each mode: those of the rows in view
+ * (`gameMenu.ts`). **Only practice asks** sticks and speed; in Levels the row of the
+ * sticks is the ladder and the speed is seen switched off, the level's one; the challenge is fixed
+ * (`CHALLENGE_SETUP`) and its rows are not seen, so neither are their names: a label over a gap
+ * reads as a missing option. What is folded behind «Más opciones», neither.
  */
-export function menuLabelsFor(mode: GameMode, masOpciones = false): readonly (typeof MENU_LABELS)[number][] {
-  return MENU_LABELS.filter(({ text }) => FILAS_DEL_ROTULO[text].some((fila) => seVe(fila, mode, 'visor', masOpciones)))
+export function menuLabelsFor(mode: GameMode, moreOptions = false): readonly (typeof MENU_LABELS)[number][] {
+  return MENU_LABELS.filter(({ text }) => LABEL_ROWS[text].some((row) => isShown(row, mode, 'headset', moreOptions)))
 }
 
 /**
- * Lo que se escribe en un rótulo del menú. El de la fila del modo dice «Modo» y **cuál** hay
- * elegido —«Modo: Reto»—: su interruptor lo dibuja con corazones o estrellas, y un dibujo no dice
- * cómo se llama lo que cuenta para medalla. Los demás, lo que son.
+ * What is written in a menu label. The one of the mode row says «Modo» and **which** one is
+ * chosen —«Modo: Reto»—: its switch draws it with hearts or stars, and a drawing does not say
+ * what the one that counts for a medal is called. The others, what they are.
  */
 export function menuLabelText(
   text: (typeof MENU_LABELS)[number]['text'],
   mode: GameMode,
-  t: (clave: TextKey) => string,
+  t: (key: TextKey) => string,
 ): string {
-  return text === 'Mode' ? formatea(t('Mode: {mode}'), { mode: t(GAME_MODE_LABELS[mode]) }) : t(text)
+  return text === 'Mode' ? formatText(t('Mode: {mode}'), { mode: t(GAME_MODE_LABELS[mode]) }) : t(text)
 }
 
 function offset([x, y, z]: Vec3, dx: number, dy: number): Vec3 {
@@ -666,8 +666,8 @@ function offset([x, y, z]: Vec3, dx: number, dy: number): Vec3 {
 }
 
 /**
- * Dónde cae un punto del panel del menú, dado en coordenadas del panel, en el espacio de la
- * interfaz: escalado y girado como lo hace three con el grupo del panel.
+ * Where a point of the menu panel, given in panel coordinates, falls in the ui
+ * space: scaled and turned as three does with the panel's group.
  */
 export function onMenu(dx: number, dy: number, pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [x, y, z] = pose.position
@@ -676,36 +676,36 @@ export function onMenu(dx: number, dy: number, pose: MenuPose = XR_MENU_POSE): V
   return [x + dx * pose.scale * cos, y + dy * pose.scale, z - dx * pose.scale * sin]
 }
 
-/** Botón de volver al menú durante la partida. */
+/** Button to go back to the menu during the run. */
 export function xrQuitButtonPosition(): Vec3 {
   return XR_QUIT_POSITION
 }
 
-/** Botón de salir del visor, dentro del panel del menú. */
+/** Button to leave the headset, inside the menu panel. */
 export function xrMenuExitPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_MENU_EXIT_OFFSET
   return onMenu(dx, dy, pose)
 }
 
-/** Botón de «Más opciones», dentro del panel del menú. */
-export function xrMenuOpcionesPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
-  const [dx, dy] = XR_MENU_OPCIONES_OFFSET
+/** «Más opciones» button, inside the menu panel. */
+export function xrMenuOptionsPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
+  const [dx, dy] = XR_MENU_OPTIONS_OFFSET
   return onMenu(dx, dy, pose)
 }
 
-/** Interruptor de modo (práctica, niveles o desafío), dentro del panel del menú. */
+/** Mode switch (practice, levels or challenge), inside the menu panel. */
 export function xrModeTogglePosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_MODE_TOGGLE_OFFSET
   return onMenu(dx, dy, pose)
 }
 
-/** Interruptor de tanda o sin fin, dentro del panel del menú. */
+/** Round or endless switch, inside the menu panel. */
 export function xrEndlessTogglePosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_ENDLESS_TOGGLE_OFFSET
   return onMenu(dx, dy, pose)
 }
 
-/** Casilla del nivel `level` (1-based) del selector de nivel. */
+/** Cell of the level `level` (1-based) of the level picker. */
 export function xrLevelOptionPosition(
   level: number,
   levelCount: number,
@@ -714,58 +714,58 @@ export function xrLevelOptionPosition(
   const width = (levelCount - 1) * XR_LEVEL_PICKER_SPACING
   return onMenu((level - 1) * XR_LEVEL_PICKER_SPACING - width / 2, STICK_PICKER_Y, pose)
 }
-/** Selector de escenario o passthrough, dentro del panel del menú. */
+/** Scenery or passthrough picker, inside the menu panel. */
 export function xrSceneryPickerPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_SCENERY_PICKER_OFFSET
   return onMenu(dx, dy, pose)
 }
 
-/** Botón de bajar el aro, dentro del panel del menú. */
+/** Button to lower the hoop, inside the menu panel. */
 export function xrHoopDownPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_HOOP_DOWN_OFFSET
   return onMenu(dx, dy, pose)
 }
 
-/** Botón de subir el aro, dentro del panel del menú. */
+/** Button to raise the hoop, inside the menu panel. */
 export function xrHoopUpPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_HOOP_UP_OFFSET
   return onMenu(dx, dy, pose)
 }
 
-/** Botón de volver a ver el tutorial, dentro del panel del menú. */
+/** Button to see the tutorial again, inside the menu panel. */
 export function xrMenuTutorialPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_MENU_TUTORIAL_OFFSET
   return onMenu(dx, dy, pose)
 }
 
-/** Botón de saltar el tutorial, dentro de su panel. */
+/** Button to skip the tutorial, inside its panel. */
 export function xrTutorialSkipPosition(): Vec3 {
   const [dx, dy] = XR_TUTORIAL_SKIP_OFFSET
   return offset(XR_TUTORIAL_POSITION, dx, dy)
 }
 
-/** Botón de pasar al paso siguiente, dentro del panel del tutorial. */
+/** Button to go on to the next step, inside the tutorial panel. */
 export function xrTutorialNextPosition(): Vec3 {
   const [dx, dy] = XR_TUTORIAL_NEXT_OFFSET
   return offset(XR_TUTORIAL_POSITION, dx, dy)
 }
 
-/** Botón de empezar partida. */
+/** Button to start a run. */
 export function xrPlayButtonPosition(pose: MenuPose = XR_MENU_POSE): Vec3 {
   const [dx, dy] = XR_MENU_PLAY_OFFSET
   return onMenu(dx, dy, pose)
 }
 
 /**
- * Posición del palo `index` (0-based) del selector de cantidad. El selector
- * muestra los `MAX_STICKS` posibles y se elige tocando hasta cuál se quiere.
+ * Position of the stick `index` (0-based) of the count picker. The picker
+ * shows the `MAX_STICKS` possible ones and you choose by touching up to which one you want.
  */
 export function xrStickOptionPosition(index: number, pose: MenuPose = XR_MENU_POSE): Vec3 {
   const width = (MAX_STICKS - 1) * XR_STICK_PICKER_SPACING
   return onMenu(index * XR_STICK_PICKER_SPACING - width / 2, STICK_PICKER_Y, pose)
 }
 
-/** Posición de la ficha de una dificultad. */
+/** Position of the token of a difficulty. */
 export function xrDifficultyOptionPosition(
   difficulty: Difficulty,
   pose: MenuPose = XR_MENU_POSE,
@@ -776,31 +776,31 @@ export function xrDifficultyOptionPosition(
 }
 
 /**
- * Cuánto se corre el mundo, en metros, para dejarlo al alcance de quien juega.
+ * How much the world shifts, in metres, to leave it within reach of whoever plays.
  *
- * **El problema.** Las cotas de la escena se eligieron con una persona de pie
- * delante. Sentado —en una silla, en un sofá, en una silla de ruedas— el mundo
- * entero queda un palmo por encima de donde llega el brazo, y no falla nada:
- * simplemente no se puede jugar. A quien es más bajo que esa persona le pasa lo
- * mismo en pequeño, y tampoco tiene forma de nivelarlo.
+ * **The problem.** The heights of the scene were chosen with a person standing
+ * in front. Seated —on a chair, on a sofa, in a wheelchair— the whole
+ * world ends up a hand's breadth above where the arm reaches, and nothing fails:
+ * it simply cannot be played. Whoever is shorter than that person has the
+ * same happen on a small scale, and has no way to level it either.
  *
- * **Es la misma corrección que ya se le hace a la interfaz**, aplicada al
- * decorado: sale negativa para quien tiene los ojos por debajo de la referencia,
- * así que el mundo baja hasta él. Y se corre el decorado, no al jugador: el
- * origen es de quien monta la escena —en el salón hay un arco de cabinas
- * plantado ahí— y dos orígenes en la misma sesión se pisan.
+ * **It is the same correction already made to the ui**, applied to the
+ * scenery: it comes out negative for whoever has their eyes below the reference,
+ * so the world goes down to them. And the scenery is shifted, not the player: the
+ * origin belongs to whoever mounts the scene —in the hall there is an arc of cabinets
+ * standing there— and two origins in the same session step on each other.
  *
- * **No cambia ninguna puntuación.** Se corre la escena entera, con el objetivo
- * dentro, mientras la mano se queda donde está la mano: la altura del objetivo
- * respecto al brazo es la misma que tenía la persona de pie para la que se
- * dibujó. Y quien juega de pie no nota nada, porque ahí la corrección es cero.
+ * **It changes no score.** The whole scene is shifted, with the goal
+ * inside, while the hand stays where the hand is: the height of the goal
+ * relative to the arm is the same one the standing person it was drawn for
+ * had. And whoever plays standing notices nothing, because there the correction is zero.
  *
- * Lo pide quien juega desde los ajustes del arcade y no se adivina: bajar el
- * mundo sin que nadie lo haya dicho movería el suelo bajo los pies de quien
- * está de pie.
+ * Whoever plays asks for it from the arcade's settings and it is not guessed: lowering the
+ * world without anyone having said so would move the floor under the feet of whoever
+ * is standing.
  *
- * @param eyeHeight  la cota de los ojos que haya medido el visor, o `null`
- * @param atEyeLevel si se ha pedido el mundo a la altura de los ojos
+ * @param eyeHeight  the eye height the headset has measured, or `null`
+ * @param atEyeLevel whether the world has been asked for at eye height
  */
 export function worldRise(
   eyeHeight: number | null | undefined,
@@ -811,38 +811,38 @@ export function worldRise(
 }
 
 /**
- * Cuánto tiene que cambiar la altura, y durante cuánto, para volver a medirla.
+ * How much the height has to change, and for how long, to measure it again.
  *
- * Lo que cuelga de esta medida se coloca al entrar y **se queda quieto**. Uno
- * que persiguiera la cabeza subiría al ponerse de puntillas y bajaría al
- * agacharse, justo cuando se está apuntando. Pero sentarse a media partida sí
- * tiene que notarse, y eso es un cambio grande y sostenido, no un movimiento de
- * juego.
+ * What hangs from this measurement is placed on entering and **stays still**. One
+ * that chased the head would go up on standing on tiptoe and down on
+ * crouching, just when you are aiming. But sitting down in the middle of a run does
+ * have to be noticed, and that is a big and sustained change, not a movement of
+ * play.
  */
 export const RETAKE_DELTA = 0.15
 export const RETAKE_SECONDS = 1
 
-/** Lo que se recuerda de la altura entre fotogramas. */
+/** What is remembered of the height between frames. */
 export interface HeightTracker {
-  /** La cota que se está usando ahora mismo, o `null` mientras no haya ninguna buena. */
+  /** The height being used right now, or `null` while there is no good one. */
   held: number | null
-  /** La medida filtrada, que es lo que se compara con la que se usa. */
+  /** The filtered measurement, which is what is compared with the one in use. */
   smoothed: number | null
-  /** Cuánto lleva la medida lejos de la que se usa, en segundos. */
+  /** How long the measurement has been far from the one in use, in seconds. */
   drift: number
 }
 
-/** Un seguimiento recién empezado: sin nada medido todavía. */
+/** A tracking just started: with nothing measured yet. */
 export function startTracking(): HeightTracker {
   return { held: null, smoothed: null, drift: 0 }
 }
 
 /**
- * Avanza el seguimiento con la medida de este fotograma.
+ * Advances the tracking with this frame's measurement.
  *
- * @param measured  la cota de la cabeza, o `null` si no hay dato bueno
- * @param ratio     cuánto se acerca el filtro a la medida en este fotograma, de 0 a 1
- * @param delta     segundos de este fotograma
+ * @param measured  the height of the head, or `null` if there is no good data
+ * @param ratio     how much the filter approaches the measurement in this frame, from 0 to 1
+ * @param delta     seconds of this frame
  */
 export function trackHeight(
   state: HeightTracker,
@@ -854,27 +854,27 @@ export function trackHeight(
 
   const smoothed =
     state.smoothed == null ? measured : state.smoothed + (measured - state.smoothed) * ratio
-  // La primera medida buena se usa tal cual: entrar en la sesión y ver el mundo
-  // a la altura de los ojos es lo que tiene que pasar, no una escena subiendo
-  // despacio desde donde sea.
+  // The first good measurement is used as is: entering the session and seeing the world
+  // at eye height is what has to happen, not a scene rising
+  // slowly from wherever.
   if (state.held == null) return { held: smoothed, smoothed, drift: 0 }
 
-  const lejos = Math.abs(smoothed - state.held) > RETAKE_DELTA
-  const drift = lejos ? state.drift + Math.max(0, delta) : 0
+  const far = Math.abs(smoothed - state.held) > RETAKE_DELTA
+  const drift = far ? state.drift + Math.max(0, delta) : 0
   if (drift > RETAKE_SECONDS) return { held: smoothed, smoothed, drift: 0 }
   return { held: state.held, smoothed, drift }
 }
 
 /**
- * Cuánto sube la interfaz **por encima de lo que ya se haya movido el mundo**.
+ * How much the ui goes up **on top of what the world has already moved**.
  *
- * La interfaz cuelga del mundo, y el mundo puede haber bajado ya hasta los ojos
- * de quien juega (ver `worldRise`). Sumar entonces la corrección de la interfaz
- * la bajaría dos veces: el menú acabaría a la altura de las rodillas justo para
- * quien menos puede agacharse a buscarlo.
+ * The ui hangs from the world, and the world may already have gone down to the eyes
+ * of whoever plays (see `worldRise`). Adding the ui's correction then
+ * would lower it twice: the menu would end up at knee height precisely for
+ * whoever can least crouch to look for it.
  *
- * Dicho de otra forma: cuando el mundo entero viene a ti, la interfaz ya está
- * donde tiene que estar y no le hace falta corrección propia.
+ * Put another way: when the whole world comes to you, the ui is already
+ * where it has to be and needs no correction of its own.
  */
 export function xrUiRiseOverWorld(
   eyeHeight: number | null | undefined,
@@ -884,27 +884,27 @@ export function xrUiRiseOverWorld(
 }
 
 /**
- * Desde dónde se lee un panel de la interfaz: con los ojos a cada altura de `EYE_HEIGHTS` y con la
- * altura de juego del salón de pie o a la de los ojos.
+ * Where a ui panel is read from: with the eyes at each height of `EYE_HEIGHTS` and with the
+ * hall's play height standing or at eye height.
  *
- * Todo cuelga de `XRGazeAnchor`, así que el panel queda delante de los ojos, a la altura que suben
- * el mundo (`worldRise`) y la interfaz sobre él (`xrUiRiseOverWorld`). Es lo que usan los
- * `*.legible.test.ts` para medir cada letra donde queda de verdad. `yaw` es el giro del panel
- * cuando no está de frente, como la columna del menú.
+ * Everything hangs from `XRGazeAnchor`, so the panel ends up in front of the eyes, at the height the
+ * world (`worldRise`) and the ui on top of it (`xrUiRiseOverWorld`) rise to. It is what the
+ * `*.legible.test.ts` use to measure each letter where it really ends up. `yaw` is the turn of the panel
+ * when it is not facing front, like the menu column.
  */
-export function xrPanelViews(position: Vec3, yaw = 0): { donde: string; pose: PanelPose; ojos: Point }[] {
-  return EYE_HEIGHTS.flatMap((ojos) =>
-    [false, true].map((aLaAlturaDeLosOjos) => ({
-      donde: `ojos a ${ojos} m${aLaAlturaDeLosOjos ? ', mundo a su altura' : ''}`,
+export function xrPanelViews(position: Vec3, yaw = 0): { where: string; pose: PanelPose; eyes: Point }[] {
+  return EYE_HEIGHTS.flatMap((eyeHeight) =>
+    [false, true].map((atEyeLevel) => ({
+      where: `eyes at ${eyeHeight} m${atEyeLevel ? ', world at their height' : ''}`,
       pose: {
         position: [
           position[0],
-          position[1] + worldRise(ojos, aLaAlturaDeLosOjos) + xrUiRiseOverWorld(ojos, aLaAlturaDeLosOjos),
+          position[1] + worldRise(eyeHeight, atEyeLevel) + xrUiRiseOverWorld(eyeHeight, atEyeLevel),
           position[2],
         ] as const,
         ...(yaw === 0 ? {} : { rotation: [0, yaw, 0] as const }),
       },
-      ojos: eyesAt(ojos),
+      eyes: eyesAt(eyeHeight),
     })),
   )
 }

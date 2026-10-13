@@ -8,15 +8,15 @@ import {
   XR_HOOP_UP_OFFSET,
   XR_MENU_EXIT_OFFSET,
   XR_MENU_MUSIC_OFFSET,
-  XR_MENU_OPCIONES_OFFSET,
+  XR_MENU_OPTIONS_OFFSET,
   XR_MENU_TUTORIAL_OFFSET,
   startTracking,
   trackHeight,
   worldRise,
   xrUiRise,
   xrUiRiseOverWorld,
-  PISTA_ANCHO,
-  PISTA_Y,
+  HINT_WIDTH,
+  HINT_Y,
   XR_MENU_HIT,
   XR_MENU_SPOT,
   MENU_LABELS,
@@ -39,203 +39,203 @@ import {
   XR_HUD_POSITION,
   XR_HUD_WITH_SIGN,
   xrHudLayout,
-  ATENUAR_POR_SEGUNDO,
+  DIM_PER_SECOND,
   MENU_PANEL,
-  PALO_TRAS_EL_MENU,
+  STICK_BEHIND_MENU,
   XR_MENU_POSE,
-  opacidadHacia,
-  paloTapaElMenu,
-  rumbosDelMenu,
+  opacityToward,
+  stickCoversMenu,
+  menuHeadings,
   type Vec3,
 } from './xrLayout'
 import { MIN_EYE_HEIGHT, REFERENCE_EYE_HEIGHT, hoopHeightFor } from './hoopHeight'
 import { MENU_DEGREES, degreesFromFront } from './menuTemplate'
-import { traductor } from './textos'
+import { translator } from './textos'
 import { MAX_STICKS, PLAYER_OFFSET_Z, STICK_CORD_LENGTH, STICK_LENGTH, STICK_RADIUS } from './gameConfig'
 import { EYE_HEIGHTS } from './panelReading'
 import { buildStickLayout } from './stickLayout'
 import { SWING_AMPLITUDE } from './stickSwing'
 
 /**
- * Del panel del menú solo se puede comprobar sin visor lo que es aritmética:
- * dónde cae cada botón. Importa porque en el visor se apunta a pulso a un
- * metro, y dos botones a pocos centímetros son el mismo botón: se ve dónde
- * apunta el rayo, no dónde acaba la zona sensible.
+ * Of the menu panel, only what is arithmetic can be checked without a headset:
+ * where each button falls. It matters because in the headset you point freehand at a
+ * metre, and two buttons a few centimetres apart are the same button: you see where
+ * the ray points, not where the sensitive zone ends.
  *
- * Las medidas son las de las cajas que declara `XRMenu.tsx`: los botones de
- * esquina miden 16 cm de ancho, así que dos centros a menos de esa distancia se
- * pisan de verdad.
+ * The measurements are those of the boxes that `XRMenu.tsx` declares: the corner
+ * buttons are 16 cm wide, so two centres at less than that distance really do
+ * step on each other.
  */
 const CORNER_BUTTON_WIDTH = 0.16
 
-/** Cuánto hay entre dos botones de la misma fila, de centro a centro. */
-function separacion(a: readonly number[], b: readonly number[]): number {
+/** How much there is between two buttons of the same row, from centre to centre. */
+function separation(a: readonly number[], b: readonly number[]): number {
   return Math.abs(a[0] - b[0])
 }
 
-describe('las esquinas del panel del menú', () => {
-  it('pone el tutorial y la música una en cada punta de la fila del aro', () => {
+describe('the corners of the menu panel', () => {
+  it('puts the tutorial and the music one at each end of the hoop row', () => {
     expect(XR_MENU_TUTORIAL_OFFSET[1]).toBe(XR_MENU_MUSIC_OFFSET[1])
     expect(XR_MENU_TUTORIAL_OFFSET[0]).toBeLessThan(0)
     expect(XR_MENU_MUSIC_OFFSET[0]).toBeGreaterThan(0)
   })
 
-  it('deja la música lejos de las flechas del aro, que son sus vecinas', () => {
-    for (const flecha of [XR_HOOP_UP_OFFSET, XR_HOOP_DOWN_OFFSET]) {
-      expect(separacion(XR_MENU_MUSIC_OFFSET, flecha)).toBeGreaterThan(
+  it('leaves the music far from the hoop arrows, which are its neighbours', () => {
+    for (const arrow of [XR_HOOP_UP_OFFSET, XR_HOOP_DOWN_OFFSET]) {
+      expect(separation(XR_MENU_MUSIC_OFFSET, arrow)).toBeGreaterThan(
         CORNER_BUTTON_WIDTH,
       )
     }
   })
 
-  it('mantiene salir y «Más opciones» cada uno en una punta de la fila de abajo', () => {
-    // La regla que ya había: son las dos cosas que cuesta caro confundir.
-    expect(XR_MENU_EXIT_OFFSET[1]).toBe(XR_MENU_OPCIONES_OFFSET[1])
-    expect(separacion(XR_MENU_EXIT_OFFSET, XR_MENU_OPCIONES_OFFSET)).toBeGreaterThan(0.5)
+  it('keeps exit and «Más opciones» each at one end of the bottom row', () => {
+    // The rule that was already there: they are the two things that are costly to confuse.
+    expect(XR_MENU_EXIT_OFFSET[1]).toBe(XR_MENU_OPTIONS_OFFSET[1])
+    expect(separation(XR_MENU_EXIT_OFFSET, XR_MENU_OPTIONS_OFFSET)).toBeGreaterThan(0.5)
   })
 
-  it('no mete la música en la fila de abajo, que ya está llena', () => {
-    // Ahí solo quedaban quince centímetros entre empezar y «Más opciones», que es
-    // menos de lo que mide un botón de esquina.
-    expect(XR_MENU_MUSIC_OFFSET[1]).not.toBe(XR_MENU_OPCIONES_OFFSET[1])
+  it('does not put the music in the bottom row, which is already full', () => {
+    // There only fifteen centimetres were left between start and «Más opciones», which is
+    // less than what a corner button measures.
+    expect(XR_MENU_MUSIC_OFFSET[1]).not.toBe(XR_MENU_OPTIONS_OFFSET[1])
   })
 })
 
 /**
- * Las cajas de pulsación son **invisibles**, así que una que pise a su vecina no se ve:
- * se nota jugando, como una opción del menú que no responde. Es lo que se reportó del
- * visor —«hay objetos invisibles que bloquean opciones del menú»—, y aquí se mide.
+ * The hit boxes are **invisible**, so one that steps on its neighbour is not seen:
+ * it is noticed while playing, as a menu option that does not respond. It is what was reported from the
+ * headset —«there are invisible objects that block menu options»—, and here it is measured.
  */
-describe('las cajas de pulsación del menú no se pisan', () => {
-  const NOMBRES = Object.keys(XR_MENU_HIT)
+describe('the hit boxes of the menu do not step on each other', () => {
+  const NAMES = Object.keys(XR_MENU_HIT)
 
-  function caja(nombre: string) {
-    const [x, y] = XR_MENU_SPOT[nombre]
-    const [ancho, alto] = XR_MENU_HIT[nombre]
-    return { x, y, ancho, alto }
+  function box(name: string) {
+    const [x, y] = XR_MENU_SPOT[name]
+    const [width, height] = XR_MENU_HIT[name]
+    return { x, y, width, height }
   }
 
-  it('ninguna se mete en la de al lado', () => {
-    for (let i = 0; i < NOMBRES.length; i++) {
-      for (let j = i + 1; j < NOMBRES.length; j++) {
-        const a = caja(NOMBRES[i])
-        const b = caja(NOMBRES[j])
-        const pisa =
-          Math.abs(a.x - b.x) * 2 < a.ancho + b.ancho && Math.abs(a.y - b.y) * 2 < a.alto + b.alto
-        expect(pisa, `${NOMBRES[i]} pisa a ${NOMBRES[j]}`).toBe(false)
+  it('none gets into the one next to it', () => {
+    for (let i = 0; i < NAMES.length; i++) {
+      for (let j = i + 1; j < NAMES.length; j++) {
+        const a = box(NAMES[i])
+        const b = box(NAMES[j])
+        const overlaps =
+          Math.abs(a.x - b.x) * 2 < a.width + b.width && Math.abs(a.y - b.y) * 2 < a.height + b.height
+        expect(overlaps, `${NAMES[i]} steps on ${NAMES[j]}`).toBe(false)
       }
     }
   })
 
-  it('y ninguna cae encima de la línea que explica el modo', () => {
-    // La línea va centrada, así que solo se le pueden echar encima los botones que
-    // pasen por su banda de x.
-    for (const nombre of NOMBRES) {
-      const { x, y, ancho, alto } = caja(nombre)
-      const enSuAncho = Math.abs(x) * 2 < ancho + PISTA_ANCHO
-      const enSuAlto = y - alto / 2 < PISTA_Y
-      expect(enSuAncho && enSuAlto, `${nombre} cae sobre la línea del modo`).toBe(false)
+  it('and none falls on top of the line that explains the mode', () => {
+    // The line is centred, so only the buttons that go through its x band
+    // can land on top of it.
+    for (const name of NAMES) {
+      const { x, y, width, height } = box(name)
+      const withinItsWidth = Math.abs(x) * 2 < width + HINT_WIDTH
+      const withinItsHeight = y - height / 2 < HINT_Y
+      expect(withinItsWidth && withinItsHeight, `${name} falls on the mode line`).toBe(false)
     }
   })
 
-  it('todas caben dentro del panel', () => {
-    for (const nombre of NOMBRES) {
-      const { x, y, ancho, alto } = caja(nombre)
-      expect(Math.abs(x) + ancho / 2, `${nombre} se sale por el lado`).toBeLessThanOrEqual(
+  it('all fit inside the panel', () => {
+    for (const name of NAMES) {
+      const { x, y, width, height } = box(name)
+      expect(Math.abs(x) + width / 2, `${name} sticks out at the side`).toBeLessThanOrEqual(
         MENU_PANEL[0] / 2,
       )
-      expect(Math.abs(y) + alto / 2, `${nombre} se sale por arriba o por abajo`).toBeLessThanOrEqual(
+      expect(Math.abs(y) + height / 2, `${name} sticks out at the top or at the bottom`).toBeLessThanOrEqual(
         MENU_PANEL[1] / 2,
       )
     }
   })
 })
 
-describe('el mundo a la altura de quien juega', () => {
-  it('de pie no se mueve nada, mida lo que mida', () => {
-    // Es lo que ve quien no ha pedido nada, que son casi todos: la escena
-    // exactamente donde ha estado siempre.
+describe('the world at the height of whoever plays', () => {
+  it('standing nothing moves, whatever their height', () => {
+    // It is what whoever has asked for nothing sees, which is almost everyone: the scene
+    // exactly where it has always been.
     expect(worldRise(1.2, false)).toBe(0)
     expect(worldRise(1.6, false)).toBe(0)
     expect(worldRise(2.0, false)).toBe(0)
   })
 
-  it('sentado, el mundo baja hasta los ojos', () => {
-    // Un jugador sentado mide sobre metro veinte de ojos: el mundo tiene que
-    // bajar los cuarenta centímetros que le faltan para alcanzarlo.
+  it('seated, the world goes down to the eyes', () => {
+    // A seated player measures about a metre twenty of eye height: the world has to
+    // go down the forty centimetres it lacks to reach them.
     expect(worldRise(1.2, true)).toBeCloseTo(-0.4, 10)
   })
 
-  it('a quien es más alto le sube, por lo mismo', () => {
+  it('for whoever is taller it goes up, for the same reason', () => {
     expect(worldRise(1.8, true)).toBeCloseTo(0.2, 10)
   })
 
-  it('sin medida buena no se inventa nada', () => {
-    // Sin suelo en el espacio de referencia, o con el visor sobre la mesa, la
-    // cota no es una estatura: se juega con la escena donde estaba.
-    for (const cota of [null, undefined, Number.NaN, 0, 5]) {
-      expect(worldRise(cota, true)).toBe(0)
+  it('without a good measurement nothing is made up', () => {
+    // Without a floor in the reference space, or with the headset on the table, the
+    // height is not a stature: you play with the scene where it was.
+    for (const height of [null, undefined, Number.NaN, 0, 5]) {
+      expect(worldRise(height, true)).toBe(0)
     }
   })
 })
 
-describe('cuándo se vuelve a medir', () => {
-  const paso = (
+describe('when it is measured again', () => {
+  const step = (
     state: ReturnType<typeof startTracking>,
-    cota: number | null,
-    segundos = 1 / 72,
-  ) => trackHeight(state, cota, 1, segundos)
+    height: number | null,
+    seconds = 1 / 72,
+  ) => trackHeight(state, height, 1, seconds)
 
-  it('la primera medida buena se usa tal cual', () => {
-    // Entrar y ver el mundo a la altura de los ojos, no una escena subiendo
-    // despacio desde donde sea.
-    expect(paso(startTracking(), 1.75).held).toBeCloseTo(1.75, 6)
+  it('the first good measurement is used as is', () => {
+    // Entering and seeing the world at eye height, not a scene rising
+    // slowly from wherever.
+    expect(step(startTracking(), 1.75).held).toBeCloseTo(1.75, 6)
   })
 
-  it('sin medida buena no se toca nada', () => {
-    const inicial = startTracking()
+  it('without a good measurement nothing is touched', () => {
+    const initial = startTracking()
 
-    expect(paso(inicial, null)).toBe(inicial)
-    expect(paso(inicial, 0.3)).toBe(inicial)
+    expect(step(initial, null)).toBe(initial)
+    expect(step(initial, 0.3)).toBe(initial)
   })
 
-  it('moverse mientras se juega no mueve el mundo', () => {
-    // Ponerse de puntillas o agacharse a por algo: la escena se queda quieta,
-    // que si no el objetivo se escapa justo al ir a apuntarlo.
-    let state = paso(startTracking(), 1.7)
-    for (let t = 0; t < 2; t += 1 / 72) state = paso(state, 1.7 + RETAKE_DELTA * 0.8)
+  it('moving while playing does not move the world', () => {
+    // Standing on tiptoe or crouching for something: the scene stays still,
+    // otherwise the goal escapes just when you go to aim at it.
+    let state = step(startTracking(), 1.7)
+    for (let t = 0; t < 2; t += 1 / 72) state = step(state, 1.7 + RETAKE_DELTA * 0.8)
 
     expect(state.held).toBeCloseTo(1.7, 6)
   })
 
-  it('un cambio grande y corto tampoco', () => {
-    let state = paso(startTracking(), 1.7)
-    for (let t = 0; t < RETAKE_SECONDS / 2; t += 1 / 72) state = paso(state, 1.2)
+  it('a big and short change does not either', () => {
+    let state = step(startTracking(), 1.7)
+    for (let t = 0; t < RETAKE_SECONDS / 2; t += 1 / 72) state = step(state, 1.2)
 
     expect(state.held).toBeCloseTo(1.7, 6)
   })
 
-  it('pero sentarse a media partida sí', () => {
-    let state = paso(startTracking(), 1.7)
-    for (let t = 0; t < RETAKE_SECONDS * 2; t += 1 / 72) state = paso(state, 1.2)
+  it('but sitting down in the middle of a run does', () => {
+    let state = step(startTracking(), 1.7)
+    for (let t = 0; t < RETAKE_SECONDS * 2; t += 1 / 72) state = step(state, 1.2)
 
     expect(state.held).toBeCloseTo(1.2, 6)
   })
 })
 
-describe('la interfaz cuando el mundo ya se ha movido', () => {
-  it('con el mundo quieto, la interfaz se coloca ella sola', () => {
+describe('the ui when the world has already moved', () => {
+  it('with the world still, the ui places itself on its own', () => {
     expect(xrUiRiseOverWorld(1.4, false)).toBeCloseTo(xrUiRise(1.4), 10)
   })
 
-  it('con el mundo bajado, no se corrige otra vez', () => {
-    // Sumar las dos correcciones dejaba el menú a la altura de las rodillas,
-    // justo para quien menos puede agacharse a buscarlo.
+  it('with the world lowered, it is not corrected again', () => {
+    // Adding the two corrections left the menu at knee height,
+    // precisely for whoever can least crouch to look for it.
     expect(xrUiRiseOverWorld(1.2, true)).toBe(0)
     expect(xrUiRiseOverWorld(1.9, true)).toBe(0)
   })
 
-  it('sin medida buena no se mueve nada, se pida lo que se pida', () => {
+  it('without a good measurement nothing moves, whatever is asked for', () => {
     expect(xrUiRiseOverWorld(null, true)).toBe(0)
     expect(xrUiRiseOverWorld(null, false)).toBe(0)
   })
@@ -243,262 +243,262 @@ describe('la interfaz cuando el mundo ya se ha movido', () => {
 
 
 /**
- * Dónde cae la salida, que hasta ahora dependía del juego.
+ * Where the exit falls, which until now depended on the game.
  *
- * La regla —abajo a la derecha, al final de la fila de las acciones— y el porqué están en
- * `exitCorner.ts`, el mismo fichero en los trece. Aquí solo se le da el reparto de ESTE panel,
- * traducido a lo que la regla sabe leer.
+ * The rule —bottom right, at the end of the row of the actions— and the why are in
+ * `exitCorner.ts`, the same file in the thirteen. Here it is only given the layout of THIS panel,
+ * translated into what the rule knows how to read.
  */
-describe('la salida', () => {
-  const comoCaja = (nombre: string): PanelBox => ({
-    x: XR_MENU_SPOT[nombre][0],
-    y: XR_MENU_SPOT[nombre][1],
-    width: XR_MENU_HIT[nombre][0],
-    height: XR_MENU_HIT[nombre][1],
+describe('the exit', () => {
+  const asBox = (name: string): PanelBox => ({
+    x: XR_MENU_SPOT[name][0],
+    y: XR_MENU_SPOT[name][1],
+    width: XR_MENU_HIT[name][0],
+    height: XR_MENU_HIT[name][1],
   })
 
-  it('está en la esquina de abajo a la derecha del panel del menú', () => {
-    const nombres = Object.keys(XR_MENU_HIT)
+  it('is in the bottom right corner of the menu panel', () => {
+    const names = Object.keys(XR_MENU_HIT)
 
     expect(
       exitProblems(
-        comoCaja('exit'),
-        nombres.filter((nombre) => nombre !== 'exit').map(comoCaja),
+        asBox('exit'),
+        names.filter((name) => name !== 'exit').map(asBox),
         { width: MENU_PANEL[0], height: MENU_PANEL[1] },
       ),
     ).toEqual([])
   })
 })
 
-describe('los nombres de las filas, según el modo', () => {
-  const nombres = (mode: Parameters<typeof menuLabelsFor>[0], masOpciones = false) =>
-    menuLabelsFor(mode, masOpciones).map(({ text }) => text)
+describe('the names of the rows, depending on the mode', () => {
+  const names = (mode: Parameters<typeof menuLabelsFor>[0], moreOptions = false) =>
+    menuLabelsFor(mode, moreOptions).map(({ text }) => text)
 
-  it('desplegadas, la práctica y los niveles nombran todas sus filas, sin la de contra quién', () => {
+  it('unfolded, practice and the levels name all their rows, without the against-whom one', () => {
     expect(menuLabelsFor('practice', true)).toEqual(MENU_LABELS.filter(({ text }) => text !== 'Players'))
     expect(menuLabelsFor('levels', true)).toEqual(MENU_LABELS.filter(({ text }) => text !== 'Players'))
   })
 
-  it('plegadas, como abre el menú, solo lo del modo: en los niveles, su escalera y su velocidad', () => {
-    expect(nombres('practice')).toEqual(['Mode'])
-    expect(nombres('levels')).toEqual(['Sticks', 'Speed', 'Mode'])
+  it('folded, as the menu opens, only what belongs to the mode: in the levels, their ladder and their speed', () => {
+    expect(names('practice')).toEqual(['Mode'])
+    expect(names('levels')).toEqual(['Sticks', 'Speed', 'Mode'])
   })
 
-  it('el desafío no nombra filas que no enseña: va fijo, pregunta contra quién y se le da a empezar', () => {
-    expect(nombres('challenge')).toEqual(['Mode', 'Players'])
-    // Es una partida fija: lo plegado no se enseña aunque se pida.
-    expect(nombres('challenge', true)).toEqual(['Mode', 'Players'])
+  it('the challenge does not name rows it does not show: it is fixed, asks against whom and you hit start', () => {
+    expect(names('challenge')).toEqual(['Mode', 'Players'])
+    // It is a fixed run: what is folded is not shown even if asked for.
+    expect(names('challenge', true)).toEqual(['Mode', 'Players'])
   })
 
-  it('contra quién va en el hueco de sin fin, que el desafío no enseña, y el aviso a dos donde el de salir', () => {
+  it('against whom goes in the gap of endless, which the challenge does not show, and the two-player notice where the exit one is', () => {
     expect(XR_PLAYERS_TOGGLE_OFFSET).toEqual(XR_ENDLESS_TOGGLE_OFFSET)
     expect(XR_DUEL_POSITION).toEqual(XR_CONFIRM_POSITION)
   })
 })
 
-describe('el menú empieza por el modo', () => {
-  /** Las filas de arriba abajo, con lo que ocupa en alto la caja más alta de cada una. */
-  const filas = [
+describe('the menu starts with the mode', () => {
+  /** The rows from top to bottom, with what the tallest box of each one takes up in height. */
+  const rows = [
     {
-      nombre: 'modo',
+      name: 'mode',
       y: XR_MODE_TOGGLE_OFFSET[1],
-      alto: Math.max(XR_MENU_HIT.mode[1], XR_MENU_HIT.endless[1], XR_MENU_HIT.scenery[1]),
+      height: Math.max(XR_MENU_HIT.mode[1], XR_MENU_HIT.endless[1], XR_MENU_HIT.scenery[1]),
     },
-    { nombre: 'palos', y: XR_STICK_ROW_Y, alto: XR_ROW_HIT_HEIGHT.sticks },
-    { nombre: 'velocidad', y: XR_DIFFICULTY_ROW_Y, alto: XR_ROW_HIT_HEIGHT.difficulty },
-    { nombre: 'empezar', y: XR_MENU_PLAY_OFFSET[1], alto: XR_MENU_PLAY_HIT[1] },
+    { name: 'sticks', y: XR_STICK_ROW_Y, height: XR_ROW_HIT_HEIGHT.sticks },
+    { name: 'speed', y: XR_DIFFICULTY_ROW_Y, height: XR_ROW_HIT_HEIGHT.difficulty },
+    { name: 'start', y: XR_MENU_PLAY_OFFSET[1], height: XR_MENU_PLAY_HIT[1] },
   ]
 
-  it('el modo va el primero bajo el aro, y lo que pregunta la práctica, debajo', () => {
+  it('the mode goes first under the hoop, and what practice asks, below', () => {
     expect(XR_ENDLESS_TOGGLE_OFFSET[1]).toBe(XR_MODE_TOGGLE_OFFSET[1])
     expect(XR_SCENERY_PICKER_OFFSET[1]).toBe(XR_MODE_TOGGLE_OFFSET[1])
-    expect(filas.map(({ nombre }) => nombre)).toEqual(
-      [...filas].sort((a, b) => b.y - a.y).map(({ nombre }) => nombre),
+    expect(rows.map(({ name }) => name)).toEqual(
+      [...rows].sort((a, b) => b.y - a.y).map(({ name }) => name),
     )
   })
 
-  it('ninguna caja de una fila se mete en la de debajo', () => {
-    for (let i = 1; i < filas.length; i++) {
-      const arriba = filas[i - 1]
-      const abajo = filas[i]
-      expect(arriba.y - arriba.alto / 2, `${arriba.nombre} pisa ${abajo.nombre}`).toBeGreaterThan(
-        abajo.y + abajo.alto / 2,
+  it('no box of a row gets into the one below', () => {
+    for (let i = 1; i < rows.length; i++) {
+      const above = rows[i - 1]
+      const below = rows[i]
+      expect(above.y - above.height / 2, `${above.name} steps on ${below.name}`).toBeGreaterThan(
+        below.y + below.height / 2,
       )
     }
   })
 
-  it('el nombre de los palos no se mete en la fila del modo', () => {
-    // Las cajas de la fila del modo son botones de verdad; lo que hay entre las filas de
-    // abajo son rótulos que no se pulsan, y eso lo mide `menu.legible.test.ts`.
-    // El renglón mide más que la letra: se mide con su alto de línea, como lo apunta el lienzo.
-    const techoDelNombre = XR_STICK_ROW_Y + ROW_LABEL_RISE + MENU_TEXT.label / LINE_HEIGHT / 2
-    expect(techoDelNombre).toBeLessThan(filas[0].y - filas[0].alto / 2)
+  it('the name of the sticks does not get into the mode row', () => {
+    // The boxes of the mode row are real buttons; what there is between the bottom
+    // rows are labels that are not pressed, and that is measured by `menu.legible.test.ts`.
+    // The line measures more than the letter: it is measured with its line height, as the canvas notes it down.
+    const nameTop = XR_STICK_ROW_Y + ROW_LABEL_RISE + MENU_TEXT.label / LINE_HEIGHT / 2
+    expect(nameTop).toBeLessThan(rows[0].y - rows[0].height / 2)
   })
 })
 
-describe('el reparto del marcador', () => {
-  it('sin cartel es el de siempre: centrado, con su fila de vidas o estrellas y más alto al acabar', () => {
+describe('the layout of the scoreboard', () => {
+  it('without a sign it is the usual one: centred, with its row of lives or stars and taller at the end', () => {
     expect(xrHudLayout({ finished: false, row: false, sign: false })).toEqual({ height: XR_HUD_PANEL.run, centre: 0, content: 0.04 })
     expect(xrHudLayout({ finished: false, row: true, sign: false }).height).toBeCloseTo(XR_HUD_PANEL.run + XR_HUD_PANEL.livesRow)
     expect(xrHudLayout({ finished: true, row: false, sign: false })).toEqual({ height: XR_HUD_PANEL.finished, centre: 0, content: 0.1 })
     expect(xrHudLayout({ finished: true, row: true, sign: false }).height).toBeCloseTo(XR_HUD_PANEL.finished + XR_HUD_PANEL.livesRow)
   })
 
-  it('con el cartel encima encoge a lo que lleva, y las fichas no se mueven al acabar', () => {
-    const jugando = xrHudLayout({ finished: false, row: false, sign: true })
-    const acabada = xrHudLayout({ finished: true, row: false, sign: true })
+  it('with the sign above it shrinks to what it carries, and the tokens do not move at the end', () => {
+    const playing = xrHudLayout({ finished: false, row: false, sign: true })
+    const finished = xrHudLayout({ finished: true, row: false, sign: true })
 
-    expect(jugando.height).toBeLessThan(XR_HUD_PANEL.run)
-    expect(acabada.height).toBeLessThan(XR_HUD_PANEL.finished)
-    expect(acabada.content).toBe(jugando.content)
-    // Su borde de arriba es el mismo jugando que acabada: el cartel de encima no se toca.
-    expect(acabada.centre + acabada.height / 2).toBeCloseTo(jugando.centre + jugando.height / 2)
-    expect(xrHudLayout({ finished: false, row: true, sign: true })).toEqual(jugando)
+    expect(playing.height).toBeLessThan(XR_HUD_PANEL.run)
+    expect(finished.height).toBeLessThan(XR_HUD_PANEL.finished)
+    expect(finished.content).toBe(playing.content)
+    // Its top edge is the same playing as finished: the sign above is not touched.
+    expect(finished.centre + finished.height / 2).toBeCloseTo(playing.centre + playing.height / 2)
+    expect(xrHudLayout({ finished: false, row: true, sign: true })).toEqual(playing)
   })
 
-  it('el panel envuelve lo que lleva: las fichas y la racha, y al acabar los botones', () => {
-    // Las fichas (3 cm de radio, crecidas) y los rombos de la racha, 6 cm por encima.
-    const fichas = XR_HUD_WITH_SIGN.content
-    for (const reparto of [XR_HUD_WITH_SIGN.run, XR_HUD_WITH_SIGN.finished]) {
-      expect(reparto.centre + reparto.height / 2).toBeGreaterThan(fichas + 0.06 + 0.012)
-      expect(reparto.centre - reparto.height / 2).toBeLessThan(fichas - 0.045)
+  it('the panel wraps what it carries: the tokens and the streak, and at the end the buttons', () => {
+    // The tokens (3 cm of radius, grown) and the diamonds of the streak, 6 cm above.
+    const tokens = XR_HUD_WITH_SIGN.content
+    for (const layout of [XR_HUD_WITH_SIGN.run, XR_HUD_WITH_SIGN.finished]) {
+      expect(layout.centre + layout.height / 2).toBeGreaterThan(tokens + 0.06 + 0.012)
+      expect(layout.centre - layout.height / 2).toBeLessThan(tokens - 0.045)
     }
-    // Los botones del final van 12 cm por debajo del marcador y su caja mide 11 de alto.
+    // The final buttons go 12 cm below the scoreboard and their box is 11 tall.
     expect(XR_HUD_WITH_SIGN.finished.centre - XR_HUD_WITH_SIGN.finished.height / 2).toBeLessThan(-0.12 - 0.055)
-    // Y entre las fichas y los botones no se pisan.
-    expect(fichas - 0.045).toBeGreaterThan(-0.12 + 0.055)
+    // And the tokens and the buttons do not step on each other.
+    expect(tokens - 0.045).toBeGreaterThan(-0.12 + 0.055)
   })
 
-  it('y no baja más que el de siempre: con el jugador más bajo sigue por encima del suelo', () => {
-    const acabada = xrHudLayout({ finished: true, row: false, sign: true })
-    const elDeSiempre = xrHudLayout({ finished: true, row: true, sign: false })
-    const suelo = (reparto: typeof acabada) => XR_HUD_POSITION[1] + reparto.centre - reparto.height / 2 + xrUiRise(MIN_EYE_HEIGHT)
+  it('and it does not go lower than the usual one: with the shortest player it stays above the floor', () => {
+    const finished = xrHudLayout({ finished: true, row: false, sign: true })
+    const theUsualOne = xrHudLayout({ finished: true, row: true, sign: false })
+    const bottom = (layout: typeof finished) => XR_HUD_POSITION[1] + layout.centre - layout.height / 2 + xrUiRise(MIN_EYE_HEIGHT)
 
-    expect(suelo(acabada)).toBeGreaterThan(suelo(elDeSiempre))
-    expect(suelo(acabada)).toBeGreaterThan(0)
+    expect(bottom(finished)).toBeGreaterThan(bottom(theUsualOne))
+    expect(bottom(finished)).toBeGreaterThan(0)
   })
 })
 
-describe('el rótulo de la fila del modo', () => {
-  it('dice «Modo» y cuál hay elegido: el que cuenta para medalla se llama por su nombre', () => {
-    expect(menuLabelText('Mode', 'challenge', traductor('en'))).toBe('Mode: Challenge')
-    expect(menuLabelText('Mode', 'practice', traductor('en'))).toBe('Mode: Practice')
-    expect(menuLabelText('Mode', 'levels', traductor('es'))).toBe('Modo: Niveles')
-    expect(menuLabelText('Mode', 'challenge', traductor('es'))).toBe('Modo: Reto')
+describe('the label of the mode row', () => {
+  it('says «Modo» and which one is chosen: the one that counts for a medal is called by its name', () => {
+    expect(menuLabelText('Mode', 'challenge', translator('en'))).toBe('Mode: Challenge')
+    expect(menuLabelText('Mode', 'practice', translator('en'))).toBe('Mode: Practice')
+    expect(menuLabelText('Mode', 'levels', translator('es'))).toBe('Modo: Niveles')
+    expect(menuLabelText('Mode', 'challenge', translator('es'))).toBe('Modo: Reto')
   })
 
-  it('los demás rótulos dicen lo que son, se juegue a lo que se juegue', () => {
+  it('the other labels say what they are, whatever is played', () => {
     for (const { text } of MENU_LABELS) {
-      if (text !== 'Mode') expect(menuLabelText(text, 'challenge', traductor('en'))).toBe(text)
+      if (text !== 'Mode') expect(menuLabelText(text, 'challenge', translator('en'))).toBe(text)
     }
   })
 })
 
-describe('el menú del visor nace de frente', () => {
-  it(`a ${MENU_DEGREES}° o menos de la mirada, a metro y medio, y de cara a quien juega`, () => {
+describe('the menu of the headset is born facing front', () => {
+  it(`at ${MENU_DEGREES}° or less from the gaze, at a metre and a half, and facing whoever plays`, () => {
     expect(degreesFromFront(XR_MENU_POSE.position)).toBeLessThanOrEqual(MENU_DEGREES)
     expect(Math.hypot(XR_MENU_POSE.position[0], XR_MENU_POSE.position[2])).toBeCloseTo(1.5)
     expect(XR_MENU_POSE.yaw).toBeCloseTo(Math.atan2(-XR_MENU_POSE.position[0], -XR_MENU_POSE.position[2]))
   })
 
-  it('el control: a 55°, donde estuvo, no pasaría', () => {
+  it('the control: at 55°, where it used to be, it would not pass', () => {
     const a = (55 * Math.PI) / 180
     expect(degreesFromFront([-Math.sin(a) * 1.5, REFERENCE_EYE_HEIGHT, -Math.cos(a) * 1.5])).toBeGreaterThan(MENU_DEGREES)
   })
 })
 
-describe('los palos que tapan el menú del visor se atenúan', () => {
-  /** Lo que se mece el pie del palo colgado, sumado a su grosor: unos tres centímetros. */
-  const HOLGURA = STICK_RADIUS + (STICK_CORD_LENGTH + STICK_LENGTH) * SWING_AMPLITUDE
+describe('the sticks that cover the menu of the headset are dimmed', () => {
+  /** How much the foot of the hanging stick sways, added to its thickness: about three centimetres. */
+  const SLACK = STICK_RADIUS + (STICK_CORD_LENGTH + STICK_LENGTH) * SWING_AMPLITUDE
 
-  /** Los puntos de la placa del menú, en las coordenadas de la máquina (quien juega, `PLAYER_OFFSET_Z` atrás). */
-  function puntosDeLaPlaca(ojos: number): [number, number, number][] {
+  /** The points of the menu plate, in the machine's coordinates (whoever plays, `PLAYER_OFFSET_Z` behind). */
+  function platePoints(eyeHeight: number): [number, number, number][] {
     const { position, yaw, scale } = XR_MENU_POSE
-    const subida = xrUiRise(ojos)
-    const puntos: [number, number, number][] = []
+    const rise = xrUiRise(eyeHeight)
+    const points: [number, number, number][] = []
     for (let i = 0; i <= 12; i++) {
       for (let j = 0; j <= 10; j++) {
         const lx = ((i / 12 - 0.5) * MENU_PANEL[0]) * scale
         const ly = ((j / 10 - 0.5) * MENU_PANEL[1]) * scale
-        puntos.push([
+        points.push([
           position[0] + Math.cos(yaw) * lx,
-          position[1] + subida + ly,
+          position[1] + rise + ly,
           position[2] - Math.sin(yaw) * lx + PLAYER_OFFSET_Z,
         ])
       }
     }
-    return puntos
+    return points
   }
 
-  /** Si el palo que cuelga de ese gancho se cruza con la línea de los ojos a ese punto de la placa. */
-  function seCruza(gancho: [number, number, number], ojo: [number, number, number], punto: [number, number, number]): boolean {
-    const [gx, gy, gz] = gancho
-    const arriba = gy - STICK_CORD_LENGTH
-    const abajo = arriba - STICK_LENGTH
-    // Donde la línea pasa más cerca del eje del palo, en planta.
-    const dx = punto[0] - ojo[0]
-    const dz = punto[2] - ojo[2]
-    const t = ((gx - ojo[0]) * dx + (gz - ojo[2]) * dz) / (dx * dx + dz * dz)
+  /** Whether the stick that hangs from that hook crosses the line from the eyes to that point of the plate. */
+  function crosses(hook: [number, number, number], eye: [number, number, number], point: [number, number, number]): boolean {
+    const [gx, gy, gz] = hook
+    const top = gy - STICK_CORD_LENGTH
+    const bottom = top - STICK_LENGTH
+    // Where the line goes closest to the axis of the stick, in plan view.
+    const dx = point[0] - eye[0]
+    const dz = point[2] - eye[2]
+    const t = ((gx - eye[0]) * dx + (gz - eye[2]) * dz) / (dx * dx + dz * dz)
     if (t <= 0 || t >= 1) return false
-    const y = ojo[1] + t * (punto[1] - ojo[1])
-    const cerca = Math.hypot(ojo[0] + t * dx - gx, ojo[2] + t * dz - gz)
-    return cerca < HOLGURA && y <= arriba + HOLGURA && y >= abajo - HOLGURA
+    const y = eye[1] + t * (point[1] - eye[1])
+    const closest = Math.hypot(eye[0] + t * dx - gx, eye[2] + t * dz - gz)
+    return closest < SLACK && y <= top + SLACK && y >= bottom - SLACK
   }
 
-  const CASOS = EYE_HEIGHTS.flatMap((ojos) =>
-    Array.from({ length: MAX_STICKS - 4 }, (_, i) => ({ ojos, palos: i + 5 })),
+  const CASES = EYE_HEIGHTS.flatMap((eyeHeight) =>
+    Array.from({ length: MAX_STICKS - 4 }, (_, i) => ({ eyeHeight, sticks: i + 5 })),
   )
 
-  it('ningún palo que se queda entero se ve por delante de la placa, a ninguna altura ni con ningún número de palos', () => {
-    for (const { ojos, palos } of CASOS) {
-      const ojo: [number, number, number] = [0, ojos, PLAYER_OFFSET_Z]
-      const placa = puntosDeLaPlaca(ojos)
-      for (const { anchor } of buildStickLayout(palos, 1, hoopHeightFor({ eyeHeight: ojos }))) {
-        if (paloTapaElMenu(anchor)) continue
+  it('no stick that stays whole is seen in front of the plate, at any height nor with any number of sticks', () => {
+    for (const { eyeHeight, sticks } of CASES) {
+      const eye: [number, number, number] = [0, eyeHeight, PLAYER_OFFSET_Z]
+      const plate = platePoints(eyeHeight)
+      for (const { anchor } of buildStickLayout(sticks, 1, hoopHeightFor({ eyeHeight }))) {
+        if (stickCoversMenu(anchor)) continue
         expect(
-          placa.some((punto) => seCruza(anchor, ojo, punto)),
-          `${palos} palos, ojos a ${ojos}: el palo de ${anchor.map((v) => v.toFixed(2)).join(', ')} tapa el menú`,
+          plate.some((point) => crosses(anchor, eye, point)),
+          `${sticks} sticks, eyes at ${eyeHeight}: the stick at ${anchor.map((v) => v.toFixed(2)).join(', ')} covers the menu`,
         ).toBe(false)
       }
     }
   })
 
-  it('y los que se atenúan sí lo tapaban: solo los de ese lado, el frente sigue colgando', () => {
-    for (const { ojos, palos } of CASOS) {
-      const ojo: [number, number, number] = [0, ojos, PLAYER_OFFSET_Z]
-      const placa = puntosDeLaPlaca(ojos)
-      const ganchos = buildStickLayout(palos, 1, hoopHeightFor({ eyeHeight: ojos })).map((palo) => palo.anchor)
-      const atenuados = ganchos.filter((gancho) => paloTapaElMenu(gancho))
-      expect(atenuados.length, `${palos} palos`).toBeGreaterThan(0)
-      expect(atenuados.length, `${palos} palos`).toBeLessThanOrEqual(Math.ceil(palos / 2))
-      expect(atenuados.some((gancho) => placa.some((punto) => seCruza(gancho, ojo, punto))), `${palos} palos`).toBe(true)
-      // Todos del frente a la izquierda, que es donde está la columna: los de la derecha, enteros.
-      for (const [x] of atenuados) expect(x).toBeLessThan(0.1)
+  it('and the ones that are dimmed did cover it: only those on that side, the front keeps hanging', () => {
+    for (const { eyeHeight, sticks } of CASES) {
+      const eye: [number, number, number] = [0, eyeHeight, PLAYER_OFFSET_Z]
+      const plate = platePoints(eyeHeight)
+      const hooks = buildStickLayout(sticks, 1, hoopHeightFor({ eyeHeight })).map((stick) => stick.anchor)
+      const dimmed = hooks.filter((hook) => stickCoversMenu(hook))
+      expect(dimmed.length, `${sticks} sticks`).toBeGreaterThan(0)
+      expect(dimmed.length, `${sticks} sticks`).toBeLessThanOrEqual(Math.ceil(sticks / 2))
+      expect(dimmed.some((hook) => plate.some((point) => crosses(hook, eye, point))), `${sticks} sticks`).toBe(true)
+      // All from the front to the left, which is where the column is: those on the right, whole.
+      for (const [x] of dimmed) expect(x).toBeLessThan(0.1)
     }
   })
 
-  it('la placa ocupa de casi el frente a 61° a la izquierda, con el margen', () => {
-    const [desde, hasta] = rumbosDelMenu()
-    expect(desde).toBeGreaterThan(-3)
-    expect(desde).toBeLessThan(0)
-    expect(hasta).toBeGreaterThan(60)
-    expect(hasta).toBeLessThan(65)
+  it('the plate takes up from almost the front to 61° to the left, with the margin', () => {
+    const [from, to] = menuHeadings()
+    expect(from).toBeGreaterThan(-3)
+    expect(from).toBeLessThan(0)
+    expect(to).toBeGreaterThan(60)
+    expect(to).toBeLessThan(65)
   })
 
-  it('el control: con la columna a la derecha, los palos de la derecha sí taparían', () => {
+  it('the control: with the column on the right, the sticks on the right would cover it', () => {
     const [x, y, z] = XR_MENU_POSE.position
-    const aLaDerecha = { ...XR_MENU_POSE, position: [-x, y, z] as Vec3, yaw: -XR_MENU_POSE.yaw }
-    const deLaDerecha = buildStickLayout(13, 1).find(({ anchor }) => anchor[0] > 0.3)!
-    expect(paloTapaElMenu(deLaDerecha.anchor, aLaDerecha)).toBe(true)
-    expect(paloTapaElMenu(deLaDerecha.anchor)).toBe(false)
+    const onTheRight = { ...XR_MENU_POSE, position: [-x, y, z] as Vec3, yaw: -XR_MENU_POSE.yaw }
+    const rightStick = buildStickLayout(13, 1).find(({ anchor }) => anchor[0] > 0.3)!
+    expect(stickCoversMenu(rightStick.anchor, onTheRight)).toBe(true)
+    expect(stickCoversMenu(rightStick.anchor)).toBe(false)
   })
 
-  it('se atenúan y vuelven poco a poco, en un cuarto de segundo', () => {
-    expect(opacidadHacia(1, PALO_TRAS_EL_MENU, 0.1)).toBeCloseTo(0.6)
-    expect(opacidadHacia(0.6, PALO_TRAS_EL_MENU, 1)).toBe(PALO_TRAS_EL_MENU)
-    expect(opacidadHacia(PALO_TRAS_EL_MENU, 1, 0.1)).toBeCloseTo(0.55)
-    expect(opacidadHacia(0.9, 1, 1)).toBe(1)
-    expect(opacidadHacia(0.5, 1, -1)).toBe(0.5)
-    expect(1 / ATENUAR_POR_SEGUNDO).toBeLessThanOrEqual(0.25)
+  it('they dim and come back little by little, in a quarter of a second', () => {
+    expect(opacityToward(1, STICK_BEHIND_MENU, 0.1)).toBeCloseTo(0.6)
+    expect(opacityToward(0.6, STICK_BEHIND_MENU, 1)).toBe(STICK_BEHIND_MENU)
+    expect(opacityToward(STICK_BEHIND_MENU, 1, 0.1)).toBeCloseTo(0.55)
+    expect(opacityToward(0.9, 1, 1)).toBe(1)
+    expect(opacityToward(0.5, 1, -1)).toBe(0.5)
+    expect(1 / DIM_PER_SECOND).toBeLessThanOrEqual(0.25)
   })
 })

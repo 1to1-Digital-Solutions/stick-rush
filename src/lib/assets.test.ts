@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { assetUrl, setAssetsBase } from './assets'
 
-// La base es estado de módulo: sin devolverla a la raíz, un test le cambiaría
-// las rutas al siguiente.
+// The base is module state: without returning it to the root, one test would
+// change the paths of the next.
 afterEach(() => setAssetsBase('/'))
 
-describe('rutas de los ficheros estáticos', () => {
-  it('cuelgan de la raíz mientras nadie diga otra cosa', () => {
+describe('paths of the static files', () => {
+  it('hang from the root as long as nobody says otherwise', () => {
     expect(assetUrl('hdri/plaza_pueblo_1k.exr')).toBe('/hdri/plaza_pueblo_1k.exr')
   })
 
-  it('se mudan a donde las ponga quien monta el juego', () => {
+  it('move to wherever the one mounting the game puts them', () => {
     setAssetsBase('/juegos/stick-rush/')
 
     expect(assetUrl('textures/wood_nor_1k.jpg')).toBe(
@@ -18,13 +18,13 @@ describe('rutas de los ficheros estáticos', () => {
     )
   })
 
-  it('admiten una base sin barra final', () => {
+  it('accept a base without a trailing slash', () => {
     setAssetsBase('/juegos/stick-rush')
 
     expect(assetUrl('webxr-profiles/')).toBe('/juegos/stick-rush/webxr-profiles/')
   })
 
-  it('no duplican la barra cuando la ruta ya la trae', () => {
+  it('do not double the slash when the path already brings it', () => {
     setAssetsBase('/juegos/stick-rush/')
 
     expect(assetUrl('/hdri/plaza_pueblo_1k.exr')).toBe(
@@ -32,13 +32,13 @@ describe('rutas de los ficheros estáticos', () => {
     )
   })
 
-  it('vuelven a la raíz con una base vacía', () => {
+  it('go back to the root with an empty base', () => {
     setAssetsBase('   ')
 
     expect(assetUrl('hdri/plaza_pueblo_1k.exr')).toBe('/hdri/plaza_pueblo_1k.exr')
   })
 
-  it('conservan el origen cuando la base es absoluta', () => {
+  it('keep the origin when the base is absolute', () => {
     setAssetsBase('https://cdn.example.com/stick-rush')
 
     expect(assetUrl('hdri/plaza_pueblo_1k.exr')).toBe(

@@ -1,15 +1,15 @@
 /**
- * Iconos del menú y del marcador de escritorio.
+ * Icons of the menu and of the desktop scoreboard.
  *
- * Viven aparte porque los comparten el menú (elegir modo) y el HUD (vidas que
- * quedan): un corazón que se dibujara distinto en cada sitio haría dudar de si
- * hablan de lo mismo. Nada que ver con `xrIcons.ts`, que son siluetas 3D para el
- * visor, donde no hay SVG ni letras.
+ * They live apart because the menu (choosing a mode) and the HUD (lives
+ * left) share them: a heart drawn differently in each place would make one
+ * doubt whether they talk about the same thing. Nothing to do with `xrIcons.ts`,
+ * which are 3D silhouettes for the headset, where there is no SVG or letters.
  */
 
 /**
- * Corazón: una vida. Lleno mientras se conserva y de contorno cuando se ha
- * gastado, para que el estado se distinga por forma y no solo por color.
+ * Heart: a life. Filled while it is kept and outlined once it has been
+ * spent, so that the state is told apart by shape and not only by colour.
  */
 export function HeartIcon({
   spent = false,
@@ -33,7 +33,7 @@ export function HeartIcon({
   )
 }
 
-/** Infinito: en práctica no hay nada que se agote. */
+/** Infinity: in practice there is nothing that runs out. */
 export function InfinityIcon({ className = 'size-5' }: { className?: string }) {
   return (
     <svg
@@ -51,8 +51,8 @@ export function InfinityIcon({ className = 'size-5' }: { className?: string }) {
 }
 
 /**
- * Estrella de nivel: llena la ganada, de contorno la que falta. Es lo que
- * distingue las dos por forma y no solo por color.
+ * Level star: the earned one filled, the missing one outlined. It is what
+ * tells the two apart by shape and not only by colour.
  */
 export function StarIcon({
   earned = true,

@@ -5,174 +5,174 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGetXRSpaceMatrix, useXR, useXRInputSourceState } from '@react-three/xr'
 import { Group, Matrix4, SkinnedMesh, type Object3D } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { clone as clonarEsqueleto } from 'three/examples/jsm/utils/SkeletonUtils.js'
+import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 
 import { assetUrl } from '../../lib/assets'
 import { useGame } from '../../lib/gameStore'
-import { cuantoAprieta } from '../../lib/glove'
+import { pressAmount } from '../../lib/glove'
 import {
-  ARTICULACIONES,
-  MANOS,
-  colocarEnElOrigen,
-  costadoDelGatillo,
-  llevaLaAyuda,
-  rutaDeLaMano,
-  type Mano,
+  JOINTS,
+  HANDS,
+  placeAtOrigin,
+  triggerSide,
+  carriesTheHint,
+  handPath,
+  type Hand,
 } from '../../lib/hands'
 import { NO_RAYCAST } from '../raycast'
-import { Guante } from './Glove'
+import { Glove } from './Glove'
 
 /**
- * Las manos de quien juega: el guante con mandos y la mano articulada sin ellos.
+ * The hands of whoever plays: the glove with controllers and the articulated hand without them.
  *
- * **Las monta la escena, no el store.** Lo que cuelga del `XRStore` (su `controller`, su
- * `hand.model`) solo existe en la web propia: dentro del salón de xrcade el store es del salón,
- * que no dibuja manos, y ahí es donde más se juega. Montadas aquí salen igual en los dos sitios,
- * y quien juega ve dónde tiene las manos al ir a por un palo, que es para lo que están.
+ * **The scene mounts them, not the store.** What hangs from the `XRStore` (its `controller`, its
+ * `hand.model`) only exists on the game's own website: inside the xrcade hall the store is the hall's,
+ * which draws no hands, and that is where the game is played the most. Mounted here they show up the same
+ * in both places, and whoever plays sees where their hands are when going for a stick, which is what they are for.
  *
- * Cada pieza se coloca como `MandoDeVerdad`: la pose que da WebXR, en el espacio del origen,
- * con lo que pongan los padres deshecho (`colocarEnElOrigen`), así que da igual de dónde
- * cuelguen. Se nombran (`guante-left`, `mano-desnuda-right`…) para poder buscarlas desde fuera.
+ * Each part is placed like `RealController`: the pose WebXR gives, in the origin's space,
+ * with whatever the parents put undone (`placeAtOrigin`), so it does not matter where they
+ * hang from. They are named (`glove-left`, `bare-hand-right`…) so they can be looked up from outside.
  */
-export function ManosDelJugador() {
+export function PlayerHands() {
   return (
     <>
-      {MANOS.map((mano) => (
-        <GuanteEnLaMano key={`guante-${mano}`} mano={mano} />
+      {HANDS.map((hand) => (
+        <GloveOnHand key={`glove-${hand}`} hand={hand} />
       ))}
-      {MANOS.map((mano) => (
-        <ManoDesnuda key={`mano-${mano}`} mano={mano} />
+      {HANDS.map((hand) => (
+        <BareHand key={`bare-hand-${hand}`} hand={hand} />
       ))}
     </>
   )
 }
 
-/** Se reaprovechan en cada fotograma: una matriz nueva por frame es basura que recoger. */
+/** Reused every frame: a new matrix per frame is garbage to collect. */
 const POSE = new Matrix4()
-const AUXILIAR = new Matrix4()
+const SCRATCH = new Matrix4()
 
-/** Pone el grupo en la pose del origen, deshaciendo a sus padres. */
-function colocar(grupo: Object3D, pose: Matrix4): void {
-  const padre = grupo.parent
-  padre?.updateWorldMatrix(true, false)
-  colocarEnElOrigen(grupo.matrix, padre?.matrixWorld ?? null, pose, AUXILIAR)
+/** Puts the group at the origin's pose, undoing its parents. */
+function place(group: Object3D, pose: Matrix4): void {
+  const parent = group.parent
+  parent?.updateWorldMatrix(true, false)
+  placeAtOrigin(group.matrix, parent?.matrixWorld ?? null, pose, SCRATCH)
 }
 
 /**
- * El guante sobre el mando de esa mano, en el espacio del puño (`grip-space`), que es donde
- * `Guante` tiene medido el mango.
+ * The glove on that hand's controller, in the grip's space (`grip-space`), which is where
+ * `Glove` has the handle measured.
  */
-function GuanteEnLaMano({ mano }: { mano: Mano }) {
-  const mando = useXRInputSourceState('controller', mano)
-  const grupo = useRef<Group>(null)
+function GloveOnHand({ hand }: { hand: Hand }) {
+  const controller = useXRInputSourceState('controller', hand)
+  const groupRef = useRef<Group>(null)
   const { gameState, score } = useGame()
-  const situar = useGetXRSpaceMatrix(mando?.inputSource.gripSpace)
+  const locate = useGetXRSpaceMatrix(controller?.inputSource.gripSpace)
 
-  // Antes que nadie (prioridad negativa, como la propia librería y `MandoDeVerdad`): el guante
-  // tiene que estar puesto cuando `Guante` copie sus piezas y se pinte el fotograma.
-  useFrame((_estado, _delta, frame) => {
-    const nodo = grupo.current
-    if (nodo == null) return
-    const puesto = situar?.(POSE, frame) ?? false
-    nodo.visible = puesto
-    if (puesto) colocar(nodo, POSE)
+  // Before anybody else (negative priority, like the library itself and `RealController`): the glove
+  // has to be in place when `Glove` copies its parts and the frame is painted.
+  useFrame((_state, _delta, frame) => {
+    const node = groupRef.current
+    if (node == null) return
+    const placed = locate?.(POSE, frame) ?? false
+    node.visible = placed
+    if (placed) place(node, POSE)
   }, -100)
 
-  if (mando == null) return null
+  if (controller == null) return null
 
   return (
-    <group ref={grupo} name={`guante-${mano}`} matrixAutoUpdate={false} visible={false}>
-      <Guante
-        side={costadoDelGatillo(mano)}
-        highlight={llevaLaAyuda(gameState, score)}
-        leer={() => ({
-          agarre: cuantoAprieta(mando.gamepad['xr-standard-squeeze']),
-          gatillo: cuantoAprieta(mando.gamepad['xr-standard-trigger']),
+    <group ref={groupRef} name={`glove-${hand}`} matrixAutoUpdate={false} visible={false}>
+      <Glove
+        side={triggerSide(hand)}
+        highlight={carriesTheHint(gameState, score)}
+        read={() => ({
+          grip: pressAmount(controller.gamepad['xr-standard-squeeze']),
+          trigger: pressAmount(controller.gamepad['xr-standard-trigger']),
         })}
       />
     </group>
   )
 }
 
-/** Uno para las dos manos: cada `.glb` se pide una vez por sesión y como mucho. */
-const cargador = new GLTFLoader()
+/** One for both hands: each `.glb` is requested once per session at most. */
+const loader = new GLTFLoader()
 
 /**
- * La mano articulada, hueso a hueso: lo mismo que hace `XRHandModel` de la librería, pero sin
- * depender del store que la monte.
+ * The articulated hand, bone by bone: the same thing the library's `XRHandModel` does, but without
+ * depending on the store that mounts it.
  *
- * **Cargada a mano y no con `useLoader`**, que suspende: un `.glb` que falle dejaría una
- * pantalla de error encima del juego, y aquí lo que toca es no dibujar la mano y seguir.
+ * **Loaded by hand and not with `useLoader`**, which suspends: a `.glb` that fails would leave an
+ * error screen on top of the game, and here the right thing is not to draw the hand and carry on.
  */
-function ManoDesnuda({ mano }: { mano: Mano }) {
-  const estado = useXRInputSourceState('hand', mano)
-  const origen = useXR((xr) => xr.originReferenceSpace)
-  const grupo = useRef<Group>(null)
-  const modelo = useModeloDeLaMano(estado == null ? null : assetUrl(rutaDeLaMano(mano)))
+function BareHand({ hand }: { hand: Hand }) {
+  const state = useXRInputSourceState('hand', hand)
+  const origin = useXR((xr) => xr.originReferenceSpace)
+  const groupRef = useRef<Group>(null)
+  const model = useHandModel(state == null ? null : assetUrl(handPath(hand)))
 
-  const huesos = useMemo(
+  const bones = useMemo(
     () =>
-      modelo == null
+      model == null
         ? null
-        : ARTICULACIONES.map((nombre) => {
-            const hueso = modelo.getObjectByName(nombre)
-            if (hueso != null) hueso.matrixAutoUpdate = false
-            return hueso
+        : JOINTS.map((name) => {
+            const bone = model.getObjectByName(name)
+            if (bone != null) bone.matrixAutoUpdate = false
+            return bone
           }),
-    [modelo],
+    [model],
   )
-  const poses = useMemo(() => new Float32Array(ARTICULACIONES.length * 16), [])
+  const poses = useMemo(() => new Float32Array(JOINTS.length * 16), [])
 
-  useFrame((_estado, _delta, frame) => {
-    const nodo = grupo.current
-    const hand = estado?.inputSource.hand
-    if (nodo == null || huesos == null || hand == null || origen == null || frame == null) return
-    // `fillPoses` dice si el visor sigue la mano en este fotograma: si no, no se enseña una
-    // mano congelada donde estuvo.
-    const puesta = frame.fillPoses?.(hand.values(), origen, poses) ?? false
-    nodo.visible = puesta
-    if (!puesta) return
-    colocar(nodo, POSE.identity())
-    for (let i = 0; i < huesos.length; i++) huesos[i]?.matrix.fromArray(poses, i * 16)
+  useFrame((_state, _delta, frame) => {
+    const node = groupRef.current
+    const xrHand = state?.inputSource.hand
+    if (node == null || bones == null || xrHand == null || origin == null || frame == null) return
+    // `fillPoses` says whether the headset is tracking the hand in this frame: if not, a frozen
+    // hand is not shown where it was.
+    const placed = frame.fillPoses?.(xrHand.values(), origin, poses) ?? false
+    node.visible = placed
+    if (!placed) return
+    place(node, POSE.identity())
+    for (let i = 0; i < bones.length; i++) bones[i]?.matrix.fromArray(poses, i * 16)
   }, -100)
 
-  if (modelo == null) return null
+  if (model == null) return null
 
   return (
-    <group ref={grupo} name={`mano-desnuda-${mano}`} matrixAutoUpdate={false} visible={false}>
-      <primitive object={modelo} />
+    <group ref={groupRef} name={`bare-hand-${hand}`} matrixAutoUpdate={false} visible={false}>
+      <primitive object={model} />
     </group>
   )
 }
 
-/** El modelo ya clonado, o `null` mientras no lo haya (o si no se pudo cargar). */
-function useModeloDeLaMano(ruta: string | null): Object3D | null {
-  const [cargado, setCargado] = useState<{ ruta: string; modelo: Object3D } | null>(null)
+/** The model already cloned, or `null` while there is none (or if it could not be loaded). */
+function useHandModel(path: string | null): Object3D | null {
+  const [loaded, setLoaded] = useState<{ path: string; model: Object3D } | null>(null)
 
   useEffect(() => {
-    if (ruta == null) return
-    let vivo = true
-    cargador
-      .loadAsync(ruta)
+    if (path == null) return
+    let alive = true
+    loader
+      .loadAsync(path)
       .then((gltf) => {
-        if (!vivo) return
-        const modelo = clonarEsqueleto(gltf.scene)
-        modelo.traverse((parte) => {
-          // Invisible al rayo: el puntero nace en esta misma mano y se lo comería.
-          parte.raycast = NO_RAYCAST
-          // Los huesos se mueven fuera de la caja con la que se cargó: sin esto, la mano
-          // desaparece en cuanto el visor cree que se ha salido del encuadre.
-          if (parte instanceof SkinnedMesh) parte.frustumCulled = false
+        if (!alive) return
+        const model = cloneSkeleton(gltf.scene)
+        model.traverse((part) => {
+          // Invisible to the ray: the pointer starts in this very hand and it would swallow it.
+          part.raycast = NO_RAYCAST
+          // The bones move outside the box it was loaded with: without this, the hand
+          // disappears as soon as the headset thinks it has left the frame.
+          if (part instanceof SkinnedMesh) part.frustumCulled = false
         })
-        setCargado({ ruta, modelo })
+        setLoaded({ path, model })
       })
-      // Sin modelo no hay mano que dibujar, y el juego sigue: el agarre no depende de verla.
+      // Without a model there is no hand to draw, and the game goes on: the grab does not depend on seeing it.
       .catch(() => {})
     return () => {
-      vivo = false
+      alive = false
     }
-  }, [ruta])
+  }, [path])
 
-  if (cargado == null || cargado.ruta !== ruta) return null
-  return cargado.modelo
+  if (loaded == null || loaded.path !== path) return null
+  return loaded.model
 }

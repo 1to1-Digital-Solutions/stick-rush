@@ -8,10 +8,10 @@ import {
   worstReadingDistance,
   type PanelButton,
 } from '../../lib/panelReading'
-import { traductor, type TextKey } from '../../lib/textos'
-import { FRASES, FRASES_CON_LAS_MANOS, TUTORIAL_STEPS, type TutorialStepKey } from '../../lib/tutorial'
+import { translator, type TextKey } from '../../lib/textos'
+import { PHRASES, PHRASES_WITH_HANDS, TUTORIAL_STEPS, type TutorialStepKey } from '../../lib/tutorial'
 import {
-  TUTORIAL_BOTON,
+  TUTORIAL_BUTTON,
   TUTORIAL_TEXT,
   XR_TUTORIAL_NEXT_OFFSET,
   XR_TUTORIAL_POSITION,
@@ -20,159 +20,159 @@ import {
 } from '../../lib/xrLayout'
 import { LINE_HEIGHT } from './canvasPanel'
 import { recordingCanvas, legibilityProblems, type DrawnText } from './legibility'
-import { ALTO_DEL_MANDO } from './drawnController'
-import { ALTO_DE_LA_MANO } from './drawnHand'
-import { dibujarElPaso, PANEL_HEIGHT, PANEL_WIDTH, repartoDelPaso } from './XRTutorial'
+import { CONTROLLER_HEIGHT } from './drawnController'
+import { HAND_HEIGHT } from './drawnHand'
+import { drawStep, PANEL_HEIGHT, PANEL_WIDTH, stepLayout } from './XRTutorial'
 
 /**
- * El panel del tutorial, **medido** en vez de mirado.
+ * The tutorial's panel, **measured** instead of looked at.
  *
- * Es donde el español se sale: la frase del agarre ocupa dos renglones en inglés y tres en
- * español, y el gesto que va debajo tiene que bajar con ella o se le mete dentro. Y son dos
- * juegos de frases, uno por forma de jugar —con mando y con las manos desnudas—, así que se
- * recorren los dos pasos por las dos variantes y por los dos idiomas.
+ * It is where Spanish runs off: the grab phrase takes up two lines in English and three in
+ * Spanish, and the gesture that goes underneath has to go down with it or it gets inside it. And there are two
+ * sets of phrases, one per way of playing —with a controller and bare-handed—, so the
+ * two steps are gone through for the two variants and for the two languages.
  */
 
-const IDIOMAS = ['en', 'es'] as const
-const PANEL_MEDIDO = { width: PANEL_WIDTH, height: PANEL_HEIGHT }
-/** Desde dónde se lee: el panel delante de los ojos, a tres alturas y con el mundo de pie o no. */
-const VISTAS = xrPanelViews(XR_TUTORIAL_POSITION)
+const LANGUAGES = ['en', 'es'] as const
+const MEASURED_PANEL = { width: PANEL_WIDTH, height: PANEL_HEIGHT }
+/** From where it is read: the panel in front of the eyes, at three heights and with the world standing or not. */
+const VIEWS = xrPanelViews(XR_TUTORIAL_POSITION)
 
-const VARIANTES = [
-  { nombre: 'con mando', frases: FRASES, conLasManos: false, altoDelGesto: ALTO_DEL_MANDO },
-  { nombre: 'con las manos', frases: FRASES_CON_LAS_MANOS, conLasManos: true, altoDelGesto: ALTO_DE_LA_MANO },
+const VARIANTS = [
+  { name: 'with a controller', phrases: PHRASES, bareHanded: false, gestureHeight: CONTROLLER_HEIGHT },
+  { name: 'bare-handed', phrases: PHRASES_WITH_HANDS, bareHanded: true, gestureHeight: HAND_HEIGHT },
 ] as const
 
-/** Los dos botones de salida, tal como los coloca el panel. */
-const BOTONES: readonly (PanelButton & { texto: TextKey })[] = [
-  { x: XR_TUTORIAL_NEXT_OFFSET[0], y: XR_TUTORIAL_NEXT_OFFSET[1], ...TUTORIAL_BOTON, texto: 'Next' },
-  { x: XR_TUTORIAL_SKIP_OFFSET[0], y: XR_TUTORIAL_SKIP_OFFSET[1], ...TUTORIAL_BOTON, texto: 'Skip tutorial' },
+/** The two way-out buttons, just as the panel places them. */
+const BUTTONS: readonly (PanelButton & { text: TextKey })[] = [
+  { x: XR_TUTORIAL_NEXT_OFFSET[0], y: XR_TUTORIAL_NEXT_OFFSET[1], ...TUTORIAL_BUTTON, text: 'Next' },
+  { x: XR_TUTORIAL_SKIP_OFFSET[0], y: XR_TUTORIAL_SKIP_OFFSET[1], ...TUTORIAL_BUTTON, text: 'Skip tutorial' },
 ]
 
-interface Momento {
-  donde: string
+interface Moment {
+  where: string
   step: TutorialStepKey
-  lang: (typeof IDIOMAS)[number]
-  variante: (typeof VARIANTES)[number]
+  lang: (typeof LANGUAGES)[number]
+  variant: (typeof VARIANTS)[number]
 }
 
-function todosLosMomentos(): Momento[] {
-  return IDIOMAS.flatMap((lang) =>
-    VARIANTES.flatMap((variante) =>
-      TUTORIAL_STEPS.map((step) => ({ donde: `${lang} ${variante.nombre} ${step}`, step, lang, variante })),
+function allMoments(): Moment[] {
+  return LANGUAGES.flatMap((lang) =>
+    VARIANTS.flatMap((variant) =>
+      TUTORIAL_STEPS.map((step) => ({ where: `${lang} ${variant.name} ${step}`, step, lang, variant })),
     ),
   )
 }
 
-function pintar({ step, lang, variante }: Momento) {
-  const { ctx, drawnTexts: escritos } = recordingCanvas()
-  const t = traductor(lang)
-  dibujarElPaso(ctx, step, variante.frases, t, variante.conLasManos)
-  return { escritos, reparto: repartoDelPaso(ctx, step, variante.frases, t) }
+function paint({ step, lang, variant }: Moment) {
+  const { ctx, drawnTexts } = recordingCanvas()
+  const t = translator(lang)
+  drawStep(ctx, step, variant.phrases, t, variant.bareHanded)
+  return { drawnTexts, layout: stepLayout(ctx, step, variant.phrases, t) }
 }
 
-/** A qué distancia se miden los problemas: la de lectura del texto que peor se lee. */
-function distancia(escritos: readonly DrawnText[]): number {
-  return Math.max(...VISTAS.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, LINE_HEIGHT)))
+/** At what distance the problems are measured: the reading one of the text that reads worst. */
+function distance(drawnTexts: readonly DrawnText[]): number {
+  return Math.max(...VIEWS.map(({ pose, eyes }) => worstReadingDistance(drawnTexts, pose, eyes, LINE_HEIGHT)))
 }
 
-describe('el panel del tutorial se lee', () => {
-  it('nada se pisa ni se sale, en los dos idiomas y con mando o sin él', () => {
-    for (const momento of todosLosMomentos()) {
-      const { escritos } = pintar(momento)
-      expect(escritos.length, `${momento.donde}: no se ha medido nada`).toBeGreaterThan(0)
+describe('the tutorial panel reads', () => {
+  it('nothing overlaps or runs off, in the two languages and with a controller or without one', () => {
+    for (const moment of allMoments()) {
+      const { drawnTexts } = paint(moment)
+      expect(drawnTexts.length, `${moment.where}: nothing was measured`).toBeGreaterThan(0)
       expect(
-        legibilityProblems(escritos, { panel: PANEL_MEDIDO, distance: distancia(escritos) }),
-        momento.donde,
+        legibilityProblems(drawnTexts, { panel: MEASURED_PANEL, distance: distance(drawnTexts) }),
+        moment.where,
       ).toEqual([])
     }
   })
 
-  it(`y cada letra, de un vistazo: ninguna baja de ${MIN_READING_DEGREES}°`, () => {
-    for (const momento of todosLosMomentos()) {
-      const { escritos } = pintar(momento)
-      for (const vista of VISTAS) {
-        expect(unreadableTexts(escritos, vista.pose, vista.ojos, LINE_HEIGHT), `${momento.donde}, ${vista.donde}`).toEqual([])
+  it(`and each letter, at a glance: none drops below ${MIN_READING_DEGREES}°`, () => {
+    for (const moment of allMoments()) {
+      const { drawnTexts } = paint(moment)
+      for (const view of VIEWS) {
+        expect(unreadableTexts(drawnTexts, view.pose, view.eyes, LINE_HEIGHT), `${moment.where}, ${view.where}`).toEqual([])
       }
     }
   })
 
-  it('con un tamaño de la lista, sin encogerse para caber', () => {
-    const tamanos = Object.values(TUTORIAL_TEXT)
-    for (const momento of todosLosMomentos()) {
-      expect(sizesOffList(pintar(momento).escritos, LINE_HEIGHT, tamanos), momento.donde).toEqual([])
+  it('with a size from the list, without shrinking to fit', () => {
+    const sizes = Object.values(TUTORIAL_TEXT)
+    for (const moment of allMoments()) {
+      expect(sizesOffList(paint(moment).drawnTexts, LINE_HEIGHT, sizes), moment.where).toEqual([])
     }
   })
 
-  it('y la frase no se mete en los botones de abajo', () => {
-    for (const momento of todosLosMomentos()) {
-      expect(textsOnButtons(pintar(momento).escritos, BOTONES), momento.donde).toEqual([])
+  it('and the phrase does not get into the buttons at the bottom', () => {
+    for (const moment of allMoments()) {
+      expect(textsOnButtons(paint(moment).drawnTexts, BUTTONS), moment.where).toEqual([])
     }
   })
 })
 
-describe('el reparto del panel sigue a la frase', () => {
-  it('el gesto cabe entre la frase y los botones', () => {
-    for (const momento of todosLosMomentos()) {
-      const { gesto, sueloDeLaFrase } = pintar(momento).reparto
-      const medio = momento.variante.altoDelGesto / 2
-      expect(gesto + medio, `${momento.donde}: el gesto se mete en la frase`).toBeLessThanOrEqual(sueloDeLaFrase + 1e-9)
-      expect(gesto - medio, `${momento.donde}: el gesto se mete en los botones`).toBeGreaterThanOrEqual(
-        XR_TUTORIAL_SKIP_OFFSET[1] + TUTORIAL_BOTON.height / 2 - 1e-9,
+describe('the layout of the panel follows the phrase', () => {
+  it('the gesture fits between the phrase and the buttons', () => {
+    for (const moment of allMoments()) {
+      const { gesture, phraseBottom } = paint(moment).layout
+      const half = moment.variant.gestureHeight / 2
+      expect(gesture + half, `${moment.where}: the gesture gets into the phrase`).toBeLessThanOrEqual(phraseBottom + 1e-9)
+      expect(gesture - half, `${moment.where}: the gesture gets into the buttons`).toBeGreaterThanOrEqual(
+        XR_TUTORIAL_SKIP_OFFSET[1] + TUTORIAL_BUTTON.height / 2 - 1e-9,
       )
     }
   })
 
-  it('la frase se ancla por arriba: siempre empieza a la misma altura', () => {
-    // Centrada, la que pasa de dos líneas a tres crece hacia arriba y se mete debajo del
-    // contador. El español las tiene casi siempre.
-    const techos = todosLosMomentos().map((momento) => pintar(momento).reparto.techoDeLaFrase)
-    expect(new Set(techos).size).toBe(1)
+  it('the phrase is anchored at the top: it always starts at the same height', () => {
+    // Centred, the one that goes from two lines to three grows upwards and gets under the
+    // counter. Spanish almost always has them.
+    const tops = allMoments().map((moment) => paint(moment).layout.phraseTop)
+    expect(new Set(tops).size).toBe(1)
   })
 
-  it('el control: una frase más larga baja el gesto', () => {
-    // El reparto tiene que **seguir a la frase**, no estar escrito a mano. Hoy las dos lenguas
-    // caben en los mismos renglones —que es por lo que no se ve sin medirlo—, así que el
-    // control se hace con una frase inventada: si el gesto no bajara con ella, tampoco bajaría
-    // el día que una traducción gane una línea.
+  it('the control: a longer phrase lowers the gesture', () => {
+    // The layout has to **follow the phrase**, not be written by hand. Today the two languages
+    // fit in the same lines —which is why it is not seen without measuring it—, so the
+    // control is done with an invented phrase: if the gesture did not go down with it, neither would it
+    // the day a translation gains a line.
     const { ctx } = recordingCanvas()
-    const corta = repartoDelPaso(ctx, 'grab', FRASES, () => 'Grab a stick')
-    const larga = repartoDelPaso(
+    const short = stepLayout(ctx, 'grab', PHRASES, () => 'Grab a stick')
+    const long = stepLayout(
       ctx,
       'grab',
-      FRASES,
+      PHRASES,
       () => 'Hold the grip button on a stick and keep your hand closed around it while the machine keeps throwing them at you',
     )
-    expect(larga.sueloDeLaFrase).toBeLessThan(corta.sueloDeLaFrase)
-    expect(larga.gesto).toBeLessThan(corta.gesto)
+    expect(long.phraseBottom).toBeLessThan(short.phraseBottom)
+    expect(long.gesture).toBeLessThan(short.gesture)
   })
 })
 
-describe('lo que el panel enseña', () => {
-  it('por cuál paso se va, que es lo que dice cuánto queda', () => {
-    for (const [indice, step] of TUTORIAL_STEPS.entries()) {
-      const { escritos } = pintar({ donde: step, step, lang: 'en', variante: VARIANTES[0] })
+describe('what the panel shows', () => {
+  it('which step it is on, which is what says how much is left', () => {
+    for (const [index, step] of TUTORIAL_STEPS.entries()) {
+      const { drawnTexts } = paint({ where: step, step, lang: 'en', variant: VARIANTS[0] })
       expect(
-        escritos.some((escrito) => escrito.text === `${indice + 1}/${TUTORIAL_STEPS.length}`),
+        drawnTexts.some((drawn) => drawn.text === `${index + 1}/${TUTORIAL_STEPS.length}`),
         step,
       ).toBe(true)
     }
   })
 
-  it('y los dos botones de salida están siempre', () => {
-    // Un paso que no se consiga dejaría a alguien encerrado en él.
-    for (const momento of todosLosMomentos()) {
-      const { escritos } = pintar(momento)
-      const t = traductor(momento.lang)
-      for (const boton of BOTONES) {
-        expect(escritos.some((escrito) => escrito.text === t(boton.texto)), `${momento.donde}: ${boton.texto}`).toBe(true)
+  it('and the two way-out buttons are always there', () => {
+    // A step that is not achieved would leave someone locked in it.
+    for (const moment of allMoments()) {
+      const { drawnTexts } = paint(moment)
+      const t = translator(moment.lang)
+      for (const button of BUTTONS) {
+        expect(drawnTexts.some((drawn) => drawn.text === t(button.text)), `${moment.where}: ${button.text}`).toBe(true)
       }
     }
   })
 
-  it('sin paso que enseñar no escribe nada', () => {
-    const { ctx, drawnTexts: escritos } = recordingCanvas()
-    dibujarElPaso(ctx, null, FRASES, traductor('es'), false)
-    expect(escritos).toEqual([])
+  it('with no step to show it writes nothing', () => {
+    const { ctx, drawnTexts } = recordingCanvas()
+    drawStep(ctx, null, PHRASES, translator('es'), false)
+    expect(drawnTexts).toEqual([])
   })
 })

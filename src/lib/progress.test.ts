@@ -16,20 +16,20 @@ beforeEach(() => {
   window.localStorage.clear()
 })
 
-describe('el progreso de Niveles', () => {
-  it('sin nada guardado se empieza por el primero, sin estrellas', () => {
+describe('the progress of Levels', () => {
+  it('with nothing stored it starts with the first, with no stars', () => {
     expect(getUnlockedLevel()).toBe(1)
     expect(parseUnlockedLevel(null)).toBe(1)
     expect(parseStarsList(null).split(',')).toHaveLength(LEVEL_COUNT)
   })
 
-  it('lo raro del almacenamiento no abre niveles que no existen', () => {
+  it('anything odd in the storage does not open levels that do not exist', () => {
     expect(parseUnlockedLevel('99')).toBe(LEVEL_COUNT)
-    expect(parseUnlockedLevel('tres')).toBe(1)
+    expect(parseUnlockedLevel('three')).toBe(1)
     expect(starsFromList(parseStarsList('3,7,x'), 2)).toBe(0)
   })
 
-  it('superar el más alto abre el siguiente y apunta las estrellas, que solo suben', () => {
+  it('passing the highest opens the next and notes down the stars, which only go up', () => {
     expect(saveLevelResult(1, 2)).toBe(2)
     expect(window.localStorage.getItem(UNLOCKED_LEVEL_KEY)).toBe('2')
     saveLevelResult(1, 1)
@@ -39,18 +39,18 @@ describe('el progreso de Niveles', () => {
   })
 })
 
-describe('una lista de estrellas manipulada', () => {
-  it('se lee como cero, no como el número que ponga', () => {
-    // Se edita a mano desde las herramientas del navegador en dos clics.
+describe('a tampered list of stars', () => {
+  it('is read as zero, not as whatever number it says', () => {
+    // It is edited by hand from the browser's tools in two clicks.
     expect(starsFromList('9,x,-1', 1)).toBe(0)
     expect(starsFromList('9,x,-1', 2)).toBe(0)
   })
 })
 
-describe('repetir un nivel con menos estrellas', () => {
-  it('no borra las que ya tenía', () => {
-    // Las estrellas son la marca de lo mejor que se ha hecho: si bajaran al
-    // volver a jugar, repetir castigaría en vez de premiar.
+describe('repeating a level with fewer stars', () => {
+  it('does not erase the ones it already had', () => {
+    // The stars are the best of what has been done: if they went down on
+    // playing again, repeating would punish instead of rewarding.
     saveLevelResult(1, 3)
     saveLevelResult(1, 1)
 

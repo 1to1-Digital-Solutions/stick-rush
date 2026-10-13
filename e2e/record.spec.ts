@@ -8,16 +8,16 @@ import {
   waitForGameOver,
 } from './helpers'
 
-/** Cifra del récord que enseña el menú, sin el formato de miles. */
+/** Figure of the record the menu shows, without the thousands format. */
 async function readMenuRecord(page: Page): Promise<number> {
   const text = await page.getByText(/^Best score/).innerText()
   const digits = text.replace(/\D/g, '')
-  if (!digits) throw new Error(`Récord ilegible en el menú: ${text}`)
+  if (!digits) throw new Error(`Unreadable record in the menu: ${text}`)
   return Number(digits)
 }
 
 test.describe('Best score', () => {
-  test('el menú no enseña récord antes de la primera partida', async ({
+  test('the menu shows no record before the first run', async ({
     page,
   }) => {
     await openGame(page)
@@ -25,12 +25,12 @@ test.describe('Best score', () => {
     await expect(page.getByText(/^Best score/)).toHaveCount(0)
   })
 
-  test('la mejor puntuación se guarda y sigue ahí al recargar', async ({
+  test('the best score is saved and is still there on reloading', async ({
     page,
   }) => {
     await openGame(page)
-    // Fácil y pocos palos: da tiempo a atrapar uno con el ratón y la partida
-    // se cierra sola en cuanto caen los demás.
+    // Easy and few sticks: there is time to catch one with the mouse and the run
+    // closes by itself as soon as the rest fall.
     await startGame(page, { sticks: 5, difficulty: 'Easy' })
     await catchStick(page)
     const points = await readPoints(page)
@@ -42,19 +42,19 @@ test.describe('Best score', () => {
     await page.getByRole('button', { name: 'Back to the menu' }).click()
     expect(await readMenuRecord(page)).toBe(points)
 
-    // Lo que distingue guardar de recordar: recargar tira el estado de React,
-    // así que si el récord sigue en el menú es que salió del navegador.
+    // What tells saving from remembering: reloading throws React's state away,
+    // so if the record is still in the menu it came from the browser.
     await openGame(page)
     expect(await readMenuRecord(page)).toBe(points)
   })
 
-  test('una partida que no bate el récord recuerda la marca a batir', async ({
+  test('a run that does not beat the record recalls the best to beat', async ({
     page,
   }) => {
-    // El récord se siembra en el navegador en vez de jugar una primera partida:
-    // lo que se prueba aquí es qué enseña el fin de partida al no batirlo, y
-    // una partida de más solo añadiría segundos y azar. Con una marca así de
-    // alta, la partida termina sin acercarse ni atrapando todos los palos.
+    // The record is seeded in the browser instead of playing a first run:
+    // what is tested here is what the end of run shows on not beating it, and
+    // one more run would only add seconds and chance. With a best this
+    // high, the run ends without getting close even catching all the sticks.
     await page.addInitScript(
       (key) => window.localStorage.setItem(key, '99999'),
       HIGH_SCORE_KEYS.practice,
@@ -71,21 +71,21 @@ test.describe('Best score', () => {
     await expect(dialog).toContainText('Your record')
     await expect(dialog).toContainText('99,999')
 
-    // Y una partida peor no rebaja lo guardado.
+    // And a worse run does not lower what is saved.
     await page.getByRole('button', { name: 'Back to the menu' }).click()
     expect(await readMenuRecord(page)).toBe(99999)
   })
 
-  test('con el almacenamiento bloqueado se juega igual, sin récord', async ({
+  test('with storage blocked it is played all the same, with no record', async ({
     page,
   }) => {
-    // Modo privado y visores con el almacenamiento vetado: `localStorage`
-    // existe pero lanza al tocarlo. Ahí se pierde el récord, no el juego.
+    // Private mode and headsets with storage vetoed: `localStorage`
+    // exists but throws on touching it. There the record is lost, not the game.
     await page.addInitScript(() => {
       Object.defineProperty(window, 'localStorage', {
         configurable: true,
         get() {
-          throw new DOMException('bloqueado', 'SecurityError')
+          throw new DOMException('blocked', 'SecurityError')
         },
       })
     })
@@ -99,14 +99,14 @@ test.describe('Best score', () => {
     expect(await readPoints(page)).toBeGreaterThan(0)
 
     await waitForGameOver(page)
-    // Sin dónde guardarlo no hay récord: anunciarlo en cada partida sería
-    // prometer una marca que al volver al menú ya no está.
+    // With nowhere to save it there is no record: announcing it in every run would be
+    // promising a best that on going back to the menu is no longer there.
     await expect(page.getByRole('dialog')).not.toContainText('New record!')
 
     await page.getByRole('button', { name: 'Back to the menu' }).click()
 
-    // La partida se juega y se cierra con normalidad; lo único que falta es el
-    // récord, porque no hubo dónde escribirlo.
+    // The run is played and closes normally; the only thing missing is the
+    // record, because there was nowhere to write it.
     await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
     await expect(page.getByText(/^Best score/)).toHaveCount(0)
     expect(errors).toEqual([])

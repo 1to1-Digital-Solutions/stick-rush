@@ -14,29 +14,29 @@ import {
 import { Crowd } from './Crowd'
 import { FairMood, type FairMoodState } from './FairMood'
 import { Bulb, FairPieces, type PieceCounts } from './FairPieces'
-import { FeriaKit } from './FairKit'
+import { FairKit } from './FairKit'
 import { FerrisWheel, WHEEL_PIECES } from './FerrisWheel'
 import { useReducedMotion } from './useReducedMotion'
 
 /**
- * El recinto de feria en el que está montada la máquina: puestos alrededor,
- * guirnaldas de bombillas tendidas entre farolas cerrando el círculo por
- * arriba, público entre los puestos y una noria al fondo. Los puestos, las
- * farolas y sus banderolas son piezas del kit de xrcade (`FeriaKit`); las
- * bombillas, la noria y el público se hacen en código. Las bombillas y el público responden a la racha
- * (`lib/fairMood.ts`), que les llega por un ref y no por props: el recinto no
- * se vuelve a renderizar por nada que pase en la partida.
+ * The fairground venue the machine is set up in: stalls around,
+ * garlands of bulbs strung between lampposts closing the circle from
+ * above, a crowd between the stalls and a Ferris wheel at the back. The stalls, the
+ * lampposts and their banners are pieces of the xrcade kit (`FairKit`); the
+ * bulbs, the Ferris wheel and the crowd are made in code. The bulbs and the crowd respond to the streak
+ * (`lib/fairMood.ts`), which reaches them through a ref and not through props: the venue is
+ * not rendered again by anything that happens in the run.
  *
- * Solo se pinta con el escenario puesto. En passthrough el decorado es la
- * habitación del jugador, y esto la taparía (ver `SceneBackdrop`).
+ * It is only painted with the scenery on. In passthrough the decor is the
+ * player's room, and this would cover it (see `SceneBackdrop`).
  */
 
 const GARLAND_BULB_RADIUS = 0.055
 
 /**
- * Lo que gastan las guirnaldas del presupuesto de instancias: el tramo de
- * bombillas que sale de cada farola hacia la siguiente. Las farolas no gastan
- * nada de aquí: son piezas del kit, con su propio `InstancedMesh`.
+ * What the garlands spend of the instance budget: the stretch of
+ * bulbs that goes from each lamppost to the next. The lampposts spend
+ * nothing from here: they are pieces of the kit, with their own `InstancedMesh`.
  */
 const GARLAND_PIECES: PieceCounts = {
   boards: 0,
@@ -45,9 +45,9 @@ const GARLAND_PIECES: PieceCounts = {
 }
 
 /**
- * Sitio a reservar en las tres familias de piezas (ver `PieceCounts`). Sale de
- * lo que declara cada trozo del recinto, y no de un recuento a mano, para que
- * añadir una cabina o un tramo no haga desaparecer piezas en silencio.
+ * Room to allocate in the three families of pieces (see `PieceCounts`). It comes from
+ * what each bit of the venue declares, and not from a count by hand, so that
+ * adding a cabin or a stretch does not make pieces disappear silently.
  */
 const FAIR_PIECES: PieceCounts = {
   boards: GARLAND_PIECES.boards + WHEEL_PIECES.boards,
@@ -55,15 +55,15 @@ const FAIR_PIECES: PieceCounts = {
   bulbs: GARLAND_PIECES.bulbs + WHEEL_PIECES.bulbs,
 }
 
-/** La punta de la farola, de donde se tienden las guirnaldas. */
+/** The tip of the lamppost, where the garlands are strung from. */
 function postTop({ position }: RingSlot): Vec3 {
   return [position[0], GARLAND_POST_HEIGHT, position[2]]
 }
 
 /**
- * Los tramos de bombillas entre farola y farola. Las farolas las pinta
- * `FeriaKit` en los mismos sitios (`lib/fairKit.ts`), desfasadas respecto a
- * los puestos para que no queden unas tapando a otros.
+ * The stretches of bulbs between lamppost and lamppost. The lampposts are painted by
+ * `FairKit` in the same places (`lib/fairKit.ts`), offset from
+ * the stalls so that they do not end up covering one another.
  */
 function Garlands() {
   const bulbs = useMemo(() => {
@@ -94,18 +94,18 @@ function Garlands() {
 }
 
 export function Fairground() {
-  // La noria es lo único que se mueve aquí; con el movimiento reducido se queda
-  // parada, como el vaivén de los palos.
+  // The Ferris wheel is the only thing that moves here; with reduced motion it stays
+  // stopped, like the sway of the sticks.
   const reducedMotion = useReducedMotion()
   const mood = useRef<FairMoodState>({ streak: 0 })
 
   return (
     <FairPieces limits={FAIR_PIECES} moodRef={mood}>
       <FairMood moodRef={mood} />
-      {/* Suspense propio: mientras bajan los modelos, el resto del recinto
-          ya se ve. */}
+      {/* Its own Suspense: while the models download, the rest of the venue
+          is already seen. */}
       <Suspense fallback={null}>
-        <FeriaKit />
+        <FairKit />
       </Suspense>
       <Garlands />
       <Crowd moodRef={mood} />

@@ -1,9 +1,9 @@
 /**
- * La altura fina del salón (`xrcade:play-height-offset`) llega al decorado de este juego.
+ * The hall's fine height (`xrcade:play-height-offset`) reaches the scenery of this game.
  *
- * La lee el jugador del kit del guardado del juego, sin que el port la pida: esto comprueba que
- * la clave que escribe el salón es la que lee este juego y que sube o baja su mundo, con los
- * ficheros comunes de este repo (`xrLayout.ts` como `uiHeight` y `hostAnchor.ts`).
+ * The kit's player reads it from the game's save, without the port asking for it: this checks
+ * that the key the hall writes is the one this game reads and that it raises or lowers its world,
+ * with the common files of this repo (`xrLayout.ts` as `uiHeight` and `hostAnchor.ts`).
  */
 import { Engine, Node3D, SceneTree } from 'godot'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -18,38 +18,38 @@ import * as hostAnchor from '@/lib/hostAnchor'
 import { gameStorage } from '@/lib/storage'
 import * as xrLayout from '@/lib/xrLayout'
 
-let raiz: Node3D
+let root: Node3D
 let sim: Simulation
 
-/** El jugador como lo monta `main.ts`, de pie y con la cabeza a 1,70. */
-function subidaDelMundo(): number {
-  const jugador = new XRPlayer(raiz, { common: { uiHeight: xrLayout, hostAnchor }, anclaje: null })
+/** The player as `main.ts` mounts it, standing and with the head at 1.70. */
+function worldRise(): number {
+  const player = new XRPlayer(root, { common: { uiHeight: xrLayout, hostAnchor }, anclaje: null })
   sim.cabeza(aTransform({ ...IDENTIDAD, origen: vec(0, 1.7, 0) }))
-  jugador.update(1 / 72)
-  expect(jugador.mundo.global_position.y).toBeCloseTo(jugador.subida, 6)
-  return jugador.subida
+  player.update(1 / 72)
+  expect(player.mundo.global_position.y).toBeCloseTo(player.subida, 6)
+  return player.subida
 }
 
-describe('la altura fina del salón', () => {
+describe('the hall\'s fine height', () => {
   beforeEach(() => {
     gameStorage()?.clear()
-    raiz = new Node3D()
-    ;(Engine.get_main_loop() as SceneTree).root!.add_child(raiz)
+    root = new Node3D()
+    ;(Engine.get_main_loop() as SceneTree).root!.add_child(root)
     sim = simulateControllers()
   })
 
   afterEach(() => {
     sim.quitar()
-    raiz.queue_free()
+    root.queue_free()
     gameStorage()?.clear()
   })
 
-  it('sin la clave el mundo se queda donde está', () => {
-    expect(subidaDelMundo()).toBeCloseTo(0, 6)
+  it('without the key the world stays where it is', () => {
+    expect(worldRise()).toBeCloseTo(0, 6)
   })
 
-  it('con −15 el mundo baja quince centímetros', () => {
+  it('with −15 the world drops fifteen centimetres', () => {
     gameStorage()!.setItem(PLAY_HEIGHT_OFFSET_KEY, '-15')
-    expect(subidaDelMundo()).toBeCloseTo(-0.15, 6)
+    expect(worldRise()).toBeCloseTo(-0.15, 6)
   })
 })

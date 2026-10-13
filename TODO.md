@@ -28,7 +28,7 @@
 - [x] **Actualizar el `README.md`**, que se quedó atrás con los cambios de agosto. Al <!-- org:2c90ced1-24d3-4cf2-8dcb-906662ff26bf -->
       menos: los botones «Entrar en VR / Entrar en AR» ya no existen (ahora es uno solo,
       «Entrar en el visor»); no menciona la puntuación, la cuenta atrás ni el selector de
-      escenario/passthrough; la captura `docs/gameplay.jpg` es de antes del rediseño y del
+      escenario/passthrough; la captura `docs/partida.jpg` es de antes del rediseño y del
       marcador de puntos; y el árbol de ficheros no incluye `scoring.ts`, `xrAnchor.ts`,
       `SceneryFade.tsx`, `XRCountdown.tsx`, `XRController.tsx` ni `XRGazeAnchor.tsx`.
       `npm run capture` regenera la captura.
@@ -75,7 +75,7 @@
       visor eso se paga por ojo. Ahora van por `MachinePieces.tsx` con la misma receta que el
       recinto usa en `FairPieces`, así que la escena mide 29 en el menú. El desglose de esas
       29 y el test que las clava (`MENU_DRAW_CALLS`, con cuatro de margen) están en
-      `e2e/fairground.spec.ts`, que es quien lo mide; el porqué, en `ESTADO.md`, «Validar el
+      `e2e/recinto.spec.ts`, que es quien lo mide; el porqué, en `ESTADO.md`, «Validar el
       recinto en el visor».
 
 ---
@@ -136,11 +136,11 @@
 - [x] Música de fondo, con interruptor propio <!-- org:e6202eab-d281-4425-9d77-eb7ba98333c3 -->
 - [x] La espera a que la escena esté montada se apoya en un número mágico de… <!-- org:4bc9e739-8c76-4017-be92-24a846719c7a -->
 - [x] ESTADO.md, sección «Recinto de feria» (~línea 573) <!-- org:66b1c639-bb13-4020-82ba-8bc8049a8868 -->
-- [x] e2e/fairground.spec.ts <!-- org:c2f61403-afa0-46eb-85ed-a51fd6e158c4 -->
+- [x] e2e/recinto.spec.ts <!-- org:c2f61403-afa0-46eb-85ed-a51fd6e158c4 -->
 - [x] ESTADO.md no tiene sección propia para la instanciación de la máquina,… <!-- org:c23f8938-cbd7-4b29-9692-ca60aee109fc -->
 - [x] El desglose de las 29 llamadas (5 recinto + 5 máquina + 15 palos + 4… <!-- org:2f45e271-809c-4232-aa2b-fdd67fdf71e1 -->
 - [x] El techo de llamadas de dibujo puede medir la escena a medio montar <!-- org:e604bb53-a588-42ea-9c4b-f29194eb4a0e -->
-- [x] e2e/fairground.spec.ts, función sampleFrames() <!-- org:24f0472d-c35b-43f6-9b3f-ec019a8a63c5 -->
+- [x] e2e/recinto.spec.ts, función sampleFrames() <!-- org:24f0472d-c35b-43f6-9b3f-ec019a8a63c5 -->
 - [x] ESTADO.md, sección «Validar el recinto en el visor» (~líneas 600-625) <!-- org:8731e61a-5bc0-43c7-b546-60c9e22fcce2 -->
 - [x] El muestreo de 30 fotogramas esperaba con los 15 s por defecto de expect <!-- org:192936ea-49e1-4de6-ba4b-1a7615bd5fdf -->
 - [x] El README enumera lo que cubren los e2e y no mencionaba la medida del… <!-- org:0494a4d7-33dd-4679-8dff-ea325a1a6bc7 -->

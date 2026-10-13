@@ -4,20 +4,20 @@ import { UNLOCKED_LEVEL_KEY } from '@/lib/progress'
 import { catchStick, modeButton, openGame, startGame, waitForGameOver } from './helpers'
 
 /**
- * Modo Niveles.
+ * Levels mode.
  *
- * El recorrido entero: la escalera en el menú con solo el primero abierto,
- * jugar el nivel con los palos y la velocidad que él dice, las estrellas al
- * acabar y el siguiente que se abre y queda abierto al volver. La escalera y
- * las estrellas en sí las fijan los unitarios de `levels.ts` y `progress.ts`.
+ * The whole journey: the ladder in the menu with only the first one open,
+ * playing the level with the sticks and the speed it says, the stars at
+ * the end and the next one that opens and stays open on coming back. The ladder and
+ * the stars themselves are fixed by the unit tests of `levels.ts` and `progress.ts`.
  */
 
-test.describe('Modo Niveles', () => {
+test.describe('Levels mode', () => {
   test.beforeEach(async ({ page }) => {
     await openGame(page)
   })
 
-  test('la escalera empieza con solo el primer nivel abierto y dice lo que trae', async ({
+  test('the ladder starts with only the first level open and says what it brings', async ({
     page,
   }) => {
     await modeButton(page, 'Levels').click()
@@ -31,16 +31,16 @@ test.describe('Modo Niveles', () => {
     await expect(section.getByRole('button', { name: 'Level 2, locked' })).toBeDisabled()
     await expect(section).toContainText('Level 1: 5 sticks on Easy.')
 
-    // Los palos y la velocidad los dice el nivel: sus selectores se van.
+    // The sticks and the speed are said by the level: their selectors go away.
     await expect(page.getByRole('region', { name: 'Number of sticks' })).toBeHidden()
     await expect(page.getByRole('region', { name: 'Difficulty' })).toBeHidden()
   })
 
-  test('superar el nivel da estrellas, abre el siguiente y el menú se pone en él', async ({
+  test('clearing the level gives stars, opens the next one and the menu moves onto it', async ({
     page,
   }) => {
-    // El primer nivel es el más lento y con cinco palos, que cuelgan atrapables
-    // desde el primer segundo: da tiempo a vaciar el aro.
+    // The first level is the slowest and with five sticks, which hang catchable
+    // from the first second: there is time to empty the hoop.
     await startGame(page, { sticks: 5, mode: 'Levels' })
     await expect(page.getByRole('status')).toHaveAttribute('aria-label', /Level 1\./)
 
@@ -64,27 +64,27 @@ test.describe('Modo Niveles', () => {
     await expect(section).toContainText('Level 2: 9 sticks on Easy.')
   })
 
-  test('no superar el nivel no abre nada', async ({ page }) => {
+  test('not clearing the level opens nothing', async ({ page }) => {
     await page.addInitScript((key) => window.localStorage.setItem(key, '3'), UNLOCKED_LEVEL_KEY)
     await openGame(page)
     await modeButton(page, 'Levels').click()
 
     const section = page.getByRole('region', { name: 'Level' })
-    // Lo guardado se recuerda: se entra por el más alto abierto.
+    // What is saved is remembered: it is entered by the highest one open.
     await expect(section.getByRole('button', { name: 'Level 3, 0 stars' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
     await expect(section).toContainText('Level 3: 13 sticks on Easy.')
 
-    // Se puede volver a uno de abajo, pero no saltar a uno cerrado.
+    // One can go back to one below, but not jump to a locked one.
     await section.getByRole('button', { name: 'Level 1, 0 stars' }).click()
     await expect(section).toContainText('Level 1: 5 sticks on Easy.')
     await expect(section.getByRole('button', { name: 'Level 4, locked' })).toBeDisabled()
 
     await page.getByRole('button', { name: 'Play', exact: true }).click()
     await expect(page.getByRole('status')).toHaveAttribute('aria-label', /Caught 0 of 5$/)
-    // Sin tocar nada los cinco palos se estrellan: cero estrellas.
+    // Without touching anything the five sticks crash: zero stars.
     await waitForGameOver(page, 90_000)
 
     const dialog = page.getByRole('dialog')

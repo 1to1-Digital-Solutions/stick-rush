@@ -8,39 +8,39 @@ import {
   useXRInputSourceStateContext,
 } from '@react-three/xr'
 import { useGame } from '../../lib/gameStore'
-import { llevaLaAyuda } from '../../lib/hands'
+import { carriesTheHint } from '../../lib/hands'
 import { ControllerModel } from './XRControllerModel'
 
 /**
- * El mando del jugador: lo que se ve en su mano, más los punteros.
+ * The player's controller: what is seen in their hand, plus the pointers.
  *
- * Sustituye a `<DefaultXRController>`, así que tiene que montar los punteros
- * ella misma. Se conservan los dos: el de agarre (esfera en el puño, gatillo
- * lateral) es con el que se cogen los palos, y el rayo se queda para el menú,
- * que está a un brazo largo y sería incómodo tocar. Quién puede atrapar y quién
- * no lo decide `Stick` con `canCatchWithPointer`, no este fichero.
+ * It replaces `<DefaultXRController>`, so it has to mount the pointers
+ * itself. Both are kept: the grab one (a sphere at the grip, side
+ * trigger) is the one the sticks are caught with, and the ray stays for the menu,
+ * which is a long arm away and would be awkward to touch. Who can catch and who
+ * cannot is decided by `Stick` with `canCatchWithPointer`, not by this file.
  *
- * El dibujo del mando vive en `XRControllerModel`, porque el tutorial enseña
- * ese mismo mando antes de que el jugador tenga nada que agarrar.
+ * The drawing of the controller lives in `XRControllerModel`, because the tutorial shows
+ * that same controller before the player has anything to grab.
  *
- * **La mano no va aquí.** El guante que lo sostiene lo monta la escena
- * (`ManosDelJugador`), porque este componente solo existe en la web propia: dentro
- * del salón de xrcade el store es del salón y esto no se monta. Aquí iría duplicado.
+ * **The hand does not go here.** The glove that holds it is mounted by the scene
+ * (`PlayerHands`), because this component only exists on the game's own website: inside
+ * the xrcade hall the store is the hall's and this is not mounted. Here it would be duplicated.
  */
 export function StickRushController() {
   const state = useXRInputSourceStateContext('controller')
   const { gameState, score } = useGame()
 
   const handedness = state.inputSource.handedness
-  // El gatillo lateral cae hacia el interior de la mano: en el mando izquierdo
-  // queda a su derecha y viceversa.
+  // The side trigger falls towards the inside of the hand: on the left controller
+  // it is on its right and vice versa.
   const side = handedness === 'left' ? 1 : -1
 
-  // La marca solo mientras haga falta: desde la cuenta atrás —que es justo
-  // cuando conviene enseñar el control, antes de que caiga nada— y hasta que
-  // atrape el primer palo. En el menú estorbaría, porque allí se usa el rayo, y
-  // durante el tutorial la lleva el mando de la demostración.
-  const highlight = llevaLaAyuda(gameState, score)
+  // The mark only while it is needed: from the countdown —which is exactly
+  // when it is worth showing the control, before anything falls— and until
+  // the first stick is caught. In the menu it would be in the way, because the ray is used there, and
+  // during the tutorial the demonstration's controller carries it.
+  const highlight = carriesTheHint(gameState, score)
 
   return (
     <>
@@ -70,5 +70,5 @@ export function StickRushController() {
   )
 }
 
-/** Radio de la esfera de agarre del mando, en metros (por defecto 0.07). */
+/** Radius of the controller's grab sphere, in metres (0.07 by default). */
 export const CONTROLLER_GRAB_RADIUS = 0.09

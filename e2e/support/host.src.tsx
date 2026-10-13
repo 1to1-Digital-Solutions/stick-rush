@@ -10,48 +10,48 @@ import type { Goal } from '../../src/lib/goal'
 import type { GameResult } from '../../src/lib/seed'
 
 /**
- * El anfitrión de prueba: monta `<StickRushScene>` dentro de un Canvas y una sesión que no son
- * suyos, como hace el salón de xrcade.
+ * The test host: it mounts `<StickRushScene>` inside a Canvas and a session that are not
+ * its own, as the xrcade hall does.
  *
- * Es el sitio de la suite que ejercita el contrato de montaje: la web del juego monta
- * `<StickRush>`, que trae su propio Canvas, su propio store y su propio mando dibujado. Aquí no
- * hay nada de eso —el store es del anfitrión y, como el del salón, **no dibuja ni mandos ni
- * manos**—, así que lo que se vea en la mano lo ha puesto la escena.
+ * It is the place of the suite that exercises the mounting contract: the game's website mounts
+ * `<StickRush>`, which brings its own Canvas, its own store and its own drawn controller. Here there
+ * is none of that —the store is the host's and, like the hall's, **it draws neither controllers nor
+ * hands**—, so whatever is seen in the hand has been put there by the scene.
  */
-const mount = document.getElementById('juego')
+const mount = document.getElementById('game')
 if (mount == null) {
-  throw new Error('El anfitrión de prueba no tiene dónde montar el juego')
+  throw new Error('The test host has nowhere to mount the game')
 }
 const assetsBase = mount.dataset.assetsBase ?? '/'
 
 /**
- * Montar la escena solo cuando se pida, **como en el salón**: allí se elige cabina con el visor
- * ya puesto, así que la escena nace dentro de una sesión abierta.
+ * Mount the scene only when asked, **as in the hall**: there the cabinet is chosen with the headset
+ * already on, so the scene is born inside an open session.
  */
-const aLaCarta = mount.dataset.cabina === 'a-la-carta'
+const onDemand = mount.dataset.cabinet === 'on-demand'
 
-/** El reto del salón, si la página lo trae: la semilla, como la pasaría el arco de cabinas. */
-const reto = mount.dataset.reto == null ? undefined : { seed: Number(mount.dataset.reto) }
+/** The hall's challenge, if the page brings it: the seed, as the arc of cabinets would pass it. */
+const challenge = mount.dataset.challenge == null ? undefined : { seed: Number(mount.dataset.challenge) }
 
-/** Dónde plantar el mundo, si la página lo trae: el anclaje que presta el salón. */
+/** Where to plant the world, if the page brings it: the anchor the hall lends. */
 const anchor = mount.dataset.anchor == null ? undefined : (JSON.parse(mount.dataset.anchor) as HostAnchor)
 
-/** Los listones de medalla del juego, si la página los trae: lo que el salón pasa en `objetivo`. */
-const objetivo = mount.dataset.objetivo == null ? undefined : (JSON.parse(mount.dataset.objetivo) as Goal)
+/** The game's medal thresholds, if the page brings them: what the hall passes in `goal`. */
+const goal = mount.dataset.goal == null ? undefined : (JSON.parse(mount.dataset.goal) as Goal)
 
 const store = createXRStore({
-  // Lo que el contrato pide cablear al anfitrión: los perfiles de mando bajo su propio prefijo.
+  // What the contract asks to wire to the host: the controller profiles under its own prefix.
   baseAssetPath: new URL(`${assetsBase}webxr-profiles/`, window.location.origin).href,
-  // Como el salón (`xrcade/src/components/salon/salonStore.ts`): sin modelo de mando ni de mano.
+  // Like the hall (`xrcade/src/components/salon/salonStore.ts`): with no controller model nor hand model.
   controller: { model: false },
   hand: { model: false },
 })
 
-/** Lo que se puede saber de un objeto de la escena desde fuera del Canvas. */
-export interface ObjetoDeLaEscena {
-  /** Si se pinta: él y todos sus padres visibles. */
+/** What can be known about an object of the scene from outside the Canvas. */
+export interface SceneObject {
+  /** Whether it is painted: it and all its parents visible. */
   visible: boolean
-  /** Dónde está, en el espacio de la escena. */
+  /** Where it is, in the scene's space. */
   x: number
   y: number
   z: number
@@ -61,93 +61,93 @@ declare global {
   interface Window {
     __stickRushHost: {
       enterVR: () => Promise<void>
-      /** Busca por nombre; `null` si no está montado. */
-      buscar: (nombre: string) => ObjetoDeLaEscena | null
-      /** Monta la escena, como al elegir cabina. Solo hace algo con `data-cabina`. */
-      entrarEnLaCabina: () => void
-      /** Desmonta la escena, como al volver al salón. */
-      salirDeLaCabina: () => void
-      /** Lo que la escena ha contado al acabar cada partida (`onFinish`), en orden. */
-      terminadas: GameResult[]
-      /** Deja de pintar ese objeto, o lo vuelve a pintar: para medir lo que cuesta. `false` si no está. */
-      esconder: (nombre: string, oculto: boolean) => boolean
-      /** Apunta la cámara del anfitrión a ese punto de la escena (fuera de la sesión inmersiva). */
-      mirar: (x: number, y: number, z: number) => void
+      /** Looks up by name; `null` if it is not mounted. */
+      find: (name: string) => SceneObject | null
+      /** Mounts the scene, as on choosing a cabinet. Only does something with `data-cabinet`. */
+      enterCabinet: () => void
+      /** Unmounts the scene, as on going back to the hall. */
+      leaveCabinet: () => void
+      /** What the scene has told on finishing each run (`onFinish`), in order. */
+      finished: GameResult[]
+      /** Stops painting that object, or paints it again: to measure what it costs. `false` if it is not there. */
+      hide: (name: string, hidden: boolean) => boolean
+      /** Points the host's camera at that point of the scene (outside the immersive session). */
+      lookAt: (x: number, y: number, z: number) => void
     }
   }
 }
 
-let escena: Object3D | null = null
-let camara: Object3D | null = null
-let entrar = () => {}
-let salir = () => {}
+let probedScene: Object3D | null = null
+let probedCamera: Object3D | null = null
+let enter = () => {}
+let leave = () => {}
 
 window.__stickRushHost = {
   async enterVR() {
     await store.enterVR()
   },
-  buscar(nombre) {
-    const objeto = escena?.getObjectByName(nombre)
-    if (objeto == null) return null
+  find(name) {
+    const object = probedScene?.getObjectByName(name)
+    if (object == null) return null
     let visible = true
-    for (let nodo: Object3D | null = objeto; nodo != null; nodo = nodo.parent) {
-      visible &&= nodo.visible
+    for (let node: Object3D | null = object; node != null; node = node.parent) {
+      visible &&= node.visible
     }
-    objeto.updateWorldMatrix(true, false)
-    const { x, y, z } = new Vector3().setFromMatrixPosition(objeto.matrixWorld)
+    object.updateWorldMatrix(true, false)
+    const { x, y, z } = new Vector3().setFromMatrixPosition(object.matrixWorld)
     return { visible, x, y, z }
   },
-  entrarEnLaCabina: () => entrar(),
-  salirDeLaCabina: () => salir(),
-  terminadas: [],
-  esconder(nombre, oculto) {
-    const objeto = escena?.getObjectByName(nombre)
-    if (objeto == null) return false
-    objeto.visible = !oculto
+  enterCabinet: () => enter(),
+  leaveCabinet: () => leave(),
+  finished: [],
+  hide(name, hidden) {
+    const object = probedScene?.getObjectByName(name)
+    if (object == null) return false
+    object.visible = !hidden
     return true
   },
-  mirar(x, y, z) {
-    camara?.lookAt(x, y, z)
+  lookAt(x, y, z) {
+    probedCamera?.lookAt(x, y, z)
   },
 }
 
-/** Deja la escena a mano de `buscar`. */
-function Sonda() {
+/** Leaves the scene within reach of `find`. */
+function Probe() {
   const scene = useThree((state) => state.scene)
   const camera = useThree((state) => state.camera)
   useEffect(() => {
-    escena = scene
-    camara = camera
+    probedScene = scene
+    probedCamera = camera
     return () => {
-      escena = null
-      camara = null
+      probedScene = null
+      probedCamera = null
     }
   }, [scene, camera])
   return null
 }
 
-/** La cabina: la escena, montada cuando toca. */
-function Cabina() {
-  const [dentro, setDentro] = useState(!aLaCarta)
+/** The cabinet: the scene, mounted when it is time. */
+function Cabinet() {
+  const [inside, setInside] = useState(!onDemand)
   useEffect(() => {
-    entrar = () => setDentro(true)
-    salir = () => setDentro(false)
+    enter = () => setInside(true)
+    leave = () => setInside(false)
     return () => {
-      entrar = () => {}
-      salir = () => {}
+      enter = () => {}
+      leave = () => {}
     }
   }, [])
 
-  if (!dentro) return null
-  // Volver es cosa del anfitrión, y aquí no hay a dónde.
+  if (!inside) return null
+  // Going back is the host's business, and here there is nowhere to go.
   return (
     <StickRushScene
       assetsBase={assetsBase}
       anchor={anchor}
       onExit={() => {}}
-      challenge={reto}
-      goal={objetivo}
-      onFinish={(resultado) => window.__stickRushHost.terminadas.push(resultado)}
+      challenge={challenge}
+      goal={goal}
+      onFinish={(result) => window.__stickRushHost.finished.push(result)}
     />
   )
 }
@@ -157,8 +157,8 @@ function Host() {
     <Canvas camera={{ position: [0, 1.6, 0.6], fov: 55, near: 0.05, far: 60 }}>
       <XR store={store}>
         <XROrigin position={[0, 0, 0]} />
-        <Sonda />
-        <Cabina />
+        <Probe />
+        <Cabinet />
       </XR>
     </Canvas>
   )

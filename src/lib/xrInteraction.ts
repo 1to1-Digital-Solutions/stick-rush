@@ -1,52 +1,52 @@
 /**
- * Reglas de interacción con los palos.
+ * Rules of interaction with the sticks.
  *
- * Un palo se coge **con la mano**, no apuntando. En sesión inmersiva
- * @react-three/xr registra varios punteros por mando y cada uno se identifica
- * por su `pointerType`:
+ * A stick is grabbed **with the hand**, not by pointing. In an immersive session
+ * @react-three/xr registers several pointers per controller and each one is identified
+ * by its `pointerType`:
  *
- * - `grab`  — esfera pegada al puño, se activa con el gatillo lateral (squeeze).
- * - `touch` — contacto directo de la mano, sin mando.
- * - `ray`   — el rayo que sale del mando y llega a cualquier distancia.
- * - `mouse` — el ratón, en escritorio.
+ * - `grab`  — sphere stuck to the fist, activated with the side trigger (squeeze).
+ * - `touch` — direct contact of the hand, without a controller.
+ * - `ray`   — the ray that comes out of the controller and reaches any distance.
+ * - `mouse` — the mouse, on desktop.
  *
- * El rayo se queda solo para manejar el menú: si valiera para los palos, el
- * juego se reduciría a apuntar desde lejos y perdería la gracia de atraparlos.
+ * The ray is left only for handling the menu: if it were valid for the sticks, the
+ * game would come down to pointing from afar and would lose the fun of catching them.
  */
 export type PointerKind = 'grab' | 'touch' | 'ray' | 'mouse' | (string & {})
 
 /**
- * ¿Este puntero puede atrapar un palo?
+ * Can this pointer catch a stick?
  *
- * Se acepta todo salvo el rayo, en vez de listar los válidos: los eventos de
- * ratón no siempre traen `pointerType`, y un puntero nuevo de la librería debe
- * poder coger palos por defecto antes que quedarse mudo sin que nadie se entere.
+ * Everything is accepted except the ray, instead of listing the valid ones: mouse
+ * events do not always carry `pointerType`, and a new pointer of the library must
+ * be able to grab sticks by default rather than stay mute without anyone noticing.
  */
 export function canCatchWithPointer(pointerType: PointerKind | undefined) {
   return pointerType !== 'ray'
 }
 
-/** Vida de un palo: cuelga del aro, cae, y acaba atrapado o en el suelo. */
+/** Life of a stick: it hangs from the hoop, falls, and ends up caught or on the floor. */
 export type StickState = 'hanging' | 'falling' | 'caught' | 'missed'
 
 /**
- * ¿Se puede atrapar este palo ahora mismo?
+ * Can this stick be caught right now?
  *
- * **Un palo se coge hasta que toca el suelo, colgando incluido.** Es una
- * decisión de producto, no un descuido: la ventana empieza en cuanto arranca la
- * partida y se cierra cuando el palo se resuelve. Vaciar el aro sin esperar a
- * que caiga nada es una forma legítima de jugar, y el bonus por reflejos
- * (`reflexMultiplier`) la premia precisamente por eso — quien espera el palo
- * abajo se lleva la mitad de puntos.
+ * **A stick is grabbed until it touches the floor, hanging included.** It is a
+ * product decision, not an oversight: the window starts as soon as the run
+ * starts and closes when the stick is resolved. Emptying the hoop without waiting for
+ * anything to fall is a legitimate way to play, and the reflex bonus
+ * (`reflexMultiplier`) rewards it precisely for that — whoever waits for the stick
+ * below gets half the points.
  *
- * Lo que sí se cierra:
+ * What does close:
  *
- * - Un palo **ya resuelto** (atrapado o tocado el suelo) no vuelve a contar. El
- *   palo perdido se queda tirado para que el suelo cuente los fallos, pero es
- *   decorado: recogerlo del suelo borraría el fallo.
- * - Con la partida **parada** no se coge nada, y eso incluye la cuenta atrás:
- *   antes se podía vaciar el aro entero a clics antes de que empezara a caer
- *   nada.
+ * - A stick **already resolved** (caught or touched the floor) does not count again. The
+ *   missed stick stays lying there so that the floor counts the misses, but it is
+ *   scenery: picking it up from the floor would erase the miss.
+ * - With the run **stopped** nothing is grabbed, and that includes the countdown:
+ *   before, the whole hoop could be emptied with clicks before anything started to
+ *   fall.
  */
 export function canCatchStick(state: StickState, paused: boolean) {
   if (paused) return false
@@ -54,18 +54,18 @@ export function canCatchStick(state: StickState, paused: boolean) {
 }
 
 /**
- * ¿Se está jugando con las manos desnudas?
+ * Is it being played bare-handed?
  *
- * Cambia lo que hay que **enseñar**, no lo que hay que hacer: los palos se
- * cogen igual —el puntero de agarre va con la mano lo mismo que con el mando—,
- * pero el tutorial dibujaba un mando con su gatillo lateral marcado, y quien
- * entra con las manos veía un objeto que no tiene y un botón que no puede
- * apretar.
+ * It changes what has to be **shown**, not what has to be done: the sticks are
+ * grabbed the same —the grab pointer goes with the hand just as with the controller—,
+ * but the tutorial drew a controller with its side trigger marked, and whoever
+ * enters with their hands saw an object they do not have and a button they cannot
+ * squeeze.
  *
- * Se pide que **haya manos y no haya mandos**, y no solo que haya manos: el
- * visor puede tener las dos cosas conectadas —los mandos en la mesa siguen
- * anunciándose— y ahí lo que el jugador tiene en la mano manda. Sin nada
- * conectado todavía se dibuja el mando, que es lo que trae la mayoría.
+ * It is required that **there are hands and there are no controllers**, and not only that there are hands: the
+ * headset can have both things connected —the controllers on the table keep
+ * announcing themselves— and there what the player has in the hand rules. With nothing
+ * connected yet the controller is drawn, which is what most people bring.
  */
 export function playingBareHanded(inputTypes: readonly string[]): boolean {
   return inputTypes.includes('hand') && !inputTypes.includes('controller')

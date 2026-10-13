@@ -14,20 +14,20 @@ import {
 } from './support/xr'
 
 /**
- * Jugar con las manos desnudas, sin mandos.
+ * Playing with bare hands, with no controllers.
  *
- * **Es el modo de entrada que dejaba fuera a gente.** Quien no tiene mandos a
- * mano —o no puede sostenerlos— entra al visor con las manos, y el juego tiene
- * que dejarse jugar igual: el palo se coge cerrando la mano encima, que es
- * exactamente lo que el tutorial promete («close your hand around the stick»).
+ * **It is the input mode that left people out.** Whoever has no controllers at
+ * hand —or cannot hold them— enters the headset with their hands, and the game has
+ * to let itself be played all the same: the stick is caught by closing the hand over it, which is
+ * exactly what the tutorial promises («close your hand around the stick»).
  *
- * Aquí se apagan los mandos, se encienden las manos con sus articulaciones y se
- * hace el gesto entero: llevar la mano hasta un palo y cerrarla. Lo que se
- * comprueba es que el palo se cuenta como atrapado, que es lo único que dice
- * desde fuera del Canvas si el agarre enganchó — con la mano desnuda no hay
- * botón que pulsar ni foco que seguir.
+ * Here the controllers are turned off, the hands are turned on with their joints and the
+ * whole gesture is made: taking the hand up to a stick and closing it. What is
+ * checked is that the stick counts as caught, which is the only thing that says
+ * from outside the Canvas whether the grip engaged — with a bare hand there is no
+ * button to press nor focus to follow.
  */
-test('con las manos desnudas los palos también se atrapan', async ({ page }) => {
+test('with bare hands the sticks are caught too', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
 
@@ -37,32 +37,32 @@ test('con las manos desnudas los palos también se atrapan', async ({ page }) =>
   await useBareHands(page)
   await startGameInsideSession(page)
 
-  // Se pide la foto de los palos: la escena no la publica si nadie la ha
-  // pedido, así que hay que crear la propiedad antes de mirarla.
+  // The snapshot of the sticks is requested: the scene does not publish it if nobody has
+  // asked for it, so the property has to be created before looking at it.
   await page.evaluate(() => {
     window.__stickRushSticks = {}
   })
 
-  // Un palo que se pueda coger ahora mismo, y dónde está. Colgando vale: la
-  // ventana de captura se abre en cuanto arranca la partida (ver
-  // `canCatchStick`), y un palo quieto es el que deja probar el gesto sin que
-  // el test dependa de acertarle a algo que cae.
-  const encontrado = await page.waitForFunction(
+  // A stick that can be caught right now, and where it is. Hanging is fine: the
+  // catch window opens as soon as the run starts (see
+  // `canCatchStick`), and a still stick is the one that lets the gesture be tested without
+  // the test depending on hitting something that falls.
+  const found = await page.waitForFunction(
     () => {
-      // El más alto de los que se pueden coger, que es uno que sigue colgando: el turno de
-      // caída sale de una semilla nueva en cada partida, y el primero de la lista puede ser
-      // justo el que ya está cayendo.
+      // The highest of the ones that can be caught, which is one that still hangs: the falling
+      // turn comes from a new seed in each run, and the first of the list may be
+      // just the one that is already falling.
       const sticks = Object.values(window.__stickRushSticks ?? {}).filter((stick) => stick.catchable)
-      return sticks.length === 0 ? null : sticks.reduce((alto, stick) => (stick.y > alto.y ? stick : alto))
+      return sticks.length === 0 ? null : sticks.reduce((highest, stick) => (stick.y > highest.y ? stick : highest))
     },
     undefined,
     { timeout: 15_000 },
   )
-  const palo = (await encontrado.jsonValue()) as StickProbe
+  const hanging = (await found.jsonValue()) as StickProbe
 
-  // La mano llega hasta el palo y se cierra. Las dos cosas hacen falta: cerrarla
-  // desde lejos no coge nada, y llegar sin cerrarla tampoco.
-  await moveBareHand(page, 'right', { x: palo.x, y: palo.y, z: palo.z })
+  // The hand reaches the stick and closes. Both things are needed: closing it
+  // from afar catches nothing, and arriving without closing it does not either.
+  await moveBareHand(page, 'right', { x: hanging.x, y: hanging.y, z: hanging.z })
   await pinchHand(page, 'right', true)
 
   await expect(page.getByRole('status')).toContainText(/[1-9]\d* \//, {
@@ -73,18 +73,18 @@ test('con las manos desnudas los palos también se atrapan', async ({ page }) =>
 })
 
 /**
- * Y lo que se enseña es lo que se tiene en la mano.
+ * And what is shown is what is held in the hand.
  *
- * El tutorial dibujaba un mando con su gatillo lateral marcado. Quien entra con
- * las manos veía un objeto que no tiene y un botón que no puede apretar, justo
- * en la única pantalla del juego que existe para explicar el gesto. Con las
- * manos se dibuja una mano cerrándose (ver `XRHandModel`).
+ * The tutorial drew a controller with its side trigger marked. Whoever enters with
+ * their hands saw an object they do not have and a button they cannot squeeze, right
+ * on the only screen of the game that exists to explain the gesture. With
+ * hands a closing hand is drawn (see `XRHandModel`).
  *
- * Desde fuera del Canvas no se puede mirar qué geometría hay —no hay texto ni
- * DOM que lo refleje—, así que lo que se comprueba es que la demostración
- * arranca, corre y se pinta sin reventar con las manos puestas.
+ * From outside the Canvas there is no way of looking at which geometry there is —there is no text nor
+ * DOM that reflects it—, so what is checked is that the demonstration
+ * starts, runs and is painted without blowing up with the hands on.
  */
-test('el tutorial se pinta con las manos sin ensuciar la consola', async ({
+test('the tutorial is painted with hands without dirtying the console', async ({
   page,
 }) => {
   const errors: string[] = []
@@ -99,11 +99,11 @@ test('el tutorial se pinta con las manos sin ensuciar la consola', async ({
   await useBareHands(page)
   await pressPlayInsideSession(page)
 
-  // El tutorial se antepone a la partida la primera vez, y su botón de saltarlo
-  // es el reflejo en DOM de la demostración que corre en 3D.
+  // The tutorial is put before the run the first time, and its skip button
+  // is the DOM reflection of the demonstration that runs in 3D.
   await expect(tutorialSkipButton(page)).toHaveCount(1)
-  // Unos segundos: la mano se cierra y se abre dos veces por ciclo, y el tramo
-  // dura para dos ciclos.
+  // A few seconds: the hand closes and opens twice per cycle, and the stretch
+  // lasts for two cycles.
   await page.waitForTimeout(4000)
 
   expect(errors).toEqual([])

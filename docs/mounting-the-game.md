@@ -1,45 +1,45 @@
-# Montar Stick Rush dentro de otra aplicación
+# Mounting Stick Rush inside another application
 
-Stick Rush es dos cosas en el mismo repositorio:
+Stick Rush is two things in the same repository:
 
-- **El juego** (`src/game`, `src/components`, `src/lib`): un componente de React que se monta
-  donde le digas. No sabe de rutas, ni de layout, ni de metadatos, ni de despliegue.
-- **Su web** (`src/app`): una aplicación Next que monta ese componente a pantalla completa. Se
-  despliega sola y es la forma de desarrollar el juego y de probarlo con el visor.
+- **The game** (`src/game`, `src/components`, `src/lib`): a React component that mounts wherever
+  you tell it to. It knows nothing about routes, layout, metadata or deployment.
+- **Its website** (`src/app`): a Next application that mounts that component full screen. It is
+  deployed on its own and is the way to develop the game and to try it with the headset.
 
-Este documento es el contrato de lo primero: lo que hay que hacer para montar el juego desde
-fuera. Es lo que consume [xrcade](https://github.com/1to1-Digital-Solutions/xrcade), que lo carga
-DENTRO de sí mismo en vez de enlazarlo: un `<iframe>` a otro dominio rompe la sesión inmersiva al
-entrar y al volver.
+This document is the contract of the first: what has to be done to mount the game from outside.
+It is what [xrcade](https://github.com/1to1-Digital-Solutions/xrcade) consumes, which loads it
+INSIDE itself instead of linking to it: an `<iframe>` to another domain breaks the immersive
+session on the way in and on the way back.
 
-## 1. Instalar una versión fija
+## 1. Install a fixed version
 
-El juego se consume por **tag del repositorio**, no copiando código. Actualizarlo en el salón es
-subir esa versión y volver a instalar:
+The game is consumed by **repository tag**, not by copying code. Updating it in the hall is
+bumping that version and installing again:
 
 ```bash
 npm install "github:1to1-Digital-Solutions/stick-rush#v0.2.0"
 ```
 
-El tag `vX.Y.Z` acompaña a la `version` de `package.json`. Sin tag (`#main`) también funciona,
-pero entonces el juego cambia bajo los pies de quien lo monta.
+The tag `vX.Y.Z` goes with the `version` of `package.json`. Without a tag (`#main`) it works too,
+but then the game changes under the feet of whoever mounts it.
 
-Mientras el repositorio sea privado, quien instale necesita acceso de lectura: `npm install`
-desde git usa las credenciales de git de la máquina, así que en un CI que no las tenga la
-instalación falla al clonar. Las salidas son tres y **está sin decidir cuál se toma**: dar al
-runner un token de lectura desde su almacén de secretos (`git config --global
-url."https://$TOKEN@github.com/".insteadOf "https://github.com/"`, nunca escrito en el
-repositorio), hacer público el repositorio, o publicar el paquete en un registry. En local, con
-la cuenta de la organización configurada, funciona sin tocar nada.
+While the repository is private, whoever installs it needs read access: `npm install` from git
+uses the machine's git credentials, so in a CI that does not have them the install fails when
+cloning. There are three ways out and **which one is taken is undecided**: give the runner a read
+token from its secret store (`git config --global
+url."https://$TOKEN@github.com/".insteadOf "https://github.com/"`, never written in the
+repository), make the repository public, or publish the package to a registry. Locally, with the
+organisation's account configured, it works without touching anything.
 
-React, three y las tres librerías de `@react-three/*` son **peer dependencies**: las pone la
-aplicación anfitriona y así solo hay una copia de cada una en la página. Dos copias de React
-rompen los hooks, y dos de three, la escena.
+React, three and the three `@react-three/*` libraries are **peer dependencies**: the host
+application provides them, so there is only one copy of each on the page. Two copies of React
+break the hooks, and two of three break the scene.
 
-## 2. Transpilar el paquete
+## 2. Transpile the package
 
-El paquete se publica en TypeScript sin compilar, así que su código lo compila el bundler de la
-aplicación anfitriona junto con el suyo. En Next:
+The package is published as uncompiled TypeScript, so its code is compiled by the host
+application's bundler together with its own. In Next:
 
 ```ts
 // next.config.ts
@@ -48,38 +48,41 @@ const nextConfig: NextConfig = {
 }
 ```
 
-## 3. Copiar los ficheros estáticos
+## 3. Copy the static files
 
-El HDRI del escenario, las texturas de la madera, los modelos del recinto (`models/`) y los
-perfiles de mando de WebXR son 3 MB que el navegador pide por HTTP durante la partida: no viajan
-en el código. Hay que servirlos desde la aplicación anfitriona.
+The HDRI of the scenery, the wood textures, the models of the fairground (`models/`), the
+background music, the hands and the WebXR controller profiles are about 5 MB that the browser
+requests over HTTP during the run: they do not travel in the code. They have to be served from
+the host application.
 
 ```bash
 npx stick-rush-assets public/juegos/stick-rush
 ```
 
-Ese comando es idempotente: se vuelve a ejecutar tras subir la versión y deja los ficheros de la
-nueva. Conviene dejarlo en un script de `package.json` para que no se olvide.
+That command is idempotent: it is run again after bumping the version and leaves the files of
+the new one. It is worth keeping it in a `package.json` script so that it is not forgotten.
 
-**Los perfiles de mando no son opcionales.** `@react-three/xr` los descarga por defecto de un CDN;
-si no llegan, se traga el error y **no registra el mando**: en el visor eso es quedarse sin mandos
-y sin poder pulsar nada. Por eso los sirve el juego.
+**The controller profiles are not optional.** `@react-three/xr` downloads them from a CDN by
+default; if they do not arrive, it swallows the error and **does not register the controller**:
+in the headset that means no controllers and nothing that can be pressed. That is why the game
+serves them.
 
-**Las manos las dibuja el juego, no el anfitrión.** El guante sobre el mando y la mano articulada
-de las manos desnudas los monta la escena, así que salen aunque el store del anfitrión no dibuje
-manos (el del salón no las dibuja). La mano articulada es `manos/generic-hand/{left,right}.glb`,
-que va **fuera** de `webxr-profiles/`: un anfitrión que sirva sus propios perfiles y borre los del
-juego no se la lleva por delante.
+**The hands are drawn by the game, not by the host.** The glove over the controller and the
+articulated hand of bare hands are mounted by the scene, so they show even if the host's store
+draws no hands (the hall's does not). The articulated hand is
+`manos/generic-hand/{left,right}.glb`, which lives **outside** `webxr-profiles/`: a host that
+serves its own profiles and deletes the game's does not take it away.
 
-## 4. Montar el juego
+## 4. Mount the game
 
-Hay **dos formas**, y la diferencia es de quién es la sesión inmersiva.
+There are **two ways**, and the difference is whose immersive session it is.
 
-### Como escena, dentro de un Canvas que ya existe
+### As a scene, inside a Canvas that already exists
 
-Es lo que hace el salón de xrcade, y es la forma buena cuando el anfitrión también es 3D. El
-juego se pinta dentro del `<Canvas>` y de la sesión del anfitrión, así que **entrar en el juego
-y volver no tocan la sesión**: con el visor puesto se pasa de un juego al salón sin quitárselo.
+It is what the xrcade hall does, and it is the right way when the host is 3D too. The game is
+drawn inside the host's `<Canvas>` and session, so **entering the game and coming back do not
+touch the session**: with the headset on, the player goes from a game to the hall without taking
+it off.
 
 ```tsx
 'use client'
@@ -88,11 +91,11 @@ import { Canvas } from '@react-three/fiber'
 import { XR, XROrigin } from '@react-three/xr'
 import { StickRushScene } from 'stick-rush'
 
-export function Salon({ store, onExit }) {
+export function Hall({ store, onExit }) {
   return (
     <Canvas>
       <XR store={store}>
-        {/* El jugador es del anfitrión: el juego coloca su mundo alrededor. */}
+        {/* The player belongs to the host: the game places its world around them. */}
         <XROrigin position={[0, 0, 0]} />
         <StickRushScene assetsBase="/juegos/stick-rush/" onExit={onExit} />
       </XR>
@@ -101,70 +104,75 @@ export function Salon({ store, onExit }) {
 }
 ```
 
-Lo que la escena **no** hace, y por qué:
+What the scene does **not** do, and why:
 
-- **No crea Canvas ni `XRStore`, ni abre o cierra la sesión.** WebXR da una sesión por documento
-  y va atada al Canvas que la abrió: quien es dueño del Canvas es dueño de la sesión.
-- **No pone `<XROrigin>`.** El sitio del jugador lo decide el anfitrión. El juego coloca su
-  mundo alrededor de donde esté, corriendo el decorado en vez de mover al jugador.
-- **No pinta DOM.** Dentro de un Canvas solo caben objetos de three. El menú y el marcador en 2D
-  se quedan en la web del juego; dentro del visor sus equivalentes son geometría y sí van.
+- **It creates neither a Canvas nor an `XRStore`, and it does not open or close the session.**
+  WebXR gives one session per document and it is tied to the Canvas that opened it: whoever owns
+  the Canvas owns the session.
+- **It does not add an `<XROrigin>`.** Where the player stands is the host's decision. The game
+  places its world around wherever they are, shifting the set instead of moving the player.
+- **It draws no DOM.** Only three objects fit inside a Canvas. The 2D menu and scoreboard stay in
+  the game's website; inside the headset their equivalents are geometry and they do come along.
 
-`onExit` es obligatorio: es cómo el juego devuelve al jugador desde su interfaz inmersiva —el
-botón de salir de su menú— sin decidir a dónde. Un anfitrión que no tenga a dónde devolverle
-puede pasar el cierre de su propia sesión, que es lo que hace la web del juego.
+`onExit` is mandatory: it is how the game hands the player back from its immersive interface —the
+exit button of its menu— without deciding where to. A host with nowhere to send them back to can
+pass the closing of its own session, which is what the game's website does.
 
-#### El reto con semilla y el aviso de fin de partida
+#### The seeded challenge and the end-of-run notice
 
-Tres props más, las tres opcionales: sin ellas, el juego arranca en el menú —con el reto elegido—
-y sortea como siempre. Los tipos `Reto` y `Resultado` están en `src/lib/seed.ts` y `Objetivo`
-en `src/lib/goal.ts` (el paquete lo exporta), que son los mismos ficheros en todos los juegos
-del salón.
+Four more props, all optional: without them, the game starts in the menu —with the challenge
+chosen— and draws its randomness as usual. The types `Challenge` and `GameResult` are in
+`src/lib/seed.ts` and `Goal` is in `src/lib/goal.ts` (the package exports it), which are the same
+files in every game of the hall.
 
-| Prop | Qué es |
+| Prop | What it is |
 | --- | --- |
-| `reto` | `{ semilla }`: jugar un reto concreto del salón (el reto del día, «reta mi puntuación»). |
-| `onFinish` | `({ modo, puntos, reto }) => void`: el aviso de que ha acabado una partida con puntuación. |
-| `objetivo` | `{ medallas: { bronce, plata, oro }, mejorEs, unidad, record, modo }`: los listones de medalla del juego y la marca de quien juega. |
-| `nombre` | El `name` del manifiesto del catálogo: cómo se llama el juego en su menú. Sin él, «Stick Rush», el del `package.json`. |
+| `challenge` | `{ seed }`: play a specific challenge of the hall (the daily challenge, "beat my score"). |
+| `onFinish` | `({ mode, points, challenge, feats? }) => void`: the notice that a run with a score has ended. |
+| `goal` | `{ medals: { bronze, silver, gold }, better, unit, record, mode }`: the medal thresholds of the game and the best of whoever plays. |
+| `name` | The `name` of the catalogue manifest: what the game is called in its menu. Without it, "Stick Rush", the one in `package.json`. |
 
-**Con `reto`**, la escena entra **directamente en una partida del desafío** (`challenge`), que
-es el modo del récord de la cabina (`stick-rush:best-points:challenge`), con su cuenta atrás y
-**sin lección**, aunque no se haya visto nunca. El desafío va siempre fijo —**Medio y los trece
-palos** (`CHALLENGE_SETUP` en `lib/gameMode.ts`)— porque los
-puntos escalan con la dificultad y con los palos: con los dos a elegir, dos récords del desafío
-no serían la misma partida. **Todo el azar de la partida sale de la semilla**: el turno en que
-cae cada palo y lo que titubea antes de soltarse (`buildStickLayout`, `lib/stickLayout.ts`), con
-la semilla de la tanda `semillaDe(semilla, tanda)`. Misma semilla, mismos palos cayendo en el
-mismo orden y al mismo tiempo; lo que cambia de una persona a otra es solo cuándo los coge. El
-reto se lee al montar: para otro, se vuelve a montar la escena. Sin `reto`, cada partida estrena
-una semilla al azar.
+**With `challenge`**, the scene goes **straight into a run of the challenge mode** (`challenge`),
+which is the mode of the cabinet's record (`stick-rush:best-points:challenge`), with its
+countdown and **without the lesson**, even if it has never been seen. The challenge is always
+fixed —**Medium and the thirteen sticks** (`CHALLENGE_SETUP` in `lib/gameMode.ts`)— because the
+points scale with the difficulty and with the sticks: with both left to choose, two records of
+the challenge would not be the same run. **All the randomness of the run comes from the seed**:
+the turn in which each stick falls and how long it hesitates before letting go
+(`buildStickLayout`, `lib/stickLayout.ts`), with the seed of the round `deriveSeed(seed, round)`.
+Same seed, same sticks falling in the same order and at the same time; what changes from one
+person to another is only when they catch them. The challenge is read on mount: for another one,
+the scene is mounted again. Without `challenge`, each run uses a fresh random seed.
 
-**`onFinish`** se llama **una vez** al acabar cada partida, en cualquier modo, con `modo` tal
-como lo llama el juego (`practice`, `levels`, `challenge`; la práctica sin fin es `practice`),
-`puntos` los de esa partida aunque no sean récord, y `reto: true` solo si era la partida del
-`reto`. Se llama desde el mismo sitio que guarda el récord, que el juego sigue guardando en
-`localStorage`. **Dejar la partida a medias no la cuenta** (la pregunta de dejarla, o salir con
-`onExit`). La práctica sin fin sí: su final es que quien juega diga basta, y trae resumen. Tras
-el reto la pantalla final es la de siempre, y jugar otra vez ya no es el reto.
+**`onFinish`** is called **once** at the end of each run, in any mode, with `mode` as the game
+calls it (`practice`, `levels`, `challenge`; endless practice is `practice`), `points` those of
+that run even if they are not a record, and `challenge: true` only if it was the run of the
+`challenge` prop. `feats`, when present, lists the feats earned for the first time in that run
+(their Steam API names). It is called from the same place that saves the record, which the game
+keeps saving in `localStorage`. **Leaving the run halfway does not count it** (the question about
+leaving it, or exiting with `onExit`). Endless practice does: it ends when whoever plays says
+enough, and it has a summary. After the challenge the final screen is the usual one, and playing
+again is no longer the challenge.
 
-**Con `objetivo`**, el **cartel del objetivo** —de frente, encima del marcador y por debajo de
-donde caen los palos (`XR_CARTEL_POSITION`)— dice qué hay que superar: durante la cuenta atrás y
-hasta que se resuelve el primer palo, la misión y los tres listones; jugando, el listón que falta,
-lo que se lleva, las vidas y los palos que quedan; al acabar, lo que faltó para la siguiente
-medalla. `modo` es el modo del que salen las medallas (`challenge`): en cualquier otro, y a dos,
-el cartel dice mientras se juega que la partida no cuenta para medalla. Sin la prop, en el reto
-dice la misión y el récord guardado en este navegador. `unidad` llega ya en el idioma de quien
-juega. Lo que el cartel ya dice —los puntos y las vidas— el marcador de debajo lo calla.
+**With `goal`**, the **goal sign** —facing the player, above the scoreboard and below where the
+sticks fall (`XR_SIGN_POSITION`)— says what has to be beaten: during the countdown and until
+the first stick is resolved, the mission and the three thresholds; while playing, the threshold
+still to reach, what has been scored, the lives and the sticks left; at the end, what was missing
+for the next medal. `mode` is the mode the medals come from (`challenge`): in any other, and with
+two players, the sign says while playing that the run does not count for a medal. Without the
+prop, in the challenge it says the mission and the record saved in this browser. `unit` arrives
+already in the language of whoever plays. What the sign already says —the points and the lives—
+the scoreboard below leaves out.
 
-`<StickRush>` y `mountStickRush` aceptan `reto` y `onFinish`; `objetivo` es de la escena.
+`<StickRush>` and `mountStickRush` accept `challenge` and `onFinish`; `goal` and `name` belong to
+the scene.
 
-### Como aplicación, con su propio Canvas
+### As an application, with its own Canvas
 
-Para una página que sea el juego y nada más. Abre su propia sesión, así que **no** se puede
-montar dentro de otro Canvas: en un documento solo cabe una sesión inmersiva.
+For a page that is the game and nothing else. It opens its own session, so it can **not** be
+mounted inside another Canvas: a document only fits one immersive session.
 
-Como componente, si la aplicación anfitriona es de React:
+As a component, if the host application is a React one:
 
 ```tsx
 'use client'
@@ -172,8 +180,8 @@ Como componente, si la aplicación anfitriona es de React:
 import { StickRush } from 'stick-rush'
 import 'stick-rush/styles.css'
 
-export function Sala() {
-  // El juego llena su contenedor: dale una altura.
+export function Room() {
+  // The game fills its container: give it a height.
   return (
     <div className="h-dvh w-full">
       <StickRush assetsBase="/juegos/stick-rush/" />
@@ -182,93 +190,95 @@ export function Sala() {
 }
 ```
 
-O con la función de montaje, si no la hay:
+Or with the mount function, if it is not:
 
 ```ts
 import { mountStickRush } from 'stick-rush'
 import 'stick-rush/styles.css'
 
-const sala = document.getElementById('sala')
-if (sala) {
-  const juego = mountStickRush(sala, { assetsBase: '/juegos/stick-rush/' })
+const room = document.getElementById('room')
+if (room) {
+  const game = mountStickRush(room, { assetsBase: '/juegos/stick-rush/' })
 
-  // Al salir del juego:
-  juego.unmount()
+  // When leaving the game:
+  game.unmount()
 }
 ```
 
-Quitar el juego —con `unmount()` o desmontando el componente— **cierra la sesión inmersiva si
-la había**. Tiene que ser así: WebXR da una sesión por documento y la que abre el juego está
-atada a su Canvas, de modo que dejarla viva después de quitarlo deja al jugador mirando una
-escena congelada y a la aplicación anfitriona sin poder abrir la suya.
+Removing the game —with `unmount()` or by unmounting the component— **closes the immersive
+session if there was one**. It has to be that way: WebXR gives one session per document and the
+one the game opens is tied to its Canvas, so leaving it alive after removing the game leaves the
+player looking at a frozen scene and the host application unable to open its own.
 
-Toda la superficie pública es esa:
+The whole public surface is this:
 
-| Nombre                         | Qué es                                                                                |
+| Name                           | What it is                                                                            |
 | ------------------------------ | ------------------------------------------------------------------------------------- |
-| `StickRushScene`               | El juego como **escena**, dentro del Canvas y la sesión de otro. Props: `assetsBase`, `anchor`, `onExit`, `reto`, `onFinish`, `objetivo`, `nombre`. |
-| `StickRush`                    | El juego como aplicación, con su propio Canvas y su propia sesión.                    |
-| `mountStickRush(elemento, …)`  | Lo mismo sobre un elemento del DOM. Devuelve `{ unmount() }`, que además cierra la sesión. |
-| `assetsBase`                   | De dónde cuelgan los ficheros del paso 3. Por defecto, la raíz del sitio.              |
-| `stick-rush/styles.css`        | Los colores, la tipografía y las animaciones del juego.                                |
+| `StickRushScene`               | The game as a **scene**, inside someone else's Canvas and session. Props: `assetsBase`, `anchor`, `onExit`, `challenge`, `onFinish`, `goal`, `name`. |
+| `StickRush`                    | The game as an application, with its own Canvas and its own session.                  |
+| `mountStickRush(element, …)`   | The same on a DOM element. Returns `{ unmount() }`, which also closes the session.    |
+| `assetsBase`                   | Where the files of step 3 hang from. By default, the root of the site.                |
+| `stick-rush/styles.css`        | The colours, the typography and the animations of the game.                           |
 
-`assetsBase` es una por página: montar dos juegos a la vez con bases distintas no funcionaría,
-cosa que WebXR tampoco permite (una sesión inmersiva por documento).
+`assetsBase` is one per page: mounting two games at once with different bases would not work,
+which WebXR does not allow either (one immersive session per document).
 
-## 5. Generar las clases de Tailwind
+## 5. Generate the Tailwind classes
 
-Las pantallas del juego (el menú y el marcador) están escritas con clases de Tailwind v4. El CSS
-del paso anterior trae lo propio del juego —sus colores, su tipografía y sus animaciones— pero no
-las utilidades: esas las genera Tailwind escaneando el código, y por defecto no mira dentro de
-`node_modules`. Hay que decírselo:
+The game's screens (the menu and the scoreboard) are written with Tailwind v4 classes. The CSS of
+the previous step brings what is the game's own —its colours, its typography and its animations—
+but not the utilities: Tailwind generates those by scanning the code, and by default it does not
+look inside `node_modules`. It has to be told:
 
 ```css
 @import "tailwindcss";
 @source "../node_modules/stick-rush/src";
 ```
 
-Si la aplicación anfitriona no usa Tailwind, este es el punto que hay que resolver de otra forma
-(por ejemplo, con una hoja compilada aparte); sin él, el juego se ve sin maquetar.
+If the host application does not use Tailwind, this is the point that has to be solved another
+way (for example, with a separately compiled sheet); without it, the game shows unstyled.
 
-Todo lo que el juego pinta cuelga de un contenedor con la clase `.stick-rush`, y sus variables de
-color están definidas ahí y no en `:root`, así que no le cambian el aspecto a lo que haya
-alrededor. Las dos fuentes se toman de `--font-heading` y `--font-body` si la aplicación anfitriona
-las define, y si no, del sistema.
+Everything the game draws hangs from a container with the class `.stick-rush`, and its colour
+variables are defined there and not in `:root`, so they do not change the look of whatever is
+around. The two fonts are taken from `--font-heading` and `--font-body` if the host application
+defines them, and otherwise from the system.
 
-## Lo que el juego necesita del entorno
+## What the game needs from its environment
 
-- **HTTPS.** WebXR no arranca sin él (salvo en `localhost`).
-- **Permisos.** `xr-spatial-tracking` y los sensores. Si el juego va dentro de un `<iframe>`,
-  también en su `allow`.
-- **CSP.** El juego no llama a ningún dominio externo, así que le vale `connect-src 'self'` si los
-  ficheros del paso 3 se sirven desde el mismo origen. `worker-src blob:` e `img-src blob:` sí los
-  necesita three.js.
-- **`localStorage`.** Guarda el récord, la altura del aro, el silencio y si ya se vio el tutorial,
-  con claves bajo `stick-rush:`. Si no lo hay (modo privado), el juego funciona igual y no recuerda
-  nada.
-- **Los ajustes del salón, del mismo `localStorage`.** El idioma, el volumen, el escenario y la
-  **mano buena** (`xrcade:hand`, `right` o `left`; `right` si no hay nada o hay basura) no son del
-  juego: se eligen en el salón y el juego los lee (`src/lib/settings.ts`, `useHand()` en
-  `ajustesCliente.ts`), enterándose de un cambio sin recargar. Aquí se atrapa con cualquiera de
-  las dos manos, así que el menú no pregunta ninguna y no hay clave propia que borrar: la mano
-  del salón solo decide de qué lado sale el mando que enseñan las ayudas visuales.
-- **Un gesto del jugador antes del sonido**, que es de los navegadores. El juego ya lo espera.
+- **HTTPS.** WebXR does not start without it (except on `localhost`).
+- **Permissions.** `xr-spatial-tracking` and the sensors. If the game goes inside an `<iframe>`,
+  in its `allow` too.
+- **CSP.** The game calls no external domain, so `connect-src 'self'` is enough if the files of
+  step 3 are served from the same origin. `worker-src blob:` and `img-src blob:` are needed by
+  three.js.
+- **`localStorage`.** It keeps the records, the level progress, the duel tally, the feats already
+  earned, the hoop height and whether the tutorial has been seen, with keys under `stick-rush:`.
+  If there is none (private mode), the game works the same and remembers nothing.
+- **The hall's settings, from the same `localStorage`.** The language, the volume, the scenery
+  and the **good hand** (`xrcade:hand`, `right` or `left`; `right` if there is nothing or there
+  is rubbish) are not the game's: they are chosen in the hall and the game reads them
+  (`src/lib/settings.ts`, `useHand()` in `settingsClient.ts`), learning of a change without
+  reloading. Here sticks are caught with either hand, so the menu asks for none and there is no
+  key of its own to delete: the hall's hand only decides on which side the controller shown by
+  the visual hints appears.
+- **A gesture from the player before the sound**, which is a browser rule. The game already
+  waits for it.
 
-## Publicar una versión nueva
+## Publishing a new version
 
-1. Sube `version` en `package.json` siguiendo semver. La superficie que versiona es la de este
-   documento: cambiarla es un cambio mayor.
-2. Commitea e integra en `main`. Etiquetar antes de integrar deja el tag en un commit que
-   luego no está en `main`.
-3. Etiqueta ese commit de `main` y **publica** el tag junto con la rama: mientras no esté en el
-   remoto, quien instale por tag no lo encuentra, y empujar solo el tag deja su commit fuera de
-   la `main` publicada.
+1. Bump `version` in `package.json` following semver. The surface it versions is the one in this
+   document: changing it is a major change.
+2. Commit and integrate into `main`. Tagging before integrating leaves the tag on a commit that
+   is later not in `main`.
+3. Tag that commit of `main` and **publish** the tag together with the branch: while it is not on
+   the remote, whoever installs by tag does not find it, and pushing only the tag leaves its
+   commit outside the published `main`.
 
    ```bash
-   git show <commit de main>:package.json | grep '"version"'   # que sea la del paso 1
-   git tag -a vX.Y.Z <commit de main> -m "vX.Y.Z"
+   git show <commit of main>:package.json | grep '"version"'   # must be the one of step 1
+   git tag -a vX.Y.Z <commit of main> -m "vX.Y.Z"
    git push origin main vX.Y.Z
    ```
 
-4. En quien lo consuma: `npm install "github:1to1-Digital-Solutions/stick-rush#vX.Y.Z"` y
-   `npx stick-rush-assets <destino>`.
+4. In whoever consumes it: `npm install "github:1to1-Digital-Solutions/stick-rush#vX.Y.Z"` and
+   `npx stick-rush-assets <destination>`.

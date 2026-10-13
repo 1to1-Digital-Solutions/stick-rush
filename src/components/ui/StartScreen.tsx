@@ -15,8 +15,8 @@ import {
   GAME_MODE_LABELS,
   startingLives,
 } from '../../lib/gameMode'
-import { PLAYER_COUNTS, PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS, juegaADos } from '../../lib/duel'
-import { MODOS_DEL_MENU, botonDeOpciones, seVe } from '../../lib/gameMenu'
+import { PLAYER_COUNTS, PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS, playsAsDuel } from '../../lib/duel'
+import { MENU_MODES, optionsButton, isShown } from '../../lib/gameMenu'
 import { MENU_EN, plural } from '../../lib/menuWords'
 import { gameName } from '../../lib/menuTemplate'
 import { useGame } from '../../lib/gameStore'
@@ -24,7 +24,7 @@ import { LEVEL_COUNT, levelSpec } from '../../lib/levels'
 import { HeartIcon, InfinityIcon, StarIcon } from './icons'
 import { XRWrapper } from '../xr/XRWrapper'
 import { useLang } from '../../lib/settingsClient'
-import { formatea, formatoDeCifra, traductor, traductorSuave } from '../../lib/textos'
+import { formatText, formatFigure, translator, softTranslator } from '../../lib/textos'
 
 const STICK_OPTIONS = Array.from(
   { length: MAX_STICKS - MIN_STICKS + 1 },
@@ -32,24 +32,24 @@ const STICK_OPTIONS = Array.from(
 )
 
 /**
- * Récord del jugador en el modo elegido. Solo aparece cuando hay uno: un "0"
- * permanente no da nada que batir y ocupa el sitio del reclamo del menú.
+ * The player's record in the chosen mode. It only appears when there is one: a
+ * permanent "0" gives nothing to beat and takes up the place of the menu's hook.
  *
- * Dice de qué modo es porque hay uno por cada uno (ver `highScore.ts`): sin
- * nombrarlo, la cifra cambiaría sola al tocar el selector de modo y parecería
- * que el récord se ha perdido.
+ * It says which mode it is for because there is one per mode (see
+ * `highScore.ts`): without naming it, the figure would change by itself on
+ * touching the mode selector and it would look as if the record had been lost.
  */
 function BestScore() {
   const lang = useLang()
-  const t = traductor(lang)
+  const t = translator(lang)
   const { bestPoints, gameMode, endless, players, duelTally } = useGame()
-  // A dos no se juega contra el récord de nadie: lo que se enseña es lo que lleva la pareja.
-  if (juegaADos(gameMode, players)) {
-    const partidas = duelTally.wins[0] + duelTally.wins[1] + duelTally.ties
-    if (partidas === 0) return null
+  // With two, nobody plays against anyone's record: what is shown is what the pair has so far.
+  if (playsAsDuel(gameMode, players)) {
+    const matches = duelTally.wins[0] + duelTally.wins[1] + duelTally.ties
+    if (matches === 0) return null
     return (
       <p className="mt-2 inline-flex items-center gap-2 self-center rounded-full border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 px-4 py-1.5 text-sm text-white/70">
-        {formatea(t('Duels won: {one}–{two} · tied: {ties}'), {
+        {formatText(t('Duels won: {one}–{two} · tied: {ties}'), {
           one: duelTally.wins[0],
           two: duelTally.wins[1],
           ties: duelTally.ties,
@@ -58,20 +58,20 @@ function BestScore() {
     )
   }
   if (bestPoints <= 0 || gameMode === 'levels') return null
-  // Sin fin no mide puntos —crecen sin tope— sino la racha más larga.
-  const sinFin = gameMode === 'practice' && endless
+  // Endless does not measure points —they grow without limit— but the longest streak.
+  const isEndless = gameMode === 'practice' && endless
 
   return (
     <p className="mt-2 inline-flex items-center gap-2 self-center rounded-full border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/10 px-4 py-1.5 text-sm text-white/70">
-      {sinFin ? t('Best endless streak') : `${t('Best score in')} ${t(GAME_MODE_LABELS[gameMode])}`}{' '}
+      {isEndless ? t('Best endless streak') : `${t('Best score in')} ${t(GAME_MODE_LABELS[gameMode])}`}{' '}
       <span className="font-bold tabular-nums text-[var(--color-accent)]">
-        {sinFin ? `×${bestPoints}` : formatoDeCifra(bestPoints, lang)}
+        {isEndless ? `×${bestPoints}` : formatFigure(bestPoints, lang)}
       </span>
     </p>
   )
 }
 
-/** Tres estrellas, llenas las ganadas. */
+/** Three stars, the earned ones filled. */
 function Stars({ stars, className = 'size-4' }: { stars: number; className?: string }) {
   return (
     <span aria-hidden className="flex items-center gap-0.5 text-[var(--color-accent)]">
@@ -83,13 +83,13 @@ function Stars({ stars, className = 'size-4' }: { stars: number; className?: str
 }
 
 /**
- * La escalera de niveles: una casilla por nivel con sus estrellas, bloqueadas
- * las que quedan por abrir. Debajo, lo que trae el elegido, porque en Niveles
- * los palos y la velocidad los dice el nivel y no el jugador.
+ * The ladder of levels: one box per level with its stars, the ones still to be
+ * opened locked. Below, what the chosen one brings, because in Levels the
+ * sticks and the speed are set by the level and not by the player.
  */
 function LevelPicker() {
   const lang = useLang()
-  const t = traductor(lang)
+  const t = translator(lang)
   const { activeLevel, unlockedLevel, levelStars, setLevel } = useGame()
   const spec = levelSpec(activeLevel)
 
@@ -107,14 +107,14 @@ function LevelPicker() {
           const locked = level > unlockedLevel
           const stars = levelStars[index] ?? 0
           const selected = level === activeLevel
-          const estrellas = traductorSuave(lang)(plural(stars, '{stars} star', '{stars} stars'), { stars })
+          const starsLabel = softTranslator(lang)(plural(stars, '{stars} star', '{stars} stars'), { stars })
           return (
             <button
               key={level}
               type="button"
               disabled={locked}
               aria-pressed={selected}
-              aria-label={locked ? `Level ${level}, locked` : `Level ${level}, ${estrellas}`}
+              aria-label={locked ? `Level ${level}, locked` : `Level ${level}, ${starsLabel}`}
               onClick={() => setLevel(level)}
               className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-lg border px-1 py-2 text-base font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-40 ${
                 selected
@@ -143,12 +143,12 @@ function LevelPicker() {
 }
 
 /**
- * Tanda o sin fin, solo en práctica. Sin fin, la máquina se recarga cada vez
- * que se vacía y la partida la termina el jugador; lo que se guarda es la
- * racha más larga.
+ * Round or endless, only in practice. In endless, the machine reloads every
+ * time it empties and the player ends the run; what is saved is the longest
+ * streak.
  */
 function EndlessToggle() {
-  const t = traductor(useLang())
+  const t = translator(useLang())
   const { endless, setEndless } = useGame()
   const options = [
     { value: false, label: 'Set', hint: 'The sticks you picked, and that is it.' },
@@ -190,12 +190,12 @@ function EndlessToggle() {
   )
 }
 /**
- * Contra quién, solo en el desafío: solo, o a dos pasándose el mando, con los mismos palos para
- * cada uno (`duel.ts`). El desafío es la misma partida para todos, y por eso el único donde dos
- * tandas se pueden comparar.
+ * Against whom, only in the challenge mode: alone, or two passing the controller, with the same
+ * sticks for each (`duel.ts`). The challenge mode is the same run for everyone, and that is why
+ * it is the only one where two rounds can be compared.
  */
 function PlayersPicker() {
-  const t = traductor(useLang())
+  const t = translator(useLang())
   const { players, setPlayers } = useGame()
 
   return (
@@ -234,8 +234,8 @@ function PlayersPicker() {
 }
 
 /**
- * Lo que cada modo pone en juego, dibujado: corazones en desafío, infinito en
- * práctica. Es lo que deja entender la elección sin leerse la línea de ayuda.
+ * What each mode puts at stake, drawn: hearts in the challenge mode, infinity in
+ * practice. It is what lets the choice be understood without reading the hint line.
  */
 function ModeStake({ mode }: { mode: GameMode }) {
   const lives = startingLives(mode)
@@ -259,7 +259,7 @@ function ModeStake({ mode }: { mode: GameMode }) {
 }
 
 export function StartScreen() {
-  const t = traductor(useLang())
+  const t = translator(useLang())
   const {
     stickCount,
     difficulty,
@@ -269,16 +269,16 @@ export function StartScreen() {
     setGameMode,
     startGame,
   } = useGame()
-  // **Solo la práctica pregunta** palos y velocidad, y tras «Más opciones» (`gameMenu.ts`). En
-  // Niveles los dice el nivel —sus selectores se cambian por la escalera— y el desafío va fijo
-  // (`CHALLENGE_SETUP`): se elige el modo y se le da a Jugar. Las filas no se enseñan ni apagadas.
-  // Lo plegado es de la interfaz: no se guarda, y la portada abre plegada.
-  const [masOpciones, setMasOpciones] = useState(false)
-  const ve = (fila: Parameters<typeof seVe>[0]) => seVe(fila, gameMode, 'portada', masOpciones)
-  const opciones = botonDeOpciones(gameMode, 'portada', masOpciones)
+  // **Only practice asks** for sticks and speed, and behind «Más opciones» (`gameMenu.ts`). In
+  // Levels the level sets them —its selectors are swapped for the ladder— and the challenge mode
+  // is fixed (`CHALLENGE_SETUP`): the mode is chosen and Play is pressed. The rows are not shown,
+  // not even greyed out. What is folded belongs to the UI: it is not saved, and the home page opens folded.
+  const [moreOptions, setMoreOptions] = useState(false)
+  const shows = (row: Parameters<typeof isShown>[0]) => isShown(row, gameMode, 'page', moreOptions)
+  const optionsLabel = optionsButton(gameMode, 'page', moreOptions)
   return (
     <main className="absolute inset-0 z-20 flex w-full items-center justify-center overflow-y-auto bg-[var(--color-background)] px-6 py-12">
-      {/* Gradiente radial sutil de fondo */}
+      {/* Subtle radial gradient in the background */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(21,128,61,0.18),transparent_60%)]"
@@ -286,7 +286,7 @@ export function StartScreen() {
 
       <div className="animate-fade-slide-up relative z-10 flex w-full max-w-xl flex-col items-center gap-10 text-center">
         <header className="flex flex-col gap-2">
-          {/* Como se llama la cabina del salón (`plantillaDelMenu.ts`), en mayúsculas de rótulo. */}
+          {/* What the hall's cabinet is called (`menuTemplate.ts`), in label capitals. */}
           <h1 className="text-glow-primary text-5xl uppercase tracking-wide text-[var(--color-primary)] sm:text-6xl">
             {gameName()}
           </h1>
@@ -296,9 +296,9 @@ export function StartScreen() {
           <BestScore />
         </header>
 
-        {/* Selector de modo. Va el primero porque decide a qué se juega: los
-            palos y la dificultad gradúan la partida, el modo dice si hay algo
-            en juego. */}
+        {/* Mode selector. It goes first because it decides what is played: the
+            sticks and the difficulty grade the run, the mode says whether there
+            is something at stake. */}
         <section className="flex w-full flex-col gap-3" aria-labelledby="mode-label">
           <h2
             id="mode-label"
@@ -307,7 +307,7 @@ export function StartScreen() {
              {t('Mode')}
 </h2>
           <div className="grid gap-2 sm:grid-cols-3">
-            {MODOS_DEL_MENU.map((mode) => {
+            {MENU_MODES.map((mode) => {
               const selected = mode === gameMode
               return (
                 <button
@@ -338,12 +338,12 @@ export function StartScreen() {
           </div>
         </section>
 
-        {ve('levels') && <LevelPicker />}
-        {ve('players') && <PlayersPicker />}
-        {ve('endless') && <EndlessToggle />}
+        {shows('levels') && <LevelPicker />}
+        {shows('players') && <PlayersPicker />}
+        {shows('endless') && <EndlessToggle />}
 
-        {/* Selector de número de palos */}
-        {ve('sticks') && (
+        {/* Selector of the number of sticks */}
+        {shows('sticks') && (
         <section className="flex w-full flex-col gap-3" aria-labelledby="sticks-label">
           <h2
             id="sticks-label"
@@ -374,8 +374,8 @@ export function StartScreen() {
         </section>
         )}
 
-        {/* Selector de dificultad */}
-        {ve('speed') && (
+        {/* Difficulty selector */}
+        {shows('speed') && (
         <section
           className="flex w-full flex-col gap-3"
           aria-labelledby="difficulty-label"
@@ -415,25 +415,25 @@ export function StartScreen() {
         </section>
         )}
 
-        {/* «Más opciones»: lo que la plantilla deja plegado, a un toque. */}
-        {opciones != null && (
+        {/* «Más opciones»: what the template leaves folded, one tap away. */}
+        {optionsLabel != null && (
           <button
             type="button"
-            aria-expanded={masOpciones}
-            onClick={() => setMasOpciones(!masOpciones)}
+            aria-expanded={moreOptions}
+            onClick={() => setMoreOptions(!moreOptions)}
             className="min-h-11 rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-white/70 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
           >
-            {t(opciones)}
+            {t(optionsLabel)}
           </button>
         )}
 
-        {/* CTA principal, con el silencio a mano por si el juego molesta */}
+        {/* Main CTA, with the mute at hand in case the game bothers */}
         <div className="flex w-full max-w-xs flex-col items-center gap-3">
           <button
             type="button"
-            // Sin el envoltorio, el evento del clic viajaría como opciones de
-            // partida. En escritorio no hay tutorial que anteponer: el menú lo
-            // explica con texto, que se lee antes de lo que dura la demostración.
+            // Without the wrapper, the click event would travel as run options.
+            // On desktop there is no tutorial to put first: the menu explains it
+            // with text, which is read sooner than the demonstration lasts.
             onClick={() => startGame()}
             className="cta-gradient w-full rounded-xl px-8 py-4 text-lg font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
@@ -441,7 +441,7 @@ export function StartScreen() {
 </button>
         </div>
 
-        {/* Entrada a realidad mixta (solo si el dispositivo lo soporta) */}
+        {/* Entrance to mixed reality (only if the device supports it) */}
         <XRWrapper />
       </div>
     </main>

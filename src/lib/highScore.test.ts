@@ -12,7 +12,7 @@ import {
   writeBestPoints,
 } from './highScore'
 
-/** Almacenamiento de mentira, con lo justo que usa el récord. */
+/** Fake storage, with just what the record uses. */
 function fakeStorage(initial?: string): Storage {
   const values = new Map<string, string>()
   if (initial !== undefined) values.set(HIGH_SCORE_KEYS.practice, initial)
@@ -22,31 +22,31 @@ function fakeStorage(initial?: string): Storage {
   } as unknown as Storage
 }
 
-/** El que tienen los navegadores en modo privado: lanza en vez de fallar. */
+/** The one browsers have in private mode: it throws instead of failing. */
 function blockedStorage(): Storage {
   return {
     getItem: () => {
-      throw new DOMException('bloqueado', 'SecurityError')
+      throw new DOMException('blocked', 'SecurityError')
     },
     setItem: () => {
-      throw new DOMException('cuota agotada', 'QuotaExceededError')
+      throw new DOMException('quota exhausted', 'QuotaExceededError')
     },
   } as unknown as Storage
 }
 
-describe('lectura de lo guardado', () => {
-  it('acepta un entero no negativo', () => {
+describe('reading what is stored', () => {
+  it('accepts a non-negative integer', () => {
     expect(parseBestPoints('0')).toBe(0)
     expect(parseBestPoints('1234')).toBe(1234)
   })
 
-  it('descarta lo que no es una puntuación', () => {
-    // Cualquiera puede editar el almacenamiento desde el navegador: lo que no
-    // se entienda cuenta como "todavía no hay récord", nunca como NaN suelto.
+  it('discards what is not a score', () => {
+    // Anyone can edit the storage from the browser: what is not
+    // understood counts as "there is no record yet", never as a loose NaN.
     expect(parseBestPoints(null)).toBe(0)
     expect(parseBestPoints('')).toBe(0)
     expect(parseBestPoints('   ')).toBe(0)
-    expect(parseBestPoints('un millón')).toBe(0)
+    expect(parseBestPoints('a million')).toBe(0)
     expect(parseBestPoints('-500')).toBe(0)
     expect(parseBestPoints('12.5')).toBe(0)
     expect(parseBestPoints('Infinity')).toBe(0)
@@ -54,36 +54,36 @@ describe('lectura de lo guardado', () => {
     expect(parseBestPoints('9007199254740993')).toBe(0)
   })
 
-  it('lee el récord de su clave', () => {
+  it('reads the record from its key', () => {
     expect(readBestPoints(fakeStorage('2500'), 'practice')).toBe(2500)
   })
 
-  it('la práctica conserva la clave de antes de que hubiera modos', () => {
-    // Es la promesa de que nadie pierde su récord al actualizar: cambiarla
-    // dejaría la marca anterior huérfana en el navegador, y el juego arrancaría
-    // como si nunca se hubiera jugado.
+  it('practice keeps the key from before there were modes', () => {
+    // It is the promise that nobody loses their record on updating: changing it
+    // would leave the previous best orphaned in the browser, and the game would start
+    // as if it had never been played.
     expect(HIGH_SCORE_KEYS.practice).toBe('stick-rush:best-points')
     expect(HIGH_SCORE_KEYS.challenge).not.toBe(HIGH_SCORE_KEYS.practice)
   })
 
-  it('sin almacenamiento se juega sin récord previo', () => {
+  it('without storage the game is played without a previous record', () => {
     expect(readBestPoints(null, 'practice')).toBe(0)
   })
 
-  it('un almacenamiento bloqueado no rompe la partida', () => {
-    // En modo privado `localStorage` existe pero lanza al tocarlo.
+  it('a blocked storage does not break the run', () => {
+    // In private mode `localStorage` exists but throws when touched.
     expect(readBestPoints(blockedStorage(), 'practice')).toBe(0)
   })
 })
 
-describe('escritura del récord', () => {
-  it('guarda la puntuación en su clave', () => {
+describe('writing the record', () => {
+  it('saves the score in its key', () => {
     const storage = fakeStorage()
     writeBestPoints(storage, 'practice', 3200)
     expect(storage.getItem(HIGH_SCORE_KEYS.practice)).toBe('3200')
   })
 
-  it('no escribe lo que la lectura descartaría', () => {
+  it('does not write what the read would discard', () => {
     const storage = fakeStorage()
     const setItem = vi.spyOn(storage, 'setItem')
 
@@ -95,44 +95,44 @@ describe('escritura del récord', () => {
     expect(setItem).not.toHaveBeenCalled()
   })
 
-  it('sin almacenamiento no hace nada y no lanza', () => {
+  it('without storage it does nothing and does not throw', () => {
     expect(() => writeBestPoints(null, 'practice', 100)).not.toThrow()
   })
 
-  it('si el navegador se niega a guardar, el juego sigue', () => {
-    // Cuota agotada o escritura prohibida: se pierde el récord, no la partida.
+  it('if the browser refuses to save, the game goes on', () => {
+    // Quota exhausted or writing forbidden: the record is lost, not the run.
     expect(() =>
       writeBestPoints(blockedStorage(), 'practice', 100),
     ).not.toThrow()
   })
 })
 
-describe('el récord que ve el juego', () => {
-  // Estas pruebas sí usan el `localStorage` de jsdom, porque es el almacén al
-  // que se suscribe el juego.
+describe('the record the game sees', () => {
+  // These tests do use jsdom's `localStorage`, because it is the store the
+  // game subscribes to.
   beforeEach(() => {
     localStorage.clear()
   })
 
-  it('empieza a cero y sale de lo guardado', () => {
+  it('starts at zero and comes from what is stored', () => {
     expect(getBestPoints('practice')).toBe(0)
 
     localStorage.setItem(HIGH_SCORE_KEYS.practice, '4100')
     expect(getBestPoints('practice')).toBe(4100)
   })
 
-  it('en el servidor no hay récord que pintar', () => {
-    // Es lo que mantiene igual el HTML del servidor y el del navegador.
+  it('on the server there is no record to paint', () => {
+    // It is what keeps the server's HTML and the browser's the same.
     expect(getServerBestPoints()).toBe(0)
   })
 
-  it('guarda la puntuación cuando mejora la anterior', () => {
+  it('saves the score when it improves the previous one', () => {
     saveBestPoints('practice', 1500)
     expect(getBestPoints('practice')).toBe(1500)
     expect(localStorage.getItem(HIGH_SCORE_KEYS.practice)).toBe('1500')
   })
 
-  it('una puntuación peor o igual no toca el récord', () => {
+  it('a worse or equal score does not touch the record', () => {
     saveBestPoints('practice', 1500)
 
     saveBestPoints('practice', 900)
@@ -141,14 +141,14 @@ describe('el récord que ve el juego', () => {
     expect(getBestPoints('practice')).toBe(1500)
   })
 
-  it('avisa solo a quien sigue suscrito, y solo si hay récord nuevo', () => {
+  it('notifies only whoever is still subscribed, and only if there is a new record', () => {
     const listener = vi.fn()
     const unsubscribe = subscribeBestPoints(listener)
 
     saveBestPoints('practice', 2000)
     expect(listener).toHaveBeenCalledTimes(1)
 
-    // Una partida peor no cambia nada que repintar.
+    // A worse run changes nothing to repaint.
     saveBestPoints('practice', 10)
     expect(listener).toHaveBeenCalledTimes(1)
 
@@ -157,23 +157,23 @@ describe('el récord que ve el juego', () => {
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
-  it('cada modo tiene su récord y no se pisan', () => {
-    // Un desafío se corta al quedarse sin vidas, así que nunca puede puntuar
-    // más que la práctica equivalente: con una marca compartida, el modo con
-    // algo en juego sería el único que jamás la batiría.
+  it('each mode has its record and they do not overwrite each other', () => {
+    // A challenge is cut short when the lives run out, so it can never score
+    // more than the equivalent practice: with a shared best, the mode with
+    // something at stake would be the only one that would never beat it.
     saveBestPoints('practice', 5000)
     saveBestPoints('challenge', 1200)
 
     expect(getBestPoints('practice')).toBe(5000)
     expect(getBestPoints('challenge')).toBe(1200)
 
-    // Y un desafío peor que el récord de práctica sí bate el suyo.
+    // And a challenge worse than the practice record does beat its own.
     saveBestPoints('challenge', 1800)
     expect(getBestPoints('challenge')).toBe(1800)
     expect(getBestPoints('practice')).toBe(5000)
   })
 
-  it('se entera de que el récord lo ha cambiado otra pestaña', () => {
+  it('finds out that another tab has changed the record', () => {
     const listener = vi.fn()
     const unsubscribe = subscribeBestPoints(listener)
 
@@ -193,8 +193,8 @@ describe('el récord que ve el juego', () => {
   })
 })
 
-describe('la racha de la partida sin fin', () => {
-  it('solo se guarda si mejora, y no acepta una racha imposible', () => {
+describe('the streak of the endless run', () => {
+  it('is only saved if it improves, and does not accept an impossible streak', () => {
     saveBestEndlessStreak(5)
     saveBestEndlessStreak(3)
     for (const streak of [0, -1, 2.5, Number.NaN]) saveBestEndlessStreak(streak)

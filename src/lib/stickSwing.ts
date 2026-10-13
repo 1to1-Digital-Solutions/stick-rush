@@ -1,61 +1,61 @@
 /**
- * Vaivén de los palos que cuelgan del aro.
+ * Swing of the sticks that hang from the hoop.
  *
- * Hasta que caía el primer palo no se movía nada: con el visor puesto la
- * máquina parecía congelada mientras el jugador elegía opciones y durante la
- * cuenta atrás. El balanceo es solo decorado —no cambia ni cuándo se suelta un
- * palo ni desde qué altura—, así que se mantiene corto y lento: lo justo para
- * que la escena respire sin distraer de lo que va a caer.
+ * Until the first stick fell nothing moved: with the headset on the
+ * machine looked frozen while the player chose options and during the
+ * countdown. The sway is only decoration —it changes neither when a stick is
+ * released nor from what height—, so it is kept short and slow: just enough for
+ * the scene to breathe without distracting from what is going to fall.
  */
 
-/** Amplitud del vaivén principal, en radianes (~3°). */
+/** Amplitude of the main swing, in radians (~3°). */
 export const SWING_AMPLITUDE = 0.055
 
 /**
- * Amplitud del eje perpendicular, en proporción a la principal. Con un solo eje
- * los palos parecen limpiaparabrisas; con los dos describen una elipse lenta,
- * que es como se mueve algo colgado al que le da el aire.
+ * Amplitude of the perpendicular axis, in proportion to the main one. With a single axis
+ * the sticks look like windscreen wipers; with both they describe a slow ellipse,
+ * which is how something hanging that the air catches moves.
  */
 export const SWING_CROSS_RATIO = 0.45
 
 /**
- * Ciclos por segundo del vaivén. Un péndulo real de esta longitud (el hilo más
- * el palo, medio metro) rondaría los 0.7 Hz; se deja algo más lento porque a
- * tres grados ese ritmo se lee como nervioso, no como inercia.
+ * Cycles per second of the swing. A real pendulum of this length (the cord plus
+ * the stick, half a metre) would be around 0.7 Hz; it is left somewhat slower because at
+ * three degrees that pace reads as nervous, not as inertia.
  */
 export const SWING_FREQUENCY = 0.55
 
-/** Cuánto varía la frecuencia entre palos: del 85 % al 115 % de la base. */
+/** How much the frequency varies between sticks: from 85 % to 115 % of the base. */
 export const SWING_FREQUENCY_SPREAD = 0.3
 
 /**
- * Frecuencia del eje perpendicular respecto a la principal. No es un múltiplo
- * simple a propósito: si los dos ejes cerraran el ciclo a la vez, el palo
- * repetiría el mismo recorrido una y otra vez y se notaría el bucle.
+ * Frequency of the perpendicular axis relative to the main one. It is not a simple
+ * multiple on purpose: if the two axes closed the cycle at once, the stick
+ * would repeat the same path over and over and the loop would be noticed.
  */
 export const SWING_CROSS_RATE = 0.73
 
 /**
- * A qué ritmo se endereza el palo (1/s) cuando deja de colgar. Al soltarse cae
- * recto en ~0.25 s: un palo cayendo tiene que leerse claro para atraparlo, y
- * arrastrar el balanceo durante la caída lo vuelve difícil de seguir.
+ * At what rate the stick straightens (1/s) when it stops hanging. On being released it falls
+ * straight in ~0.25 s: a falling stick has to read clearly to catch it, and
+ * dragging the sway along during the fall makes it hard to follow.
  */
 export const SWING_RELEASE_DECAY = 4
 
-/** Inclinación del palo respecto a la vertical, en radianes. */
+/** Tilt of the stick relative to the vertical, in radians. */
 export interface SwingTilt {
-  /** Giro sobre X: mece el palo adelante y atrás. */
+  /** Turn about X: it rocks the stick forwards and backwards. */
   x: number
-  /** Giro sobre Z: lo mece a los lados. */
+  /** Turn about Z: it rocks it sideways. */
   z: number
 }
 
 /**
- * Cuánto se inclina un palo que cuelga, `time` segundos después de montarse.
+ * How much a hanging stick tilts, `time` seconds after being mounted.
  *
- * `phase` es su hueco propio dentro del ciclo, en [0, 1): decide dónde arranca
- * el vaivén y afina su frecuencia, de modo que trece palos con la misma receta
- * no se muevan como un solo bloque.
+ * `phase` is its own slot within the cycle, in [0, 1): it decides where the
+ * swing starts and fine-tunes its frequency, so that thirteen sticks with the same recipe
+ * do not move as a single block.
  */
 export function hangingSwing(time: number, phase: number): SwingTilt {
   const frequency =

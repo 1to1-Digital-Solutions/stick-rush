@@ -16,11 +16,11 @@ import {
   fallDrop,
   stickFallProgress,
 } from '../../lib/gameConfig'
-import { pulsarAtrape } from '../../lib/haptics'
-import { deEspaldas } from '../../lib/feats'
+import { pulseCatch } from '../../lib/haptics'
+import { isBehindBack } from '../../lib/feats'
 import { publishStick, stickProbeRequested } from '../../lib/sceneProbe'
 import { stickPointerEvents } from '../../lib/pointers'
-import { PALO_TRAS_EL_MENU, opacidadHacia } from '../../lib/xrLayout'
+import { STICK_BEHIND_MENU, opacityToward } from '../../lib/xrLayout'
 import { SWING_RELEASE_DECAY, hangingSwing } from '../../lib/stickSwing'
 import {
   type StickState,
@@ -29,20 +29,20 @@ import {
 } from '../../lib/xrInteraction'
 
 /**
- * Dónde cae el palo en el mundo, para publicarlo. Se reutiliza entre palos y
- * fotogramas: uno nuevo por palo y frame serían noventa vectores por segundo
- * tirados a la basura.
+ * Where the stick lands in the world, to publish it. It is reused across sticks and
+ * frames: a new one per stick and frame would be ninety vectors per second
+ * thrown away.
  */
-const puntoDelPalo = new Vector3()
+const stickPoint = new Vector3()
 
-/** Dónde están los ojos y hacia dónde miran al coger un palo, para su hazaña (`feats.ts`). */
-const ojos = new Vector3()
-const mirada = new Vector3()
-const paloCogido = new Vector3()
+/** Where the eyes are and where they look when a stick is caught, for its feat (`feats.ts`). */
+const eyes = new Vector3()
+const gaze = new Vector3()
+const caughtStick = new Vector3()
 
 /**
- * Tipo de puntero que ha disparado el evento, si lo trae. Los eventos de ratón
- * no lo llevan; los de @pmndrs/pointer-events (los de XR) sí.
+ * Type of pointer that fired the event, if it carries one. Mouse events
+ * do not carry it; those of @pmndrs/pointer-events (the XR ones) do.
  */
 function pointerTypeOf(event: unknown): string | undefined {
   if (typeof event !== 'object' || event == null) return undefined
@@ -52,55 +52,55 @@ function pointerTypeOf(event: unknown): string | undefined {
 
 export interface StickProps {
   /**
-   * Clave del palo dentro de la partida, para publicar dónde está a quien lo
-   * haya pedido desde fuera del Canvas (ver `@/lib/sceneProbe`).
+   * Key of the stick within the run, to publish where it is to whoever
+   * asked for it from outside the Canvas (see `@/lib/sceneProbe`).
    */
   probeId: string
-  /** Punto de anclaje en el aro del que cuelga el palo. */
+  /** Anchor point on the hoop the stick hangs from. */
   anchor: [number, number, number]
   color: string
   /**
-   * Relieve y rugosidad de la madera. Los carga y comparte StickMachine: el
-   * material sí es propio de cada palo (el destello al atraparlo cambia su
-   * emisión), pero las texturas, que es lo caro, se cargan una sola vez.
+   * Relief and roughness of the wood. StickMachine loads and shares them: the
+   * material is indeed each stick's own (the flash when it is caught changes its
+   * emission), but the textures, which is the expensive part, are loaded only once.
    */
   normalMap: Texture
   roughnessMap: Texture
   /**
-   * Velocidad media de caída en unidades por segundo (según dificultad). El
-   * palo no va a esta velocidad: sale del reposo y acelera, y esto fija cuánto
-   * tarda en llegar al suelo (ver `fallAcceleration`).
+   * Average fall speed in units per second (depending on difficulty). The
+   * stick does not go at this speed: it starts from rest and accelerates, and this sets how long
+   * it takes to reach the ground (see `fallAcceleration`).
    */
   speed: number
-  /** Retardo, en segundos, antes de empezar a caer. */
+  /** Delay, in seconds, before it starts to fall. */
   delay: number
-  /** Hueco propio dentro del ciclo del vaivén, en [0, 1). */
+  /** Its own slot within the cycle of the swing, in [0, 1). */
   swingPhase: number
   /**
-   * Si el palo se mece mientras cuelga. Se apaga cuando el sistema pide reducir
-   * el movimiento: el vaivén es decorado, y quien lo desactiva prefiere la
-   * máquina quieta a que respire.
+   * Whether the stick sways while it hangs. It is turned off when the system asks to reduce
+   * motion: the swing is decoration, and whoever disables it prefers the
+   * machine still to having it breathe.
    */
   swaying: boolean
   /**
-   * Con la partida parada (menú o fin) el palo se queda colgando: su reloj no
-   * corre. Si no, los palos se soltaban mientras el jugador elegía opciones y
-   * al empezar ya estaban por el suelo.
+   * With the run stopped (menu or end) the stick stays hanging: its clock does not
+   * run. Otherwise, the sticks were released while the player chose options and
+   * by the start they were already on the ground.
    */
   paused: boolean
   /**
-   * Casi transparente: el menú del visor está detrás y se lee entre los palos que cuelgan
-   * (`paloTapaElMenu`). Se atenúa y vuelve poco a poco, nunca de golpe.
+   * Almost transparent: the headset's menu is behind and is read between the hanging sticks
+   * (`stickCoversMenu`). It dims and comes back little by little, never all at once.
    */
-  atenuado?: boolean
+  dimmed?: boolean
   /**
-   * Atrapado por el jugador (click o mando XR). Recibe cuánto llevaba cayendo
-   * el palo, en fracción de su tiempo de caída: de 0 (recién soltado) a 1 (a
-   * ras de suelo). Cogerlo pronto puntúa más. `espaldas`, si se cogió de
-   * espaldas a él: con visor, la cámara es la cabeza.
+   * Caught by the player (click or XR controller). It receives how long the stick had been
+   * falling, as a fraction of its fall time: from 0 (just released) to 1 (level
+   * with the ground). Catching it early scores more. `behindBack`, whether it was caught with
+   * the back to it: with a headset, the camera is the head.
    */
-  onCatch: (fallProgress: number, espaldas: boolean) => void
-  /** Se le escapó y ha tocado el suelo. */
+  onCatch: (fallProgress: number, behindBack: boolean) => void
+  /** It got away and has touched the ground. */
   onMiss: () => void
 }
 
@@ -115,7 +115,7 @@ export function Stick({
   swingPhase,
   swaying,
   paused,
-  atenuado = false,
+  dimmed = false,
   onCatch,
   onMiss,
 }: StickProps) {
@@ -125,11 +125,11 @@ export function Stick({
   const meshRef = useRef<Mesh>(null)
   const ringRef = useRef<Mesh>(null)
   const ringMaterialRef = useRef<MeshBasicMaterial>(null)
-  // Cuánto se ha teñido de rojo el palo perdido, de 0 a 1.
+  // How much the missed stick has been tinted red, from 0 to 1.
   const missTint = useRef(0)
 
-  // Los colores se crean una vez por palo: instanciarlos dentro del bucle de
-  // render generaría basura en cada uno de los 90 fotogramas del visor.
+  // The colours are created once per stick: instantiating them inside the render
+  // loop would generate garbage on each of the headset's 90 frames.
   const { baseColor, caughtColor, missedColor } = useMemo(
     () => ({
       baseColor: new Color(color),
@@ -140,42 +140,42 @@ export function Stick({
   )
 
   const [state, setState] = useState<StickState>('hanging')
-  // Visibilidad: se oculta cuando termina la animación de captura.
+  // Visibility: it is hidden when the catch animation ends.
   const [visible, setVisible] = useState(true)
-  // Tiempo acumulado desde el inicio (para gestionar el delay escalonado).
+  // Time accumulated since the start (to handle the staggered delay).
   const elapsed = useRef(0)
-  // Segundos que lleva cayendo. La cota se calcula de aquí cada fotograma, no
-  // sumando pasos: así el palo tarda lo mismo en llegar abajo vaya el visor a
-  // 72 o a 120 fotogramas por segundo.
+  // Seconds it has been falling. The height is computed from here every frame, not
+  // by adding steps: that way the stick takes the same time to get down whether the headset runs at
+  // 72 or at 120 frames per second.
   const fallTime = useRef(0)
-  // Reloj del vaivén. Es aparte del anterior porque corre también con la
-  // partida parada: mecerse mientras el jugador elige o cuenta atrás es
-  // justamente para lo que está.
+  // Clock of the swing. It is separate from the previous one because it also runs with the
+  // run stopped: swaying while the player chooses or counts down is
+  // precisely what it is there for.
   const swingTime = useRef(0)
-  // Cuánto del vaivén se aplica, de 1 (colgando) a 0 (soltado o quieto). Nace
-  // a 0 si el sistema ya pedía reducir el movimiento: empezar a 1 dejaba al
-  // palo naciendo inclinado y enderezándose durante un cuarto de segundo, que
-  // es justo el movimiento que esa preferencia quiere evitar.
+  // How much of the swing is applied, from 1 (hanging) to 0 (released or still). It is born
+  // at 0 if the system was already asking to reduce motion: starting at 1 left the
+  // stick being born tilted and straightening up for a quarter of a second, which
+  // is exactly the motion that preference wants to avoid.
   const swingLevel = useRef(swaying ? 1 : 0)
-  // Intensidad del glow al ser atrapado, que decae con el tiempo.
+  // Intensity of the glow when caught, which decays with time.
   const flash = useRef(0)
-  // Lo que se ve del palo colgado: 1 entero, `PALO_TRAS_EL_MENU` con el menú del visor detrás.
-  const velo = useRef(1)
-  // Un palo solo puede resolverse una vez. Hace falta un ref además del
-  // estado porque `setState` no se aplica hasta el siguiente render: dos
-  // capturas en el mismo frame (los dos mandos XR apuntando al mismo palo,
-  // o una captura justo cuando toca el suelo) verían ambas 'falling'.
+  // What is seen of the hanging stick: 1 whole, `STICK_BEHIND_MENU` with the headset's menu behind.
+  const veil = useRef(1)
+  // A stick can only be resolved once. A ref is needed on top of the
+  // state because `setState` is not applied until the next render: two
+  // catches in the same frame (the two XR controllers pointing at the same stick,
+  // or a catch right when it touches the ground) would both see 'falling'.
   const resolved = useRef(false)
-  // Si el puntero está sobre el palo, para mantener el cursor al día y
-  // devolverlo al desmontar.
+  // Whether the pointer is over the stick, to keep the cursor up to date and
+  // give it back on unmount.
   const hovering = useRef(false)
 
   const [anchorX, anchorY, anchorZ] = anchor
-  // Con la aceleración de su propio recorrido: el aro se acomoda a quien juega
-  // y la caída tiene que durar lo mismo desde cualquier altura.
+  // With the acceleration of its own travel: the hoop fits itself to whoever plays
+  // and the fall has to last the same from any height.
   const acceleration = fallAcceleration(speed, anchorY - STICK_MISS_Y)
 
-  // Cuándo se deja coger un palo: ver `canCatchStick`.
+  // When a stick lets itself be caught: see `canCatchStick`.
   const catchable = canCatchStick(state, paused)
 
   const releaseCursor = () => {
@@ -184,47 +184,47 @@ export function Stick({
     document.body.style.cursor = 'auto'
   }
 
-  // El palo desaparece al ser atrapado y se desmonta al acabar la partida:
-  // si el puntero estaba encima, `onPointerOut` ya no llega y el cursor se
-  // quedaría en 'pointer'.
+  // The stick disappears when caught and is unmounted when the run ends:
+  // if the pointer was on top, `onPointerOut` no longer arrives and the cursor would
+  // stay on 'pointer'.
   useEffect(() => releaseCursor, [])
 
-  // Lo que quede por vibrar del último atrape se cancela al desmontar el palo: un pulso
-  // programado que saliera después vibraría por algo que ya no está.
-  const cancelarPulsos = useRef<() => void>(() => {})
-  useEffect(() => () => cancelarPulsos.current(), [])
+  // What is left to vibrate of the last catch is cancelled when the stick is unmounted: a scheduled
+  // pulse that went out afterwards would vibrate for something that is no longer there.
+  const cancelPulses = useRef<() => void>(() => {})
+  useEffect(() => () => cancelPulses.current(), [])
 
-  // Y deja de anunciarse al irse: una clave que se queda puesta le dice a quien
-  // mire desde fuera que sigue habiendo un palo ahí, quieto para siempre.
+  // And it stops announcing itself on leaving: a key that stays set tells whoever
+  // looks from outside that there is still a stick there, still forever.
   useEffect(() => () => publishStick(probeId, null), [probeId])
 
-  // El palo perdido se queda en el suelo aunque el aro cambie de altura.
+  // The missed stick stays on the ground even if the hoop changes height.
   //
-  // El aro se acomoda a quien juega (ver `@/lib/hoopHeight`) y puede subir o
-  // bajar desde el menú con los palos de la partida anterior todavía tirados por
-  // el suelo. Al moverse el anclaje, React reescribe la posición del grupo y se
-  // llevaría con él a los palos ya resueltos: se levantarían del suelo hasta la
-  // altura del aro y se quedarían ahí colgados, rojos y sin cuerda, hasta la
-  // partida siguiente.
+  // The hoop fits itself to whoever plays (see `@/lib/hoopHeight`) and can go up or
+  // down from the menu with the sticks of the previous run still lying on
+  // the ground. When the anchor moves, React rewrites the position of the group and would
+  // take the already resolved sticks with it: they would rise from the ground up to the
+  // height of the hoop and stay hanging there, red and with no cord, until the
+  // next run.
   useEffect(() => {
     const group = groupRef.current
     if (!group || state !== 'missed') return
     group.position.y = STICK_MISS_Y
   }, [anchorY, state])
 
-  // La ventana de captura también se abre y se cierra sola, con el puntero
-  // quieto encima: el ratón se queda sobre un palo mientras corre la cuenta
-  // atrás, y al arrancar la partida no llega ningún `pointerover` nuevo que
-  // encienda el cursor. Lo mismo al revés cuando el palo bajo el puntero toca
-  // el suelo o se acaba la partida: el cursor seguiría ofreciendo un palo que
-  // ya no se coge.
+  // The catch window also opens and closes by itself, with the pointer
+  // still on top: the mouse stays over a stick while the countdown
+  // runs, and when the run starts no new `pointerover` arrives to
+  // light up the cursor. The same the other way round when the stick under the pointer touches
+  // the ground or the run ends: the cursor would keep offering a stick that
+  // can no longer be caught.
   useEffect(() => {
     if (!hovering.current) return
     document.body.style.cursor = catchable ? 'pointer' : 'auto'
   }, [catchable])
 
   const handleCatch = (event?: ThreeEvent<PointerEvent | MouseEvent>) => {
-    // Se coge con la mano, no apuntando: ver `canCatchWithPointer`.
+    // It is caught with the hand, not by pointing: see `canCatchWithPointer`.
     if (!canCatchWithPointer(pointerTypeOf(event))) return
     event?.stopPropagation()
     if (resolved.current) return
@@ -232,62 +232,62 @@ export function Stick({
     resolved.current = true
     setState('caught')
     flash.current = 1
-    // El verde entra de golpe: el destello ya es la confirmación, y una
-    // transición desde el amarillo la volvería tibia.
+    // The green comes in all at once: the flash is already the confirmation, and a
+    // transition from the yellow would make it lukewarm.
     const material = materialRef.current
     if (material) {
       material.color.copy(caughtColor)
       material.emissive.copy(caughtColor)
     }
     releaseCursor()
-    // Cuándo se cogió el palo decide el bonus por reflejos. Se saca de la
-    // posición viva y no del estado, que aún no se ha vuelto a renderizar, y
-    // se mide contra su propio anclaje: el aro se acomoda a quien juega, así que
-    // no todos los palos salen de la misma altura.
+    // When the stick was caught decides the reflex bonus. It is taken from the
+    // live position and not from the state, which has not been rendered again yet, and
+    // it is measured against its own anchor: the hoop fits itself to whoever plays, so
+    // not all the sticks start from the same height.
     const fallProgress = stickFallProgress(groupRef.current?.position.y ?? anchorY, anchorY)
-    // De espaldas o no, con la cámara, que con visor es la cabeza. Sin visor mira siempre a la
-    // máquina, así que en escritorio no sale nunca.
-    camera.getWorldPosition(ojos)
-    camera.getWorldDirection(mirada)
-    const cuerpo = meshRef.current ?? groupRef.current
-    if (cuerpo) cuerpo.getWorldPosition(paloCogido)
-    const espaldas = cuerpo != null && deEspaldas({ cabeza: ojos, mirada, palo: paloCogido })
-    onCatch(fallProgress, espaldas)
-    // El toque en el mando va después de contar el palo: la vibración es el
-    // adorno y la puntuación es el juego, así que un mando que se porte mal no
-    // puede llevarse por delante el acierto. Vibra la mano que lo ha cogido, y
-    // más si ha sido in extremis (`lib/haptics.ts`).
-    cancelarPulsos.current = pulsarAtrape(event, fallProgress)
+    // Behind the back or not, with the camera, which with a headset is the head. Without a headset it always looks at the
+    // machine, so on desktop it never comes up.
+    camera.getWorldPosition(eyes)
+    camera.getWorldDirection(gaze)
+    const body = meshRef.current ?? groupRef.current
+    if (body) body.getWorldPosition(caughtStick)
+    const behindBack = body != null && isBehindBack({ head: eyes, gaze, stick: caughtStick })
+    onCatch(fallProgress, behindBack)
+    // The tap on the controller goes after counting the stick: the vibration is the
+    // ornament and the score is the game, so a controller that misbehaves
+    // cannot take the catch down with it. The hand that caught it vibrates, and
+    // more if it was at the last moment (`lib/haptics.ts`).
+    cancelPulses.current = pulseCatch(event, fallProgress)
   }
 
   useFrame((_, rawDelta) => {
     const group = groupRef.current
     if (!group) return
 
-    // Limita el delta para evitar saltos tras pestañas en segundo plano.
+    // Caps the delta to avoid jumps after background tabs.
     const delta = Math.min(rawDelta, 0.05)
     if (!paused) {
       elapsed.current += delta
     }
 
-    // Dónde está el palo, para quien mire desde fuera del Canvas. Se publica el
-    // cuerpo y no el grupo: el grupo está en el aro y el cilindro cuelga un
-    // palmo por debajo, que es adonde hay que llevar la mano.
+    // Where the stick is, for whoever looks from outside the Canvas. The body is
+    // published and not the group: the group is at the hoop and the cylinder hangs a
+    // hand's breadth below, which is where the hand has to be taken.
     if (stickProbeRequested()) {
-      const cuerpo = meshRef.current
-      if (cuerpo != null) {
-        cuerpo.getWorldPosition(puntoDelPalo)
+      const body = meshRef.current
+      if (body != null) {
+        body.getWorldPosition(stickPoint)
         publishStick(probeId, {
-          x: puntoDelPalo.x,
-          y: puntoDelPalo.y,
-          z: puntoDelPalo.z,
+          x: stickPoint.x,
+          y: stickPoint.y,
+          z: stickPoint.z,
           catchable,
         })
       }
     }
 
-    // Vaivén: el palo colgado se mece; en cuanto se suelta se endereza, porque
-    // uno que cae inclinándose cuesta de seguir con la mano.
+    // Swing: the hanging stick sways; as soon as it is released it straightens up, because
+    // one that falls while tilting is hard to follow with the hand.
     if (swaying && state === 'hanging') {
       swingTime.current += delta
       swingLevel.current = 1
@@ -302,16 +302,16 @@ export function Stick({
       group.rotation.x = tilt.x * swingLevel.current
       group.rotation.z = tilt.z * swingLevel.current
     } else if (group.rotation.x !== 0 || group.rotation.z !== 0) {
-      // Solo los dos ejes del vaivén: el giro sobre Y no es suyo y borrarlo
-      // desharía cualquier orientación que el palo llegue a tener.
+      // Only the two axes of the swing: the turn about Y is not its own and erasing it
+      // would undo any orientation the stick may come to have.
       group.rotation.x = 0
       group.rotation.z = 0
     }
 
-    // Acierto: el palo se enciende en verde, da un golpe de escala y se
-    // desvanece, mientras una onda sale de donde estaba. Es el único momento en
-    // que el juego dice "bien" en el visor, donde no hay marcador que leer sin
-    // apartar la vista de los palos.
+    // Hit: the stick lights up green, gives a kick of scale and
+    // fades, while a wave goes out from where it was. It is the only moment in
+    // which the game says "good" in the headset, where there is no scoreboard to read without
+    // taking the eyes off the sticks.
     if (flash.current > 0) {
       flash.current = Math.max(0, flash.current - delta * CATCH_FLASH_DECAY)
       const t = flash.current
@@ -336,8 +336,8 @@ export function Stick({
       }
     }
 
-    // Fallo: el palo tocado el suelo se tiñe de rojo. Se queda ahí, así que al
-    // final de la partida el suelo cuenta lo que se ha escapado.
+    // Miss: the stick that has touched the ground is tinted red. It stays there, so at
+    // the end of the run the ground tells what got away.
     if (state === 'missed' && missTint.current < 1) {
       missTint.current = Math.min(1, missTint.current + delta * MISS_TINT_SPEED)
       const material = materialRef.current
@@ -349,14 +349,14 @@ export function Stick({
     }
 
     if (state === 'hanging') {
-      // Con el menú del visor detrás, casi transparente y sin tapar en profundidad lo que el
-      // panel pinta por delante de su placa; al pulsar Jugar vuelve entero antes de soltarse.
+      // With the headset's menu behind, almost transparent and without covering in depth what the
+      // panel paints in front of its plate; on pressing Jugar it comes back whole before being released.
       const material = materialRef.current
-      const hacia = atenuado ? PALO_TRAS_EL_MENU : 1
-      if (material && velo.current !== hacia) {
-        velo.current = opacidadHacia(velo.current, hacia, delta)
-        material.opacity = velo.current
-        material.depthWrite = velo.current >= 1
+      const toward = dimmed ? STICK_BEHIND_MENU : 1
+      if (material && veil.current !== toward) {
+        veil.current = opacityToward(veil.current, toward, delta)
+        material.opacity = veil.current
+        material.depthWrite = veil.current >= 1
       }
       if (!paused && elapsed.current >= delay) {
         setState('falling')
@@ -377,45 +377,45 @@ export function Stick({
   })
 
   return (
-    // **Y solo está para el rayo mientras se pueda coger** (`lib/pointers.ts`). Apagar un palo
-    // con `visible` no lo aparta del puntero: el ya atrapado se quedaba escuchando, invisible,
-    // a medio metro de la cara y justo entre la mano y el menú.
+    // **And it is only there for the ray while it can be caught** (`lib/pointers.ts`). Turning a stick off
+    // with `visible` does not take it away from the pointer: the already caught one stayed listening, invisible,
+    // half a metre from the face and right between the hand and the menu.
     <group
       ref={groupRef}
       position={[anchorX, anchorY, anchorZ]}
       visible={visible}
       pointerEvents={stickPointerEvents(catchable)}
     >
-      {/* Hilo que une el arco con el palo. Solo mientras cuelga: en cuanto el
-          palo se suelta deja de haber nada que lo sujete. */}
-      <mesh position={[0, -STICK_CORD_LENGTH / 2, 0]} visible={state === 'hanging' && !atenuado}>
+      {/* Cord that joins the arch to the stick. Only while it hangs: as soon as the
+          stick is released there is nothing holding it any more. */}
+      <mesh position={[0, -STICK_CORD_LENGTH / 2, 0]} visible={state === 'hanging' && !dimmed}>
         <cylinderGeometry args={[0.005, 0.005, STICK_CORD_LENGTH, 6]} />
         <meshStandardMaterial color="#4a4038" metalness={0.1} roughness={0.9} />
       </mesh>
 
-      {/* El palo en sí, colgando bajo el hilo. */}
+      {/* The stick itself, hanging under the cord. */}
       <mesh
         ref={meshRef}
         position={[0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0]}
         onClick={handleCatch}
-        // El agarre se resuelve al cerrar la mano, sin esperar a soltar: con el
-        // palo cayendo, exigir un clic completo (pulsar y soltar sobre el mismo
-        // objeto) haría fallar agarres que el jugador siente como buenos.
+        // The grab is resolved on closing the hand, without waiting for the release: with the
+        // stick falling, demanding a full click (press and release over the same
+        // object) would make grabs fail that the player feels as good ones.
         onPointerDown={handleCatch}
         onPointerOver={(e) => {
           e.stopPropagation()
           hovering.current = true
-          // El cursor promete que el palo se puede coger, así que responde a la
-          // misma regla que la captura y no a una copia suya. Un palo que ya no
-          // se coge apaga el cursor en vez de dejarlo como estuviera: el puntero
-          // puede venir de otro palo que sí valía.
+          // The cursor promises that the stick can be caught, so it answers to the
+          // same rule as the catch and not to a copy of it. A stick that can no longer
+          // be caught turns the cursor off instead of leaving it as it was: the pointer
+          // may come from another stick that did count.
           document.body.style.cursor = catchable ? 'pointer' : 'auto'
         }}
         onPointerOut={releaseCursor}
       >
         <cylinderGeometry args={[STICK_RADIUS, STICK_RADIUS, STICK_LENGTH, 16]} />
-        {/* Madera pintada, no plástico: el grano en relieve y la aspereza
-            irregular son los que dan la sensación de peso. */}
+        {/* Painted wood, not plastic: the grain in relief and the uneven
+            roughness are what give the feeling of weight. */}
         <meshStandardMaterial
           ref={materialRef}
           color={color}
@@ -426,16 +426,16 @@ export function Stick({
           emissiveIntensity={0}
           metalness={0}
           roughness={0.75}
-          // Transparente desde el principio para poder desvanecer el palo al
-          // atraparlo: alternar `transparent` en caliente recompila el shader y
-          // da un tirón justo en el momento del destello.
+          // Transparent from the start to be able to fade the stick when it is
+          // caught: toggling `transparent` on the fly recompiles the shader and
+          // gives a hitch right at the moment of the flash.
           transparent
           opacity={1}
         />
       </mesh>
 
-      {/* Onda del acierto: sale de donde estaba el palo y se abre. Empieza
-          oculta y solo la enciende el destello. */}
+      {/* Wave of the hit: it goes out from where the stick was and opens. It starts
+          hidden and only the flash turns it on. */}
       <mesh
         ref={ringRef}
         position={[0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0]}
@@ -455,7 +455,7 @@ export function Stick({
   )
 }
 
-/** A qué ritmo se apaga el destello del acierto (1/s). */
+/** At what rate the flash of the hit goes out (1/s). */
 const CATCH_FLASH_DECAY = 1.8
-/** A qué ritmo se tiñe de rojo el palo perdido (1/s). */
+/** At what rate the missed stick is tinted red (1/s). */
 const MISS_TINT_SPEED = 3.5
