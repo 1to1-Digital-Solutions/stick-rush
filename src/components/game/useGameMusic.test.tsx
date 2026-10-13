@@ -8,8 +8,8 @@ import {
 import { MUSIC_VOLUME } from '../../lib/music'
 import { MUSIC_FADE_MS } from '../../lib/musicFade'
 import { useGameMusic } from './useGameMusic'
-import { DEFAULT_VOLUMES, volumeFactor } from '../../lib/ajustes'
-import { setVolume } from '../../lib/ajustesCliente'
+import { DEFAULT_VOLUMES, volumeFactor } from '../../lib/settings'
+import { setVolume } from '../../lib/settingsClient'
 
 /**
  * Lo que se comprueba aquí son las reglas que el hook añade sobre el fichero de

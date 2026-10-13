@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { type GameState, useGame } from '../../lib/gameStore'
-import { MEDALLAS, listonCruzado } from '../../lib/objetivo'
+import { MEDALS, thresholdCrossed } from '../../lib/goal'
 import { createSoundEngine, type RoundOutcome, type SoundEngine } from '../../lib/sound'
 
 /**
@@ -140,9 +140,9 @@ export function useGameSound() {
   const medallaDeAntes = useRef(medalla)
 
   useEffect(() => {
-    const cruzado = listonCruzado(medallaDeAntes.current, medalla)
+    const cruzado = thresholdCrossed(medallaDeAntes.current, medalla)
     medallaDeAntes.current = medalla
-    if (cruzado != null) engineRef.current?.play({ name: 'medal', rank: MEDALLAS.indexOf(cruzado) as 0 | 1 | 2 })
+    if (cruzado != null) engineRef.current?.play({ name: 'medal', rank: MEDALS.indexOf(cruzado) as 0 | 1 | 2 })
   }, [medalla])
 }
 

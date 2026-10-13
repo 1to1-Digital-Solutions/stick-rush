@@ -18,8 +18,8 @@ import {
   XR_TUTORIAL_SKIP_OFFSET,
   xrPanelViews,
 } from '../../lib/xrLayout'
-import { ALTO_DE_LINEA } from './canvasPanel'
-import { lienzoQueApunta, problemasDeLegibilidad, type Escrito } from './legibilidad'
+import { LINE_HEIGHT } from './canvasPanel'
+import { recordingCanvas, legibilityProblems, type DrawnText } from './legibility'
 import { ALTO_DEL_MANDO } from './mandoDibujado'
 import { ALTO_DE_LA_MANO } from './manoDibujada'
 import { dibujarElPaso, PANEL_HEIGHT, PANEL_WIDTH, repartoDelPaso } from './XRTutorial'
@@ -65,15 +65,15 @@ function todosLosMomentos(): Momento[] {
 }
 
 function pintar({ step, lang, variante }: Momento) {
-  const { ctx, escritos } = lienzoQueApunta()
+  const { ctx, drawnTexts: escritos } = recordingCanvas()
   const t = traductor(lang)
   dibujarElPaso(ctx, step, variante.frases, t, variante.conLasManos)
   return { escritos, reparto: repartoDelPaso(ctx, step, variante.frases, t) }
 }
 
 /** A qué distancia se miden los problemas: la de lectura del texto que peor se lee. */
-function distancia(escritos: readonly Escrito[]): number {
-  return Math.max(...VISTAS.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, ALTO_DE_LINEA)))
+function distancia(escritos: readonly DrawnText[]): number {
+  return Math.max(...VISTAS.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, LINE_HEIGHT)))
 }
 
 describe('el panel del tutorial se lee', () => {
@@ -82,7 +82,7 @@ describe('el panel del tutorial se lee', () => {
       const { escritos } = pintar(momento)
       expect(escritos.length, `${momento.donde}: no se ha medido nada`).toBeGreaterThan(0)
       expect(
-        problemasDeLegibilidad(escritos, { panel: PANEL_MEDIDO, distancia: distancia(escritos) }),
+        legibilityProblems(escritos, { panel: PANEL_MEDIDO, distance: distancia(escritos) }),
         momento.donde,
       ).toEqual([])
     }
@@ -92,7 +92,7 @@ describe('el panel del tutorial se lee', () => {
     for (const momento of todosLosMomentos()) {
       const { escritos } = pintar(momento)
       for (const vista of VISTAS) {
-        expect(unreadableTexts(escritos, vista.pose, vista.ojos, ALTO_DE_LINEA), `${momento.donde}, ${vista.donde}`).toEqual([])
+        expect(unreadableTexts(escritos, vista.pose, vista.ojos, LINE_HEIGHT), `${momento.donde}, ${vista.donde}`).toEqual([])
       }
     }
   })
@@ -100,7 +100,7 @@ describe('el panel del tutorial se lee', () => {
   it('con un tamaño de la lista, sin encogerse para caber', () => {
     const tamanos = Object.values(TUTORIAL_TEXT)
     for (const momento of todosLosMomentos()) {
-      expect(sizesOffList(pintar(momento).escritos, ALTO_DE_LINEA, tamanos), momento.donde).toEqual([])
+      expect(sizesOffList(pintar(momento).escritos, LINE_HEIGHT, tamanos), momento.donde).toEqual([])
     }
   })
 
@@ -135,7 +135,7 @@ describe('el reparto del panel sigue a la frase', () => {
     // caben en los mismos renglones —que es por lo que no se ve sin medirlo—, así que el
     // control se hace con una frase inventada: si el gesto no bajara con ella, tampoco bajaría
     // el día que una traducción gane una línea.
-    const { ctx } = lienzoQueApunta()
+    const { ctx } = recordingCanvas()
     const corta = repartoDelPaso(ctx, 'grab', FRASES, () => 'Grab a stick')
     const larga = repartoDelPaso(
       ctx,
@@ -153,7 +153,7 @@ describe('lo que el panel enseña', () => {
     for (const [indice, step] of TUTORIAL_STEPS.entries()) {
       const { escritos } = pintar({ donde: step, step, lang: 'en', variante: VARIANTES[0] })
       expect(
-        escritos.some((escrito) => escrito.texto === `${indice + 1}/${TUTORIAL_STEPS.length}`),
+        escritos.some((escrito) => escrito.text === `${indice + 1}/${TUTORIAL_STEPS.length}`),
         step,
       ).toBe(true)
     }
@@ -165,13 +165,13 @@ describe('lo que el panel enseña', () => {
       const { escritos } = pintar(momento)
       const t = traductor(momento.lang)
       for (const boton of BOTONES) {
-        expect(escritos.some((escrito) => escrito.texto === t(boton.texto)), `${momento.donde}: ${boton.texto}`).toBe(true)
+        expect(escritos.some((escrito) => escrito.text === t(boton.texto)), `${momento.donde}: ${boton.texto}`).toBe(true)
       }
     }
   })
 
   it('sin paso que enseñar no escribe nada', () => {
-    const { ctx, escritos } = lienzoQueApunta()
+    const { ctx, drawnTexts: escritos } = recordingCanvas()
     dibujarElPaso(ctx, null, FRASES, traductor('es'), false)
     expect(escritos).toEqual([])
   })

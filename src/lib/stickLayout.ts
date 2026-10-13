@@ -1,5 +1,5 @@
 import { MACHINE_HEIGHT, machinePoint } from './gameConfig'
-import { azarDesde, semillaDe } from './semilla'
+import { randomFrom, deriveSeed } from './seed'
 
 /** Posición y momento de salida de un palo dentro de una partida. */
 export interface StickLayout {
@@ -32,7 +32,7 @@ const HILO = { orden: 1, retardo: 2, vaiven: 3 } as const
  */
 export function fallOrder(stickCount: number, seed: number): number[] {
   const order = Array.from({ length: Math.max(stickCount, 0) }, (_, i) => i)
-  const azar = azarDesde(semillaDe(seed, HILO.orden))
+  const azar = randomFrom(deriveSeed(seed, HILO.orden))
   for (let i = order.length - 1; i > 0; i--) {
     const j = Math.floor(azar() * (i + 1))
     ;[order[i], order[j]] = [order[j], order[i]]
@@ -42,7 +42,7 @@ export function fallOrder(stickCount: number, seed: number): number[] {
 
 /** Un número en [0, 1) propio de un palo y de lo que se sortea de él. */
 function delPalo(seed: number, hilo: number, index: number): number {
-  return azarDesde(semillaDe(seed, hilo, index))()
+  return randomFrom(deriveSeed(seed, hilo, index))()
 }
 
 /**

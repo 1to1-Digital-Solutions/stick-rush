@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { ROTULOS_DEL_FINAL, dibujarRotulosDelFinal } from './XRHud'
-import { ALTO_DE_LINEA } from './canvasPanel'
+import { LINE_HEIGHT } from './canvasPanel'
 import { XR_HUD_POSITION, xrHudLayout, xrPanelViews } from '../../lib/xrLayout'
-import { lienzoQueApunta, problemasDeLegibilidad, type Escrito } from './legibilidad'
+import { recordingCanvas, legibilityProblems, type DrawnText } from './legibility'
 import { MIN_READING_DEGREES, unreadableTexts, worstReadingDistance } from '../../lib/panelReading'
 import { traductor } from '../../lib/textos'
 
@@ -24,8 +24,8 @@ const VISTAS = [true, false].flatMap((sign) => {
 
 const MODOS = ['challenge', 'practice'] as const
 
-function medir(lang: (typeof IDIOMAS)[number], modo: (typeof MODOS)[number] = 'challenge'): Escrito[] {
-  const { ctx, escritos } = lienzoQueApunta()
+function medir(lang: (typeof IDIOMAS)[number], modo: (typeof MODOS)[number] = 'challenge'): DrawnText[] {
+  const { ctx, drawnTexts: escritos } = recordingCanvas()
   dibujarRotulosDelFinal(ctx, traductor(lang), modo)
   return escritos
 }
@@ -35,21 +35,21 @@ describe('los rótulos de los botones del final', () => {
     for (const lang of IDIOMAS) {
       for (const modo of MODOS) {
         const escritos = medir(lang, modo)
-        expect(escritos.map((e) => e.texto), lang).toHaveLength(2)
+        expect(escritos.map((e) => e.text), lang).toHaveLength(2)
         const panel = { width: ROTULOS_DEL_FINAL.width, height: ROTULOS_DEL_FINAL.height }
-        const distancia = Math.max(...VISTAS.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, ALTO_DE_LINEA)))
-        expect(problemasDeLegibilidad(escritos, { panel, distancia }), `${lang}, ${modo}`).toEqual([])
+        const distancia = Math.max(...VISTAS.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, LINE_HEIGHT)))
+        expect(legibilityProblems(escritos, { panel, distance: distancia }), `${lang}, ${modo}`).toEqual([])
       }
     }
-    expect(medir('es').map((e) => e.texto)).toEqual(['Otro reto', 'Menú'])
-    expect(medir('es', 'practice').map((e) => e.texto)).toEqual(['Otra partida', 'Menú'])
+    expect(medir('es').map((e) => e.text)).toEqual(['Otro reto', 'Menú'])
+    expect(medir('es', 'practice').map((e) => e.text)).toEqual(['Otra partida', 'Menú'])
   })
 
   it(`ninguna letra baja de ${MIN_READING_DEGREES}°, a cualquier altura de ojos`, () => {
     for (const lang of IDIOMAS) {
       for (const modo of MODOS) {
         for (const vista of VISTAS) {
-          expect(unreadableTexts(medir(lang, modo), vista.pose, vista.ojos, ALTO_DE_LINEA), `${lang}, ${modo}, ${vista.donde}`).toEqual([])
+          expect(unreadableTexts(medir(lang, modo), vista.pose, vista.ojos, LINE_HEIGHT), `${lang}, ${modo}, ${vista.donde}`).toEqual([])
         }
       }
     }

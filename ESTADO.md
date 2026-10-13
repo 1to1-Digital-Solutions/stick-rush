@@ -26,7 +26,7 @@ Qué mirar con las gafas, y dónde se toca:
 | Los rótulos bajo los botones del final (Otra partida / Compartir / Menú): ¿se leen sin estorbar? | `ROTULOS_DEL_FINAL` (`XRHud.tsx`; Godot, `marcador.ts`) |
 | ¿Se lee el guante como mano y se ve cerrarse? En el salón va sin mando debajo | `src/components/xr/Guante.tsx`, `src/lib/guante.ts` |
 | Manos desnudas, en la web y en el salón | `src/components/xr/ManosDelJugador.tsx` |
-| ¿Se nota el atrape y el in extremis distinto? | `src/lib/haptics.ts`, `src/lib/tactos.ts` |
+| ¿Se nota el atrape y el in extremis distinto? | `src/lib/haptics.ts`, `src/lib/hapticFeedback.ts` |
 | ¿La caída acelerando se lee como una caída? | `fallAcceleration` (`src/lib/gameConfig.ts`) |
 | **Pendiente de visor — el cartel del objetivo** (encima del marcador, 27° bajo la mirada; el menú abre en el reto): ¿se entiende la misión en los tres primeros segundos?, ¿se lee sin buscarlo?, ¿molesta al jugar? | `XR_CARTEL_POSITION` (`src/lib/xrLayout.ts`), `MISION_DEL_RETO` (`src/lib/cartelDeLaMaquina.ts`) |
 | Cartel: la letra (la misión sale a 1°); el marcador sin barra ni vidas, ¿se echan de menos? | `LETRA_DEL_CARTEL` (`CartelDeObjetivo.tsx`), `XR_HUD_WITH_SIGN`; en Godot, `CARTEL` (`godot/scene/interfaz/cartel.ts`) |
@@ -36,7 +36,7 @@ Lo que solo puede decir el visor del port de Godot está en «Lo que se sabe y l
 `godot/README.md`. La lista común de todos los juegos: `organizate/docs/pendiente-de-visor.md`.
 
 Después: cortar versión de lo que hay en `develop` (procedimiento en «Publicar una versión
-nueva» de `docs/montar-el-juego.md`) y que xrcade la suba con `npm run game:update`.
+nueva» de `docs/mounting-the-game.md`) y que xrcade la suba con `npm run game:update`.
 
 ## 🚧 Lo que bloquea o espera
 
@@ -63,7 +63,7 @@ npm run test:e2e       # Playwright sobre el build; puerto E2E_PORT (3100 por de
 
 - **Godot**: el editor 4.7.1 con GodotJS en `$GODOT` y `../xrcade` al lado.
   `GODOT=$GODOT npm run godot:test` (todo lo del motor), `npm run godot:build -- --tests`,
-  `godot:sfx` y `godot:mandos`. Detalle en `godot/README.md`, «Cómo se usa».
+  `godot:sfx` y `godot:controllers`. Detalle en `godot/README.md`, «Cómo se usa».
 - La suite e2e tarda ~1 min y tiene partes sensibles al tiempo: si algo falla de forma
   intermitente, repetirla antes de «arreglar» nada.
 - `build` fija `NODE_ENV=production` porque el entorno exporta `development`, que rompe la
@@ -88,5 +88,5 @@ npm run test:e2e       # Playwright sobre el build; puerto E2E_PORT (3100 por de
 | Por qué está algo así | `docs/historial.md` (no se lee al empezar) |
 | Qué falta (backlog) | `TODO.md` |
 | El port a Godot, y lo que falta en él | `godot/README.md` |
-| Montar el juego en el salón y publicar versión | `docs/montar-el-juego.md` |
+| Montar el juego en el salón y publicar versión | `docs/mounting-the-game.md` |
 | Reglas comunes | `.claude/rules/` |

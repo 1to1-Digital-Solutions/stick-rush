@@ -14,12 +14,12 @@ import { CHALLENGE_LIVES, GAME_MODE_HINTS, type GameMode } from '../../lib/gameM
 import { botonDeOpciones, seVe, siguienteModo } from '../../lib/menuDelJuego'
 import { useGame } from '../../lib/gameStore'
 import { PLAYER_COUNT_HINTS, juegaADos, type PlayerCount } from '../../lib/duel'
-import { useLang } from '../../lib/ajustesCliente'
+import { useLang } from '../../lib/settingsClient'
 import { traductor, type TextKey } from '../../lib/textos'
 import { CanvasPanel, drawParagraph, drawText } from './canvasPanel'
 import { LEVEL_COUNT } from '../../lib/levels'
 import { useExit } from '../../game/exit'
-import { nombreDelJuego } from '../../lib/plantillaDelMenu'
+import { gameName } from '../../lib/menuTemplate'
 import { HOOP_ADJUST_RANGE } from '../../lib/hoopHeight'
 import {
   menuLabelsFor,
@@ -568,7 +568,7 @@ export function dibujarLosNombres(
   masOpciones = false,
 ): void {
   // El nombre de la cabina, arriba a la izquierda: es un nombre propio y no se traduce.
-  drawText(ctx, nombreDelJuego(), MENU_TITLE.x, MENU_TITLE.y, {
+  drawText(ctx, gameName(), MENU_TITLE.x, MENU_TITLE.y, {
     size: MENU_TEXT.title,
     color: '#ffffff',
     align: 'left',

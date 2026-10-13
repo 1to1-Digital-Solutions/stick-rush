@@ -1,6 +1,6 @@
 'use client'
 
-import { FLECHA_DE_SALIR } from './canvasPanel'
+import { EXIT_ARROW } from './canvasPanel'
 import { PANEL_ORDER } from './buttonHighlight'
 import { NO_RAYCAST } from '../raycast'
 
@@ -403,7 +403,7 @@ export function XRHomeIcon(props: IconProps) {
 
 /** La flecha de salir, como forma plana: la misma que se pinta en los lienzos. */
 const FORMA_DE_SALIR = (() => {
-  const { punta, cuerpo, grosor, codo, alas } = FLECHA_DE_SALIR
+  const { tip: punta, shaft: cuerpo, thickness: grosor, elbow: codo, wings: alas } = EXIT_ARROW
   const forma = new Shape()
   forma.moveTo(punta, 0)
   forma.lineTo(codo, alas)

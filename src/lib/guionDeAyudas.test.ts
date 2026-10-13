@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { avanzarLasAyudas, problemasDelGuion, sinAyudas } from './ayudas'
+import { advanceHints, scriptProblems, noHints } from './hints'
 import { MACHINE_RADIUS, PLAYER_OFFSET_Z, STICK_CORD_LENGTH, STICK_LENGTH } from './gameConfig'
 import {
   CAIDA,
@@ -25,9 +25,9 @@ import { TUTORIAL_BUTTONS } from './tutorial'
 const NADA: Record<HechoDeLasAyudas, boolean> = { grab: false, cae: false }
 
 function encendidasTras(hechos: Record<HechoDeLasAyudas, boolean>, segundos: number) {
-  const estado = sinAyudas()
-  avanzarLasAyudas(GUION_DE_AYUDAS, hechos, estado, segundos)
-  return [...estado.encendidas].sort()
+  const estado = noHints()
+  advanceHints(GUION_DE_AYUDAS, hechos, estado, segundos)
+  return [...estado.lit].sort()
 }
 
 /** Estaturas de quien juega, de sentado a muy alto, y el aro que le toca a cada una. */
@@ -36,7 +36,7 @@ const aroPara = (ojos: number) => hoopHeightFor({ eyeHeight: ojos, adjustment: 0
 
 describe('el guion de las ayudas', () => {
   it('pasa el guardián común: plazos entre el mínimo y el máximo, y nada duplicado', () => {
-    expect(problemasDelGuion(GUION_DE_AYUDAS)).toEqual([])
+    expect(scriptProblems(GUION_DE_AYUDAS)).toEqual([])
   })
 
   it('al entrar en la cabina se enseña todo: dónde ponerse, el palo que cae y el mando', () => {
@@ -53,7 +53,7 @@ describe('el guion de las ayudas', () => {
   })
 
   it('y si nadie hace nada, todas se van solas', () => {
-    const plazo = Math.max(...GUION_DE_AYUDAS.map((ayuda) => ayuda.caduca))
+    const plazo = Math.max(...GUION_DE_AYUDAS.map((ayuda) => ayuda.expiresAfter))
     expect(encendidasTras(NADA, plazo)).toEqual([])
   })
 

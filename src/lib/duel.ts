@@ -27,10 +27,10 @@
  * Godot la usa tal cual.
  */
 
-import type { Lang } from './ajustes'
+import type { Lang } from './settings'
 import type { DuelTally } from './duelTally'
 import type { GameMode } from './gameMode'
-import { MENU_EN } from './palabras'
+import { MENU_EN } from './menuWords'
 import { formatea, formatoDeCifra, texto, type TextKey } from './textos'
 
 export type Player = 0 | 1
@@ -45,7 +45,7 @@ export type PlayerCount = (typeof PLAYER_COUNTS)[number]
 /** Etiqueta visible de cada opción, en inglés (ver `textos.ts`). */
 export const PLAYER_COUNT_LABELS = {
   1: MENU_EN.solo,
-  2: MENU_EN.duelo,
+  2: MENU_EN.duel,
 } as const satisfies Record<PlayerCount, string>
 
 /** Qué promete cada opción, en una línea, para el menú. */

@@ -42,7 +42,7 @@ import { PALO_TRAS_EL_MENU, opacidadHacia, paloTapaElMenu } from '@/lib/xrLayout
 
 import type { Palo, Tanda } from '../juego/tanda'
 import { TUBE_RADIUS } from './maquina'
-import { cilindro, malla, mallaDeToro, mate, opacidad, translucido } from '@kit/runtime/escena/piezas'
+import { cylinder, mesh, torusMesh, matte, opacidad, translucent } from '@kit/runtime/scene/parts'
 
 /** Donde viajan en el paquete los mapas de la madera (`public/textures/` de la web). */
 export const DIR_DE_LAS_TEXTURAS = 'res://games/stick-rush/texturas'
@@ -72,7 +72,7 @@ interface PaloPintado {
 }
 
 function madera(): StandardMaterial3D {
-  const m = mate(STICK_COLOR, { rugosidad: 0.75, metal: 0 })
+  const m = matte(STICK_COLOR, { rugosidad: 0.75, metal: 0 })
   const normal = ResourceLoader.load(rutaDeLaTextura(WOOD_TEXTURES.normalMap))
   const rugosa = ResourceLoader.load(rutaDeLaTextura(WOOD_TEXTURES.roughnessMap))
   if (normal instanceof Texture2D) {
@@ -102,22 +102,22 @@ export class PalosPintados {
   constructor(padre: Node3D) {
     this.nodo.set_name('Palos')
     padre.add_child(this.nodo)
-    const materialDelHilo = mate('#4a4038', { rugosidad: 0.9, metal: 0.1 })
-    const materialDelGancho = mate(MACHINE_FRAME_COLOR, { rugosidad: 0.3, metal: 0.8 })
+    const materialDelHilo = matte('#4a4038', { rugosidad: 0.9, metal: 0.1 })
+    const materialDelGancho = matte(MACHINE_FRAME_COLOR, { rugosidad: 0.3, metal: 0.8 })
     for (let i = 0; i < MAX_STICKS; i++) {
       const grupo = new Node3D()
       grupo.set_name(`Palo${i}`)
-      const hilo = cilindro(0.005, 0.005, STICK_CORD_LENGTH, materialDelHilo, new Vector3(0, -STICK_CORD_LENGTH / 2, 0), 6)
+      const hilo = cylinder(0.005, 0.005, STICK_CORD_LENGTH, materialDelHilo, new Vector3(0, -STICK_CORD_LENGTH / 2, 0), 6)
       const material = madera()
-      const cuerpo = cilindro(STICK_RADIUS, STICK_RADIUS, STICK_LENGTH, material, new Vector3(0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0), 16)
-      const materialDeLaOnda = translucido(STICK_CAUGHT_COLOR, 0, 2)
-      const onda = malla(mallaDeToro(0.05, 0.006, 24, 6), materialDeLaOnda, new Vector3(0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0))
+      const cuerpo = cylinder(STICK_RADIUS, STICK_RADIUS, STICK_LENGTH, material, new Vector3(0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0), 16)
+      const materialDeLaOnda = translucent(STICK_CAUGHT_COLOR, 0, 2)
+      const onda = mesh(torusMesh(0.05, 0.006, 24, 6), materialDeLaOnda, new Vector3(0, -STICK_CORD_LENGTH - STICK_LENGTH / 2, 0))
       onda.visible = false
       grupo.add_child(hilo)
       grupo.add_child(cuerpo)
       grupo.add_child(onda)
       // El gancho, una anilla sujeta al aro: va con el palo y no se mece con él.
-      const gancho = malla(mallaDeToro(0.022, 0.006, 16, 8), materialDelGancho)
+      const gancho = mesh(torusMesh(0.022, 0.006, 16, 8), materialDelGancho)
       grupo.visible = false
       gancho.visible = false
       this.nodo.add_child(grupo)

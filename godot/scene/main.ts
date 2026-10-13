@@ -43,15 +43,15 @@ import {
   print,
 } from 'godot'
 
-import { nombreDe, objetivoDe } from '@kit/lib/juegoBase'
-import { fijarNombreDelJuego } from '@/lib/plantillaDelMenu'
-import { ACCION, estaAgarrando, type Mano } from '@kit/lib/xr/manos'
-import { aislarElGuardado, argumento, hayBandera } from '@kit/runtime/argumentos'
-import { Escenario, vistaDelVisor } from '@kit/runtime/escena/escenario'
+import { gameNameFrom, goalFrom } from '@kit/lib/gameBase'
+import { setGameName } from '@/lib/menuTemplate'
+import { ACTION, isGrabbing, type HandSide } from '@kit/lib/xr/hands'
+import { isolateSave, arg, hasFlag } from '@kit/runtime/args'
+import { SceneryRig, headsetView } from '@kit/runtime/scene/scenery'
 import { Music, Sfx } from '@kit/runtime/sfx'
-import { MandoDeVerdad } from '@kit/runtime/ui/mando'
-import { XRPlayer } from '@kit/runtime/xr/jugador'
-import { simularMandos, verConLaCabezaSimulada, type Simulacion } from '@kit/runtime/xr/simulado'
+import { RealController } from '@kit/runtime/ui/controller'
+import { XRPlayer } from '@kit/runtime/xr/player'
+import { simulateControllers, viewWithSimulatedHead, type Simulation } from '@kit/runtime/xr/simulated'
 
 import { DIFFICULTY_SPEEDS, PLAYER_OFFSET_Z, STICK_MISS_Y, type Difficulty } from '@/lib/gameConfig'
 import type { GameMode } from '@/lib/gameMode'
@@ -62,7 +62,7 @@ import * as hostAnchor from '@/lib/hostAnchor'
 import { MUSIC_VOLUME } from '@/lib/music'
 import { MUSIC_FADE_MS, fadeVolume } from '@/lib/musicFade'
 import { deEspaldas, type ResultadoConHazanas } from '@/lib/hazanas'
-import { semillaAlAzar } from '@/lib/semilla'
+import { randomSeed } from '@/lib/seed'
 import { duelOver } from '@/lib/duel'
 import { getDuelTally } from '@/lib/duelTally'
 import { fallOrder } from '@/lib/stickLayout'
@@ -70,7 +70,7 @@ import { gameStorage } from '@/lib/storage'
 import { followRatio } from '@/lib/xrAnchor'
 import * as xrLayout from '@/lib/xrLayout'
 
-import { niveles } from '@kit/runtime/ajustes'
+import { volumeLevels } from '@kit/runtime/settings'
 import { InterfazDelJuego } from './interfaz/interfaz'
 import { paloEnElRayo, paloEnLaMano } from './juego/alcance'
 import { Partida, type FaseDeLaPartida } from './juego/partida'
@@ -83,9 +83,9 @@ import { PalosPintados } from './mundo/palos'
 
 const SFX_DIR = 'res://games/stick-rush/sfx'
 const MUSIC_PATH = 'res://games/stick-rush/music/feria.mp3'
-/** Los modelos de los mandos, copiados de `public/webxr-profiles/` (`npm run godot:mandos`). */
+/** Los modelos de los mandos, copiados de `public/webxr-profiles/` (`npm run godot:controllers`). */
 const DIR_DE_LOS_MANDOS = 'res://games/stick-rush/mandos'
-const MANOS: readonly Mano[] = ['left', 'right']
+const MANOS: readonly HandSide[] = ['left', 'right']
 /** Cada cuántos fotogramas se vuelve a preguntar al visor si da realidad aumentada (medio segundo). */
 const RELEER_EL_VISOR = 36
 
@@ -146,19 +146,19 @@ export default class StickRush extends Node3D {
   private maquina!: Maquina
   private palos!: PalosPintados
   private feria!: Feria
-  private escenario!: Escenario
+  private escenario!: SceneryRig
   private ayudas!: AyudasDelJuego
   private interfaz!: InterfazDelJuego
   private camera: Camera3D | null = null
   private sfx!: Sfx
   private music!: Music
   /** El mando de verdad en cada puño, para el tutorial. */
-  private mandosEnLaMano: MandoDeVerdad[] = []
+  private mandosEnLaMano: RealController[] = []
 
   /** Con visor: el jugador del kit y, en la escena de test, los mandos de mentira. */
   private player: XRPlayer | null = null
-  private sim: Simulacion | null = null
-  private agarrado: Record<Mano, boolean> = { left: false, right: false }
+  private sim: Simulation | null = null
+  private agarrado: Record<HandSide, boolean> = { left: false, right: false }
   /** La altura de ojos que se persigue en el menú y la última que se dio a la partida. */
   private alturaSeguida: number | null = null
   private alturaDada: number | null = null
@@ -171,7 +171,7 @@ export default class StickRush extends Node3D {
   private clic: { origen: Vector3; dir: Vector3 } | null = null
   private pistas!: Pistas
   /** Lo que el jugador automático con visor tiene entre manos: qué palo, con qué mano. */
-  private objetivoDelBot: { indice: number; mano: Mano; fotogramas: number } | null = null
+  private objetivoDelBot: { indice: number; mano: HandSide; fotogramas: number } | null = null
   /** Fotogramas que le quedan al jugador automático para empezar, o `null` si no juega o ya empezó. */
   private arranqueDelBot: number | null = null
 
@@ -195,7 +195,7 @@ export default class StickRush extends Node3D {
   private startedMs = 0
   private framesXr = 0
   /** Lo visto, para el informe. */
-  private atrapesPorMano: Record<Mano, number> = { left: 0, right: 0 }
+  private atrapesPorMano: Record<HandSide, number> = { left: 0, right: 0 }
   private manosVistas = new Set<string>()
   private ayudasVistas = new Set<string>()
   private tutorialVisto = new Set<string>()
@@ -217,24 +217,24 @@ export default class StickRush extends Node3D {
     this.harness = this.has_meta('harness') || this.harnessMenu
     // Una escena de test o una captura guarda aparte y empieza de cero: si no, la marca del jugador
     // automático acabaría como récord de quien tenga el juego.
-    aislarElGuardado(this.harness)
-    const autoplay = hayBandera('autoplay') || (this.harness && !this.harnessMenu)
+    isolateSave(this.harness)
+    const autoplay = hasFlag('autoplay') || (this.harness && !this.harnessMenu)
     // El idioma de la línea de órdenes, o el que pida la escena de test (sin nada, el del sistema).
-    const lang = argumento('lang') ?? (this.has_meta('lang') ? String(this.get_meta('lang')) : null)
+    const lang = arg('lang') ?? (this.has_meta('lang') ? String(this.get_meta('lang')) : null)
     let reto: number | null = null
-    this.shotPath = argumento('shot')
-    this.shotMenuPath = argumento('shot-menu')
-    this.shotDueloPath = argumento('shot-duelo')
-    this.aDos = hayBandera('a-dos') || this.has_meta('a_dos')
-    this.shotAyudasPath = argumento('shot-ayudas')
-    this.shotTutorialPath = argumento('shot-tutorial')
-    const semilla = argumento('semilla')
+    this.shotPath = arg('shot')
+    this.shotMenuPath = arg('shot-menu')
+    this.shotDueloPath = arg('shot-duelo')
+    this.aDos = hasFlag('a-dos') || this.has_meta('a_dos')
+    this.shotAyudasPath = arg('shot-ayudas')
+    this.shotTutorialPath = arg('shot-tutorial')
+    const semilla = arg('semilla')
     if (semilla) this.semillaFija = Number(semilla) >>> 0
-    const linea = argumento('reto')
+    const linea = arg('reto')
     if (linea) reto = Number(linea) >>> 0
-    const mirar = argumento('mirar')
+    const mirar = arg('mirar')
     if (mirar) this.mirar = (Number(mirar) * Math.PI) / 180
-    const bajar = argumento('bajar')
+    const bajar = arg('bajar')
     if (bajar) this.bajar = (Number(bajar) * Math.PI) / 180
     if (this.has_meta('mirar')) this.mirar = (Number(this.get_meta('mirar')) * Math.PI) / 180
     if (this.has_meta('semilla')) this.semillaFija = Number(this.get_meta('semilla')) >>> 0
@@ -247,26 +247,26 @@ export default class StickRush extends Node3D {
     // `objetivo` de la web. Sin salón, o si no le pone medallas, `null` y el cartel dice la misión.
     // Al empezar cada partida, la partida le sube el récord con lo que ya ha contado al salón
     // (`objetivoConLoJugado`): el metadato se lee una vez y no se entera de la marca nueva.
-    const objetivo = objetivoDe(salon != null && salon.has_meta('goal') ? salon.get_meta('goal') : null)
+    const objetivo = goalFrom(salon != null && salon.has_meta('goal') ? salon.get_meta('goal') : null)
     // Y cómo se llama la cabina (`game_name`), antes de pintar el menú: es el nombre del juego.
-    fijarNombreDelJuego(nombreDe(salon != null && salon.has_meta('game_name') ? salon.get_meta('game_name') : null))
+    setGameName(gameNameFrom(salon != null && salon.has_meta('game_name') ? salon.get_meta('game_name') : null))
     if (autoplay && this.semillaFija == null) this.semillaFija = SEMILLA_DEL_BOT
-    this.ayudasEnPlano = hayBandera('ayudas') || this.shotAyudasPath != null || this.has_meta('ayudas')
+    this.ayudasEnPlano = hasFlag('ayudas') || this.shotAyudasPath != null || this.has_meta('ayudas')
 
     // El visor simulado: el de la escena de test, o `-- --visor-simulado` para mirar en plano lo que
     // se ve con el visor (la cámara es la cabeza de mentira).
-    const simulado = (this.harness && this.has_meta('xr_simulado')) || hayBandera('visor-simulado')
+    const simulado = (this.harness && this.has_meta('xr_simulado')) || hasFlag('visor-simulado')
     this.driver = simulado ? 'xr' : autoplay ? 'bot' : this.startXr() ? 'xr' : 'mouse'
     this.escena = this
     if (this.driver === 'xr') this.buildXrPlayer(simulado)
-    this.buildWorld(hayBandera('habitacion'))
+    this.buildWorld(hasFlag('habitacion'))
     this.buildSound()
 
     this.partida = new Partida({
-      reto: reto == null ? null : { semilla: reto },
+      reto: reto == null ? null : { seed: reto },
       objetivo,
       alTerminar: (resultado) => this.contarAlSalon(resultado),
-      semillas: () => this.semillaFija ?? semillaAlAzar(),
+      semillas: () => this.semillaFija ?? randomSeed(),
     })
     this.partida.setImmersive(this.driver === 'xr')
     // A dos, el menú sale con el desafío y a dos elegidos, como los dejaría quien los pulsa.
@@ -285,7 +285,7 @@ export default class StickRush extends Node3D {
         punteros: this.player?.punteros() ?? [],
         visor: this.driver === 'xr',
         lang,
-        tutorial: hayBandera('tutorial') || this.shotTutorialPath != null,
+        tutorial: hasFlag('tutorial') || this.shotTutorialPath != null,
         manos: this.mandosEnLaMano,
         ojos: () => {
           const player = this.player
@@ -301,7 +301,7 @@ export default class StickRush extends Node3D {
     // Con `--menu` se queda en el menú, para mirarlo con el visor simulado.
     // Con visor simulado espera un poco en el menú, que es donde se mide la altura de los ojos para
     // el aro (`XRPlayerHeight.tsx`).
-    if ((this.driver === 'bot' || this.sim != null || this.shotTutorialPath != null) && reto == null && !hayBandera('menu')) {
+    if ((this.driver === 'bot' || this.sim != null || this.shotTutorialPath != null) && reto == null && !hasFlag('menu')) {
       this.arranqueDelBot = this.sim != null ? FOTOGRAMAS_EN_EL_MENU : 0
     }
     this.arrancarElBot()
@@ -339,16 +339,16 @@ export default class StickRush extends Node3D {
    */
   private buildXrPlayer(simulado: boolean): void {
     if (simulado) {
-      this.sim = simularMandos()
+      this.sim = simulateControllers()
       this.applyTestSettings()
     }
     // Stick Rush no tiene `uiHeight.ts`: la altura vive en su `xrLayout.ts`, con las mismas funciones
     // que el kit pide (`startTracking`, `trackHeight`, `worldRise`). Ni `agarre.ts` ni `pellizco.ts`:
     // aquí nada se lleva en la mano, los palos se cogen al apretar, y sin `agarre` el kit sujeta
     // mientras se aprieta (`AGARRE_MANTENIENDO`).
-    this.player = new XRPlayer(this, { comunes: { uiHeight: xrLayout, hostAnchor } })
+    this.player = new XRPlayer(this, { common: { uiHeight: xrLayout, hostAnchor } })
     // Sin visor de verdad, la cabeza de mentira hace de cámara: lo que se captura es lo que se vería.
-    if (simulado) verConLaCabezaSimulada(this.player.camara)
+    if (simulado) viewWithSimulatedHead(this.player.camara)
     this.escena = this.player.mundo
     for (const mano of MANOS) {
       // B/Y y el botón de menú hacen lo que Escape en plano. Jugar y elegir se hacen apuntando.
@@ -358,7 +358,7 @@ export default class StickRush extends Node3D {
         }),
       )
       // El mando de verdad en el puño: lo enciende el tutorial con el botón de su paso.
-      const mando = new MandoDeVerdad({ mano, dir: DIR_DE_LOS_MANDOS })
+      const mando = new RealController({ mano, dir: DIR_DE_LOS_MANDOS })
       this.player.puno[mano].add_child(mando.nodo)
       this.mandosEnLaMano.push(mando)
     }
@@ -380,9 +380,9 @@ export default class StickRush extends Node3D {
     this.maquinaYSuyo.position = new Vector3(0, 0, -PLAYER_OFFSET_Z)
     this.escena.add_child(this.maquinaYSuyo)
     this.feria = new Feria(this, this.maquinaYSuyo)
-    this.escenario = new Escenario({
+    this.escenario = new SceneryRig({
       mostrar: (enLaPlaza) => this.feria.enLaPlaza(enLaPlaza),
-      vista: vistaDelVisor(this.get_viewport()!),
+      vista: headsetView(this.get_viewport()!),
       forzado: habitacion ? 'room' : null,
     })
     this.escenario.actualizar()
@@ -392,7 +392,7 @@ export default class StickRush extends Node3D {
     // El mando junto al palo fantasma es el de la mano buena; en plano (`--ayudas`), el de Quest 3.
     const player = this.player
     const mano = player?.manoBuena ?? 'right'
-    const junto = new MandoDeVerdad({ mano, dir: DIR_DE_LOS_MANDOS, ...(player == null ? { perfil: () => 'oculus-touch-v3' } : {}) })
+    const junto = new RealController({ mano, dir: DIR_DE_LOS_MANDOS, ...(player == null ? { perfil: () => 'oculus-touch-v3' } : {}) })
     this.ayudas = new AyudasDelJuego(this.maquinaYSuyo, [junto])
 
     if (player != null) return
@@ -410,8 +410,8 @@ export default class StickRush extends Node3D {
   /** Los efectos y la música. La escena de test pasa un bus silenciado, que cuenta igual. */
   private buildSound(): void {
     const bus = this.has_meta('sfx_bus') ? String(this.get_meta('sfx_bus')) : undefined
-    this.sfx = new Sfx(this, { dir: SFX_DIR, names: SOUNDS, bus, levels: niveles })
-    this.music = new Music(this, { path: MUSIC_PATH, volume: MUSIC_VOLUME, fade: fadeVolume, fadeMs: MUSIC_FADE_MS, bus, levels: niveles })
+    this.sfx = new Sfx(this, { dir: SFX_DIR, names: SOUNDS, bus, levels: volumeLevels })
+    this.music = new Music(this, { path: MUSIC_PATH, volume: MUSIC_VOLUME, fade: fadeVolume, fadeMs: MUSIC_FADE_MS, bus, levels: volumeLevels })
     this.music.start()
   }
 
@@ -550,7 +550,7 @@ export default class StickRush extends Node3D {
       const puno = player.puno[mano]
       if (puno.get_has_tracking_data()) conMando = true
       if (player.manoDesnuda(mano) != null) conManos = true
-      const apretado = estaAgarrando({ valor: puno.get_float(ACCION.agarre), clic: puno.is_button_pressed(ACCION.agarreClic), pellizco: false })
+      const apretado = isGrabbing({ valor: puno.get_float(ACTION.agarre), clic: puno.is_button_pressed(ACTION.agarreClic), pellizco: false })
       const flanco = apretado && !this.agarrado[mano]
       this.agarrado[mano] = apretado
       if (!flanco || this.tanda == null) continue
@@ -592,7 +592,7 @@ export default class StickRush extends Node3D {
   }
 
   /** Coge un palo: la tanda lo enciende, la partida lo cuenta y vibra la mano que lo cogió. */
-  private atrapar(palo: Palo, mano: Mano | null, espaldas = false): void {
+  private atrapar(palo: Palo, mano: HandSide | null, espaldas = false): void {
     const progreso = this.tanda!.atrapar(palo.indice, this.partida.paused)
     if (progreso == null) return
     // Primero el punto y luego el adorno, como en la web: la vibración no puede llevarse el acierto.
@@ -743,7 +743,7 @@ export default class StickRush extends Node3D {
   private driveXrBot(): void {
     const sim = this.sim!
     const player = this.player!
-    const libre: Mano = player.manoBuena === 'left' ? 'right' : 'left'
+    const libre: HandSide = player.manoBuena === 'left' ? 'right' : 'left'
     this.framesXr++
     const alto = this.has_meta('ojos') ? Number(this.get_meta('ojos')) : 1.6
     const ojos = new Vector3(0, alto, 0)
@@ -893,7 +893,7 @@ export default class StickRush extends Node3D {
       sfx: this.sfx.counts,
       variants: Object.fromEntries(SOUNDS.map((name) => [name, this.sfx.variantCount(name)])),
       music: { playing: this.music.playing, volume: Number(this.music.volume.toFixed(3)) },
-      levels: niveles(),
+      levels: volumeLevels(),
       resultados: this.resultados,
       // La partida a dos, si se jugaba: los puntos de cada uno, la semilla con que empezó cada tanda
       // y lo que lleva la pareja.

@@ -16,14 +16,14 @@ import { LEVEL_STICK_STEPS, levelSpec } from '@/lib/levels'
 import { getBestEndlessStreak, getBestPoints } from '@/lib/marcas'
 import { getUnlockedLevel } from '@/lib/progress'
 import { stickPoints } from '@/lib/scoring'
-import { semillaDe, type Resultado } from '@/lib/semilla'
+import { deriveSeed, type GameResult } from '@/lib/seed'
 import { gameStorage } from '@/lib/storage'
 import { formatoDeCifra } from '@/lib/textos'
 import { getDuelTally } from '@/lib/duelTally'
 import { HAZANAS, HAZANAS_KEY, leerHazanas, type ResultadoConHazanas } from '@/lib/hazanas'
 import { PLAZO_DEL_PASO, tutorialSeen } from '@/lib/tutorial'
 
-import type { Objetivo } from '@/lib/objetivo'
+import type { Goal } from '@/lib/goal'
 
 import { COUNTDOWN_SECONDS, MODO_DEL_RETO, Partida, acotarPalos, type OpcionesDeLaPartida } from './partida'
 import { SONIDO_DEL_LISTON, SOUNDS, sonidosDesde, type Pistas } from './sonido'
@@ -66,7 +66,7 @@ describe('la partida de la web, sin React', () => {
       'challenge',
       CHALLENGE_SETUP.difficulty,
       CHALLENGE_SETUP.stickCount,
-      'antes',
+      'before',
     ])
   })
 
@@ -116,7 +116,7 @@ describe('la partida de la web, sin React', () => {
   })
 
   it('la práctica acaba con el último palo, se guarda el récord y se le cuenta al salón una vez', () => {
-    const contados: Resultado[] = []
+    const contados: GameResult[] = []
     const p = enPractica({ alTerminar: (r) => contados.push(r) })
     jugando(p)
     resolver(p, 4)
@@ -126,7 +126,7 @@ describe('la partida de la web, sin React', () => {
     expect(getBestPoints('practice')).toBe(p.points)
     p.tick(1)
     p.tick(1)
-    expect(contados).toEqual([{ modo: 'practice', puntos: p.points, reto: false }])
+    expect(contados).toEqual([{ mode: 'practice', points: p.points, challenge: false }])
     // Otra igual no bate la marca: la iguala.
     const otra = enPractica()
     jugando(otra)
@@ -187,10 +187,10 @@ describe('la partida de la web, sin React', () => {
     p.setEndless(true)
     jugando(p)
     const primera = p.stickSeed
-    expect(primera).toBe(semillaDe(7, 0))
+    expect(primera).toBe(deriveSeed(7, 0))
     resolver(p, 5)
     expect([p.wave, p.waveScore, p.waveResolved, p.score, p.gameState]).toEqual([1, 0, 0, 5, 'playing'])
-    expect(p.stickSeed).toBe(semillaDe(7, 1))
+    expect(p.stickSeed).toBe(deriveSeed(7, 1))
     resolver(p, 3)
     p.endRun()
     expect([p.gameState, p.outcome, p.isRecord]).toEqual(['finished', 'cleared', true])
@@ -245,12 +245,12 @@ describe('la partida de la web, sin React', () => {
   })
 
   it('el reto del salón entra jugando el desafío con su semilla, y otra partida ya no es el reto', () => {
-    const contados: Resultado[] = []
-    const p = enPractica({ reto: { semilla: 4242 }, alTerminar: (r) => contados.push(r), semillas: () => 1 })
+    const contados: GameResult[] = []
+    const p = enPractica({ reto: { seed: 4242 }, alTerminar: (r) => contados.push(r), semillas: () => 1 })
     expect([p.gameState, p.gameMode, p.enReto, p.semilla, p.countdown]).toEqual(['countdown', MODO_DEL_RETO, true, 4242, 3])
     p.tick(COUNTDOWN_SECONDS)
     resolver(p, CHALLENGE_LIVES, false)
-    expect(contados).toEqual([{ modo: 'challenge', puntos: 0, reto: true }])
+    expect(contados).toEqual([{ mode: 'challenge', points: 0, challenge: true }])
     p.startGame()
     expect([p.enReto, p.semilla]).toEqual([false, 1])
   })
@@ -260,7 +260,7 @@ describe('la partida a dos, sin React', () => {
   beforeEach(() => gameStorage()?.clear())
 
   /** Una partida a dos en el desafío, con las semillas que se pidan una detrás de otra. */
-  function aDos(semillas: number[], alTerminar?: (r: Resultado) => void): Partida {
+  function aDos(semillas: number[], alTerminar?: (r: GameResult) => void): Partida {
     let i = 0
     const p = enPractica({ semillas: () => semillas[i++ % semillas.length], alTerminar })
     p.setGameMode('challenge')
@@ -282,7 +282,7 @@ describe('la partida a dos, sin React', () => {
   it('los dos juegan la misma semilla, y al acabar el primero el mando es del segundo', () => {
     const p = aDos([111, 222, 333])
     jugando(p)
-    expect([p.player, p.semilla, p.stickSeed]).toEqual([0, 111, semillaDe(111, 0)])
+    expect([p.player, p.semilla, p.stickSeed]).toEqual([0, 111, deriveSeed(111, 0)])
     resolver(p, 5)
     resolver(p, CHALLENGE_LIVES, false)
     expect(p.gameState).toBe('finished')
@@ -293,7 +293,7 @@ describe('la partida a dos, sin React', () => {
   })
 
   it('gana quien más saca, se apunta a la pareja, se celebra, al salón una vez y sin récord', () => {
-    const contados: Resultado[] = []
+    const contados: GameResult[] = []
     const p = aDos([111, 222], (r) => contados.push(r))
     jugando(p)
     resolver(p, 5)
@@ -306,7 +306,7 @@ describe('la partida a dos, sin React', () => {
     expect(p.duel?.points).toEqual([primero, p.points])
     expect([p.celebra, p.isRecord, getBestPoints('challenge')]).toEqual([true, false, 0])
     expect(getDuelTally()).toEqual({ wins: [1, 0], ties: 0 })
-    expect(contados).toEqual([{ modo: 'duel', puntos: primero, reto: false }])
+    expect(contados).toEqual([{ mode: 'duel', points: primero, challenge: false }])
     // Otra vez: una partida nueva, con otra semilla.
     jugando(p)
     expect([p.player, p.semilla, p.duel?.points]).toEqual([0, 222, [null, null]])
@@ -342,12 +342,12 @@ describe('las hazañas, como en la web', () => {
     p.setStickCount(MAX_STICKS)
     jugando(p)
     resolver(p, MAX_STICKS)
-    expect(JSON.parse(json[0])).toEqual({ modo: 'practice', puntos: p.points, reto: false, hazanas: [HAZANAS.tandaLimpia] })
+    expect(JSON.parse(json[0])).toEqual({ mode: 'practice', points: p.points, challenge: false, feats: [HAZANAS.tandaLimpia] })
     expect(leerHazanas()).toEqual([HAZANAS.tandaLimpia])
     expect(gameStorage()?.getItem(HAZANAS_KEY)).not.toBeNull()
     jugando(p)
     resolver(p, MAX_STICKS)
-    expect(JSON.parse(json[1])).not.toHaveProperty('hazanas')
+    expect(JSON.parse(json[1])).not.toHaveProperty('feats')
   })
 
   it('doce de trece no: el JSON es el de siempre', () => {
@@ -357,7 +357,7 @@ describe('las hazañas, como en la web', () => {
     jugando(p)
     resolver(p, MAX_STICKS - 1)
     resolver(p, 1, false)
-    expect(JSON.parse(json[0])).toEqual({ modo: 'practice', puntos: p.points, reto: false })
+    expect(JSON.parse(json[0])).toEqual({ mode: 'practice', points: p.points, challenge: false })
   })
 
   it('con el aro al mínimo, una tanda limpia: SR_LOW_HOOP; un paso por encima, no', () => {
@@ -367,12 +367,12 @@ describe('las hazañas, como en la web', () => {
     p.adjustHoop(1)
     jugando(p)
     resolver(p, MIN_STICKS)
-    expect(JSON.parse(json[0])).not.toHaveProperty('hazanas')
+    expect(JSON.parse(json[0])).not.toHaveProperty('feats')
     p.adjustHoop(-1)
     expect(p.hoopAdjustment).toBe(-HOOP_ADJUST_RANGE)
     jugando(p)
     resolver(p, MIN_STICKS)
-    expect(JSON.parse(json[1]).hazanas).toEqual([HAZANAS.aroAlMinimo])
+    expect(JSON.parse(json[1]).feats).toEqual([HAZANAS.aroAlMinimo])
   })
 
   it('un palo de espaldas: SR_BEHIND_BACK; dejar la partida a medias la pierde', () => {
@@ -383,11 +383,11 @@ describe('las hazañas, como en la web', () => {
     p.resetGame()
     jugando(p)
     resolver(p, MIN_STICKS, false)
-    expect(JSON.parse(json[0])).not.toHaveProperty('hazanas')
+    expect(JSON.parse(json[0])).not.toHaveProperty('feats')
     jugando(p)
     p.catchStick(0.5, true)
     resolver(p, MIN_STICKS - 1, false)
-    expect(JSON.parse(json[1]).hazanas).toEqual([HAZANAS.deEspaldas])
+    expect(JSON.parse(json[1]).feats).toEqual([HAZANAS.deEspaldas])
   })
 
   it('sin fin, la tanda limpia cuenta al recargar y se da al terminar; la que se escapa, no', () => {
@@ -403,7 +403,7 @@ describe('las hazañas, como en la web', () => {
     expect(p.wave).toBe(2)
     resolver(p, 1)
     p.endRun()
-    expect(JSON.parse(json[0]).hazanas).toEqual([HAZANAS.tandaLimpia])
+    expect(JSON.parse(json[0]).feats).toEqual([HAZANAS.tandaLimpia])
   })
 
   it('en el desafío, sin perder una vida; y a dos, lo del primer turno se cuenta al acabar el segundo', () => {
@@ -416,7 +416,7 @@ describe('las hazañas, como en la web', () => {
     expect(json).toEqual([])
     jugando(p)
     resolver(p, CHALLENGE_LIVES, false)
-    expect(JSON.parse(json[0])).toMatchObject({ modo: 'duel', hazanas: [HAZANAS.tandaLimpia] })
+    expect(JSON.parse(json[0])).toMatchObject({ mode: 'duel', feats: [HAZANAS.tandaLimpia] })
   })
 })
 
@@ -424,45 +424,45 @@ describe('el cartel del objetivo, como en la web', () => {
   beforeEach(() => gameStorage()?.clear())
 
   /** Los listones de Stick Rush en el salón. */
-  const OBJETIVO: Objetivo = {
-    medallas: { bronce: 1900, plata: 3750, oro: 5200 },
-    mejorEs: 'mas',
-    unidad: 'points in challenge',
+  const OBJETIVO: Goal = {
+    medals: { bronze: 1900, silver: 3750, gold: 5200 },
+    better: 'higher',
+    unit: 'points in challenge',
     record: null,
-    modo: 'challenge',
+    mode: 'challenge',
   }
 
   it('sin salón: la misión y el récord guardado; jugando, lo que se lleva, las vidas y los palos; al acabar, lo hecho', () => {
     gameStorage()!.setItem('stick-rush:best-points:challenge', '3100')
     const p = new Partida()
     p.startGame()
-    expect(p.cartel('en')).toMatchObject({ titulo: 'Catch 13 sticks. Drop three and out', detalle: 'Your record 3,100' })
-    expect(p.cartel('es')).toMatchObject({ titulo: 'Atrapa 13 palos. Tres al suelo y fuera', detalle: 'Tu récord 3100' })
+    expect(p.cartel('en')).toMatchObject({ title: 'Catch 13 sticks. Drop three and out', detail: 'Your record 3,100' })
+    expect(p.cartel('es')).toMatchObject({ title: 'Atrapa 13 palos. Tres al suelo y fuera', detail: 'Tu récord 3100' })
     p.tick(COUNTDOWN_SECONDS)
     // Hasta que se resuelve el primer palo sigue la misión: da tiempo a leerla.
-    expect(p.faseDelCartel).toBe('antes')
+    expect(p.faseDelCartel).toBe('before')
     p.missStick()
-    expect(p.faseDelCartel).toBe('jugando')
-    expect(p.cartel('es')).toMatchObject({ titulo: 'Tu récord 3100 · llevas 0', detalle: 'Vidas ♥♥♡ · Palos 12' })
+    expect(p.faseDelCartel).toBe('playing')
+    expect(p.cartel('es')).toMatchObject({ title: 'Tu récord 3100 · llevas 0', detail: 'Vidas ♥♥♡ · Palos 12' })
     expect(p.medalla).toBeNull()
     resolver(p, 2, false)
-    expect([p.gameState, p.faseDelCartel]).toEqual(['finished', 'final'])
-    expect(p.cartel('en')).toMatchObject({ titulo: 'You scored 0', detalle: '3,100 short of your record' })
+    expect([p.gameState, p.faseDelCartel]).toEqual(['finished', 'end'])
+    expect(p.cartel('en')).toMatchObject({ title: 'You scored 0', detail: '3,100 short of your record' })
   })
 
   it('con los listones del salón: los tres listones, la medalla que sube y lo que faltó', () => {
-    const p = new Partida({ objetivo: { ...OBJETIVO, medallas: { bronce: 1, plata: 400, oro: 100000 } } })
+    const p = new Partida({ objetivo: { ...OBJETIVO, medals: { bronze: 1, silver: 400, gold: 100000 } } })
     jugando(p)
-    expect(p.cartel('es')).toMatchObject({ titulo: 'Atrapa 13 palos. Tres al suelo y fuera', detalle: 'Bronce 1 · Plata 400 · Oro 100.000' })
+    expect(p.cartel('es')).toMatchObject({ title: 'Atrapa 13 palos. Tres al suelo y fuera', detail: 'Bronce 1 · Plata 400 · Oro 100.000' })
     p.catchStick(0.5)
-    expect(p.medalla).toBe('bronce')
+    expect(p.medalla).toBe('bronze')
     resolver(p, 3)
     expect(p.points).toBeGreaterThanOrEqual(400)
-    expect(p.medalla).toBe('plata')
+    expect(p.medalla).toBe('silver')
     resolver(p, 3, false)
     // El cartel escribe las cifras como la chapa del salón: en español, cuatro cifras van sin punto.
     expect(p.points).toBeLessThan(10000)
-    expect(p.cartel('es')).toMatchObject({ titulo: `Plata · ${p.points} points in challenge`, detalle: `Te han faltado ${formatoDeCifra(100000 - p.points, 'es')} para el oro` })
+    expect(p.cartel('es')).toMatchObject({ title: `Plata · ${p.points} points in challenge`, detail: `Te han faltado ${formatoDeCifra(100000 - p.points, 'es')} para el oro` })
   })
 
   it('dos partidas seguidas: la segunda compara con el récord nuevo de la primera, que el salón no ha vuelto a pasar', () => {
@@ -470,24 +470,24 @@ describe('el cartel del objetivo, como en la web', () => {
     const p = new Partida({ objetivo: OBJETIVO, alTerminar: (resultado) => contados.push(resultado) })
     jugando(p)
     // La primera vez, el bronce en palos y el oro.
-    expect(p.cartel('es')?.detalle).toBe('Bronce ≈ 13 palos · Oro 5200')
+    expect(p.cartel('es')?.detail).toBe('Bronce ≈ 13 palos · Oro 5200')
     resolver(p, 3)
     resolver(p, 3, false)
     const hechos = p.points
     expect(hechos).toBeGreaterThan(0)
-    expect(p.cartel('en')?.pie).toContain('First record!')
+    expect(p.cartel('en')?.footer).toContain('First record!')
     expect(contados).toHaveLength(1)
     // El metadato `goal` sigue sin récord, pero la partida ya lo sabe: lo pide al empezar.
     jugando(p)
-    expect(p.cartel('es')?.detalle).toBe('Bronce 1900 · Plata 3750 · Oro 5200')
+    expect(p.cartel('es')?.detail).toBe('Bronce 1900 · Plata 3750 · Oro 5200')
     resolver(p, 3, false)
-    expect(p.cartel('en')?.pie).toContain(`Your best ${formatoDeCifra(hechos, 'en')}`)
+    expect(p.cartel('en')?.footer).toContain(`Your best ${formatoDeCifra(hechos, 'en')}`)
   })
 
   it('fuera del reto: en el salón dice que no cuenta mientras se juega; suelto, no se cuelga', () => {
     const enElSalon = enPractica({ objetivo: OBJETIVO })
     jugando(enElSalon)
-    expect(enElSalon.cartel('es')).toMatchObject({ titulo: 'Práctica · no cuenta para medalla', discreto: true })
+    expect(enElSalon.cartel('es')).toMatchObject({ title: 'Práctica · no cuenta para medalla', subdued: true })
     expect([enElSalon.faseDelCartel, enElSalon.medalla]).toEqual([null, null])
     resolver(enElSalon, MIN_STICKS)
     expect([enElSalon.gameState, enElSalon.cartel('es')]).toEqual(['finished', null])
@@ -499,16 +499,16 @@ describe('el cartel del objetivo, como en la web', () => {
     const aDos = new Partida({ objetivo: OBJETIVO })
     aDos.setPlayers(2)
     jugando(aDos)
-    expect(aDos.cartel('en')?.titulo).toBe('Duel · does not count for a medal')
+    expect(aDos.cartel('en')?.title).toBe('Duel · does not count for a medal')
   })
 
   it('el listón cruzado suena con su medalla, además del atrape, y una sola vez', () => {
     expect(SOUNDS).toEqual(expect.arrayContaining(Object.values(SONIDO_DEL_LISTON)))
     const base: Pistas = { score: 0, missed: 0, countdown: 0, gameState: 'playing', streak: 0, isRecord: false, levelPassed: null, lives: 3, medalla: null }
-    const conBronce: Pistas = { ...base, score: 1, streak: 1, medalla: 'bronce' }
+    const conBronce: Pistas = { ...base, score: 1, streak: 1, medalla: 'bronze' }
     expect(sonidosDesde(base, conBronce)).toEqual(['catch-1', 'medal-bronze'])
     expect(sonidosDesde(conBronce, { ...conBronce, score: 2, streak: 2 })).toEqual(['catch-2'])
-    expect(sonidosDesde(conBronce, { ...conBronce, score: 2, streak: 2, medalla: 'oro' })).toEqual(['catch-2', 'medal-gold'])
+    expect(sonidosDesde(conBronce, { ...conBronce, score: 2, streak: 2, medalla: 'gold' })).toEqual(['catch-2', 'medal-gold'])
     // Volver al menú deja la medalla en nada: no suena, y sin medalla que mirar tampoco.
     expect(sonidosDesde(conBronce, { ...base, gameState: 'menu' })).toEqual([])
     expect(sonidosDesde({ ...base, medalla: undefined }, { ...base, medalla: undefined })).toEqual([])
@@ -525,7 +525,7 @@ describe('el calentamiento, como en el store de la web', () => {
     expect([p.gameMode, p.calentando]).toEqual(['challenge', true])
     resolver(p, 3, false)
     expect([p.gameState, p.lives]).toEqual(['playing', CHALLENGE_LIVES])
-    expect(p.cartel('es')?.titulo).toBe('Calentamiento · no cuenta para medalla')
+    expect(p.cartel('es')?.title).toBe('Calentamiento · no cuenta para medalla')
 
     const antes = p.runId
     p.finishTutorial()
@@ -541,7 +541,7 @@ describe('el calentamiento, como en el store de la web', () => {
     practica.setImmersive(true)
     jugando(practica)
     expect(practica.calentando).toBe(false)
-    const delReto = new Partida({ reto: { semilla: 7 } })
+    const delReto = new Partida({ reto: { seed: 7 } })
     expect(delReto.calentando).toBe(false)
   })
 })

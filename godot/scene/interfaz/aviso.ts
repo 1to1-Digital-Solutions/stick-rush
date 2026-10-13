@@ -17,14 +17,14 @@
  */
 import { Node3D, Vector3, type MeshInstance3D } from 'godot'
 
-import { triangulosDeArco } from '@kit/lib/ui/iconos'
-import { Boton } from '@kit/runtime/ui/boton'
-import { figura, pintar } from '@kit/runtime/ui/malla'
+import { arcTriangles } from '@kit/lib/ui/icons'
+import { Button } from '@kit/runtime/ui/button'
+import { shape, paint } from '@kit/runtime/ui/mesh'
 import { Panel } from '@kit/runtime/ui/panel'
-import type { Punteria } from '@kit/runtime/ui/punteria'
-import { ORDEN } from '@kit/runtime/ui/texto3d'
+import type { PointerAim } from '@kit/runtime/ui/pointerAim'
+import { RENDER_ORDER } from '@kit/runtime/ui/text3d'
 
-import type { Lang } from '@/lib/ajustes'
+import type { Lang } from '@/lib/settings'
 import { LIFE_COLOR } from '@/lib/gameConfig'
 import { traductor } from '@/lib/textos'
 import { XR_HOME_ICON } from '@/lib/xrIcons'
@@ -47,8 +47,8 @@ import { huecosDeForma, iconoDeCasa, iconoDeVisto } from './iconos'
 import { COLORES } from './menu'
 
 /** Un botón suelto, que no cuelga de un panel, en su sitio de la interfaz y girado hacia quien juega. */
-function botonSuelto(id: string, sitio: Vec3, giro: number, color: string, alPulsar: () => void): Boton {
-  const boton = new Boton({ id, caja: { x: 0, y: 0, width: 0.16, height: 0.14 }, z: 0, color, opacidad: 0, alPulsar })
+function botonSuelto(id: string, sitio: Vec3, giro: number, color: string, alPulsar: () => void): Button {
+  const boton = new Button({ id, caja: { x: 0, y: 0, width: 0.16, height: 0.14 }, z: 0, color, opacidad: 0, alPulsar })
   boton.nodo.position = new Vector3(...sitio)
   boton.nodo.rotation = new Vector3(0, giro, 0)
   return boton
@@ -56,14 +56,14 @@ function botonSuelto(id: string, sitio: Vec3, giro: number, color: string, alPul
 
 /** La placa de la web (0,12 × 0,1), más pequeña que la zona sensible: lo que se ve del botón. */
 function placa(color: string): MeshInstance3D {
-  return figura([[-0.06, -0.05], [0.06, -0.05], [0.06, 0.05], [-0.06, -0.05], [0.06, 0.05], [-0.06, 0.05]], color)
+  return shape([[-0.06, -0.05], [0.06, -0.05], [0.06, 0.05], [-0.06, -0.05], [0.06, 0.05], [-0.06, 0.05]], color)
 }
 
 export class BotonDeVolver {
-  readonly boton: Boton
-  constructor(alPulsar: () => void, punteria: Punteria) {
+  readonly boton: Button
+  constructor(alPulsar: () => void, punteria: PointerAim) {
     this.boton = botonSuelto('quit', XR_QUIT_POSITION, XR_QUIT_YAW, COLORES.neutro, alPulsar)
-    this.boton.dibujo(placa(COLORES.neutro), COLORES.neutro, 1, { prioridad: ORDEN.placa })
+    this.boton.dibujo(placa(COLORES.neutro), COLORES.neutro, 1, { prioridad: RENDER_ORDER.placa })
     this.boton.dibujo(iconoDeCasa(0.028, '#ffffff'), '#ffffff')
     const puerta = huecosDeForma(XR_HOME_ICON, 0.028, COLORES.neutro)
     if (puerta != null) this.boton.dibujo(puerta, COLORES.neutro)
@@ -76,10 +76,10 @@ export class BotonDeVolver {
 }
 
 export class BotonDeTerminar {
-  readonly boton: Boton
-  constructor(alPulsar: () => void, punteria: Punteria) {
+  readonly boton: Button
+  constructor(alPulsar: () => void, punteria: PointerAim) {
     this.boton = botonSuelto('end-run', XR_END_RUN_POSITION, XR_END_RUN_YAW, COLORES.jugar, alPulsar)
-    this.boton.dibujo(placa(COLORES.jugar), COLORES.jugar, 1, { prioridad: ORDEN.placa })
+    this.boton.dibujo(placa(COLORES.jugar), COLORES.jugar, 1, { prioridad: RENDER_ORDER.placa })
     this.boton.dibujo(iconoDeVisto(0.028, '#ffffff'), '#ffffff')
     punteria.anadir(this.boton)
   }
@@ -92,15 +92,15 @@ export class BotonDeTerminar {
 export class AvisoDeSalir {
   readonly panel: Panel
   readonly nodo: Node3D
-  readonly dejar: Boton
-  readonly seguir: Boton
+  readonly dejar: Button
+  readonly seguir: Button
 
-  constructor(acciones: { dejar(): void; seguir(): void }, punteria: Punteria) {
+  constructor(acciones: { dejar(): void; seguir(): void }, punteria: PointerAim) {
     this.panel = new Panel({ ancho: XR_CONFIRM_SIZE[0], alto: XR_CONFIRM_SIZE[1], fondo: COLORES.panel, opacidad: 1 })
     this.nodo = this.panel.nodo
     const caja = (box: { position: Vec3; size: Vec3 }) => ({ x: box.position[0], y: box.position[1], width: box.size[0], height: box.size[1] })
-    this.dejar = this.panel.boton(new Boton({ id: 'confirm:leave', caja: caja(CONFIRM_BOXES.leave), color: COLORES.ficha, alPulsar: () => acciones.dejar() }))
-    this.seguir = this.panel.boton(new Boton({ id: 'confirm:stay', caja: caja(CONFIRM_BOXES.stay), color: LIFE_COLOR, alPulsar: () => acciones.seguir() }))
+    this.dejar = this.panel.boton(new Button({ id: 'confirm:leave', caja: caja(CONFIRM_BOXES.leave), color: COLORES.ficha, alPulsar: () => acciones.dejar() }))
+    this.seguir = this.panel.boton(new Button({ id: 'confirm:stay', caja: caja(CONFIRM_BOXES.stay), color: LIFE_COLOR, alPulsar: () => acciones.seguir() }))
     punteria.anadir(this.dejar, this.seguir)
     this.nodo.visible = false
   }
@@ -180,7 +180,7 @@ export class CuentaAtras {
     const ancho = (COUNTDOWN_SECONDS - 1) * RING_GAP
     const tubo = RING_RADIUS * 0.16
     for (let i = 0; i < COUNTDOWN_SECONDS; i++) {
-      const anillo = figura(triangulosDeArco(RING_RADIUS - tubo, RING_RADIUS + tubo, 0, Math.PI * 2, 28), '#22c55e', 0.85)
+      const anillo = shape(arcTriangles(RING_RADIUS - tubo, RING_RADIUS + tubo, 0, Math.PI * 2, 28), '#22c55e', 0.85)
       anillo.position = new Vector3(i * RING_GAP - ancho / 2, 0, 0)
       this.nodo.add_child(anillo)
       this.anillos.push(anillo)
@@ -196,15 +196,15 @@ export class CuentaAtras {
     this.anillos.forEach((anillo, i) => {
       const segundo = COUNTDOWN_SECONDS - i
       if (cuenta < segundo) {
-        pintar(anillo, '#475569', 0.12)
+        paint(anillo, '#475569', 0.12)
         anillo.scale = new Vector3(0.8, 0.8, 1)
       } else if (cuenta === segundo) {
         const pulso = 0.5 + 0.5 * Math.sin(this.reloj * Math.PI * 2)
-        pintar(anillo, '#22c55e', 0.6 + pulso * 0.4)
+        paint(anillo, '#22c55e', 0.6 + pulso * 0.4)
         const k = 1.12 + pulso * 0.12
         anillo.scale = new Vector3(k, k, 1)
       } else {
-        pintar(anillo, '#22c55e', 0.85)
+        paint(anillo, '#22c55e', 0.85)
         anillo.scale = Vector3.ONE
       }
     })

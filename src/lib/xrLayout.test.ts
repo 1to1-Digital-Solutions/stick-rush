@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { problemasDeLaSalida, type PanelBox } from './exitCorner'
-import { ALTO_DE_LINEA } from '../components/xr/canvasPanel'
+import { exitProblems, type PanelBox } from './exitCorner'
+import { LINE_HEIGHT } from '../components/xr/canvasPanel'
 import {
   RETAKE_DELTA,
   RETAKE_SECONDS,
@@ -49,7 +49,7 @@ import {
   type Vec3,
 } from './xrLayout'
 import { MIN_EYE_HEIGHT, REFERENCE_EYE_HEIGHT, hoopHeightFor } from './hoopHeight'
-import { GRADOS_DEL_MENU, gradosDelFrente } from './plantillaDelMenu'
+import { MENU_DEGREES, degreesFromFront } from './menuTemplate'
 import { traductor } from './textos'
 import { MAX_STICKS, PLAYER_OFFSET_Z, STICK_CORD_LENGTH, STICK_LENGTH, STICK_RADIUS } from './gameConfig'
 import { EYE_HEIGHTS } from './panelReading'
@@ -261,7 +261,7 @@ describe('la salida', () => {
     const nombres = Object.keys(XR_MENU_HIT)
 
     expect(
-      problemasDeLaSalida(
+      exitProblems(
         comoCaja('exit'),
         nombres.filter((nombre) => nombre !== 'exit').map(comoCaja),
         { width: MENU_PANEL[0], height: MENU_PANEL[1] },
@@ -331,7 +331,7 @@ describe('el menú empieza por el modo', () => {
     // Las cajas de la fila del modo son botones de verdad; lo que hay entre las filas de
     // abajo son rótulos que no se pulsan, y eso lo mide `menu.legible.test.ts`.
     // El renglón mide más que la letra: se mide con su alto de línea, como lo apunta el lienzo.
-    const techoDelNombre = XR_STICK_ROW_Y + ROW_LABEL_RISE + MENU_TEXT.label / ALTO_DE_LINEA / 2
+    const techoDelNombre = XR_STICK_ROW_Y + ROW_LABEL_RISE + MENU_TEXT.label / LINE_HEIGHT / 2
     expect(techoDelNombre).toBeLessThan(filas[0].y - filas[0].alto / 2)
   })
 })
@@ -395,15 +395,15 @@ describe('el rótulo de la fila del modo', () => {
 })
 
 describe('el menú del visor nace de frente', () => {
-  it(`a ${GRADOS_DEL_MENU}° o menos de la mirada, a metro y medio, y de cara a quien juega`, () => {
-    expect(gradosDelFrente(XR_MENU_POSE.position)).toBeLessThanOrEqual(GRADOS_DEL_MENU)
+  it(`a ${MENU_DEGREES}° o menos de la mirada, a metro y medio, y de cara a quien juega`, () => {
+    expect(degreesFromFront(XR_MENU_POSE.position)).toBeLessThanOrEqual(MENU_DEGREES)
     expect(Math.hypot(XR_MENU_POSE.position[0], XR_MENU_POSE.position[2])).toBeCloseTo(1.5)
     expect(XR_MENU_POSE.yaw).toBeCloseTo(Math.atan2(-XR_MENU_POSE.position[0], -XR_MENU_POSE.position[2]))
   })
 
   it('el control: a 55°, donde estuvo, no pasaría', () => {
     const a = (55 * Math.PI) / 180
-    expect(gradosDelFrente([-Math.sin(a) * 1.5, REFERENCE_EYE_HEIGHT, -Math.cos(a) * 1.5])).toBeGreaterThan(GRADOS_DEL_MENU)
+    expect(degreesFromFront([-Math.sin(a) * 1.5, REFERENCE_EYE_HEIGHT, -Math.cos(a) * 1.5])).toBeGreaterThan(MENU_DEGREES)
   })
 })
 

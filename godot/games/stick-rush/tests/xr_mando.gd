@@ -1,4 +1,4 @@
-## Stick Rush con visor, sin visor: mandos de mentira (`@kit/runtime/xr/simulado`) y el jugador
+## Stick Rush con visor, sin visor: mandos de mentira (`@kit/runtime/xr/simulated`) y el jugador
 ## automático que lleva el puño a cada palo y aprieta el gatillo lateral, por el mismo camino que una
 ## mano de verdad. Cada caso monta el juego de nuevo con sus ajustes del salón y comprueba la
 ## gramática XR del kit con los ficheros comunes de verdad del juego (`xrLayout.ts` para la altura,
@@ -136,9 +136,9 @@ func comprobar(r: Dictionary) -> void:
 	var resultados: Array = r.resultados
 	var espaldas: bool = c.has("mirar")
 	var toca: Array = [DE_ESPALDAS] if espaldas else []
-	if resultados.size() != 1 or resultados[0].get("hazanas", []) != toca:
+	if resultados.size() != 1 or resultados[0].get("feats", []) != toca:
 		f.append("al acabar se cuentan las hazañas %s y tocaban %s" % [resultados, toca])
-	if salon != null and (salon.resultados.size() != 1 or salon.resultados[0].get("hazanas", []) != toca):
+	if salon != null and (salon.resultados.size() != 1 or salon.resultados[0].get("feats", []) != toca):
 		f.append("el salón recibe %s y tocaban las hazañas %s" % [salon.resultados, toca])
 	if espaldas:
 		for fallo in f:

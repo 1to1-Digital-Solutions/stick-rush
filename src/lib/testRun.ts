@@ -1,50 +1,50 @@
 /**
- * El juego, manejable desde un test de navegador sin jugar: lo común de los diecisiete
- * (`e2e/support/comun.ts`) para sacar las mismas capturas de la UX en todos.
+ * The game, drivable from a browser test without playing: what is common to the seventeen
+ * (`e2e/support/common.ts`) to take the same UX screenshots in all of them.
  *
- * Coger palos con el emulador del visor es lo que ni el emulador ni un test hacen bien, y lo que se
- * mira en esas capturas —el menú, el cartel antes de empezar, al cruzar el bronce y al acabar— no
- * depende de cómo se cogieron. Así que el test empieza el reto, le pone los puntos y lo acaba.
+ * Grabbing sticks with the headset's emulator is what neither the emulator nor a test does well, and what is
+ * looked at in those screenshots —the menu, the sign before starting, on crossing the bronze and at the end— does not
+ * depend on how they were grabbed. So the test starts the challenge, gives it the points and ends it.
  *
- * **La llave lleva el nombre del juego**: los juegos se instalan todos a la vez dentro del salón, y
- * un `declare global` es de la página, no de quien lo escribe; con dos juegos llamando `__partida`
- * a lo suyo, TypeScript funde las declaraciones y el salón no construye.
+ * **The key carries the name of the game**: the games are all installed at once inside the hall, and
+ * a `declare global` belongs to the page, not to whoever writes it; with two games calling their own thing `__run`,
+ * TypeScript merges the declarations and the hall does not build.
  *
- * **Solo cuenta si alguien lo pide**: el test crea `window.__partidaStickRush` antes de cargar la
- * página (`pedirLaPartida`), y la escena deja ahí lo que se le puede pedir. En una partida de verdad
- * esto no hace nada, que es lo que permite dejarlo puesto. Se mira en `globalThis`, que en el
- * navegador es la ventana y fuera de él también existe: así `src/lib` no toca el navegador.
+ * **It only counts if somebody asks for it**: the test creates `window.__runStickRush` before loading the
+ * page (`requestRun`), and the scene leaves there what can be asked of it. In a real run
+ * this does nothing, which is what allows leaving it in place. It is looked up on `globalThis`, which in the
+ * browser is the window and outside it exists too: that way `src/lib` does not touch the browser.
  */
 
-import type { VistaDelCartel } from './objetivo'
+import type { GoalSignView } from './goal'
 
-/** Lo que un test puede hacerle al juego: lo común de `PartidaComun` (`e2e/support/comun.ts`). */
-export interface PartidaDePrueba {
-  /** Empieza un reto, solo, sin lección ni cuenta atrás que esperar. */
+/** What a test can do to the game: what is common in `CommonRun` (`e2e/support/common.ts`). */
+export interface TestRun {
+  /** Starts a challenge, solo, with no lesson nor countdown to wait for. */
   start: () => void
-  /** Fija los puntos del reto en curso, como si ya se hubiera atrapado un palo. */
-  score: (puntos: number) => void
-  /** Acaba el reto en curso como si se hubieran resuelto todos los palos: cuenta para el salón. */
+  /** Sets the points of the challenge in progress, as if a stick had already been caught. */
+  score: (points: number) => void
+  /** Ends the challenge in progress as if every stick had been resolved: it counts for the hall. */
   end: () => void
-  /** Lo que dice ahora el cartel del objetivo, o `null` si no se ve. */
-  cartel: () => VistaDelCartel | null
+  /** What the goal sign says now, or `null` if it is not showing. */
+  sign: () => GoalSignView | null
 }
 
 declare global {
-  var __partidaStickRush: Partial<PartidaDePrueba> | undefined
+  var __runStickRush: Partial<TestRun> | undefined
 }
 
-/** ¿Alguien quiere manejar el juego desde fuera? */
-export function isPartidaRequested(): boolean {
-  return globalThis.__partidaStickRush != null
+/** Does somebody want to drive the game from outside? */
+export function isTestRunRequested(): boolean {
+  return globalThis.__runStickRush != null
 }
 
-/** Deja a mano lo que se puede hacer, si alguien lo ha pedido. */
-export function exponerPartida(api: PartidaDePrueba): void {
-  const partida = globalThis.__partidaStickRush
-  if (partida == null) return
-  partida.start = api.start
-  partida.score = api.score
-  partida.end = api.end
-  partida.cartel = api.cartel
+/** Leaves at hand what can be done, if somebody has asked for it. */
+export function exposeTestRun(api: TestRun): void {
+  const run = globalThis.__runStickRush
+  if (run == null) return
+  run.start = api.start
+  run.score = api.score
+  run.end = api.end
+  run.sign = api.sign
 }

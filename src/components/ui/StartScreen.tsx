@@ -17,13 +17,13 @@ import {
 } from '../../lib/gameMode'
 import { PLAYER_COUNTS, PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS, juegaADos } from '../../lib/duel'
 import { MODOS_DEL_MENU, botonDeOpciones, seVe } from '../../lib/menuDelJuego'
-import { MENU_EN, plural } from '../../lib/palabras'
-import { nombreDelJuego } from '../../lib/plantillaDelMenu'
+import { MENU_EN, plural } from '../../lib/menuWords'
+import { gameName } from '../../lib/menuTemplate'
 import { useGame } from '../../lib/gameStore'
 import { LEVEL_COUNT, levelSpec } from '../../lib/levels'
 import { HeartIcon, InfinityIcon, StarIcon } from './icons'
 import { XRWrapper } from '../xr/XRWrapper'
-import { useLang } from '../../lib/ajustesCliente'
+import { useLang } from '../../lib/settingsClient'
 import { formatea, formatoDeCifra, traductor, traductorSuave } from '../../lib/textos'
 
 const STICK_OPTIONS = Array.from(
@@ -204,7 +204,7 @@ function PlayersPicker() {
         id="players-label"
         className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50"
       >
-        {t(MENU_EN.jugadores)}
+        {t(MENU_EN.players)}
       </h2>
       <div className="grid gap-2 sm:grid-cols-2">
         {PLAYER_COUNTS.map((count) => {
@@ -288,7 +288,7 @@ export function StartScreen() {
         <header className="flex flex-col gap-2">
           {/* Como se llama la cabina del salón (`plantillaDelMenu.ts`), en mayúsculas de rótulo. */}
           <h1 className="text-glow-primary text-5xl uppercase tracking-wide text-[var(--color-primary)] sm:text-6xl">
-            {nombreDelJuego()}
+            {gameName()}
           </h1>
           <p className="text-sm text-white/60 sm:text-base">
              {t('Catch the sticks before they hit the ground.')}

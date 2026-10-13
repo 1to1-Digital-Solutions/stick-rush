@@ -32,7 +32,7 @@ Upbeat Chiptune Theme, de nihilocrat (<https://opengameart.org/content/upbeat-ch
 Los modelos y los perfiles de los mandos de Quest de
 [@webxr-input-profiles/assets](https://github.com/immersive-web/webxr-input-profiles), del grupo
 Immersive Web del W3C: los que enseña el tutorial en las dos manos y las ayudas junto al palo
-fantasma, con el botón que toca encendido. Los copia `npm run godot:mandos` desde
+fantasma, con el botón que toca encendido. Los copia `npm run godot:controllers` desde
 `public/webxr-profiles/`.
 
 Licencia **MIT**, que exige llevar el aviso en cada copia. Va entero en `mandos/LICENSE.md`, y

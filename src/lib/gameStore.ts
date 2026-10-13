@@ -57,19 +57,19 @@ import {
   subscribeStarsList,
   subscribeUnlockedLevel,
 } from './progress'
-import { volumeFactor } from './ajustes'
-import { setScenery as setArcadeScenery, useLang, useScenery, useVolumes } from './ajustesCliente'
+import { volumeFactor } from './settings'
+import { setScenery as setArcadeScenery, useLang, useScenery, useVolumes } from './settingsClient'
 import { llevaLaCuenta, partidaDelCartel } from './cartelDeLaMaquina'
 import {
-  cartelDeObjetivo,
-  medallaQueCelebra,
-  type FaseDelObjetivo,
-  type Medalla,
-  type Objetivo,
-  type VistaDelCartel,
-} from './objetivo'
+  goalSign,
+  medalToCelebrate,
+  type GoalPhase,
+  type Medal,
+  type Goal,
+  type GoalSignView,
+} from './goal'
 import { traductorSuave } from './textos'
-import { exponerPartida } from './partidaDePrueba'
+import { exposeTestRun } from './testRun'
 import {
   HOOP_ADJUST_STEP,
   clampHoopAdjustment,
@@ -88,7 +88,7 @@ import {
 } from './hazanas'
 import { forgetOwnScenery, sceneryModeOf, sceneryOf } from './sceneryPreference'
 import { gameStorage } from './storage'
-import { semillaAlAzar, semillaDe, type Reto } from './semilla'
+import { randomSeed, deriveSeed, type Challenge } from './seed'
 import { stickPoints } from './scoring'
 import {
   PLAZO_DEL_PASO,
@@ -136,18 +136,18 @@ export interface OpcionesDelSalon {
    * Jugar este reto: se entra **directamente** en una partida del desafío, sin lección, con los
    * palos que caen y su turno sacados de la semilla. Se lee al montar; otro reto es otro montaje.
    */
-  reto?: Reto
+  reto?: Challenge
   /**
    * Se llama una vez al acabar cada partida con puntuación (no al dejarla a medias), con las
    * hazañas estrenadas en ella si hay alguna (`hazanas.ts`).
    */
-  onTerminar?: (resultado: ResultadoConHazanas) => void
+  onFinish?: (resultado: ResultadoConHazanas) => void
   /**
    * Los listones de medalla del juego y la marca de quien juega, para el cartel de encima del
    * marcador (`objetivo.ts`). Sin él —el juego abierto suelto— el cartel dice la misión y el
    * récord guardado en este navegador.
    */
-  objetivo?: Objetivo
+  objetivo?: Goal
 }
 
 export interface GameStore {
@@ -233,15 +233,15 @@ export interface GameStore {
    * Lo que dice el cartel del objetivo (`objetivo.ts`), ya traducido, o `null` si no hay nada que
    * colgar: en el menú, y fuera del reto con el juego abierto suelto.
    */
-  cartel: VistaDelCartel | null
+  cartel: GoalSignView | null
   /**
    * En qué momento va la partida que cuenta para medalla —antes de resolverse el primer palo,
    * jugando o acabada—, o `null` si lo que se juega no cuenta. Con ella el cartel ya dice los
    * puntos y las vidas, y el marcador de debajo los calla.
    */
-  faseDelCartel: FaseDelObjetivo | null
+  faseDelCartel: GoalPhase | null
   /** La medalla que ya es de quien juega en esta partida: cuando sube, se celebra el listón. */
-  medalla: Medalla | null
+  medalla: Medal | null
   /** Palos atrapados en la partida actual. */
   score: number
   /**
@@ -429,7 +429,7 @@ function clampStickCount(count: number): number {
   return Math.min(MAX_STICKS, Math.max(MIN_STICKS, Math.round(count)))
 }
 
-export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSalon = {}): GameStore {
+export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon = {}): GameStore {
   const [stickCount, setStickCountState] = useState(MIN_STICKS)
   const [difficulty, setDifficulty] = useState<Difficulty>('easy')
   // Se abre en el reto, con salón o sin él (`DEFAULT_GAME_MODE`): Jugar sin tocar nada empieza la
@@ -441,7 +441,7 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
   // De dónde sale el reparto de la partida en marcha. La del reto si se juega el reto; si no,
   // una nueva en cada partida (`startGame`), que sigue siendo distinta cada vez. En el menú da
   // igual cuál: los palos cuelgan quietos.
-  const [semilla, setSemilla] = useState(() => reto?.semilla ?? 0)
+  const [semilla, setSemilla] = useState(() => reto?.seed ?? 0)
   const [endless, setEndless] = useState(false)
   const [players, setPlayers] = useState<PlayerCount>(1)
   /**
@@ -483,7 +483,7 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
   )
   /**
    * El récord del salón, tomado al empezar como el local: al acabar, el salón apunta la marca
-   * nueva y vuelve a pasar `objetivo` con ella (`onTerminar`), y el cartel compararía la partida
+   * nueva y vuelve a pasar `objetivo` con ella (`onFinish`), y el cartel compararía la partida
    * consigo misma («Has igualado tu récord»).
    */
   const recordDelSalon = objetivo?.record ?? null
@@ -592,7 +592,7 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
   const activeStickCount = setup.stickCount
   // Cada tanda, su semilla: sin fin, cada recarga reparte palos nuevos; en el resto de modos
   // solo hay la tanda 0.
-  const stickSeed = semillaDe(semilla, wave)
+  const stickSeed = deriveSeed(semilla, wave)
   const waveScore = score - waveStart.score
   const waveResolved = resolved - waveStart.resolved
 
@@ -718,10 +718,10 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
   // entra en las dependencias: un anfitrión que pasa una función nueva en cada render no tiene
   // por qué rehacer nada.
   const avisada = useRef(-1)
-  const avisar = useRef(onTerminar)
+  const avisar = useRef(onFinish)
   useEffect(() => {
-    avisar.current = onTerminar
-  }, [onTerminar])
+    avisar.current = onFinish
+  }, [onFinish])
   // La partida a dos con la tanda que acaba de terminar ya apuntada: el aviso de pasar el mando y
   // el de quién ha ganado salen de aquí.
   const duelAhora = duel !== null && gameState === 'finished' ? recordTurn(duel, points) : duel
@@ -746,7 +746,7 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
       saveDuelResult(duelWinner(duelAhora))
       avisar.current?.(
         conHazanas(
-          { modo: 'duel', puntos: mejorDelDuelo(duelAhora), reto: false },
+          { mode: 'duel', points: mejorDelDuelo(duelAhora), challenge: false },
           estrenarHazanas(hazanas.current.logradas),
         ),
       )
@@ -758,7 +758,7 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
     if (avisada.current === runId) return
     avisada.current = runId
     avisar.current?.(
-      conHazanas({ modo: gameMode, puntos: points, reto: enReto }, estrenarHazanas(hazanas.current.logradas)),
+      conHazanas({ mode: gameMode, points: points, challenge: enReto }, estrenarHazanas(hazanas.current.logradas)),
     )
   }, [
     gameState,
@@ -825,11 +825,11 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
     [objetivo, salonAlEmpezar, gameMode, aDos, gameState, points, lives, resolved, activeStickCount, recordToBeat, calentamiento, ahoraCuenta, lang],
   )
   const cartel = useMemo(
-    () => (partidaQueSeCuenta == null ? null : cartelDeObjetivo(partidaQueSeCuenta, traductorSuave(lang))),
+    () => (partidaQueSeCuenta == null ? null : goalSign(partidaQueSeCuenta, traductorSuave(lang))),
     [partidaQueSeCuenta, lang],
   )
-  const faseDelCartel = llevaLaCuenta(partidaQueSeCuenta) ? partidaQueSeCuenta.fase : null
-  const medalla = partidaQueSeCuenta == null ? null : medallaQueCelebra(partidaQueSeCuenta)
+  const faseDelCartel = llevaLaCuenta(partidaQueSeCuenta) ? partidaQueSeCuenta.phase : null
+  const medalla = partidaQueSeCuenta == null ? null : medalToCelebrate(partidaQueSeCuenta)
 
   const setStickCount = useCallback((count: number) => {
     setStickCountState(clampStickCount(count))
@@ -908,13 +908,13 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
       const partida = !juegaADos(gameMode, players)
         ? null
         : duelAhora === null || duelOver(duelAhora)
-          ? createDuel(semillaAlAzar())
+          ? createDuel(randomSeed())
           : duelAhora
       setDuel(partida)
       // Las hazañas empiezan de cero con cada partida, salvo el segundo turno de una a dos: la
       // partida es de los dos turnos y se le cuenta al salón entera al acabar el segundo.
       if (partida === null || partida !== duelAhora) hazanas.current = SIN_HAZANAS
-      setSemilla(partida?.semilla ?? semillaAlAzar())
+      setSemilla(partida?.semilla ?? randomSeed())
       setRecordToBeat(
         gameMode === 'practice' && endless ? getBestEndlessStreak() : getBestPoints(gameMode),
       )
@@ -981,7 +981,7 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
     enCurso.current = { cartel, resolved, score }
   }, [cartel, resolved, score])
   useEffect(() => {
-    exponerPartida({
+    exposeTestRun({
       start: () => {
         startGame({ tutorial: false })
         setCountdown(0)
@@ -1000,7 +1000,7 @@ export function useGameStoreValue({ reto, onTerminar, objetivo }: OpcionesDelSal
         setScore(atrapados + activeStickCount - hechos)
         setResolved(activeStickCount)
       },
-      cartel: () => enCurso.current.cartel,
+      sign: () => enCurso.current.cartel,
     })
   }, [startGame, activeStickCount])
 

@@ -32,14 +32,14 @@
 import { Vector3, type MeshInstance3D, type Node3D } from 'godot'
 
 import { piezasDelMando } from '@kit/lib/ui/tutorial'
-import { Boton } from '@kit/runtime/ui/boton'
-import { botonDeSalir } from '@kit/runtime/ui/iconos'
-import { figura } from '@kit/runtime/ui/malla'
+import { Button } from '@kit/runtime/ui/button'
+import { exitButton } from '@kit/runtime/ui/icons'
+import { shape } from '@kit/runtime/ui/mesh'
 import { Panel } from '@kit/runtime/ui/panel'
-import { ORDEN } from '@kit/runtime/ui/texto3d'
-import type { Punteria } from '@kit/runtime/ui/punteria'
+import { RENDER_ORDER } from '@kit/runtime/ui/text3d'
+import type { PointerAim } from '@kit/runtime/ui/pointerAim'
 
-import type { Lang } from '@/lib/ajustes'
+import type { Lang } from '@/lib/settings'
 import {
   DIFFICULTY_COLORS,
   DIFFICULTY_ORDER,
@@ -55,7 +55,7 @@ import { botonDeOpciones, seVe, type FilaDelMenu } from '@/lib/menuDelJuego'
 import { HOOP_ADJUST_RANGE } from '@/lib/hoopHeight'
 import { LEVEL_COUNT, type Stars } from '@/lib/levels'
 import { traductor } from '@/lib/textos'
-import { nombreDelJuego } from '@/lib/plantillaDelMenu'
+import { gameName } from '@/lib/menuTemplate'
 import {
   MENU_PANEL,
   MENU_TEXT,
@@ -168,7 +168,7 @@ function caja(sitio: Vec3 | readonly [number, number], tamano: readonly [number,
 export class MenuDelJuego {
   readonly panel: Panel
   readonly nodo: Node3D
-  readonly botones = new Map<string, Boton>()
+  readonly botones = new Map<string, Button>()
   private readonly placas = new Map<string, MeshInstance3D>()
   private readonly palos: MeshInstance3D[] = []
   private readonly estrellasDelNivel: MeshInstance3D[][] = []
@@ -183,7 +183,7 @@ export class MenuDelJuego {
   /** El icono de contra quién: la mesa, la ficha de este lado y la de enfrente (solo a dos). */
   private readonly pareja: MeshInstance3D[]
 
-  constructor(acciones: AccionesDelMenu, punteria: Punteria) {
+  constructor(acciones: AccionesDelMenu, punteria: PointerAim) {
     this.panel = new Panel({ ancho: MENU_PANEL[0], alto: MENU_PANEL[1], fondo: COLORES.panel, opacidad: 1 })
     this.nodo = this.panel.nodo
 
@@ -203,7 +203,7 @@ export class MenuDelJuego {
     // Volver a ver el tutorial: el mando en miniatura, quieto.
     const tutorial = this.anadir('tutorial', caja(XR_MENU_SPOT.tutorial, XR_MENU_HIT.tutorial), () => acciones.verElTutorial())
     this.placa(tutorial, 'tutorial', 0.11, 0.095, COLORES.neutro)
-    for (const pieza of piezasDelMando(null, 0.075)) tutorial.dibujo(figura(pieza.triangulos, COLORES.claro), COLORES.claro)
+    for (const pieza of piezasDelMando(null, 0.075)) tutorial.dibujo(shape(pieza.triangulos, COLORES.claro), COLORES.claro)
 
     // El modo, con lo que pone en juego.
     const modo = this.anadir('mode', caja(XR_MENU_SPOT.mode, XR_MENU_HIT.mode), () => acciones.siguienteModo())
@@ -221,8 +221,8 @@ export class MenuDelJuego {
     // Tanda o sin fin, solo en la práctica.
     const sinFin = this.anadir('endless', caja(XR_MENU_SPOT.endless, XR_MENU_HIT.endless), () => acciones.alternarSinFin())
     this.placa(sinFin, 'endless', 0.13, 0.1, COLORES.ficha)
-    this.aroEntero = sinFin.dibujo(figura(triangulosDelAroSinFin(true), '#ffffff'), '#ffffff')
-    this.aroMedio = sinFin.dibujo(figura(triangulosDelAroSinFin(false), COLORES.gris), COLORES.gris)
+    this.aroEntero = sinFin.dibujo(shape(triangulosDelAroSinFin(true), '#ffffff'), '#ffffff')
+    this.aroMedio = sinFin.dibujo(shape(triangulosDelAroSinFin(false), COLORES.gris), COLORES.gris)
 
     // Contra quién, solo en el desafío: en el hueco de sin fin, con su misma caja.
     const jugadores = this.anadir('players', caja(XR_MENU_SPOT.endless, XR_MENU_HIT.endless), () => acciones.alternarJugadores())
@@ -264,7 +264,7 @@ export class MenuDelJuego {
         { x: i * XR_LEVEL_PICKER_SPACING - anchoDeNiveles / 2, y: XR_STICK_ROW_Y, width: XR_LEVEL_PICKER_SPACING, height: XR_ROW_HIT_HEIGHT.sticks },
         () => acciones.elegirNivel(nivel),
       )
-      this.placas.set(id, b.dibujo(rectangulo(0.03, 0.05, COLORES.apagado, 0, -0.02), COLORES.apagado, 1, { prioridad: ORDEN.placa }))
+      this.placas.set(id, b.dibujo(rectangulo(0.03, 0.05, COLORES.apagado, 0, -0.02), COLORES.apagado, 1, { prioridad: RENDER_ORDER.placa }))
       const suyas: MeshInstance3D[] = []
       for (let s = 0; s < 3; s++) suyas.push(b.dibujo(rectangulo(0.014, 0.008, COLORES.estrellaGastada, 0, 0.03 + s * 0.016), COLORES.estrellaGastada))
       this.estrellasDelNivel.push(suyas)
@@ -297,7 +297,7 @@ export class MenuDelJuego {
     const jugar = this.anadir('play', caja(XR_MENU_SPOT.play, XR_MENU_PLAY_HIT), () => acciones.jugar())
     this.placa(jugar, 'play', 0.32, 0.1, COLORES.jugar)
     jugar.dibujo(iconoDeFlecha(0.032, 'right', '#ffffff'), '#ffffff')
-    const salir = botonDeSalir({
+    const salir = exitButton({
       caja: caja(XR_MENU_SPOT.exit, XR_MENU_HIT.exit),
       color: COLORES.neutro,
       opacidad: 1,
@@ -312,20 +312,20 @@ export class MenuDelJuego {
   }
 
   /** Un botón con la zona sensible de la web y la placa transparente: lo que se ve es su dibujo. */
-  private anadir(id: string, zona: { x: number; y: number; width: number; height: number }, alPulsar: () => void): Boton {
-    const boton = new Boton({ id, caja: zona, color: COLORES.panel, opacidad: 0, alPulsar })
+  private anadir(id: string, zona: { x: number; y: number; width: number; height: number }, alPulsar: () => void): Button {
+    const boton = new Button({ id, caja: zona, color: COLORES.panel, opacidad: 0, alPulsar })
     this.panel.boton(boton)
     this.botones.set(id, boton)
     return boton
   }
 
   /** La placa de la web, más pequeña que su zona sensible, como dibujo del botón, debajo de los demás. */
-  private placa(boton: Boton, id: string, ancho: number, alto: number, color: string): void {
-    const placa = boton.dibujo(rectangulo(ancho, alto, color), color, 1, { prioridad: ORDEN.placa })
+  private placa(boton: Button, id: string, ancho: number, alto: number, color: string): void {
+    const placa = boton.dibujo(rectangulo(ancho, alto, color), color, 1, { prioridad: RENDER_ORDER.placa })
     this.placas.set(id, placa)
   }
 
-  boton(id: string): Boton {
+  boton(id: string): Button {
     return this.botones.get(id)!
   }
 
@@ -446,7 +446,7 @@ export class MenuDelJuego {
     const { panel } = this
     panel.borrarTextos()
     // El nombre de la cabina, arriba a la izquierda: un nombre propio, sin traducir.
-    panel.escribir(nombreDelJuego(), MENU_TITLE.x, MENU_TITLE.y, {
+    panel.escribir(gameName(), MENU_TITLE.x, MENU_TITLE.y, {
       alto: MENU_TEXT.title,
       color: '#ffffff',
       alinear: 'left',

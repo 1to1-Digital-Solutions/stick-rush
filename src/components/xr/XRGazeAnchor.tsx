@@ -11,7 +11,7 @@ import {
   stepAnchor,
   type AnchorState,
 } from '../../lib/xrAnchor'
-import { usePlayHeight } from '../../lib/ajustesCliente'
+import { usePlayHeight } from '../../lib/settingsClient'
 import { XR_COLUMN, xrUiRiseOverWorld } from '../../lib/xrLayout'
 
 /**

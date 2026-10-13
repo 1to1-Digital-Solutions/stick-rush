@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { PLAY_HEIGHT_KEY } from '@/lib/ajustes'
+import { PLAY_HEIGHT_KEY } from '@/lib/settings'
 import type { StickProbe } from '@/lib/sceneProbe'
 import { openGame } from './helpers'
 import {

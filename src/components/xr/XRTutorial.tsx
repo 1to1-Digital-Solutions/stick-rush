@@ -3,7 +3,7 @@
 import { useXR } from '@react-three/xr'
 import { useCallback } from 'react'
 
-import { useLang } from '../../lib/ajustesCliente'
+import { useLang } from '../../lib/settingsClient'
 import { useGame } from '../../lib/gameStore'
 import { traductor, type TextKey } from '../../lib/textos'
 import {
@@ -23,8 +23,8 @@ import {
 } from '../../lib/xrLayout'
 import { NO_RAYCAST } from '../raycast'
 import { ButtonHighlight, useButtonFeedback } from './buttonHighlight'
-import { CanvasPanel, alturaDelParrafo, drawParagraph, drawText, roundedRect } from './canvasPanel'
-import { MandoDeVerdad } from './MandoDeVerdad'
+import { CanvasPanel, paragraphHeight, drawParagraph, drawText, roundedRect } from './canvasPanel'
+import { RealController } from './RealController'
 import { dibujarMando } from './mandoDibujado'
 import { dibujarMano } from './manoDibujada'
 import { PANEL_COLOR } from './XRUi'
@@ -84,7 +84,7 @@ export function repartoDelPaso(
   t: (clave: TextKey) => string,
 ): { techoDeLaFrase: number; sueloDeLaFrase: number; gesto: number } {
   const techoDeLaFrase = PANEL_HEIGHT / 2 - 0.13
-  const sueloDeLaFrase = techoDeLaFrase - alturaDelParrafo(ctx, t(frases[step]), FRASE)
+  const sueloDeLaFrase = techoDeLaFrase - paragraphHeight(ctx, t(frases[step]), FRASE)
   const techoDeLosBotones = XR_TUTORIAL_SKIP_OFFSET[1] + TUTORIAL_BOTON.height / 2
   return { techoDeLaFrase, sueloDeLaFrase, gesto: (sueloDeLaFrase + techoDeLosBotones) / 2 }
 }
@@ -183,8 +183,8 @@ export function XRTutorial() {
           Se coloca solo, deshaciendo lo que le pongan sus padres. En las dos manos porque
           aquí vale cualquiera de ellas: encender solo una sería decir que la otra no sirve.
           Con las manos desnudas no hay mando que enseñar y no se monta nada. */}
-      <MandoDeVerdad mano="left" boton={TUTORIAL_BUTTONS[step]} />
-      <MandoDeVerdad mano="right" boton={TUTORIAL_BUTTONS[step]} />
+      <RealController hand="left" button={TUTORIAL_BUTTONS[step]} />
+      <RealController hand="right" button={TUTORIAL_BUTTONS[step]} />
       <group position={XR_TUTORIAL_POSITION}>
         <CanvasPanel width={PANEL_WIDTH} height={PANEL_HEIGHT} draw={draw} fallbackColor={PANEL_COLOR} />
         {BOTONES.map((boton) => (

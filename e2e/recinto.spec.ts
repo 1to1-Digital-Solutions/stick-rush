@@ -5,7 +5,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { openGame, startGame } from './helpers'
 import { PIEZAS as PIEZAS_DEL_KIT } from '../src/lib/feriaKit'
 import { MAX_STICKS } from '../src/lib/gameConfig'
-import { drawCallBudget } from './support/presupuesto'
+import { drawCallBudget } from './support/budget'
 
 /**
  * Lo que cuesta pintar el recinto de feria, medido sobre la escena de verdad.
@@ -133,7 +133,7 @@ const MENU = drawCallBudget('menu')
  * **Faltaba medirlo.** El menú se comprobaba desde siempre y la partida no, que es donde de
  * verdad se paga: era el único de los trece juegos sin presupuesto de partida.
  */
-const PARTIDA = drawCallBudget('partida')
+const PARTIDA = drawCallBudget('run')
 
 interface DrawFrame {
   /** Llamadas de dibujo del fotograma. */

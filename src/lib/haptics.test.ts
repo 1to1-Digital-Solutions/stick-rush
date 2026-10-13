@@ -10,7 +10,7 @@ import {
   reproducirPulsos,
   tactoDelAtrape,
 } from './haptics'
-import { RECETAS, pulsosDe } from './tactos'
+import { HAPTIC_RECIPES, pulsesFor } from './hapticFeedback'
 
 /** Doble de un mando de WebXR, con los motores de vibración que se le pidan. */
 function fakeInputSource(actuators: unknown[], handedness: XRHandedness = 'right') {
@@ -29,21 +29,21 @@ const CATCH = { intensity: 0.5, durationMs: 20 }
 
 describe('atrapar un palo, en la mano que lo coge', () => {
   it('es un agarre de las recetas comunes', () => {
-    expect(tactoDelAtrape('left')).toEqual({ tipo: 'agarre', mano: 'left' })
-    expect(pulsosDelAtrape('left', 0.3)).toEqual(pulsosDe({ tipo: 'agarre', mano: 'left' }))
+    expect(tactoDelAtrape('left')).toEqual({ type: 'grab', hand: 'left' })
+    expect(pulsosDelAtrape('left', 0.3)).toEqual(pulsesFor({ type: 'grab', hand: 'left' }))
   })
 
   it('in extremis se siente más, sin pasar de un agarre a un golpe', () => {
     const normal = pulsosDelAtrape('right', IN_EXTREMIS - 0.01)[0]
     const extremo = pulsosDelAtrape('right', IN_EXTREMIS)[0]
-    expect(extremo.intensidad).toBeCloseTo(normal.intensidad * IN_EXTREMIS_BOOST, 9)
-    expect(extremo.intensidad).toBeLessThan(RECETAS.impacto.maximo)
+    expect(extremo.intensity).toBeCloseTo(normal.intensity * IN_EXTREMIS_BOOST, 9)
+    expect(extremo.intensity).toBeLessThan(HAPTIC_RECIPES.impact.max)
     expect(extremo.ms).toBe(normal.ms)
-    expect(extremo.mano).toBe('right')
+    expect(extremo.hand).toBe('right')
   })
 
   it('una caída que no es un número se trata como un atrape cualquiera', () => {
-    expect(pulsosDelAtrape('left', Number.NaN)).toEqual(pulsosDe(tactoDelAtrape('left')))
+    expect(pulsosDelAtrape('left', Number.NaN)).toEqual(pulsesFor(tactoDelAtrape('left')))
   })
 })
 
@@ -67,7 +67,7 @@ describe('reproducir los pulsos', () => {
     const derecha = vi.fn(() => Promise.resolve(true))
     reproducirPulsos(
       [fakeInputSource([{ pulse: izquierda }], 'left'), fakeInputSource([{ pulse: derecha }], 'right')],
-      [{ mano: 'left', intensidad: 0.3, ms: 20, retardo: 0 }],
+      [{ hand: 'left', intensity: 0.3, ms: 20, delay: 0 }],
     )
     expect(izquierda).toHaveBeenCalledWith(0.3, 20)
     expect(derecha).not.toHaveBeenCalled()
@@ -79,7 +79,7 @@ describe('reproducir los pulsos', () => {
     const cancelado = vi.fn()
     const cancelar = reproducirPulsos(
       [fakeInputSource([{ pulse }], 'left')],
-      pulsosDe({ tipo: 'impacto', mano: 'left', fuerza: 1 }),
+      pulsesFor({ type: 'impact', hand: 'left', strength: 1 }),
       (hacer, ms) => {
         programados.push({ hacer, ms })
         return cancelado
@@ -87,7 +87,7 @@ describe('reproducir los pulsos', () => {
     )
     // El golpe sale ya; la cola, cuando acaba el golpe.
     expect(pulse).toHaveBeenCalledOnce()
-    expect(programados.map((p) => p.ms)).toEqual([RECETAS.impacto.ms])
+    expect(programados.map((p) => p.ms)).toEqual([HAPTIC_RECIPES.impact.ms])
     programados[0].hacer()
     expect(pulse).toHaveBeenCalledTimes(2)
     cancelar()
@@ -99,7 +99,7 @@ describe('reproducir los pulsos', () => {
     const pulse = vi.fn(() => Promise.resolve(true))
     const cancelar = reproducirPulsos(
       [fakeInputSource([{ pulse }], 'right')],
-      pulsosDe({ tipo: 'impacto', mano: 'right', fuerza: 0.5 }),
+      pulsesFor({ type: 'impact', hand: 'right', strength: 0.5 }),
     )
     cancelar()
     vi.runAllTimers()
@@ -109,7 +109,7 @@ describe('reproducir los pulsos', () => {
 
   it('sin mando en esa mano no ocurre nada', () => {
     const pulse = vi.fn()
-    reproducirPulsos([undefined, fakeInputSource([{ pulse }], 'left')], [{ mano: 'right', intensidad: 1, ms: 10, retardo: 0 }])
+    reproducirPulsos([undefined, fakeInputSource([{ pulse }], 'left')], [{ hand: 'right', intensity: 1, ms: 10, delay: 0 }])
     expect(pulse).not.toHaveBeenCalled()
   })
 })
@@ -118,7 +118,7 @@ describe('el atrape de verdad, desde el evento del agarre', () => {
   it('vibra el mando que lo ha cogido', () => {
     const pulse = vi.fn(() => Promise.resolve(true))
     pulsarAtrape(fakeController([{ pulse }], 'left'), 0.2)
-    expect(pulse).toHaveBeenCalledWith(RECETAS.agarre.intensidad, RECETAS.agarre.ms)
+    expect(pulse).toHaveBeenCalledWith(HAPTIC_RECIPES.grab.intensity, HAPTIC_RECIPES.grab.ms)
   })
 
   it('con el ratón o la mano desnuda, nada', () => {

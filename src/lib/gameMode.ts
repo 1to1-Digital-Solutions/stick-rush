@@ -24,7 +24,7 @@
  */
 
 import { type Difficulty, MAX_STICKS } from './gameConfig'
-import { MENU_EN } from './palabras'
+import { MENU_EN } from './menuWords'
 
 export type GameMode = 'practice' | 'levels' | 'challenge'
 
@@ -149,6 +149,6 @@ export function runOutcome({
  * Lo que dice el botón de repetir al acabar, con las palabras comunes del salón (`palabras.ts`):
  * «Otro reto» en el modo que da medalla y «Otra partida» en los demás.
  */
-export function otraDelModo(mode: GameMode): typeof MENU_EN.otroReto | typeof MENU_EN.otraPartida {
-  return mode === 'challenge' ? MENU_EN.otroReto : MENU_EN.otraPartida
+export function otraDelModo(mode: GameMode): typeof MENU_EN.anotherChallenge | typeof MENU_EN.anotherRun {
+  return mode === 'challenge' ? MENU_EN.anotherChallenge : MENU_EN.anotherRun
 }

@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest'
 import { GAME_MODE_HINTS, GAME_MODE_LABELS } from './gameMode'
 import { DIFFICULTY_LABELS } from './gameConfig'
 import { TEXT_KEYS, formatea, formatoDeCifra, texto, traductor, traductorSuave } from './textos'
-import { OBJETIVO_ES } from './objetivo'
+import { GOAL_ES } from './goal'
 import { PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS, PLAYER_LABELS } from './duel'
-import { MENU_ES, plural } from './palabras'
+import { MENU_ES, plural } from './menuWords'
 
 /**
  * El diccionario del juego.
@@ -47,8 +47,8 @@ describe('el traductor del cartel del objetivo', () => {
   })
 
   it('el diccionario lleva todas las frases comunes del cartel, y las del juego mandan sobre ellas', () => {
-    for (const [clave, frase] of Object.entries(OBJETIVO_ES)) {
-      expect(texto('es', clave as keyof typeof OBJETIVO_ES), clave).toBe(frase)
+    for (const [clave, frase] of Object.entries(GOAL_ES)) {
+      expect(texto('es', clave as keyof typeof GOAL_ES), clave).toBe(frase)
     }
     expect(texto('es', 'Challenge')).toBe('Reto')
   })

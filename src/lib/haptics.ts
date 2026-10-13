@@ -1,4 +1,4 @@
-import { pulsosDe, type Mano, type Pulso, type Tacto } from './tactos'
+import { pulsesFor, type HandSide, type HandPulse, type HapticEvent } from './hapticFeedback'
 
 /**
  * Vibración de los mandos (haptics de WebXR).
@@ -57,8 +57,8 @@ export const IN_EXTREMIS = 0.8
 export const IN_EXTREMIS_BOOST = 1.8
 
 /** El contacto de atrapar un palo, dicho desde la mano que lo coge. */
-export function tactoDelAtrape(mano: Mano): Tacto {
-  return { tipo: 'agarre', mano }
+export function tactoDelAtrape(mano: HandSide): HapticEvent {
+  return { type: 'grab', hand: mano }
 }
 
 /**
@@ -66,10 +66,10 @@ export function tactoDelAtrape(mano: Mano): Tacto {
  *
  * @param fallProgress cuánto había caído el palo al cogerlo, de 0 a 1.
  */
-export function pulsosDelAtrape(mano: Mano, fallProgress: number): Pulso[] {
-  const pulsos = pulsosDe(tactoDelAtrape(mano))
+export function pulsosDelAtrape(mano: HandSide, fallProgress: number): HandPulse[] {
+  const pulsos = pulsesFor(tactoDelAtrape(mano))
   if (!(fallProgress >= IN_EXTREMIS)) return pulsos
-  return pulsos.map((p) => ({ ...p, intensidad: Math.min(1, p.intensidad * IN_EXTREMIS_BOOST) }))
+  return pulsos.map((p) => ({ ...p, intensity: Math.min(1, p.intensity * IN_EXTREMIS_BOOST) }))
 }
 
 /**
@@ -78,7 +78,7 @@ export function pulsosDelAtrape(mano: Mano, fallProgress: number): Pulso[] {
  * El ratón no tiene mano, y una fuente sin lado (`'none'`) tampoco: a ninguna de las dos se
  * le puede cobrar un contacto.
  */
-export function manoDelEvento(event: unknown): Mano | null {
+export function manoDelEvento(event: unknown): HandSide | null {
   const handedness = inputSourceOf(event)?.handedness
   return handedness === 'left' || handedness === 'right' ? handedness : null
 }
@@ -180,16 +180,16 @@ const conSetTimeout: Programar = (hacer, ms) => {
  */
 export function reproducirPulsos(
   fuentes: Iterable<XRInputSource | undefined>,
-  pulsos: readonly Pulso[],
+  pulsos: readonly HandPulse[],
   programar: Programar = conSetTimeout,
 ): () => void {
   const lista = [...fuentes]
   const pendientes: (() => void)[] = []
   for (const pulso of pulsos) {
-    const actuator = actuatorOf(lista.find((fuente) => fuente?.handedness === pulso.mano))
+    const actuator = actuatorOf(lista.find((fuente) => fuente?.handedness === pulso.hand))
     if (actuator == null) continue
-    const golpe = { intensity: pulso.intensidad, durationMs: pulso.ms }
-    if (pulso.retardo > 0) pendientes.push(programar(() => fire(actuator, golpe), pulso.retardo))
+    const golpe = { intensity: pulso.intensity, durationMs: pulso.ms }
+    if (pulso.delay > 0) pendientes.push(programar(() => fire(actuator, golpe), pulso.delay))
     else fire(actuator, golpe)
   }
   return () => {

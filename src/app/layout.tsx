@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Righteous, Poppins } from 'next/font/google'
 import './globals.css'
-import { idiomaDeLaPeticion } from '../lib/idioma-servidor'
-import { nombreDelJuego } from '../lib/plantillaDelMenu'
+import { requestLang } from '../lib/server-lang'
+import { gameName } from '../lib/menuTemplate'
 import { traductor } from '../lib/textos'
 
 const righteous = Righteous({
@@ -24,11 +24,11 @@ const poppins = Poppins({
  * (ver `lib/ajustes.ts`), y eso solo se puede leer aquí dentro.
  */
 export async function generateMetadata(): Promise<Metadata> {
-  const t = traductor(await idiomaDeLaPeticion())
+  const t = traductor(await requestLang())
 
   return {
     // Como la cabina del catálogo: la web propia no pasa por el salón, así que es el del paquete.
-    title: nombreDelJuego(),
+    title: gameName(),
     description: t('Catch the sticks falling from the machine before they hit the ground. Play in the browser or in mixed reality (VR/AR).'),
   }
 }
@@ -50,7 +50,7 @@ export default async function RootLayout({
   // El idioma sale de la cookie que pone el menú del arcade: el `lang` del
   // documento es lo que usan los lectores de pantalla para elegir voz, así
   // que tiene que decir en qué idioma está lo que hay dentro.
-  const lang = await idiomaDeLaPeticion()
+  const lang = await requestLang()
 
   return (
     <html lang={lang} className={`${righteous.variable} ${poppins.variable}`}>

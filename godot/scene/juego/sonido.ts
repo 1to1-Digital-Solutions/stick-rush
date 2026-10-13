@@ -14,7 +14,7 @@
  * Los efectos son ficheros, uno por disparo distinto de la web: la nota del atrape va en ocho
  * (`catch-1`…`catch-8`, de la racha 1 a la 8 y más), la cuenta atrás en tres y el listón en tres.
  */
-import { listonCruzado, type Medalla } from '@/lib/objetivo'
+import { thresholdCrossed, type Medal } from '@/lib/goal'
 
 import type { FaseDeLaPartida } from './partida'
 
@@ -43,7 +43,7 @@ export const SOUNDS = [
 ] as const
 
 /** Cómo se llama el efecto de cada listón de medalla (`{ name: 'medal', rank }` de `sound.ts`). */
-export const SONIDO_DEL_LISTON = { bronce: 'medal-bronze', plata: 'medal-silver', oro: 'medal-gold' } as const satisfies Record<Medalla, string>
+export const SONIDO_DEL_LISTON = { bronze: 'medal-bronze', silver: 'medal-silver', gold: 'medal-gold' } as const satisfies Record<Medal, string>
 
 export type Sonido = (typeof SOUNDS)[number]
 
@@ -68,7 +68,7 @@ export interface Pistas {
   levelPassed: boolean | null
   lives: number | null
   /** La medalla que ya es de quien juega (`medalla` de la partida): cuando sube, suena su listón. */
-  medalla?: Medalla | null
+  medalla?: Medal | null
 }
 
 /** Cómo suena el final (`roundOutcome` de `useGameSound.ts`). */
@@ -88,7 +88,7 @@ export function sonidosDesde(antes: Pistas, ahora: Pistas): Sonido[] {
   }
   if (ahora.gameState === 'playing' && antes.gameState === 'countdown') suenan.push('go')
   // El listón de medalla que se acaba de cruzar, además del atrape que lo cruzó.
-  const cruzado = listonCruzado(antes.medalla ?? null, ahora.medalla ?? null)
+  const cruzado = thresholdCrossed(antes.medalla ?? null, ahora.medalla ?? null)
   if (cruzado != null) suenan.push(SONIDO_DEL_LISTON[cruzado])
   if (ahora.gameState === 'finished' && antes.gameState !== 'finished') {
     // El final de una partida a dos suena a ganar: la gana alguien de los que están delante, o

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { CHALLENGE_SETUP, GAME_MODE_ORDER } from './gameMode'
-import { semillaDe } from './semilla'
+import { deriveSeed } from './seed'
 import { buildStickLayout, fallOrder } from './stickLayout'
 import {
   MODO_DEL_DUELO,
@@ -90,16 +90,16 @@ describe('la misma semilla, la misma tanda', () => {
   it('los dos ven caer los mismos palos, en el mismo orden y en el mismo sitio', () => {
     // La tanda del desafío es la tanda 0 de la partida: su reparto sale de la semilla y su número.
     const duel = createDuel(98765)
-    const primero = semillaDe(duel.semilla, 0)
-    const segundo = semillaDe(recordTurn(duel, 1500).semilla, 0)
+    const primero = deriveSeed(duel.semilla, 0)
+    const segundo = deriveSeed(recordTurn(duel, 1500).semilla, 0)
     expect(segundo).toBe(primero)
     expect(fallOrder(CHALLENGE_SETUP.stickCount, segundo)).toEqual(fallOrder(CHALLENGE_SETUP.stickCount, primero))
     expect(buildStickLayout(CHALLENGE_SETUP.stickCount, segundo, 2)).toEqual(buildStickLayout(CHALLENGE_SETUP.stickCount, primero, 2))
   })
 
   it('y otra partida es otra tanda: la siguiente no se repite', () => {
-    const una = fallOrder(CHALLENGE_SETUP.stickCount, semillaDe(createDuel(1).semilla, 0))
-    const otra = fallOrder(CHALLENGE_SETUP.stickCount, semillaDe(createDuel(2).semilla, 0))
+    const una = fallOrder(CHALLENGE_SETUP.stickCount, deriveSeed(createDuel(1).semilla, 0))
+    const otra = fallOrder(CHALLENGE_SETUP.stickCount, deriveSeed(createDuel(2).semilla, 0))
     expect(otra).not.toEqual(una)
   })
 })

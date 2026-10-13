@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, Suspense, type ReactNode } from 'react'
-import { contarMontaje } from '../../lib/montajes'
+import { countMount } from '../../lib/mountCount'
 import { Environment } from '@react-three/drei'
 import { useXR } from '@react-three/xr'
 import { assetUrl } from '../../lib/assets'
@@ -12,7 +12,7 @@ import {
   MACHINE_RADIUS,
   PLAYER_OFFSET_Z,
 } from '../../lib/gameConfig'
-import { showsPlace } from '../../lib/ajustes'
+import { showsPlace } from '../../lib/settings'
 import { entryPlacement, type HostAnchor } from '../../lib/hostAnchor'
 import { useGame, type SceneryMode } from '../../lib/gameStore'
 import { DECOR_POINTER_EVENTS, MENU_POINTER_ORDER } from '../../lib/punteros'
@@ -27,7 +27,7 @@ import { XRPlayerHeight } from '../xr/XRPlayerHeight'
 import { XRSessionController } from '../xr/XRSessionController'
 import { XRTutorial } from '../xr/XRTutorial'
 import { Ayudas } from './Ayudas'
-import { Calentar } from './Calentar'
+import { PrewarmShaders } from './PrewarmShaders'
 import { Backdrop } from './Backdrop'
 import { Fairground } from './Fairground'
 import { SceneryFade } from './SceneryFade'
@@ -213,7 +213,7 @@ export function GameWorld({ hasDomUi = false, anchor }: GameWorldProps) {
   // Cuántas veces se monta el mundo, cuando alguien lo está contando (`lib/montajes.ts`).
   // Montarlo dos veces al entrar en la sesión **es** el parpadeo que se reporta del visor.
   useEffect(() => {
-    contarMontaje('mundo')
+    countMount('mundo')
   }, [])
 
   // TODO EL MUNDO cuelga de `XRWorldHeight`, que lo baja hasta quien juega si
@@ -297,7 +297,7 @@ export function GameWorld({ hasDomUi = false, anchor }: GameWorldProps) {
       {/* Calienta los shaders de la escena, y va AQUÍ y no en el Canvas de la web del
           juego: el salón monta esto y no aquello, así que colgado de allí no se
           precalentaba nada justo donde se juega de verdad. */}
-      <Calentar />
+      <PrewarmShaders />
     </XRWorldHeight>
   )
 }

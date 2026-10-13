@@ -6,7 +6,7 @@ import { otraDelModo, startingLives, type GameMode } from '../../lib/gameMode'
 import { useCallback } from 'react'
 
 import { useGame } from '../../lib/gameStore'
-import { useLang } from '../../lib/ajustesCliente'
+import { useLang } from '../../lib/settingsClient'
 import { traductor, type TextKey } from '../../lib/textos'
 import { CanvasPanel, drawParagraph, drawText } from './canvasPanel'
 import { scoreRatio } from '../../lib/scoring'

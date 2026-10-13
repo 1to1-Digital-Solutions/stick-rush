@@ -1,23 +1,23 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { exponerPartida, isPartidaRequested, type PartidaDePrueba } from './partidaDePrueba'
+import { exposeTestRun, isTestRunRequested, type TestRun } from './testRun'
 
-const api: PartidaDePrueba = { start: () => {}, score: () => {}, end: () => {}, cartel: () => null }
+const api: TestRun = { start: () => {}, score: () => {}, end: () => {}, sign: () => null }
 
 afterEach(() => {
-  delete window.__partidaStickRush
+  delete window.__runStickRush
 })
 
-describe('el gancho de la partida', () => {
-  it('sin pedirlo no se deja nada', () => {
-    expect(isPartidaRequested()).toBe(false)
-    exponerPartida(api)
-    expect(window.__partidaStickRush).toBeUndefined()
+describe('the run hook', () => {
+  it('without asking for it, it leaves nothing', () => {
+    expect(isTestRunRequested()).toBe(false)
+    exposeTestRun(api)
+    expect(window.__runStickRush).toBeUndefined()
   })
 
-  it('pedido, deja lo común en el objeto del test', () => {
-    window.__partidaStickRush = {}
-    expect(isPartidaRequested()).toBe(true)
-    exponerPartida(api)
-    expect(window.__partidaStickRush).toEqual(api)
+  it('asked for, it leaves what is common in the object of the test', () => {
+    window.__runStickRush = {}
+    expect(isTestRunRequested()).toBe(true)
+    exposeTestRun(api)
+    expect(window.__runStickRush).toEqual(api)
   })
 })

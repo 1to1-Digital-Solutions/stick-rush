@@ -8,8 +8,8 @@ import {
   useGameStoreValue,
 } from '../../lib/gameStore'
 import { useGameSound } from './useGameSound'
-import { DEFAULT_VOLUMES } from '../../lib/ajustes'
-import { setVolume } from '../../lib/ajustesCliente'
+import { DEFAULT_VOLUMES } from '../../lib/settings'
+import { setVolume } from '../../lib/settingsClient'
 
 // El motor de verdad se prueba en `sound.test.ts` contra un contexto de
 // mentira; aquí lo que se comprueba es el cableado: qué sonido pide el juego
@@ -384,11 +384,11 @@ describe('el volumen de los efectos', () => {
 
 describe('el listón de medalla', () => {
   const objetivo = {
-    medallas: { bronce: 1, plata: 100000, oro: 200000 },
-    mejorEs: 'mas',
-    unidad: 'points in challenge',
+    medals: { bronze: 1, silver: 100000, gold: 200000 },
+    better: 'higher',
+    unit: 'points in challenge',
     record: null,
-    modo: 'challenge',
+    mode: 'challenge',
   } as const
 
   it('cruzarlo suena una vez por listón, con su medalla, además del atrape', () => {
@@ -411,14 +411,14 @@ describe('el listón de medalla', () => {
   })
 
   it('y suena la medalla a la que se llega: de un salto a la plata, la plata', () => {
-    const store = renderGame({ objetivo: { ...objetivo, medallas: { bronce: 1, plata: 2, oro: 200000 } } })
+    const store = renderGame({ objetivo: { ...objetivo, medals: { bronze: 1, silver: 2, gold: 200000 } } })
     interact()
     startPlaying(store)
     play.mockClear()
 
     act(() => store.current.catchStick(0.5))
 
-    expect(store.current.medalla).toBe('plata')
+    expect(store.current.medalla).toBe('silver')
     expect(playedSounds().filter((sound) => sound.name === 'medal')).toEqual([{ name: 'medal', rank: 1 }])
   })
 

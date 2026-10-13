@@ -1,10 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 
-import { CRUCE } from '../src/lib/ayudas'
+import { CROSSFADE } from '../src/lib/hints'
 import { GUION_DE_AYUDAS } from '../src/lib/guionDeAyudas'
 import { TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE } from '../src/lib/tutorial'
 import { openGame } from './helpers'
-import { contarLlamadas, dejarAsentar, guardarAntesDeAbrir, medianaDeLlamadas } from './support/escenario'
+import { installDrawCallCounter, letSettle, storeBeforeOpen, medianDrawCalls } from './support/scenery'
 import { buscarEnLaEscena, enterHostBooth, enterHostVR, openHost } from './support/host'
 import { enterVR, installXREmulator, lookAt } from './support/xr'
 
@@ -18,7 +18,7 @@ import { enterVR, installXREmulator, lookAt } from './support/xr'
  * pintarse** cuando toca.
  *
  * **Y se miden por lo que cuestan**, que es lo único que una ayuda deja ver desde fuera del
- * visor: las llamadas de dibujo por fotograma (`e2e/support/escenario.ts`). Una ayuda encendida
+ * visor: las llamadas de dibujo por fotograma (`e2e/support/scenery.ts`). Una ayuda encendida
  * cuesta; apagada es invisible y no cuesta nada. **Se mide en el menú**, que es la fase quieta:
  * los palos cuelgan y no cae ninguno, así que lo único que cambia entre las dos medidas son las
  * ayudas.
@@ -42,7 +42,7 @@ const A_LA_MAQUINA = { yaw: 0, pitch: -18 }
 const A_LOS_PIES = { yaw: 0, pitch: -70 }
 
 /** Lo que tarda la ayuda más paciente en irse sola, más el cruce con el que se desvanece. */
-const HASTA_QUE_SE_VAN = Math.max(...GUION_DE_AYUDAS.map((ayuda) => ayuda.caduca)) + CRUCE + 2
+const HASTA_QUE_SE_VAN = Math.max(...GUION_DE_AYUDAS.map((ayuda) => ayuda.expiresAfter)) + CROSSFADE + 2
 
 /**
  * Cuántas llamadas de dibujo por fotograma pueden costar todas las ayudas a la vez.
@@ -55,22 +55,22 @@ const TECHO_DE_LAS_AYUDAS = 60
 
 /** Deja que el cruce con el que aparecen o se van termine, que dura casi medio segundo. */
 async function dejarQueCrucen(page: Page) {
-  await page.waitForTimeout(CRUCE * 1000 + 300)
-  await dejarAsentar(page)
+  await page.waitForTimeout(CROSSFADE * 1000 + 300)
+  await letSettle(page)
 }
 
 test.describe('Las ayudas visuales', () => {
   test('en el menú se pintan, y se van solas al agotarse su plazo', async ({ page }) => {
     test.setTimeout(HASTA_QUE_SE_VAN * 1000 + 90_000)
-    await contarLlamadas(page)
+    await installDrawCallCounter(page)
     await installXREmulator(page)
-    await guardarAntesDeAbrir(page, TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
+    await storeBeforeOpen(page, TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE)
     await openGame(page)
     await enterVR(page)
 
     await lookAt(page, A_LA_MAQUINA.yaw, A_LA_MAQUINA.pitch)
     await dejarQueCrucen(page)
-    const conAyudas = await medianaDeLlamadas(page)
+    const conAyudas = await medianDrawCalls(page)
     await page.screenshot({ path: `${CAPTURAS}/ayudas-menu-maquina.png` })
     await lookAt(page, A_LOS_PIES.yaw, A_LOS_PIES.pitch)
     await dejarQueCrucen(page)
@@ -80,8 +80,8 @@ test.describe('Las ayudas visuales', () => {
     // vuelve al mismo sitio para la segunda medida.**
     await lookAt(page, A_LA_MAQUINA.yaw, A_LA_MAQUINA.pitch)
     await page.waitForTimeout(HASTA_QUE_SE_VAN * 1000)
-    await dejarAsentar(page)
-    const sinAyudas = await medianaDeLlamadas(page)
+    await letSettle(page)
+    const sinAyudas = await medianDrawCalls(page)
     await page.screenshot({ path: `${CAPTURAS}/ayudas-agotadas.png` })
 
     console.log(`[ayudas] llamadas por fotograma: con ayudas ${conAyudas}, agotadas ${sinAyudas}`)

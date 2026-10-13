@@ -2,7 +2,7 @@ import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PLAYER_POSITION, PLAYER_OFFSET_Z } from '../lib/gameConfig'
 import { assetUrl, setAssetsBase } from '../lib/assets'
-import { nombreDelJuego } from '../lib/plantillaDelMenu'
+import { gameName } from '../lib/menuTemplate'
 import { ExitProvider, useExit } from './exit'
 
 /**
@@ -84,11 +84,11 @@ describe('la escena no manda sobre la sesión', () => {
   })
 
   it('el menú se llama como la cabina que la monta, y sin nombre, como el paquete', () => {
-    const { unmount } = render(<StickRushScene nombre="Cabina de prueba" onExit={() => {}} />)
-    expect(nombreDelJuego()).toBe('Cabina de prueba')
+    const { unmount } = render(<StickRushScene name="Cabina de prueba" onExit={() => {}} />)
+    expect(gameName()).toBe('Cabina de prueba')
     unmount()
     render(<StickRushScene onExit={() => {}} />)
-    expect(nombreDelJuego()).toBe('Stick Rush')
+    expect(gameName()).toBe('Stick Rush')
   })
 })
 

@@ -10,8 +10,8 @@
 import { Color, FileAccess, MeshInstance3D, Node3D, ProjectSettings, StandardMaterial3D, type MultiMeshInstance3D } from 'godot'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { Escenario, type VistaDeLaHabitacion } from '@kit/runtime/escena/escenario'
-import { MandoDeVerdad } from '@kit/runtime/ui/mando'
+import { SceneryRig, type RoomView } from '@kit/runtime/scene/scenery'
+import { RealController } from '@kit/runtime/ui/controller'
 
 import { crowdSpots } from '@/lib/crowdLayout'
 import { PIEZAS, colocaciones } from '@/lib/feriaKit'
@@ -141,7 +141,7 @@ describe('la feria y tu habitación', () => {
   let feria: Feria
   let transparente: boolean[]
   let passthrough: boolean
-  const vista: VistaDeLaHabitacion = { hayPassthrough: () => passthrough, transparente: (si) => transparente.push(si) }
+  const vista: RoomView = { hayPassthrough: () => passthrough, transparente: (si) => transparente.push(si) }
 
   beforeEach(() => {
     gameStorage()?.clear()
@@ -181,7 +181,7 @@ describe('la feria y tu habitación', () => {
 
   it('sin realidad aumentada se ve la plaza aunque el salón pida la habitación; con ella, la habitación', () => {
     gameStorage()?.setItem('xrcade:scenery', 'room')
-    const escenario = new Escenario({ mostrar: (si) => feria.enLaPlaza(si), vista })
+    const escenario = new SceneryRig({ mostrar: (si) => feria.enLaPlaza(si), vista })
     escenario.actualizar()
     expect([feria.recinto.visible, transparente]).toEqual([true, [false]])
     passthrough = true
@@ -196,11 +196,11 @@ describe('la feria y tu habitación', () => {
 
 describe('las ayudas', () => {
   let maquina: Node3D
-  let mando: MandoDeVerdad
+  let mando: RealController
   let ayudas: AyudasDelJuego
   beforeEach(() => {
     maquina = new Node3D()
-    mando = new MandoDeVerdad({ mano: 'right', dir: DIR_DE_LOS_MANDOS, perfil })
+    mando = new RealController({ mano: 'right', dir: DIR_DE_LOS_MANDOS, perfil })
     ayudas = new AyudasDelJuego(maquina, [mando])
   })
   afterEach(() => maquina.free())

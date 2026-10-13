@@ -6,7 +6,7 @@ import { GameScene } from '../components/game/GameScene'
 import { endXrSession } from '../components/xr/xrStore'
 import { setAssetsBase } from '../lib/assets'
 import type { ResultadoConHazanas } from '../lib/hazanas'
-import type { Reto } from '../lib/semilla'
+import type { Challenge } from '../lib/seed'
 import { ExitProvider } from './exit'
 
 export interface StickRushProps {
@@ -24,13 +24,13 @@ export interface StickRushProps {
    * titubeo de cada palo salen de la semilla: misma semilla, mismos palos cayendo en el mismo
    * orden y al mismo tiempo. Se lee al montar: para otro reto, se vuelve a montar.
    */
-  reto?: Reto
+  challenge?: Challenge
   /**
    * Se llama **una vez** al acabar cada partida con puntuación, en cualquier modo, con sus
    * puntos aunque no sean récord. Dejar la partida a medias o salir no la acaba. Lleva `hazanas`
    * con los nombres de API estrenados en la partida, si hay alguno (`lib/hazanas.ts`).
    */
-  onTerminar?: (resultado: ResultadoConHazanas) => void
+  onFinish?: (resultado: ResultadoConHazanas) => void
 }
 
 /**
@@ -44,9 +44,9 @@ export interface StickRushProps {
  * salón inmersivo de xrcade, y lo que permite volver sin quitarse el visor— hay
  * que usar `<StickRushScene>`. Este de aquí abre su propia sesión, y en un
  * documento solo cabe una. El contrato completo está en
- * `docs/montar-el-juego.md`.
+ * `docs/mounting-the-game.md`.
  */
-export function StickRush({ assetsBase, reto, onTerminar }: StickRushProps) {
+export function StickRush({ assetsBase, challenge: reto, onFinish }: StickRushProps) {
   // Durante el render y no en un efecto: la escena pide el HDRI y las texturas
   // en cuanto se monta, es decir, antes de que corra ningún efecto. Escribir la
   // misma base dos veces no cambia nada, así que repetir el render es inocuo.
@@ -58,7 +58,7 @@ export function StickRush({ assetsBase, reto, onTerminar }: StickRushProps) {
   useEffect(() => () => endXrSession(), [])
 
   return (
-    <GameProvider reto={reto} onTerminar={onTerminar}>
+    <GameProvider reto={reto} onFinish={onFinish}>
       {/* Aquí salir es cerrar la sesión: esta web es el juego y no hay ningún
           sitio al que volver. En el salón significa lo contrario. */}
       <ExitProvider onExit={endXrSession}>

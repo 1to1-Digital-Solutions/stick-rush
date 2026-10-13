@@ -1,4 +1,4 @@
-import type { Scenery } from './ajustes'
+import type { Scenery } from './settings'
 // Solo el tipo: se borra al compilar, así que no crea un ciclo real con el store aunque el
 // store importe de aquí.
 import type { SceneryMode } from './gameStore'

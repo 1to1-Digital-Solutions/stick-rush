@@ -10,20 +10,20 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { IDENTIDAD, vec } from '@kit/lib/xr/pose'
 import { aTransform } from '@kit/runtime/xr/pose-godot'
-import { XRPlayer } from '@kit/runtime/xr/jugador'
-import { simularMandos, type Simulacion } from '@kit/runtime/xr/simulado'
+import { XRPlayer } from '@kit/runtime/xr/player'
+import { simulateControllers, type Simulation } from '@kit/runtime/xr/simulated'
 
-import { PLAY_HEIGHT_OFFSET_KEY } from '@/lib/ajustes'
+import { PLAY_HEIGHT_OFFSET_KEY } from '@/lib/settings'
 import * as hostAnchor from '@/lib/hostAnchor'
 import { gameStorage } from '@/lib/storage'
 import * as xrLayout from '@/lib/xrLayout'
 
 let raiz: Node3D
-let sim: Simulacion
+let sim: Simulation
 
 /** El jugador como lo monta `main.ts`, de pie y con la cabeza a 1,70. */
 function subidaDelMundo(): number {
-  const jugador = new XRPlayer(raiz, { comunes: { uiHeight: xrLayout, hostAnchor }, anclaje: null })
+  const jugador = new XRPlayer(raiz, { common: { uiHeight: xrLayout, hostAnchor }, anclaje: null })
   sim.cabeza(aTransform({ ...IDENTIDAD, origen: vec(0, 1.7, 0) }))
   jugador.update(1 / 72)
   expect(jugador.mundo.global_position.y).toBeCloseTo(jugador.subida, 6)
@@ -35,7 +35,7 @@ describe('la altura fina del salón', () => {
     gameStorage()?.clear()
     raiz = new Node3D()
     ;(Engine.get_main_loop() as SceneTree).root!.add_child(raiz)
-    sim = simularMandos()
+    sim = simulateControllers()
   })
 
   afterEach(() => {

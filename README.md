@@ -127,7 +127,7 @@ muted the game never touches the Web Audio API at all. **The choice is
 remembered between visits** (`src/lib/mutePreference.ts`): in a headset, muting
 again every time you put the visor on is the most tedious gesture in the game.
 The scenery choice is not the game's own: it is the arcade's `xrcade:scenery`
-(`place` or `room`, read through `src/lib/ajustes.ts` and translated to
+(`place` or `room`, read through `src/lib/settings.ts` and translated to
 `scene`/`passthrough` in `src/lib/sceneryPreference.ts`), so choosing it in the
 xrcade lounge or in this game's menu is the same single preference, and it
 changes what is drawn without leaving the session. The game's own key,
@@ -184,7 +184,7 @@ import 'stick-rush/styles.css'
 It is consumed at a fixed version (a repository tag), and the static files it needs
 are copied with `npx stick-rush-assets <dir>`. The full contract — install,
 `transpilePackages`, assets, Tailwind and what the game expects from its host — is in
-[`docs/montar-el-juego.md`](docs/montar-el-juego.md).
+[`docs/mounting-the-game.md`](docs/mounting-the-game.md).
 
 ## Development
 

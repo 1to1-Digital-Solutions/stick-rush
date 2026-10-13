@@ -21,14 +21,14 @@
  * aquí por la cookie del arcade (ver `ajustes.ts`).
  */
 
-import type { Lang } from './ajustes'
-import { OBJETIVO_ES, type Traducir } from './objetivo'
-import { MENU_ES } from './palabras'
+import type { Lang } from './settings'
+import { GOAL_ES, type Translate } from './goal'
+import { MENU_ES } from './menuWords'
 
 const ES = {
   // El cartel del objetivo, común a todos los juegos del salón. Lo primero, para que lo que el
   // juego ya decía por su cuenta no choque.
-  ...OBJETIVO_ES,
+  ...GOAL_ES,
   // Los botones y estados comunes del salón (`palabras.ts`), dichos igual en todos los juegos.
   ...MENU_ES,
   'Catch {sticks} sticks. Drop three and out': 'Atrapa {sticks} palos. Tres al suelo y fuera',
@@ -196,7 +196,7 @@ export function traductor(lang: Lang) {
  * Lo que no está en el diccionario sale tal cual: la unidad del récord llega del salón ya en el
  * idioma de quien juega, y una cifra suelta no se traduce.
  */
-export function traductorSuave(lang: Lang): Traducir {
+export function traductorSuave(lang: Lang): Translate {
   return (frase, valores) => {
     const dicho = lang === 'es' && Object.prototype.hasOwnProperty.call(ES, frase) ? ES[frase as TextKey] : frase
     return valores === undefined ? dicho : formatea(dicho, valores)

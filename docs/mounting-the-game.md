@@ -117,14 +117,14 @@ puede pasar el cierre de su propia sesión, que es lo que hace la web del juego.
 #### El reto con semilla y el aviso de fin de partida
 
 Tres props más, las tres opcionales: sin ellas, el juego arranca en el menú —con el reto elegido—
-y sortea como siempre. Los tipos `Reto` y `Resultado` están en `src/lib/semilla.ts` y `Objetivo`
-en `src/lib/objetivo.ts` (el paquete lo exporta), que son los mismos ficheros en todos los juegos
+y sortea como siempre. Los tipos `Reto` y `Resultado` están en `src/lib/seed.ts` y `Objetivo`
+en `src/lib/goal.ts` (el paquete lo exporta), que son los mismos ficheros en todos los juegos
 del salón.
 
 | Prop | Qué es |
 | --- | --- |
 | `reto` | `{ semilla }`: jugar un reto concreto del salón (el reto del día, «reta mi puntuación»). |
-| `onTerminar` | `({ modo, puntos, reto }) => void`: el aviso de que ha acabado una partida con puntuación. |
+| `onFinish` | `({ modo, puntos, reto }) => void`: el aviso de que ha acabado una partida con puntuación. |
 | `objetivo` | `{ medallas: { bronce, plata, oro }, mejorEs, unidad, record, modo }`: los listones de medalla del juego y la marca de quien juega. |
 | `nombre` | El `name` del manifiesto del catálogo: cómo se llama el juego en su menú. Sin él, «Stick Rush», el del `package.json`. |
 
@@ -140,7 +140,7 @@ mismo orden y al mismo tiempo; lo que cambia de una persona a otra es solo cuán
 reto se lee al montar: para otro, se vuelve a montar la escena. Sin `reto`, cada partida estrena
 una semilla al azar.
 
-**`onTerminar`** se llama **una vez** al acabar cada partida, en cualquier modo, con `modo` tal
+**`onFinish`** se llama **una vez** al acabar cada partida, en cualquier modo, con `modo` tal
 como lo llama el juego (`practice`, `levels`, `challenge`; la práctica sin fin es `practice`),
 `puntos` los de esa partida aunque no sean récord, y `reto: true` solo si era la partida del
 `reto`. Se llama desde el mismo sitio que guarda el récord, que el juego sigue guardando en
@@ -157,7 +157,7 @@ el cartel dice mientras se juega que la partida no cuenta para medalla. Sin la p
 dice la misión y el récord guardado en este navegador. `unidad` llega ya en el idioma de quien
 juega. Lo que el cartel ya dice —los puntos y las vidas— el marcador de debajo lo calla.
 
-`<StickRush>` y `mountStickRush` aceptan `reto` y `onTerminar`; `objetivo` es de la escena.
+`<StickRush>` y `mountStickRush` aceptan `reto` y `onFinish`; `objetivo` es de la escena.
 
 ### Como aplicación, con su propio Canvas
 
@@ -206,7 +206,7 @@ Toda la superficie pública es esa:
 
 | Nombre                         | Qué es                                                                                |
 | ------------------------------ | ------------------------------------------------------------------------------------- |
-| `StickRushScene`               | El juego como **escena**, dentro del Canvas y la sesión de otro. Props: `assetsBase`, `anchor`, `onExit`, `reto`, `onTerminar`, `objetivo`, `nombre`. |
+| `StickRushScene`               | El juego como **escena**, dentro del Canvas y la sesión de otro. Props: `assetsBase`, `anchor`, `onExit`, `reto`, `onFinish`, `objetivo`, `nombre`. |
 | `StickRush`                    | El juego como aplicación, con su propio Canvas y su propia sesión.                    |
 | `mountStickRush(elemento, …)`  | Lo mismo sobre un elemento del DOM. Devuelve `{ unmount() }`, que además cierra la sesión. |
 | `assetsBase`                   | De dónde cuelgan los ficheros del paso 3. Por defecto, la raíz del sitio.              |
@@ -248,7 +248,7 @@ las define, y si no, del sistema.
   nada.
 - **Los ajustes del salón, del mismo `localStorage`.** El idioma, el volumen, el escenario y la
   **mano buena** (`xrcade:hand`, `right` o `left`; `right` si no hay nada o hay basura) no son del
-  juego: se eligen en el salón y el juego los lee (`src/lib/ajustes.ts`, `useHand()` en
+  juego: se eligen en el salón y el juego los lee (`src/lib/settings.ts`, `useHand()` en
   `ajustesCliente.ts`), enterándose de un cambio sin recargar. Aquí se atrapa con cualquiera de
   las dos manos, así que el menú no pregunta ninguna y no hay clave propia que borrar: la mano
   del salón solo decide de qué lado sale el mando que enseñan las ayudas visuales.

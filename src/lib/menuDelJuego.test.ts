@@ -27,20 +27,20 @@ describe('las filas de cada modo', () => {
     expect(filasDelModo('challenge', 'visor')).toEqual(['mode', 'players', 'hoop', 'around'])
     expect(filasDelModo('practice', 'visor')).toEqual(['mode', 'endless', 'sticks', 'speed', 'hoop', 'around'])
     expect(filasDelModo('levels', 'portada')).toEqual(['mode', 'levels'])
-    expect(['mode', 'levels'].map((f) => papelDeLaFila(f as 'mode'))).toEqual(['modo', 'modo'])
-    expect(papelDeLaFila('players')).toBe('jugadores')
-    expect(papelDeLaFila('hoop')).toBe('otra')
+    expect(['mode', 'levels'].map((f) => papelDeLaFila(f as 'mode'))).toEqual(['mode', 'mode'])
+    expect(papelDeLaFila('players')).toBe('players')
+    expect(papelDeLaFila('hoop')).toBe('other')
   })
 
   it('al abrir, plegado: solo lo del modo y quién juega', () => {
-    expect(filasALaVista('practice', 'visor', false)).toEqual({ filas: ['mode'], plegadas: 5 })
-    expect(filasALaVista('practice', 'portada', true)).toEqual({ filas: ['mode', 'endless', 'sticks', 'speed'], plegadas: 0 })
+    expect(filasALaVista('practice', 'visor', false)).toEqual({ rows: ['mode'], folded: 5 })
+    expect(filasALaVista('practice', 'portada', true)).toEqual({ rows: ['mode', 'endless', 'sticks', 'speed'], folded: 0 })
     expect(seVe('levels', 'levels', 'visor', false)).toBe(true)
     expect(seVe('hoop', 'levels', 'visor', false)).toBe(false)
   })
 
   it('el reto es una partida fija: lo demás no se enseña aunque se pida, y no hay botón', () => {
-    expect(filasALaVista('challenge', 'visor', true)).toEqual({ filas: ['mode', 'players'], plegadas: 0 })
+    expect(filasALaVista('challenge', 'visor', true)).toEqual({ rows: ['mode', 'players'], folded: 0 })
     expect(botonDeOpciones('challenge', 'visor', false)).toBeNull()
     expect(botonDeOpciones('challenge', 'visor', true)).toBeNull()
   })

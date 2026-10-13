@@ -152,11 +152,11 @@ function code(source: string): string {
 const BROWSER_PORT = [
   // Los ajustes del arcade vistos desde el navegador: la cookie del idioma y el
   // almacenamiento, con el aviso a las demás pestañas.
-  'ajustesCliente.ts',
+  'settingsClient.ts',
   // El récord guardado, que se entera si lo cambian desde otra pestaña.
   'highScore.ts',
   // La cuenta de montajes que solo existe si un test la ha pedido antes de cargar.
-  'montajes.ts',
+  'mountCount.ts',
   // Dónde están los palos, escrito en `window` solo si el e2e ha pedido la sonda.
   'sceneProbe.ts',
   // El almacenamiento local, con el navegador que lo bloquea contemplado.

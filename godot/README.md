@@ -41,7 +41,7 @@ realidad aumentada en el visor.
 En plano se coge **con el ratón**, un clic sobre el palo al apretar, como en la web; la cámara es la
 de `GameCanvas.tsx` y los paneles cuelgan de ella.
 
-Con visor usa **la gramática XR del kit** (`@kit/runtime/xr/jugador`): la máquina se planta donde la
+Con visor usa **la gramática XR del kit** (`@kit/runtime/xr/player`): la máquina se planta donde la
 presta el salón, baja a los ojos de quien juega sentado y **gira por pasos con el stick de la mano
 libre**. **Los palos se cogen con la mano**: al apretar el gatillo lateral de cualquiera de los dos
 mandos, el palo que queda en la esfera de agarre del puño —la de la web, 9 cm
@@ -112,7 +112,7 @@ lint, cobertura al 100 % y los e2e). La escena importa `marcas.ts`.
 | `scene/**/*.motor.test.ts` | La partida contra el store de la web, la tanda contra `Stick.tsx` y el sonido contra `useGameSound.ts`, el mundo (y que lo del paquete es lo de la web byte a byte), y los paneles medidos con el instrumento de la web en los dos idiomas y pulsados con el ratón: corren con los tests de dominio |
 | `godot-kit.json` | Para el kit: el id, el repo (`..`), **la versión del kit** (`kit`, un tag de xrcade), los efectos (con la nota del atrape y la cuenta atrás en sus escalones) y la música |
 | `games/stick-rush/` | Lo que va en el `.pck`; `tests/` se queda fuera al exportar |
-| `games/stick-rush/{sfx,music,feria,texturas,hdri,mandos}/` | Los efectos renderizados (`npm run godot:sfx`), la música, las piezas del kit, la madera, la plaza y los mandos de Quest (`npm run godot:mandos`), con `CREDITS.md`. Se versionan. La plaza va comprimida para la GPU (BC6H y ASTC, 0,5 MB cada una en vez de 4) y la madera, sin pérdida y con sus mipmaps |
+| `games/stick-rush/{sfx,music,feria,texturas,hdri,mandos}/` | Los efectos renderizados (`npm run godot:sfx`), la música, las piezas del kit, la madera, la plaza y los mandos de Quest (`npm run godot:controllers`), con `CREDITS.md`. Se versionan. La plaza va comprimida para la GPU (BC6H y ASTC, 0,5 MB cada una en vez de 4) y la madera, sin pérdida y con sus mipmaps |
 | `games/stick-rush/tests/partida_auto.*` | La partida automática entera (práctica, Difícil, nueve palos, uno que se escapa adrede): palos, puntos, récord, lo que suena, la máquina y la feria, y lo que se le cuenta al salón; el reto con la semilla del salón, que entra jugando, da el mismo reparto dos veces y se cuenta como reto; y la partida a dos entera (`--a-dos`): las dos tandas con la misma semilla, gana el primero (el segundo deja escapar uno más), se apunta a la pareja sin tocar el récord, al salón una vez y suena a ganar |
 | `games/stick-rush/tests/menu_raton.*` | La escena de verdad con clics del ratón: velocidad, palos y aro, jugar, que un clic en un palo en la cuenta atrás no lo coge y jugando sí, que un clic al aire no coge nada, Escape, dejar la partida, el modo que pasa y salir |
 | `games/stick-rush/tests/xr_mando.*` | Dos partidas con visor simulado cogiendo con las dos manos: diestro sentado en el salón y zurdo de pie. La mano de cada atrape y su pulso, la altura del mundo y del aro, el anclaje, el giro, el tutorial con el mando en las manos y las ayudas |
@@ -136,7 +136,7 @@ $GODOT --headless --path . --import
 
 # Los efectos, del sound.ts de la web (Chromium), y los mandos, de public/webxr-profiles/
 (cd .. && npm run godot:sfx)
-(cd .. && npm run godot:mandos)
+(cd .. && npm run godot:controllers)
 
 # Una partida automática: imprime STICK-RUSH-RESULT con lo que ha pasado y el coste por fotograma
 $GODOT --headless --xr-mode off --fixed-fps 72 --path . -- --autoplay

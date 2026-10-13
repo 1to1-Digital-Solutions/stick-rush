@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { dibujarElAviso } from './XRHud'
-import { ALTO_DE_LINEA } from './canvasPanel'
+import { LINE_HEIGHT } from './canvasPanel'
 import {
   CONFIRM_BOXES,
   CONFIRM_TEXT,
@@ -8,7 +8,7 @@ import {
   XR_CONFIRM_SIZE as CONFIRM_SIZE,
   xrPanelViews,
 } from '../../lib/xrLayout'
-import { lienzoQueApunta, problemasDeLegibilidad, type Escrito } from './legibilidad'
+import { recordingCanvas, legibilityProblems, type DrawnText } from './legibility'
 import {
   MIN_READING_DEGREES,
   sizesOffList,
@@ -32,8 +32,8 @@ import { traductor } from '../../lib/textos'
 const IDIOMAS = ['en', 'es'] as const
 const VISTAS = xrPanelViews(XR_CONFIRM_POSITION)
 
-function medir(lang: (typeof IDIOMAS)[number]): Escrito[] {
-  const { ctx, escritos } = lienzoQueApunta()
+function medir(lang: (typeof IDIOMAS)[number]): DrawnText[] {
+  const { ctx, drawnTexts: escritos } = recordingCanvas()
   dibujarElAviso(ctx, traductor(lang))
   return escritos
 }
@@ -45,8 +45,8 @@ describe('el aviso de dejar la partida', () => {
 
       expect(escritos.length, 'no se ha medido nada').toBeGreaterThan(0)
       const panel = { width: CONFIRM_SIZE[0], height: CONFIRM_SIZE[1] }
-      const distancia = Math.max(...VISTAS.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, ALTO_DE_LINEA)))
-      expect(problemasDeLegibilidad(escritos, { panel, distancia }), lang).toEqual([])
+      const distancia = Math.max(...VISTAS.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, LINE_HEIGHT)))
+      expect(legibilityProblems(escritos, { panel, distance: distancia }), lang).toEqual([])
     }
   })
 })
@@ -55,7 +55,7 @@ describe('cada letra del aviso se lee de un vistazo', () => {
   it(`ninguna baja de ${MIN_READING_DEGREES}°, en los dos idiomas y a cualquier altura de ojos`, () => {
     for (const lang of IDIOMAS) {
       for (const vista of VISTAS) {
-        expect(unreadableTexts(medir(lang), vista.pose, vista.ojos, ALTO_DE_LINEA), `${lang}, ${vista.donde}`).toEqual([])
+        expect(unreadableTexts(medir(lang), vista.pose, vista.ojos, LINE_HEIGHT), `${lang}, ${vista.donde}`).toEqual([])
       }
     }
   })
@@ -63,7 +63,7 @@ describe('cada letra del aviso se lee de un vistazo', () => {
   it('y todas se escriben con un tamaño de la lista, sin encogerse', () => {
     // «Seguir jugando» no cabía en su botón y se encogía a 33 mm.
     for (const lang of IDIOMAS) {
-      expect(sizesOffList(medir(lang), ALTO_DE_LINEA, Object.values(CONFIRM_TEXT)), lang).toEqual([])
+      expect(sizesOffList(medir(lang), LINE_HEIGHT, Object.values(CONFIRM_TEXT)), lang).toEqual([])
     }
   })
 
@@ -80,8 +80,8 @@ describe('cada letra del aviso se lee de un vistazo', () => {
   })
 
   it('el control: una etiqueta encogida a 24 mm no llegaría', () => {
-    const salir = medir('es').find((e) => e.texto === 'Salir')!
+    const salir = medir('es').find((e) => e.text === 'Salir')!
     const vista = VISTAS[0]
-    expect(unreadableTexts([{ ...salir, alto: 0.024 * ALTO_DE_LINEA }], vista.pose, vista.ojos, ALTO_DE_LINEA)).toHaveLength(1)
+    expect(unreadableTexts([{ ...salir, height: 0.024 * LINE_HEIGHT }], vista.pose, vista.ojos, LINE_HEIGHT)).toHaveLength(1)
   })
 })

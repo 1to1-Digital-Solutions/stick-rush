@@ -13,11 +13,11 @@ import { AHORA_CUENTA, CALENTAMIENTO } from './calentamiento'
 import { PLAYER_COUNT_LABELS } from './duel'
 import { CHALLENGE_LIVES, CHALLENGE_SETUP, GAME_MODE_LABELS, type GameMode } from './gameMode'
 import { REFERENCE_EYE_HEIGHT } from './hoopHeight'
-import { MEDALLAS, cuentaParaMedalla, type Medalla, type Objetivo, type Partida, type Traducir } from './objetivo'
-import { plural } from './palabras'
+import { MEDALS, countsForMedal, type Medal, type Goal, type Run, type Translate } from './goal'
+import { plural } from './menuWords'
 import { stickPoints } from './scoring'
 import { distanceFromEyes, eyesAt, pointOnPanel, tiltTowardEyes, type PanelPose, type Point } from './panelReading'
-import { pulsosDe, type Mano, type Pulso, type Tacto } from './tactos'
+import { pulsesFor, type HandSide, type HandPulse, type HapticEvent } from './hapticFeedback'
 import { XR_CARTEL_POSITION, type Vec3 } from './xrLayout'
 
 /** El modo del que salen el récord de la cabina y las medallas del salón. */
@@ -32,8 +32,8 @@ export const VISTA_SIN_GIRAR = 35
 
 /** Lo que mide el cartel por cada metro de distancia de lectura: su ancho y su alto. */
 export interface ProporcionDelCartel {
-  readonly ancho: number
-  readonly alto: number
+  readonly width: number
+  readonly height: number
 }
 
 /** Dónde queda el cartel y cómo se orienta. */
@@ -69,8 +69,8 @@ export function poseDelCartel(sitio: SitioDelCartel = sitioDelCartel()): PanelPo
 /** Las cuatro esquinas del cartel ya colocado, en el espacio de quien juega. */
 export function esquinasDelCartel(proporcion: ProporcionDelCartel, sitio: SitioDelCartel = sitioDelCartel()): Point[] {
   const pose = poseDelCartel(sitio)
-  const ancho = proporcion.ancho * sitio.distancia
-  const alto = proporcion.alto * sitio.distancia
+  const ancho = proporcion.width * sitio.distancia
+  const alto = proporcion.height * sitio.distancia
   return [-1, 1].flatMap((x) => [-1, 1].map((y) => pointOnPanel(pose, (x * ancho) / 2, (y * alto) / 2)))
 }
 
@@ -92,7 +92,7 @@ export function apartadoDeLaMirada(punto: Point, ojos: number = REFERENCE_EYE_HE
 export const MISION_DEL_RETO = 'Catch {sticks} sticks. Drop three and out'
 
 /** Lo que queda, como se escribe en el cartel: «Lives ♥♥♡ · Sticks 9». */
-export function loQueQueda(vidas: number, palos: number, t: Traducir): string {
+export function loQueQueda(vidas: number, palos: number, t: Translate): string {
   const gastadas = Math.max(0, CHALLENGE_LIVES - vidas)
   return `${t('Lives')} ${'♥'.repeat(CHALLENGE_LIVES - gastadas)}${'♡'.repeat(gastadas)} · ${t('Sticks')} ${palos}`
 }
@@ -112,7 +112,7 @@ export function palosPara(puntos: number): number {
  * Los puntos de un listón dichos en palos, ya traducidos: `1900` → «≈ 13 palos». Es el `contable`
  * del cartel: la misión cuenta palos y el récord, puntos, y quien empieza no sabe cuánto es 1900.
  */
-export function enPalos(t: Traducir): (puntos: number) => string {
+export function enPalos(t: Translate): (puntos: number) => string {
   return (puntos) => {
     const n = palosPara(puntos)
     return t(plural(n, '≈ {n} stick', '≈ {n} sticks'), { n })
@@ -122,7 +122,7 @@ export function enPalos(t: Traducir): (puntos: number) => string {
 /** Lo que el cartel necesita saber de lo que se está jugando. */
 export interface LoQueSeJuega {
   /** Lo que pasó el salón, si lo pasó. */
-  objetivo?: Objetivo | null
+  objetivo?: Goal | null
   gameMode: GameMode
   /** Si se juega a dos pasándose el mando: una tanda a dos no es la marca de nadie. */
   aDos: boolean
@@ -155,7 +155,7 @@ export interface LoQueSeJuega {
  * cuenta atrás del reto que empieza de cero dice «Ahora cuenta para medalla» en lugar de la misión
  * —que ya se ha jugado—, con los listones debajo.
  */
-export function partidaDelCartel(juego: LoQueSeJuega, t: Traducir): Partida | null {
+export function partidaDelCartel(juego: LoQueSeJuega, t: Translate): Run | null {
   const { gameMode, gameState } = juego
   if (gameState === 'menu') return null
   const objetivo = juego.objetivo ?? null
@@ -163,33 +163,33 @@ export function partidaDelCartel(juego: LoQueSeJuega, t: Traducir): Partida | nu
     // Sin salón el cartel solo dice la misión, así que la misión es ya la frase entera.
     const modo = t(CALENTAMIENTO)
     const mision = t('{mode} · does not count for a medal', { mode: modo })
-    return { objetivo, fase: 'jugando', puntos: juego.points, mision, cuenta: false, modo }
+    return { goal: objetivo, phase: 'playing', points: juego.points, mission: mision, counts: false, mode: modo }
   }
   const mision = t(MISION_DEL_RETO, { sticks: CHALLENGE_SETUP.stickCount })
   const cuenta =
-    gameMode === MODO_DE_LAS_MEDALLAS && !juego.aDos && juego.lives != null && cuentaParaMedalla(objetivo, gameMode)
+    gameMode === MODO_DE_LAS_MEDALLAS && !juego.aDos && juego.lives != null && countsForMedal(objetivo, gameMode)
   if (!cuenta) {
     if (objetivo == null || gameState === 'finished') return null
     const modo = t(juego.aDos ? PLAYER_COUNT_LABELS[2] : GAME_MODE_LABELS[gameMode])
-    return { objetivo, fase: 'jugando', puntos: 0, mision, cuenta: false, modo }
+    return { goal: objetivo, phase: 'playing', points: 0, mission: mision, counts: false, mode: modo }
   }
   const sinEmpezar = gameState === 'countdown' || juego.resolved === 0
   return {
-    objetivo,
-    fase: gameState === 'finished' ? 'final' : sinEmpezar ? 'antes' : 'jugando',
-    puntos: juego.points,
-    mision: juego.ahoraCuenta === true && sinEmpezar ? t(AHORA_CUENTA) : mision,
-    queda: loQueQueda(juego.lives as number, juego.stickCount - juego.resolved, t),
+    goal: objetivo,
+    phase: gameState === 'finished' ? 'end' : sinEmpezar ? 'before' : 'playing',
+    points: juego.points,
+    mission: juego.ahoraCuenta === true && sinEmpezar ? t(AHORA_CUENTA) : mision,
+    remaining: loQueQueda(juego.lives as number, juego.stickCount - juego.resolved, t),
     record: juego.record > 0 ? juego.record : null,
     // La primera vez, el bronce en palos. Con un bronce de un palo o menos, la cifra: «≈ 1 palo»
     // es el primer atrape y no dice hasta dónde hay que llegar.
-    contable: objetivo != null && palosPara(objetivo.medallas.bronce) > 1 ? enPalos(t) : null,
+    asCount: objetivo != null && palosPara(objetivo.medals.bronze) > 1 ? enPalos(t) : null,
   }
 }
 
 /** Si el cartel de esa partida dice ya los puntos y las vidas: entonces el marcador los calla. */
-export function llevaLaCuenta(partida: Partida | null): partida is Partida {
-  return partida != null && partida.cuenta !== false
+export function llevaLaCuenta(partida: Run | null): partida is Run {
+  return partida != null && partida.counts !== false
 }
 
 /**
@@ -204,11 +204,11 @@ export const RETARDO_DEL_LISTON = 90
  * Lo que se siente en la mano al cruzar un listón: algo ha llegado, más fuerte cuanto mejor es
  * la medalla. A CALIBRAR CON EL VISOR.
  */
-export function tactoDelListon(medalla: Medalla, mano: Mano): Tacto {
-  return { tipo: 'llegada', mano, fuerza: 0.5 + 0.25 * MEDALLAS.indexOf(medalla) }
+export function tactoDelListon(medalla: Medal, mano: HandSide): HapticEvent {
+  return { type: 'arrival', hand: mano, strength: 0.5 + 0.25 * MEDALS.indexOf(medalla) }
 }
 
 /** Los pulsos del listón cruzado, ya con su hueco tras el atrape. */
-export function pulsosDelListon(medalla: Medalla, mano: Mano): Pulso[] {
-  return pulsosDe(tactoDelListon(medalla, mano)).map((pulso) => ({ ...pulso, retardo: pulso.retardo + RETARDO_DEL_LISTON }))
+export function pulsosDelListon(medalla: Medal, mano: HandSide): HandPulse[] {
+  return pulsesFor(tactoDelListon(medalla, mano)).map((pulso) => ({ ...pulso, delay: pulso.delay + RETARDO_DEL_LISTON }))
 }

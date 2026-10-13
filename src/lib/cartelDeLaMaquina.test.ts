@@ -22,10 +22,10 @@ import {
 import { MACHINE_HEIGHT, MAX_STICKS, PLAYER_OFFSET_Z, STICK_CORD_LENGTH, STICK_LENGTH, STICK_RADIUS } from './gameConfig'
 import { CHALLENGE_LIVES, CHALLENGE_SETUP, DEFAULT_GAME_MODE } from './gameMode'
 import { MAX_EYE_HEIGHT, MIN_EYE_HEIGHT, REFERENCE_EYE_HEIGHT } from './hoopHeight'
-import { cartelDeObjetivo, medallaQueCelebra, type Objetivo } from './objetivo'
+import { goalSign, medalToCelebrate, type Goal } from './goal'
 import { pointOnPanel } from './panelReading'
 import { buildStickLayout } from './stickLayout'
-import { pulsosDe } from './tactos'
+import { pulsesFor } from './hapticFeedback'
 import { traductorSuave } from './textos'
 import {
   TUTORIAL_PANEL,
@@ -45,15 +45,15 @@ import {
 
 /** Lo que mide el cartel por metro de distancia: 24° de ancho por 4,5° de alto, como el de verdad. */
 const PROPORCION: ProporcionDelCartel = {
-  ancho: 2 * Math.tan((12 * Math.PI) / 180),
-  alto: 2 * Math.tan((2.25 * Math.PI) / 180),
+  width: 2 * Math.tan((12 * Math.PI) / 180),
+  height: 2 * Math.tan((2.25 * Math.PI) / 180),
 }
 
 /** Lo más que crece el cartel al celebrar un listón (`pulsoDelFestejo`). */
 const CRECIDO = 1.12
 
 const SITIO = sitioDelCartel()
-const ALTO = PROPORCION.alto * SITIO.distancia
+const ALTO = PROPORCION.height * SITIO.distancia
 
 /** Hasta dónde llega el cartel por arriba y por abajo, también mientras celebra. */
 const ARRIBA = pointOnPanel(poseDelCartel(), 0, (ALTO * CRECIDO) / 2).y
@@ -116,7 +116,7 @@ describe('dónde se lee el cartel', () => {
 
     // Lo más cerca que llega el cartel, girado como esté la interfaz: su borde de abajo.
     const pose = poseDelCartel()
-    const ancho = PROPORCION.ancho * SITIO.distancia * CRECIDO
+    const ancho = PROPORCION.width * SITIO.distancia * CRECIDO
     const bordes = [-1, 0, 1].flatMap((x) => [-1, 1].map((y) => pointOnPanel(pose, (x * ancho) / 2, (y * ALTO * CRECIDO) / 2)))
     const loMasCerca = Math.min(...bordes.map((punto) => Math.hypot(punto.x, punto.z)))
 
@@ -156,12 +156,12 @@ describe('dónde se lee el cartel', () => {
 })
 
 /** Los listones de Stick Rush en el salón. */
-const OBJETIVO: Objetivo = {
-  medallas: { bronce: 1900, plata: 3750, oro: 5200 },
-  mejorEs: 'mas',
-  unidad: 'points in challenge',
+const OBJETIVO: Goal = {
+  medals: { bronze: 1900, silver: 3750, gold: 5200 },
+  better: 'higher',
+  unit: 'points in challenge',
   record: 2400,
-  modo: 'challenge',
+  mode: 'challenge',
 }
 
 const en = traductorSuave('en')
@@ -203,25 +203,25 @@ describe('la partida que se le cuenta al cartel', () => {
   it('durante la cuenta atrás: la misión y los tres listones', () => {
     const partida = partidaDelCartel(reto({ gameState: 'countdown' }), es)
 
-    expect(partida?.fase).toBe('antes')
-    expect(cartelDeObjetivo(partida!, es)).toMatchObject({
-      titulo: 'Atrapa 13 palos. Tres al suelo y fuera',
-      detalle: 'Bronce 1900 · Plata 3750 · Oro 5200',
+    expect(partida?.phase).toBe('before')
+    expect(goalSign(partida!, es)).toMatchObject({
+      title: 'Atrapa 13 palos. Tres al suelo y fuera',
+      detail: 'Bronce 1900 · Plata 3750 · Oro 5200',
     })
-    expect(medallaQueCelebra(partida!)).toBeNull()
+    expect(medalToCelebrate(partida!)).toBeNull()
   })
 
   it('la primera vez, sin récord, el bronce dicho en palos y el oro', () => {
     const sinRecord = { ...OBJETIVO, record: null }
-    expect(cartelDeObjetivo(partidaDelCartel(reto({ gameState: 'countdown', objetivo: sinRecord }), es)!, es).detalle).toBe(
+    expect(goalSign(partidaDelCartel(reto({ gameState: 'countdown', objetivo: sinRecord }), es)!, es).detail).toBe(
       'Bronce ≈ 13 palos · Oro 5200',
     )
-    expect(cartelDeObjetivo(partidaDelCartel(reto({ gameState: 'countdown', objetivo: sinRecord }), en)!, en).detalle).toBe(
+    expect(goalSign(partidaDelCartel(reto({ gameState: 'countdown', objetivo: sinRecord }), en)!, en).detail).toBe(
       'Bronze ≈ 13 sticks · Gold 5,200',
     )
     // Un bronce de un palo se dice con su cifra: «≈ 1 palo» es el primer atrape.
-    const deUnPalo = { ...sinRecord, medallas: { bronce: 10, plata: 20, oro: 30 } }
-    expect(cartelDeObjetivo(partidaDelCartel(reto({ gameState: 'countdown', objetivo: deUnPalo }), en)!, en).detalle).toBe(
+    const deUnPalo = { ...sinRecord, medals: { bronze: 10, silver: 20, gold: 30 } }
+    expect(goalSign(partidaDelCartel(reto({ gameState: 'countdown', objetivo: deUnPalo }), en)!, en).detail).toBe(
       'Bronze 10 · Silver 20 · Gold 30',
     )
   })
@@ -236,55 +236,55 @@ describe('la partida que se le cuenta al cartel', () => {
   })
 
   it('y sigue hasta que se resuelve el primer palo: da tiempo a leerla', () => {
-    expect(partidaDelCartel(reto({ gameState: 'playing', resolved: 0 }), en)?.fase).toBe('antes')
-    expect(partidaDelCartel(reto({ gameState: 'playing', resolved: 1, points: 150 }), en)?.fase).toBe('jugando')
+    expect(partidaDelCartel(reto({ gameState: 'playing', resolved: 0 }), en)?.phase).toBe('before')
+    expect(partidaDelCartel(reto({ gameState: 'playing', resolved: 1, points: 150 }), en)?.phase).toBe('playing')
     // Aunque ese primer palo se haya escapado y no haya puntos.
-    expect(partidaDelCartel(reto({ gameState: 'playing', resolved: 1, lives: 2 }), en)?.fase).toBe('jugando')
+    expect(partidaDelCartel(reto({ gameState: 'playing', resolved: 1, lives: 2 }), en)?.phase).toBe('playing')
   })
 
   it('jugando: el listón que falta, lo que se lleva, las vidas y los palos que quedan', () => {
     const partida = partidaDelCartel(reto({ points: 2100, lives: 2, resolved: 6 }), es)
 
-    expect(partida).toMatchObject({ fase: 'jugando', puntos: 2100, queda: 'Vidas ♥♥♡ · Palos 7' })
-    expect(cartelDeObjetivo(partida!, es)).toMatchObject({
-      titulo: 'Plata a 3750 · llevas 2100',
-      detalle: 'Vidas ♥♥♡ · Palos 7',
-      medalla: 'plata',
+    expect(partida).toMatchObject({ phase: 'playing', points: 2100, remaining: 'Vidas ♥♥♡ · Palos 7' })
+    expect(goalSign(partida!, es)).toMatchObject({
+      title: 'Plata a 3750 · llevas 2100',
+      detail: 'Vidas ♥♥♡ · Palos 7',
+      medal: 'silver',
     })
-    expect(medallaQueCelebra(partida!)).toBe('bronce')
+    expect(medalToCelebrate(partida!)).toBe('bronze')
   })
 
   it('al acabar: lo conseguido y lo que faltó para la siguiente', () => {
     const partida = partidaDelCartel(reto({ gameState: 'finished', points: 2100, lives: 0, resolved: 9 }), es)
 
-    expect(partida?.fase).toBe('final')
-    expect(cartelDeObjetivo(partida!, es)).toMatchObject({
-      titulo: 'Bronce · 2100 points in challenge',
-      detalle: 'Te han faltado 1650 para la plata',
+    expect(partida?.phase).toBe('end')
+    expect(goalSign(partida!, es)).toMatchObject({
+      title: 'Bronce · 2100 points in challenge',
+      detail: 'Te han faltado 1650 para la plata',
     })
     // Sin llegar al bronce, lo que faltó para él.
     const sinMedalla = partidaDelCartel(reto({ gameState: 'finished', points: 400, lives: 0, resolved: 4 }), en)
-    expect(cartelDeObjetivo(sinMedalla!, en)).toMatchObject({
-      titulo: 'No medal · 400 points in challenge',
-      detalle: '1,500 short of bronze',
+    expect(goalSign(sinMedalla!, en)).toMatchObject({
+      title: 'No medal · 400 points in challenge',
+      detail: '1,500 short of bronze',
     })
   })
 
   it('fuera del reto, dentro del salón: dice bajito que no cuenta para medalla', () => {
     const practica = partidaDelCartel(reto({ gameMode: 'practice', lives: null, points: 900, resolved: 3 }), es)
-    expect(cartelDeObjetivo(practica!, es)).toMatchObject({ titulo: 'Práctica · no cuenta para medalla', discreto: true })
-    expect(medallaQueCelebra(practica!)).toBeNull()
+    expect(goalSign(practica!, es)).toMatchObject({ title: 'Práctica · no cuenta para medalla', subdued: true })
+    expect(medalToCelebrate(practica!)).toBeNull()
     expect(llevaLaCuenta(practica)).toBe(false)
 
     const niveles = partidaDelCartel(reto({ gameMode: 'levels', lives: null, gameState: 'countdown' }), en)
-    expect(cartelDeObjetivo(niveles!, en).titulo).toBe('Levels · does not count for a medal')
+    expect(goalSign(niveles!, en).title).toBe('Levels · does not count for a medal')
   })
 
   it('a dos tampoco cuenta, aunque sea el reto: una tanda a dos no es la marca de nadie', () => {
     const partida = partidaDelCartel(reto({ aDos: true, points: 2100, resolved: 5 }), es)
 
-    expect(cartelDeObjetivo(partida!, es).titulo).toBe('Duelo · no cuenta para medalla')
-    expect(medallaQueCelebra(partida!)).toBeNull()
+    expect(goalSign(partida!, es).title).toBe('Duelo · no cuenta para medalla')
+    expect(medalToCelebrate(partida!)).toBeNull()
   })
 
   it('lo que no cuenta se dice mientras se juega: al acabar no se cuelga, y el marcador va entero', () => {
@@ -293,28 +293,28 @@ describe('la partida que se le cuenta al cartel', () => {
   })
 
   it('si el salón dice que las medallas salen de otro modo, el reto tampoco cuenta', () => {
-    const partida = partidaDelCartel(reto({ objetivo: { ...OBJETIVO, modo: 'levels' }, points: 500, resolved: 2 }), es)
+    const partida = partidaDelCartel(reto({ objetivo: { ...OBJETIVO, mode: 'levels' }, points: 500, resolved: 2 }), es)
 
-    expect(cartelDeObjetivo(partida!, es).titulo).toBe('Reto · no cuenta para medalla')
+    expect(goalSign(partida!, es).title).toBe('Reto · no cuenta para medalla')
   })
 
   it('con el juego abierto suelto: en el reto, la misión y el récord guardado aquí', () => {
     const antes = partidaDelCartel(reto({ objetivo: null, gameState: 'countdown', record: 3100 }), en)
-    expect(cartelDeObjetivo(antes!, en)).toMatchObject({
-      titulo: 'Catch 13 sticks. Drop three and out',
-      detalle: 'Your record 3,100',
+    expect(goalSign(antes!, en)).toMatchObject({
+      title: 'Catch 13 sticks. Drop three and out',
+      detail: 'Your record 3,100',
     })
 
     const jugando = partidaDelCartel(reto({ objetivo: undefined, points: 1200, lives: 1, resolved: 8, record: 3100 }), en)
-    expect(cartelDeObjetivo(jugando!, en)).toMatchObject({
-      titulo: 'Your record 3,100 · you have 1,200',
-      detalle: 'Lives ♥♡♡ · Sticks 5',
+    expect(goalSign(jugando!, en)).toMatchObject({
+      title: 'Your record 3,100 · you have 1,200',
+      detail: 'Lives ♥♡♡ · Sticks 5',
     })
     expect(llevaLaCuenta(jugando)).toBe(true)
 
     // Sin récord guardado no hay segunda línea.
     const sinRecord = partidaDelCartel(reto({ objetivo: null, gameState: 'countdown' }), en)
-    expect(cartelDeObjetivo(sinRecord!, en).detalle).toBeNull()
+    expect(goalSign(sinRecord!, en).detail).toBeNull()
   })
 
   it('con el juego abierto suelto y fuera del reto no se cuelga nada', () => {
@@ -338,21 +338,21 @@ describe('la partida que se le cuenta al cartel', () => {
 
 describe('el listón en la mano', () => {
   it('se siente más fuerte cuanto mejor es la medalla, en la mano que se diga', () => {
-    const fuerza = (medalla: 'bronce' | 'plata' | 'oro') => pulsosDelListon(medalla, 'left')[0]
+    const fuerza = (medalla: 'bronze' | 'silver' | 'gold') => pulsosDelListon(medalla, 'left')[0]
 
-    expect(fuerza('bronce').mano).toBe('left')
-    expect(fuerza('plata').intensidad).toBeGreaterThan(fuerza('bronce').intensidad)
-    expect(fuerza('oro').intensidad).toBeGreaterThan(fuerza('plata').intensidad)
-    expect(pulsosDelListon('oro', 'right')).toHaveLength(1)
-    expect(pulsosDelListon('oro', 'right')[0].mano).toBe('right')
+    expect(fuerza('bronze').hand).toBe('left')
+    expect(fuerza('silver').intensity).toBeGreaterThan(fuerza('bronze').intensity)
+    expect(fuerza('gold').intensity).toBeGreaterThan(fuerza('silver').intensity)
+    expect(pulsosDelListon('gold', 'right')).toHaveLength(1)
+    expect(pulsosDelListon('gold', 'right')[0].hand).toBe('right')
   })
 
   it('llega después del atrape que lo cruzó, para que sean dos toques y no uno', () => {
-    const delAtrape = pulsosDe({ tipo: 'agarre', mano: 'right' })[0]
-    const [pulso] = pulsosDelListon('plata', 'right')
+    const delAtrape = pulsesFor({ type: 'grab', hand: 'right' })[0]
+    const [pulso] = pulsosDelListon('silver', 'right')
 
-    expect(pulso.retardo).toBe(pulsosDe(tactoDelListon('plata', 'right'))[0].retardo + RETARDO_DEL_LISTON)
+    expect(pulso.delay).toBe(pulsesFor(tactoDelListon('silver', 'right'))[0].delay + RETARDO_DEL_LISTON)
     // `pulse()` no encola: el del listón sale cuando el del atrape ya ha acabado.
-    expect(pulso.retardo).toBeGreaterThan(delAtrape.retardo + delAtrape.ms)
+    expect(pulso.delay).toBeGreaterThan(delAtrape.delay + delAtrape.ms)
   })
 })

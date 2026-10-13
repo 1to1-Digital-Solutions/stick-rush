@@ -306,7 +306,7 @@ entorno: no son tareas, son cosas con las que tropezar.)*
 
 - **Publicar una versión nueva** va por tag sobre `develop` (`v0.2.0`, `v0.3.0` y `v0.4.0` ya
   están): el procedimiento y la comprobación de que la `version` coincide con el tag están en
-  «Publicar una versión nueva» de `docs/montar-el-juego.md`. xrcade lo sube con
+  «Publicar una versión nueva» de `docs/mounting-the-game.md`. xrcade lo sube con
   `npm run game:update`.
 - **xrcade instala este repo privado** con las credenciales de git de la máquina; su CI usa un
   token de organización (`XRCADE_GAMES_TOKEN`). Decidido y escrito en xrcade.
@@ -1178,7 +1178,7 @@ envoltorio delgado que lo monta a pantalla completa y se sigue desplegando igual
 - **La superficie pública es mínima**: `StickRush` (componente), `mountStickRush`
   (elemento del DOM), `assetsBase` y `stick-rush/styles.css`. Nada más. El contrato entero
   —instalación, `transpilePackages`, ficheros estáticos, Tailwind y qué espera el juego de
-  quien lo monta— está en `docs/montar-el-juego.md`, que es lo que respetará la tarea
+  quien lo monta— está en `docs/mounting-the-game.md`, que es lo que respetará la tarea
   gemela de xrcade.
 - **Se consume por tag del repositorio**, no por registry: `npm install
   "github:1to1-Digital-Solutions/stick-rush#v0.2.0"`. Actualizar el juego en el salón es

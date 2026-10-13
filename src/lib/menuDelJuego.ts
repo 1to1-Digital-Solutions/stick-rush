@@ -1,7 +1,7 @@
 import { eligeJugadores } from './duel'
 import { GAME_MODE_ORDER, picksSetup, type GameMode } from './gameMode'
-import { MENU_EN } from './palabras'
-import { conElRetoPrimero, filasDelMenu, type FilasDelMenu, type PapelDeLaFila } from './plantillaDelMenu'
+import { MENU_EN } from './menuWords'
+import { challengeFirst, foldRows, type FoldedRows, type RowRole } from './menuTemplate'
 
 /**
  * Las filas del menú de Stick Rush según la plantilla común (`plantillaDelMenu.ts`): qué filas
@@ -26,7 +26,7 @@ import { conElRetoPrimero, filasDelMenu, type FilasDelMenu, type PapelDeLaFila }
  * del visor los recorre en este orden y la portada los pone así; `GAME_MODE_ORDER`, del más suave
  * al más exigente, se queda para lo demás.
  */
-export const MODOS_DEL_MENU: readonly GameMode[] = conElRetoPrimero(GAME_MODE_ORDER, (modo) => modo === 'challenge')
+export const MODOS_DEL_MENU: readonly GameMode[] = challengeFirst(GAME_MODE_ORDER, (modo) => modo === 'challenge')
 
 /** El modo que sigue a ese al pulsar el interruptor del visor: del último, vuelta al primero. */
 export function siguienteModo(modo: GameMode): GameMode {
@@ -40,9 +40,9 @@ export type FilaDelMenu = 'mode' | 'levels' | 'players' | 'endless' | 'sticks' |
 export type MenuDe = 'visor' | 'portada'
 
 /** El papel de cada fila en la plantilla. */
-export function papelDeLaFila(fila: FilaDelMenu): PapelDeLaFila {
-  if (fila === 'mode' || fila === 'levels') return 'modo'
-  return fila === 'players' ? 'jugadores' : 'otra'
+export function papelDeLaFila(fila: FilaDelMenu): RowRole {
+  if (fila === 'mode' || fila === 'levels') return 'mode'
+  return fila === 'players' ? 'players' : 'other'
 }
 
 /** Las filas que tiene el menú con ese modo elegido, todas, en el orden de la plantilla. */
@@ -56,8 +56,8 @@ export function filasDelModo(modo: GameMode, donde: MenuDe): FilaDelMenu[] {
 }
 
 /** Lo que se enseña del menú: las filas a la vista y cuántas quedan plegadas. */
-export function filasALaVista(modo: GameMode, donde: MenuDe, masOpciones: boolean): FilasDelMenu<FilaDelMenu> {
-  return filasDelMenu(filasDelModo(modo, donde), papelDeLaFila, { masOpciones, enReto: modo === 'challenge' })
+export function filasALaVista(modo: GameMode, donde: MenuDe, masOpciones: boolean): FoldedRows<FilaDelMenu> {
+  return foldRows(filasDelModo(modo, donde), papelDeLaFila, { moreOptions: masOpciones, inChallenge: modo === 'challenge' })
 }
 
 /**
@@ -68,13 +68,13 @@ export function botonDeOpciones(
   modo: GameMode,
   donde: MenuDe,
   masOpciones: boolean,
-): typeof MENU_EN.masOpciones | typeof MENU_EN.menosOpciones | null {
-  const plegable = filasALaVista(modo, donde, false).plegadas > 0
+): typeof MENU_EN.moreOptions | typeof MENU_EN.fewerOptions | null {
+  const plegable = filasALaVista(modo, donde, false).folded > 0
   if (!plegable) return null
-  return masOpciones ? MENU_EN.menosOpciones : MENU_EN.masOpciones
+  return masOpciones ? MENU_EN.fewerOptions : MENU_EN.moreOptions
 }
 
 /** Si esa fila se ve con ese modo y ese plegado. */
 export function seVe(fila: FilaDelMenu, modo: GameMode, donde: MenuDe, masOpciones: boolean): boolean {
-  return filasALaVista(modo, donde, masOpciones).filas.includes(fila)
+  return filasALaVista(modo, donde, masOpciones).rows.includes(fila)
 }

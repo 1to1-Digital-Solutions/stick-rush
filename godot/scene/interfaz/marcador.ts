@@ -22,14 +22,14 @@
  */
 import { Node3D, Vector3, type MeshInstance3D } from 'godot'
 
-import { triangulosDeArco } from '@kit/lib/ui/iconos'
-import { Boton } from '@kit/runtime/ui/boton'
-import { figura, pintar } from '@kit/runtime/ui/malla'
+import { arcTriangles } from '@kit/lib/ui/icons'
+import { Button } from '@kit/runtime/ui/button'
+import { shape, paint } from '@kit/runtime/ui/mesh'
 import { Panel } from '@kit/runtime/ui/panel'
-import type { Punteria } from '@kit/runtime/ui/punteria'
-import { ORDEN } from '@kit/runtime/ui/texto3d'
+import type { PointerAim } from '@kit/runtime/ui/pointerAim'
+import { RENDER_ORDER } from '@kit/runtime/ui/text3d'
 
-import type { Lang } from '@/lib/ajustes'
+import type { Lang } from '@/lib/settings'
 import { LIFE_COLOR, MAX_STICKS } from '@/lib/gameConfig'
 import { CHALLENGE_LIVES, otraDelModo, type GameMode } from '@/lib/gameMode'
 import type { Stars } from '@/lib/levels'
@@ -101,8 +101,8 @@ export interface AccionesDelMarcador {
 export class Marcador {
   readonly nodo: Node3D
   readonly panel: Panel
-  readonly repetir: Boton
-  readonly menu: Boton
+  readonly repetir: Button
+  readonly menu: Button
   private readonly contenido: Node3D
   private readonly fichas: MeshInstance3D[] = []
   private readonly rombos: MeshInstance3D[] = []
@@ -117,7 +117,7 @@ export class Marcador {
   private ancho = 0
   private alto = 0
 
-  constructor(acciones: AccionesDelMarcador, punteria: Punteria) {
+  constructor(acciones: AccionesDelMarcador, punteria: PointerAim) {
     // Opaco: translúcido, en Godot se transparenta mucho más que en la web (lienzo a 0,72).
     this.panel = new Panel({ ancho: 1, alto: 1, fondo: COLORES.panel, opacidad: 1 })
     // Fuera, el sitio de la web; dentro, el panel centrado en su fondo, que es como lo mide el
@@ -127,21 +127,21 @@ export class Marcador {
     this.nodo.add_child(this.panel.nodo)
     this.contenido = this.panel.nodo
     for (let i = 0; i < MAX_STICKS; i++) {
-      const ficha = figura(triangulosDeArco(0, TOKEN_RADIUS, 0, Math.PI * 2, 20), TOKEN_STYLE.pending.color)
+      const ficha = shape(arcTriangles(0, TOKEN_RADIUS, 0, Math.PI * 2, 20), TOKEN_STYLE.pending.color)
       this.contenido.add_child(ficha)
       this.fichas.push(ficha)
     }
     for (let i = 0; i < 5; i++) {
-      const rombo = figura(
+      const rombo = shape(
         [[0, -0.0085], [0.0085, 0], [0, 0.0085], [0, -0.0085], [0, 0.0085], [-0.0085, 0]],
         COLORES.estrella,
       )
       this.contenido.add_child(rombo)
       this.rombos.push(rombo)
     }
-    this.carril = rectangulo(1, 0.012, COLORES.ficha, 0, 0, ORDEN.placa)
+    this.carril = rectangulo(1, 0.012, COLORES.ficha, 0, 0, RENDER_ORDER.placa)
     this.relleno = rectangulo(1, 0.012, '#22c55e')
-    this.marca = rectangulo(0.005, 1, COLORES.estrella, 0, 0, ORDEN.texto)
+    this.marca = rectangulo(0.005, 1, COLORES.estrella, 0, 0, RENDER_ORDER.texto)
     this.contenido.add_child(this.carril)
     this.contenido.add_child(this.relleno)
     this.contenido.add_child(this.marca)
@@ -164,9 +164,9 @@ export class Marcador {
     this.fichasDeLaPareja = fichas
     this.pareja.visible = false
 
-    this.repetir = this.panel.boton(new Boton({ id: 'again', caja: { x: -BUTTON_SPACING, y: 0, ...BUTTON_HIT }, color: COLORES.jugar, alPulsar: () => acciones.repetir() }))
+    this.repetir = this.panel.boton(new Button({ id: 'again', caja: { x: -BUTTON_SPACING, y: 0, ...BUTTON_HIT }, color: COLORES.jugar, alPulsar: () => acciones.repetir() }))
     this.repetir.dibujo(iconoDeRepetir(0.026, '#ffffff'), '#ffffff')
-    this.menu = this.panel.boton(new Boton({ id: 'home', caja: { x: BUTTON_SPACING, y: 0, ...BUTTON_HIT }, color: COLORES.neutro, alPulsar: () => acciones.volverAlMenu() }))
+    this.menu = this.panel.boton(new Button({ id: 'home', caja: { x: BUTTON_SPACING, y: 0, ...BUTTON_HIT }, color: COLORES.neutro, alPulsar: () => acciones.volverAlMenu() }))
     this.menu.dibujo(iconoDeCasa(0.028, '#ffffff'), '#ffffff')
     const puerta = huecosDeForma(XR_HOME_ICON, 0.028, COLORES.neutro)
     if (puerta != null) this.menu.dibujo(puerta, COLORES.neutro)
@@ -206,7 +206,7 @@ export class Marcador {
       const estilo = TOKEN_STYLE[estadoDelPalo]
       ficha.position = new Vector3(i * TOKEN_SPACING - ancho / 2, y0 + estilo.alto, 0.004)
       ficha.scale = new Vector3(estilo.escala, estilo.escala, 1)
-      pintar(ficha, estilo.color)
+      paint(ficha, estilo.color)
     })
     const rombos = Math.min(estado.racha, 5)
     this.rombos.forEach((rombo, i) => {
@@ -222,7 +222,7 @@ export class Marcador {
     const lleno = Math.max(carril * estado.lleno, 0.001)
     this.relleno.scale = new Vector3(lleno, 1, 1)
     this.relleno.position = new Vector3((lleno - carril) / 2, yBarra, 0.006)
-    pintar(this.relleno, estado.record ? COLORES.estrella : '#22c55e')
+    paint(this.relleno, estado.record ? COLORES.estrella : '#22c55e')
     this.marca.visible = estado.marca > 0 && !enElCartel
     this.marca.scale = new Vector3(1, estado.record ? 0.034 : 0.024, 1)
     this.marca.position = new Vector3(carril * (estado.marca - 0.5), yBarra, 0.008)
@@ -233,7 +233,7 @@ export class Marcador {
       const k = gastada ? 0.62 : 1
       corazon.scale = new Vector3(k, k, 1)
       corazon.position = new Vector3(i * LIFE_SPACING - ((CHALLENGE_LIVES - 1) * LIFE_SPACING) / 2, y0 + LIFE_ROW_Y, 0.004)
-      pintar(corazon, gastada ? LIFE_SPENT_COLOR : LIFE_COLOR)
+      paint(corazon, gastada ? LIFE_SPENT_COLOR : LIFE_COLOR)
     })
     this.estrellas.forEach((estrella, i) => {
       estrella.visible = estado.estrellas != null
@@ -241,7 +241,7 @@ export class Marcador {
       const k = ganada ? 1 : 0.7
       estrella.scale = new Vector3(k, k, 1)
       estrella.position = new Vector3((i - 1) * 0.045, y0 + LIFE_ROW_Y, 0.004)
-      pintar(estrella, ganada ? COLORES.estrella : COLORES.estrellaGastada)
+      paint(estrella, ganada ? COLORES.estrella : COLORES.estrellaGastada)
     })
 
     // A dos, de quién es la tanda: la ficha de quien tiene el mando, encendida y crecida.
@@ -252,7 +252,7 @@ export class Marcador {
       const suya = i === jugador
       const k = suya ? PAREJA.crece : 1
       ficha.scale = new Vector3(k, k, 1)
-      pintar(ficha, suya ? '#22c55e' : '#475569')
+      paint(ficha, suya ? '#22c55e' : '#475569')
     })
 
     // Al acabar: repetir y volver al menú, en su fila de la web (0,12 por debajo de su cota).

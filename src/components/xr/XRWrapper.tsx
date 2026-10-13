@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { getXrStore } from './xrStore'
-import { useLang } from '../../lib/ajustesCliente'
+import { useLang } from '../../lib/settingsClient'
 import { traductor } from '../../lib/textos'
 
 type XRSupport = {

@@ -1,5 +1,5 @@
-import type { Guion } from './ayudas'
-import type { Hand } from './ajustes'
+import type { HintScript } from './hints'
+import type { Hand } from './settings'
 import {
   MACHINE_RADIUS,
   PLAYER_OFFSET_Z,
@@ -64,10 +64,10 @@ export type HechoDeLasAyudas = 'grab' | 'cae'
  * ven dos segundos, que es cuando se está mirando la máquina.
  */
 export const GUION_DE_AYUDAS = [
-  { id: 'suelo', hasta: 'grab', caduca: 14 },
-  { id: 'palo', hasta: 'cae', caduca: 16 },
-  { id: 'mando', hasta: 'cae', caduca: 16 },
-] as const satisfies Guion<HechoDeLasAyudas>
+  { id: 'suelo', until: 'grab', expiresAfter: 14 },
+  { id: 'palo', until: 'cae', expiresAfter: 16 },
+  { id: 'mando', until: 'cae', expiresAfter: 16 },
+] as const satisfies HintScript<HechoDeLasAyudas>
 
 /** Cómo se llama cada una, para que la escena no las pinte por un nombre inventado. */
 export type AyudaDeLaMaquina = (typeof GUION_DE_AYUDAS)[number]['id']

@@ -30,23 +30,23 @@ import {
 } from 'godot'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { problemasDeLegibilidad } from '@kit/lib/ui/instrumento'
-import { ALTO_DE_LINEA, type Escrito } from '@kit/lib/ui/texto'
+import { legibilityProblems } from '@kit/lib/ui/legibility'
+import { LINE_HEIGHT, type Escrito, drawnTexts } from '@kit/lib/ui/text'
 import { PANEL_DEL_TUTORIAL } from '@kit/lib/ui/tutorial'
-import { Punteria } from '@kit/runtime/ui/punteria'
+import { PointerAim } from '@kit/runtime/ui/pointerAim'
 
-import { LANGS, VOLUME_KEYS } from '@/lib/ajustes'
-import { problemasDeLaSalida } from '@/lib/exitCorner'
+import { LANGS, VOLUME_KEYS } from '@/lib/settings'
+import { exitProblems } from '@/lib/exitCorner'
 import { DIFFICULTY_ORDER, MAX_STICKS, MIN_STICKS } from '@/lib/gameConfig'
 import { CHALLENGE_LIVES, CHALLENGE_SETUP, GAME_MODE_ORDER } from '@/lib/gameMode'
 import { VISTA_SIN_GIRAR, apartadoDeLaMirada, esquinasDelCartel, partidaDelCartel, poseDelCartel, sitioDelCartel, type LoQueSeJuega } from '@/lib/cartelDeLaMaquina'
-import { cartelDeObjetivo, type Objetivo } from '@/lib/objetivo'
+import { goalSign, type Goal } from '@/lib/goal'
 import { maxScore } from '@/lib/scoring'
 import { traductorSuave } from '@/lib/textos'
 import { HOOP_ADJUST_STEP } from '@/lib/hoopHeight'
 import { centreInside, sizesOffList, textsOnButtons, unreadableTexts, worstReadingDistance, type PanelPose } from '@/lib/panelReading'
 import { gameStorage } from '@/lib/storage'
-import { fijarNombreDelJuego } from '@/lib/plantillaDelMenu'
+import { setGameName } from '@/lib/menuTemplate'
 import { TUTORIAL_STEPS } from '@/lib/tutorial'
 import {
   CONFIRM_BOXES,
@@ -73,7 +73,7 @@ import {
 import { COUNTDOWN_SECONDS, Partida } from '../juego/partida'
 import { createDuel, duelSummary, recordTurn } from '@/lib/duel'
 import { getDuelTally } from '@/lib/duelTally'
-import { CLAVE_DEL_IDIOMA, idioma, niveles } from '@kit/runtime/ajustes'
+import { LANG_KEY, currentLang, volumeLevels } from '@kit/runtime/settings'
 import { AvisoDeSalir, PanelDelDuelo } from './aviso'
 import { CARTEL, Cartel, PROPORCION_DEL_CARTEL } from './cartel'
 import { InterfazDelJuego, type EscenaDelJuego } from './interfaz'
@@ -85,10 +85,10 @@ type Vistas = { donde: string; pose: PanelPose; ojos: { x: number; y: number; z:
 
 /** Lo que la web mide de un panel: que se lea desde donde se juega con el visor. */
 function medir(escritos: readonly Escrito[], panel: { width: number; height: number }, vistas: Vistas): string[] {
-  const distancia = Math.max(...vistas.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, ALTO_DE_LINEA)))
+  const distancia = Math.max(...vistas.map(({ pose, ojos }) => worstReadingDistance(drawnTexts(escritos), pose, ojos, LINE_HEIGHT)))
   return [
-    ...problemasDeLegibilidad(escritos, { panel, distancia }),
-    ...vistas.flatMap(({ pose, ojos, donde }) => unreadableTexts(escritos, pose, ojos, ALTO_DE_LINEA).map((p) => `${donde}: ${p}`)),
+    ...legibilityProblems(escritos, { panel, distance: distancia }),
+    ...vistas.flatMap(({ pose, ojos, donde }) => unreadableTexts(drawnTexts(escritos), pose, ojos, LINE_HEIGHT).map((p) => `${donde}: ${p}`)),
   ]
 }
 
@@ -134,7 +134,7 @@ describe('el menú mide lo que la web', () => {
       jugar: nada,
       salir: nada,
     },
-    new Punteria(),
+    new PointerAim(),
   )
   const SITIOS: { nombre: string; pose: MenuPose }[] = [
     { nombre: 'columna del visor', pose: XR_MENU_POSE },
@@ -169,7 +169,7 @@ describe('el menú mide lo que la web', () => {
           menu.pintar(estadoDelMenu({ lang, modo, jugadores, masOpciones }))
           const escritos = menu.panel.escritos
           const donde = `${lang} ${modo}${masOpciones ? ' desplegado' : ''}`
-          expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(MENU_TEXT)), donde).toEqual([])
+          expect(sizesOffList(drawnTexts(escritos), LINE_HEIGHT, Object.values(MENU_TEXT)), donde).toEqual([])
           for (const { nombre, pose } of SITIOS) {
             const escalados = aEscala(escritos, pose.scale)
             const panel = { width: MENU_PANEL[0] * pose.scale, height: MENU_PANEL[1] * pose.scale }
@@ -198,7 +198,7 @@ describe('el menú mide lo que la web', () => {
       for (const modo of GAME_MODE_ORDER) {
         for (const masOpciones of [false, true]) {
           menu.pintar(estadoDelMenu({ lang, modo, masOpciones }))
-          expect(textsOnButtons(menu.panel.escritos, botones, esElSuyo), `${lang} ${modo}`).toEqual([])
+          expect(textsOnButtons(drawnTexts(menu.panel.escritos), botones, esElSuyo), `${lang} ${modo}`).toEqual([])
         }
       }
     }
@@ -210,28 +210,28 @@ describe('el menú mide lo que la web', () => {
       menu.pintar(estadoDelMenu({ lang }))
       expect(titulo(), lang).toBe('Stick Rush')
     }
-    fijarNombreDelJuego('Atrapa los palos que caen del aro')
+    setGameName('Atrapa los palos que caen del aro')
     try {
       for (const lang of LANGS) {
         for (const masOpciones of [false, true]) {
           menu.pintar(estadoDelMenu({ lang, masOpciones }))
           const escritos = menu.panel.escritos
           expect(titulo(), lang).toBe('Atrapa los palos que caen del aro')
-          expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(MENU_TEXT)), lang).toEqual([])
+          expect(sizesOffList(drawnTexts(escritos), LINE_HEIGHT, Object.values(MENU_TEXT)), lang).toEqual([])
           const pose = XR_MENU_POSE
           const panel = { width: MENU_PANEL[0] * pose.scale, height: MENU_PANEL[1] * pose.scale }
           expect(medir(aEscala(escritos, pose.scale), panel, xrPanelViews(pose.position, pose.yaw)), lang).toEqual([])
         }
       }
     } finally {
-      fijarNombreDelJuego(null)
+      setGameName(null)
     }
   })
 
   it('la salida, abajo a la derecha: la última de su fila y nada por debajo', () => {
     const salida = menu.boton('exit').caja
     const resto = [...menu.botones.values()].filter((b) => b.id !== 'exit').map((b) => b.caja)
-    expect(problemasDeLaSalida(salida, resto, { width: MENU_PANEL[0], height: MENU_PANEL[1] })).toEqual([])
+    expect(exitProblems(salida, resto, { width: MENU_PANEL[0], height: MENU_PANEL[1] })).toEqual([])
   })
 
   it('lo de la práctica y lo de alrededor, tras «Más opciones»; con el reto, ni el botón', () => {
@@ -270,20 +270,20 @@ describe('el menú mide lo que la web', () => {
 
 describe('el aviso, el tutorial y el final miden lo que la web', () => {
   it('el aviso de dejar la partida, en los dos idiomas', () => {
-    const aviso = new AvisoDeSalir({ dejar: nada, seguir: nada }, new Punteria())
+    const aviso = new AvisoDeSalir({ dejar: nada, seguir: nada }, new PointerAim())
     const botones = Object.values(CONFIRM_BOXES).map(({ position, size }) => ({ x: position[0], y: position[1], width: size[0], height: size[1] }))
     for (const lang of LANGS) {
       aviso.escribir(lang)
       const escritos = aviso.panel.escritos
       expect(medir(escritos, { width: XR_CONFIRM_SIZE[0], height: XR_CONFIRM_SIZE[1] }, xrPanelViews(XR_CONFIRM_POSITION)), lang).toEqual([])
-      expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(CONFIRM_TEXT)), lang).toEqual([])
-      expect(textsOnButtons(escritos, botones), lang).toEqual([])
+      expect(sizesOffList(drawnTexts(escritos), LINE_HEIGHT, Object.values(CONFIRM_TEXT)), lang).toEqual([])
+      expect(textsOnButtons(drawnTexts(escritos), botones), lang).toEqual([])
     }
     aviso.nodo.free()
   })
 
   it('el tutorial, en sus pasos, con mando y con las manos, en los dos idiomas', () => {
-    const tutorial = new TutorialDelJuego({ siguiente: nada, saltar: nada }, new Punteria())
+    const tutorial = new TutorialDelJuego({ siguiente: nada, saltar: nada }, new PointerAim())
     expect(MEDIDAS_DE_STICK_RUSH.boton.width).toBe(0.33)
     for (const lang of LANGS) {
       for (const manos of [false, true]) {
@@ -292,7 +292,7 @@ describe('el aviso, el tutorial y el final miden lo que la web', () => {
           const escritos = tutorial.vista.panel.escritos
           const donde = `${lang} ${manos ? 'manos' : 'mando'} ${paso}`
           expect(medir(escritos, PANEL_DEL_TUTORIAL, xrPanelViews(XR_TUTORIAL_POSITION)), donde).toEqual([])
-          expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(TUTORIAL_TEXT)), donde).toEqual([])
+          expect(sizesOffList(drawnTexts(escritos), LINE_HEIGHT, Object.values(TUTORIAL_TEXT)), donde).toEqual([])
         }
       }
     }
@@ -313,7 +313,7 @@ describe('el aviso, el tutorial y el final miden lo que la web', () => {
         const escritos = duelo.panel.escritos
         const donde = `${lang} ${nombre}`
         expect(medir(escritos, { width: XR_DUEL_SIZE[0], height: XR_DUEL_SIZE[1] }, xrPanelViews(XR_DUEL_POSITION)), donde).toEqual([])
-        expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(DUEL_TEXT)), donde).toEqual([])
+        expect(sizesOffList(drawnTexts(escritos), LINE_HEIGHT, Object.values(DUEL_TEXT)), donde).toEqual([])
       }
     }
     duelo.escribir(duelSummary(duelos.pasa, pareja, 'es'))
@@ -322,7 +322,7 @@ describe('el aviso, el tutorial y el final miden lo que la web', () => {
   })
 
   it('la letra del final se lee, en los dos idiomas y con lo más largo que puede decir', () => {
-    const marcador = new Marcador({ repetir: nada, volverAlMenu: nada }, new Punteria())
+    const marcador = new Marcador({ repetir: nada, volverAlMenu: nada }, new PointerAim())
     for (const lang of LANGS) {
       // El rótulo de repetir cambia con el modo: «Otro reto» y «Otra partida», la más larga.
       for (const [titulo, modo] of (lang === 'es' ? ['Te has quedado sin vidas', '¡Reto superado!', 'Nivel 15'] : ['You are out of lives', 'Level 15']).flatMap((t) => (['challenge', 'practice'] as const).map((m) => [t, m] as const))) {
@@ -344,7 +344,7 @@ describe('el aviso, el tutorial y el final miden lo que la web', () => {
         const escritos = marcador.panel.escritos
         const problemas = medir(escritos, marcador.medida, xrPanelViews(XR_HUD_POSITION))
         expect(problemas, `${lang} «${titulo}»: ${problemas.join('; ')}`).toEqual([])
-        expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(LETRA_DEL_MARCADOR)), titulo).toEqual([])
+        expect(sizesOffList(drawnTexts(escritos), LINE_HEIGHT, Object.values(LETRA_DEL_MARCADOR)), titulo).toEqual([])
       }
     }
     marcador.nodo.free()
@@ -353,12 +353,12 @@ describe('el aviso, el tutorial y el final miden lo que la web', () => {
 
 describe('el cartel del objetivo mide lo que la web', () => {
   const TECHO = maxScore(CHALLENGE_SETUP.difficulty, CHALLENGE_SETUP.stickCount)
-  const OBJETIVO: Objetivo = {
-    medallas: { bronce: 1900, plata: 3750, oro: 5200 },
-    mejorEs: 'mas',
-    unidad: 'points in challenge',
+  const OBJETIVO: Goal = {
+    medals: { bronze: 1900, silver: 3750, gold: 5200 },
+    better: 'higher',
+    unit: 'points in challenge',
     record: TECHO - 1,
-    modo: 'challenge',
+    mode: 'challenge',
   }
 
   function juego(cambios: Partial<LoQueSeJuega>): LoQueSeJuega {
@@ -381,7 +381,7 @@ describe('el cartel del objetivo mide lo que la web', () => {
     expect(angulo(CARTEL.alto, CARTEL.distancia)).toBeCloseTo(4.5, 1)
     expect(angulo(CARTEL.titulo, CARTEL.distancia)).toBeCloseTo(1.4, 2)
     expect(angulo(CARTEL.detalle, CARTEL.distancia)).toBeCloseTo(1.2, 2)
-    expect(PROPORCION_DEL_CARTEL.ancho).toBeCloseTo(CARTEL.ancho / 2)
+    expect(PROPORCION_DEL_CARTEL.width).toBeCloseTo(CARTEL.ancho / 2)
     // En su sitio, dentro de lo que se ve sin girar la cabeza, como en la web.
     for (const esquina of esquinasDelCartel(PROPORCION_DEL_CARTEL)) expect(apartadoDeLaMirada(esquina)).toBeLessThanOrEqual(VISTA_SIN_GIRAR)
   })
@@ -399,13 +399,13 @@ describe('el cartel del objetivo mide lo que la web', () => {
       const decir = (cambios: Partial<LoQueSeJuega>) => {
         const partida = partidaDelCartel(juego(cambios), t)
         if (partida == null) return
-        const vista = cartelDeObjetivo(partida, t)
+        const vista = goalSign(partida, t)
         cartel.actualizar(vista, null, lang, 0)
         const escritos = aEscala(cartel.panel.escritos, escala)
-        const distancia = Math.max(...vistas.map(({ pose, ojos }) => worstReadingDistance(escritos, pose, ojos, ALTO_DE_LINEA)))
-        const problemas = problemasDeLegibilidad(escritos, { panel, distancia })
-        expect(problemas, `${lang}: ${vista.titulo} / ${vista.detalle}: ${problemas.join('; ')}`).toEqual([])
-        expect(escritos.length).toBeLessThanOrEqual(vista.pie == null ? 2 : 3)
+        const distancia = Math.max(...vistas.map(({ pose, ojos }) => worstReadingDistance(drawnTexts(escritos), pose, ojos, LINE_HEIGHT)))
+        const problemas = legibilityProblems(escritos, { panel, distance: distancia })
+        expect(problemas, `${lang}: ${vista.title} / ${vista.detail}: ${problemas.join('; ')}`).toEqual([])
+        expect(escritos.length).toBeLessThanOrEqual(vista.footer == null ? 2 : 3)
         medidas++
       }
       for (const objetivo of [OBJETIVO, { ...OBJETIVO, record: null }, null]) {
@@ -427,23 +427,23 @@ describe('el cartel del objetivo mide lo que la web', () => {
     const cartel = new Cartel()
     cartel.colocar(sitioDelCartel())
     const t = traductorSuave('en')
-    const vista = cartelDeObjetivo(partidaDelCartel(juego({ points: 2000, resolved: 5 }), t)!, t)
+    const vista = goalSign(partidaDelCartel(juego({ points: 2000, resolved: 5 }), t)!, t)
     const escala = cartel.nodo.scale.x
     // Montado con una medalla ya ganada: no se ha visto cruzar el listón.
-    expect(cartel.actualizar(vista, 'bronce', 'en', 0.016)).toBeNull()
+    expect(cartel.actualizar(vista, 'bronze', 'en', 0.016)).toBeNull()
     expect(cartel.nodo.visible).toBe(true)
-    expect(cartel.actualizar(vista, 'plata', 'en', 0.016)).toBe('plata')
-    expect(cartel.celebrando).toBe('plata')
-    expect(cartel.actualizar(vista, 'plata', 'en', 0.2)).toBeNull()
+    expect(cartel.actualizar(vista, 'silver', 'en', 0.016)).toBe('silver')
+    expect(cartel.celebrando).toBe('silver')
+    expect(cartel.actualizar(vista, 'silver', 'en', 0.2)).toBeNull()
     expect(cartel.nodo.scale.x).toBeGreaterThan(escala)
-    for (let i = 0; i < 10; i++) cartel.actualizar(vista, 'plata', 'en', 0.2)
+    for (let i = 0; i < 10; i++) cartel.actualizar(vista, 'silver', 'en', 0.2)
     expect(cartel.celebrando).toBeNull()
     expect(cartel.nodo.scale.x).toBeCloseTo(escala)
     // Mientras celebra, el título dice la medalla: el color solo no se entiende.
-    cartel.actualizar(vista, 'bronce', 'en', 0.016)
-    cartel.actualizar(vista, 'plata', 'en', 0.016)
-    expect(vista.vitor).toBe('Bronze!')
-    expect(cartel.panel.escritos[0]!.texto).toBe(vista.vitor)
+    cartel.actualizar(vista, 'bronze', 'en', 0.016)
+    cartel.actualizar(vista, 'silver', 'en', 0.016)
+    expect(vista.cheer).toBe('Bronze!')
+    expect(cartel.panel.escritos[0]!.texto).toBe(vista.cheer)
     // Sin nada que decir se esconde.
     cartel.actualizar(null, null, 'en', 0.016)
     expect(cartel.nodo.visible).toBe(false)
@@ -451,7 +451,7 @@ describe('el cartel del objetivo mide lo que la web', () => {
   })
 
   it('el marcador calla lo que ya dice el cartel: sin barra, sin vidas y sin letra, y encoge', () => {
-    const marcador = new Marcador({ repetir: nada, volverAlMenu: nada }, new Punteria())
+    const marcador = new Marcador({ repetir: nada, volverAlMenu: nada }, new PointerAim())
     const estado: EstadoDelMarcador = {
       lang: 'es',
       modo: 'challenge',
@@ -488,18 +488,18 @@ describe('los ajustes del salón', () => {
 
   it('el idioma es el guardado, y el de la línea de órdenes manda', () => {
     // Sin nada guardado, el del sistema: depende de la máquina que corre el test.
-    expect(['en', 'es']).toContain(idioma())
-    gameStorage()!.setItem(CLAVE_DEL_IDIOMA, 'en')
-    expect(idioma()).toBe('en')
-    gameStorage()!.setItem(CLAVE_DEL_IDIOMA, 'es')
-    expect(idioma()).toBe('es')
-    expect(idioma('en')).toBe('en')
+    expect(['en', 'es']).toContain(currentLang())
+    gameStorage()!.setItem(LANG_KEY, 'en')
+    expect(currentLang()).toBe('en')
+    gameStorage()!.setItem(LANG_KEY, 'es')
+    expect(currentLang()).toBe('es')
+    expect(currentLang('en')).toBe('en')
   })
 
   it('los volúmenes, de 0 a 1', () => {
-    expect(niveles()).toEqual({ sfx: 1, ambience: 0.6, muted: false })
+    expect(volumeLevels()).toEqual({ sfx: 1, ambience: 0.6, muted: false })
     gameStorage()!.setItem(VOLUME_KEYS.sfx, '50')
-    expect(niveles().sfx).toBe(0.5)
+    expect(volumeLevels().sfx).toBe(0.5)
   })
 })
 
@@ -513,7 +513,7 @@ describe('la interfaz con el ratón', () => {
   beforeEach(() => {
     gameStorage()?.clear()
     // Lo que se comprueba está en inglés: sin idioma guardado, el juego habla el del sistema.
-    gameStorage()?.setItem(CLAVE_DEL_IDIOMA, 'en')
+    gameStorage()?.setItem(LANG_KEY, 'en')
     const tree = Engine.get_main_loop() as SceneTree
     raiz = new Node3D()
     ;(tree.current_scene ?? (tree.root as Node)).add_child(raiz)

@@ -3,9 +3,9 @@ import { useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HUD } from '../game/HUD'
 import { GameProvider } from '../GameProvider'
-import { LANG_COOKIE } from '../../lib/ajustes'
+import { LANG_COOKIE } from '../../lib/settings'
 import { COUNTDOWN_SECONDS, useGame, type GameStore } from '../../lib/gameStore'
-import { frasesEnIngles } from '../../lib/sinIngles'
+import { englishPhrases } from '../../lib/noEnglish'
 import { TEXT_KEYS, texto } from '../../lib/textos'
 import { StartScreen } from './StartScreen'
 
@@ -59,7 +59,7 @@ describe('en español no se escapa nada en inglés', () => {
       </GameProvider>,
     )
     expect(document.body.textContent).toContain('Jugar')
-    expect(frasesEnIngles(loQueSeLee(), CLAVES)).toEqual([])
+    expect(englishPhrases(loQueSeLee(), CLAVES)).toEqual([])
 
     // El reto, el modo que da medalla, con la cuenta atrás agotada segundo a segundo.
     act(() => juego!.setGameMode('challenge'))
@@ -70,12 +70,12 @@ describe('en español no se escapa nada en inglés', () => {
     expect(juego!.gameState).toBe('playing')
     act(() => juego!.catchStick(0.5))
     expect(document.body.textContent).toContain('Puntos')
-    expect(frasesEnIngles(loQueSeLee(), CLAVES)).toEqual([])
+    expect(englishPhrases(loQueSeLee(), CLAVES)).toEqual([])
 
     // Se acaba como en los tests del store: tres palos al suelo.
     for (let i = 0; i < 3; i++) act(() => juego!.missStick())
     expect(juego!.gameState).toBe('finished')
     expect(document.body.textContent).toContain('Otro reto')
-    expect(frasesEnIngles(loQueSeLee(), CLAVES)).toEqual([])
+    expect(englishPhrases(loQueSeLee(), CLAVES)).toEqual([])
   })
 })

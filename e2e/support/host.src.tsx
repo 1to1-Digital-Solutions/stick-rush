@@ -6,8 +6,8 @@ import { Vector3, type Object3D } from 'three'
 
 import { StickRushScene } from '../../src/game/StickRushScene'
 import type { HostAnchor } from '../../src/lib/hostAnchor'
-import type { Objetivo } from '../../src/lib/objetivo'
-import type { Resultado } from '../../src/lib/semilla'
+import type { Goal } from '../../src/lib/goal'
+import type { GameResult } from '../../src/lib/seed'
 
 /**
  * El anfitrión de prueba: monta `<StickRushScene>` dentro de un Canvas y una sesión que no son
@@ -31,13 +31,13 @@ const assetsBase = mount.dataset.assetsBase ?? '/'
 const aLaCarta = mount.dataset.cabina === 'a-la-carta'
 
 /** El reto del salón, si la página lo trae: la semilla, como la pasaría el arco de cabinas. */
-const reto = mount.dataset.reto == null ? undefined : { semilla: Number(mount.dataset.reto) }
+const reto = mount.dataset.reto == null ? undefined : { seed: Number(mount.dataset.reto) }
 
 /** Dónde plantar el mundo, si la página lo trae: el anclaje que presta el salón. */
 const anchor = mount.dataset.anchor == null ? undefined : (JSON.parse(mount.dataset.anchor) as HostAnchor)
 
 /** Los listones de medalla del juego, si la página los trae: lo que el salón pasa en `objetivo`. */
-const objetivo = mount.dataset.objetivo == null ? undefined : (JSON.parse(mount.dataset.objetivo) as Objetivo)
+const objetivo = mount.dataset.objetivo == null ? undefined : (JSON.parse(mount.dataset.objetivo) as Goal)
 
 const store = createXRStore({
   // Lo que el contrato pide cablear al anfitrión: los perfiles de mando bajo su propio prefijo.
@@ -67,8 +67,8 @@ declare global {
       entrarEnLaCabina: () => void
       /** Desmonta la escena, como al volver al salón. */
       salirDeLaCabina: () => void
-      /** Lo que la escena ha contado al acabar cada partida (`onTerminar`), en orden. */
-      terminadas: Resultado[]
+      /** Lo que la escena ha contado al acabar cada partida (`onFinish`), en orden. */
+      terminadas: GameResult[]
       /** Deja de pintar ese objeto, o lo vuelve a pintar: para medir lo que cuesta. `false` si no está. */
       esconder: (nombre: string, oculto: boolean) => boolean
       /** Apunta la cámara del anfitrión a ese punto de la escena (fuera de la sesión inmersiva). */
@@ -145,9 +145,9 @@ function Cabina() {
       assetsBase={assetsBase}
       anchor={anchor}
       onExit={() => {}}
-      reto={reto}
-      objetivo={objetivo}
-      onTerminar={(resultado) => window.__stickRushHost.terminadas.push(resultado)}
+      challenge={reto}
+      goal={objetivo}
+      onFinish={(resultado) => window.__stickRushHost.terminadas.push(resultado)}
     />
   )
 }

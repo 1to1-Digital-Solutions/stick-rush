@@ -4,7 +4,7 @@ import { Suspense, lazy, useSyncExternalStore } from 'react'
 import { useGame } from '../../lib/gameStore'
 import { StartScreen } from '../ui/StartScreen'
 import { HUD } from './HUD'
-import { useLang } from '../../lib/ajustesCliente'
+import { useLang } from '../../lib/settingsClient'
 import { traductor } from '../../lib/textos'
 
 // El Canvas de R3F depende de WebGL/window, así que se carga aparte y solo en

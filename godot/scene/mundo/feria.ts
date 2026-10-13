@@ -50,9 +50,9 @@ import {
   type StandardMaterial3D,
 } from 'godot'
 
-import { colorDeFondo } from '@kit/runtime/escena/entorno'
-import { esfera } from '@kit/runtime/escena/formas'
-import { barraEntre, mallaDeToro, mallaDeCilindro, malla, mate, multimalla, sinSombra } from '@kit/runtime/escena/piezas'
+import { backgroundColor } from '@kit/runtime/scene/environment'
+import { sphere } from '@kit/runtime/scene/shapes'
+import { barBetween, torusMesh, cylinderMesh, mesh as malla, matte, multiMesh, withoutShadow } from '@kit/runtime/scene/parts'
 
 import { crowdSpots } from '@/lib/crowdLayout'
 import { bulbGlow, bulbPulse, crowdBob, crowdTempo } from '@/lib/fairMood'
@@ -85,7 +85,7 @@ import {
 
 /** Una esfera de `radio` con `lados` × `anillos` (`sphereGeometry`), para repartir por una malla múltiple. */
 function bola(radio: number, lados: number, anillos: number): SphereMesh {
-  const mesh = esfera(lados, anillos)
+  const mesh = sphere(lados, anillos)
   mesh.radius = radio
   mesh.height = radio * 2
   return mesh
@@ -215,7 +215,7 @@ export class Feria {
       // Sin el HDRI, el fondo de noche de la web mientras carga (`Backdrop`).
       this.cielo = null
       this.entorno.background_mode = Environment.BGMode.BG_COLOR
-      this.entorno.background_color = colorDeFondo(BACKDROP_COLOR, this.entorno)
+      this.entorno.background_color = backgroundColor(BACKDROP_COLOR, this.entorno)
       this.entorno.ambient_light_source = Environment.AmbientSource.AMBIENT_SOURCE_COLOR
       this.entorno.ambient_light_color = Color.html('#ffffff')
       this.entorno.ambient_light_energy = LUCES.ambiente
@@ -252,7 +252,7 @@ export class Feria {
     this.siluetas = cuantas
     this.montarNoria()
     // Nada del recinto echa sombra: en la web no la echa nada.
-    sinSombra(this.recinto)
+    withoutShadow(this.recinto)
   }
 
   /**
@@ -280,10 +280,10 @@ export class Feria {
       // Primero el ancla: la pieza se centra en su base y luego se escala, gira y coloca.
       return new Transform3D(base, new Vector3(x, y, z)).translated_local(ancla)
     })
-    const material = mate('#ffffff', { rugosidad: 1 })
+    const material = matte('#ffffff', { rugosidad: 1 })
     // El color del kit va en los vértices.
     material.vertex_color_use_as_albedo = true
-    const nodo = multimalla(mesh, material, transformaciones)
+    const nodo = multiMesh(mesh, material, transformaciones)
     nodo.set_name(`Piezas-${pieza}`)
     this.recinto.add_child(nodo)
     this.piezas[pieza] = suyas.length
@@ -302,10 +302,10 @@ export class Feria {
         transformaciones.push(new Transform3D(Basis.IDENTITY.scaled(new Vector3(GARLAND_BULB_RADIUS, GARLAND_BULB_RADIUS, GARLAND_BULB_RADIUS)), new Vector3(x, y, z)))
       }
     })
-    const material = mate(MACHINE_BULB_COLOR)
+    const material = matte(MACHINE_BULB_COLOR)
     material.shading_mode = BaseMaterial3D.ShadingMode.SHADING_MODE_UNSHADED
-    const bombilla = esfera(8, 6)
-    const guirnaldas = multimalla(bombilla, material, transformaciones)
+    const bombilla = sphere(8, 6)
+    const guirnaldas = multiMesh(bombilla, material, transformaciones)
     guirnaldas.set_name('Guirnaldas')
     this.recinto.add_child(guirnaldas)
     this.pintarBombillas(material, bulbGlow(0), 0)
@@ -377,22 +377,22 @@ export class Feria {
     noria.position = new Vector3(WHEEL_CENTER[0], WHEEL_CENTER[1], WHEEL_CENTER[2])
     noria.rotation = new Vector3(0, facingRotationY(WHEEL_CENTER), 0)
     this.recinto.add_child(noria)
-    const hierro = mate(MACHINE_TRUSS_COLOR, { rugosidad: 0.6, metal: 0.25 })
-    const llanta = mate(MACHINE_TRUSS_COLOR, { rugosidad: 0.5, metal: 0.5 })
-    const tabla = mate('#ffffff', { rugosidad: 0.85, metal: 0.05 })
-    const poste = mallaDeCilindro(0.5, 0.5, 1, 8)
+    const hierro = matte(MACHINE_TRUSS_COLOR, { rugosidad: 0.6, metal: 0.25 })
+    const llanta = matte(MACHINE_TRUSS_COLOR, { rugosidad: 0.5, metal: 0.5 })
+    const tabla = matte('#ffffff', { rugosidad: 0.85, metal: 0.05 })
+    const poste = cylinderMesh(0.5, 0.5, 1, 8)
     // Los pies, abiertos hacia delante y hacia atrás, y el eje.
     const fijos: Transform3D[] = []
     for (const lado of [-1, 1]) {
-      fijos.push(barraEntre(new Vector3(0, 0, 0), new Vector3(0, -LEG_HEIGHT, lado * LEG_SPREAD), 0.2))
+      fijos.push(barBetween(new Vector3(0, 0, 0), new Vector3(0, -LEG_HEIGHT, lado * LEG_SPREAD), 0.2))
     }
-    fijos.push(barraEntre(new Vector3(0, 0, -(RIM_GAP + 0.6) / 2), new Vector3(0, 0, (RIM_GAP + 0.6) / 2), 0.21))
-    noria.add_child(multimalla(poste, hierro, fijos))
+    fijos.push(barBetween(new Vector3(0, 0, -(RIM_GAP + 0.6) / 2), new Vector3(0, 0, (RIM_GAP + 0.6) / 2), 0.21))
+    noria.add_child(multiMesh(poste, hierro, fijos))
 
     this.rueda.set_name('Rueda')
     noria.add_child(this.rueda)
     for (const lado of [-1, 1]) {
-      const aro = malla(mallaDeToro(WHEEL_RADIUS, RIM_TUBE, 48, 6), llanta, new Vector3(0, 0, (lado * RIM_GAP) / 2))
+      const aro = malla(torusMesh(WHEEL_RADIUS, RIM_TUBE, 48, 6), llanta, new Vector3(0, 0, (lado * RIM_GAP) / 2))
       aro.rotation = new Vector3(Math.PI / 2, 0, 0)
       this.rueda.add_child(aro)
     }
@@ -401,7 +401,7 @@ export class Feria {
     for (let i = 0; i < WHEEL_CABIN_COUNT; i++) {
       const a = (i / WHEEL_CABIN_COUNT) * Math.PI * 2
       const punta = new Vector3(Math.cos(a) * WHEEL_RADIUS, Math.sin(a) * WHEEL_RADIUS, 0)
-      radios.push(barraEntre(Vector3.ZERO, punta, SPOKE_THICKNESS / 2))
+      radios.push(barBetween(Vector3.ZERO, punta, SPOKE_THICKNESS / 2))
       for (const lado of [-1, 1]) {
         const b = new Vector3(punta.x, punta.y, (lado * RIM_GAP) / 2)
         bombillas.push(new Transform3D(Basis.IDENTITY.scaled(new Vector3(WHEEL_BULB_RADIUS, WHEEL_BULB_RADIUS, WHEEL_BULB_RADIUS)), b))
@@ -425,9 +425,9 @@ export class Feria {
       this.rueda.add_child(cabina)
       this.cabinas.push(cabina)
     }
-    this.rueda.add_child(multimalla(poste, hierro, radios))
+    this.rueda.add_child(multiMesh(poste, hierro, radios))
     // Las bombillas de la noria son de la misma familia que las de las guirnaldas: el mismo material.
-    this.rueda.add_child(multimalla(esfera(8, 6), this.bombillas, bombillas))
+    this.rueda.add_child(multiMesh(sphere(8, 6), this.bombillas, bombillas))
   }
 
   /** Cuántas de cada cosa, para quien quiera contarlas. */
@@ -460,6 +460,6 @@ export class Feria {
     this.recinto.visible = si
     // En la habitación no hay fondo: uno opaco la taparía. El HDRI sigue dando los reflejos.
     this.entorno.background_mode = si && this.cielo != null ? Environment.BGMode.BG_SKY : Environment.BGMode.BG_COLOR
-    this.entorno.background_color = si ? colorDeFondo(BACKDROP_COLOR, this.entorno) : new Color(0, 0, 0, 0)
+    this.entorno.background_color = si ? backgroundColor(BACKDROP_COLOR, this.entorno) : new Color(0, 0, 0, 0)
   }
 }

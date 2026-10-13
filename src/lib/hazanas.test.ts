@@ -172,14 +172,14 @@ describe('lo guardado', () => {
 })
 
 describe('conHazanas', () => {
-  const resultado = { modo: 'practice', puntos: 120, reto: false }
+  const resultado = { mode: 'practice', points: 120, challenge: false }
 
   it('con alguna estrenada, el resultado la lleva', () => {
-    expect(conHazanas(resultado, [HAZANAS.tandaLimpia])).toEqual({ ...resultado, hazanas: [HAZANAS.tandaLimpia] })
+    expect(conHazanas(resultado, [HAZANAS.tandaLimpia])).toEqual({ ...resultado, feats: [HAZANAS.tandaLimpia] })
   })
 
   it('sin ninguna, el resultado es el de siempre, sin el campo', () => {
     expect(conHazanas(resultado, [])).toBe(resultado)
-    expect('hazanas' in conHazanas(resultado, [])).toBe(false)
+    expect('feats' in conHazanas(resultado, [])).toBe(false)
   })
 })

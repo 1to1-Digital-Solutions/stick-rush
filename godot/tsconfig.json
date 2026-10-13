@@ -4,5 +4,5 @@
     "typeRoots": ["./typings"],
     "paths": { "@/*": ["../src/*"], "@kit/*": ["../../xrcade/godot-kit/*"] }
   },
-  "include": ["scene/**/*.ts", "typings/**/*.d.ts", "../../xrcade/godot-kit/motor/navegador-web.d.ts"]
+  "include": ["scene/**/*.ts", "typings/**/*.d.ts", "../../xrcade/godot-kit/engine/web-browser.d.ts"]
 }

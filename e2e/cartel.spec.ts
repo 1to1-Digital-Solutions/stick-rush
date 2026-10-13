@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test'
 
 import { XR_CARTEL_POSITION } from '../src/lib/xrLayout'
-import type { Objetivo } from '../src/lib/objetivo'
-import { contarLlamadas, medianaDeLlamadas } from './support/escenario'
+import type { Goal } from '../src/lib/goal'
+import { installDrawCallCounter, medianDrawCalls } from './support/scenery'
 import { buscarEnLaEscena, esconderEnLaEscena, mirarEnLaEscena, openHost, partidasTerminadas } from './support/host'
-import { drawCallBudget } from './support/presupuesto'
+import { drawCallBudget } from './support/budget'
 
 /**
  * El cartel del objetivo, montado como lo monta el salón: la escena dentro de un Canvas ajeno,
@@ -17,15 +17,15 @@ import { drawCallBudget } from './support/presupuesto'
  */
 
 /** Los listones de Stick Rush en el salón. */
-const OBJETIVO: Objetivo = {
-  medallas: { bronce: 1900, plata: 3750, oro: 5200 },
-  mejorEs: 'mas',
-  unidad: 'points in challenge',
+const OBJETIVO: Goal = {
+  medals: { bronze: 1900, silver: 3750, gold: 5200 },
+  better: 'higher',
+  unit: 'points in challenge',
   record: null,
-  modo: 'challenge',
+  mode: 'challenge',
 }
 
-const CARTEL = drawCallBudget('cartel-del-objetivo')
+const CARTEL = drawCallBudget('goal-sign')
 const NOMBRE = 'cartel-de-objetivo'
 
 /**
@@ -41,8 +41,8 @@ test('con el reto del salón, el cartel cuelga encima del marcador y cuesta una 
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
 
-  await contarLlamadas(page)
-  await openHost(page, undefined, { reto: 20260925, objetivo: OBJETIVO })
+  await installDrawCallCounter(page)
+  await openHost(page, undefined, { reto: 20260925, goal: OBJETIVO })
 
   // Desde la cuenta atrás: la misión se lee antes de que caiga el primer palo.
   await expect
@@ -63,9 +63,9 @@ test('con el reto del salón, el cartel cuelga encima del marcador y cuesta una 
   // Lo que cuesta el cartel: las llamadas con él menos las llamadas sin él, mirándolo de frente
   // para que no lo descarte el recorte de la cámara.
   await mirarEnLaEscena(page, DONDE)
-  const conCartel = await medianaDeLlamadas(page)
+  const conCartel = await medianDrawCalls(page)
   expect(await esconderEnLaEscena(page, NOMBRE, true)).toBe(true)
-  const sinCartel = await medianaDeLlamadas(page)
+  const sinCartel = await medianDrawCalls(page)
   expect(await esconderEnLaEscena(page, NOMBRE, false)).toBe(true)
 
   console.log(`[cartel] el cartel del objetivo: ${conCartel - sinCartel} llamadas (${sinCartel} sin él, ${conCartel} con él)`)
@@ -75,7 +75,7 @@ test('con el reto del salón, el cartel cuelga encima del marcador y cuesta una 
 })
 
 test('sin reto ni partida, en el menú, no hay cartel', async ({ page }) => {
-  await openHost(page, undefined, { objetivo: OBJETIVO })
+  await openHost(page, undefined, { goal: OBJETIVO })
 
   // El menú es lo primero que monta la escena; el cartel solo cuelga con la partida en marcha.
   await expect.poll(() => buscarEnLaEscena(page, 'world-anchor')).not.toBeNull()

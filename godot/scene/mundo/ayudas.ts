@@ -14,11 +14,11 @@
  */
 import { Node3D, Vector3, type MeshInstance3D, type StandardMaterial3D } from 'godot'
 
-import { triangulosDeArco } from '@kit/lib/ui/iconos'
-import type { Mano } from '@kit/lib/xr/manos'
-import type { MandoDeVerdad } from '@kit/runtime/ui/mando'
+import { arcTriangles } from '@kit/lib/ui/icons'
+import type { HandSide } from '@kit/lib/xr/hands'
+import type { RealController } from '@kit/runtime/ui/controller'
 
-import { COLOR_DE_LA_AYUDA, LATIDO, acercarse, avanzarLasAyudas, latido, pase, sinAyudas } from '@/lib/ayudas'
+import { HINT_MARK_COLOR, THROB, moveToward, advanceHints, throb, sweepPhase, noHints } from '@/lib/hints'
 import {
   CAIDA,
   FANTASMA,
@@ -35,7 +35,7 @@ import {
 } from '@/lib/guionDeAyudas'
 import { TUTORIAL_BUTTONS } from '@/lib/tutorial'
 
-import { cilindro, malla, mallaPlana, opacidad, sinSombra, translucido } from '@kit/runtime/escena/piezas'
+import { cylinder, mesh, flatMesh, opacidad, withoutShadow, translucent } from '@kit/runtime/scene/parts'
 
 /** Lo transparente que llega a ponerse cada ayuda encendida del todo (`OPACIDAD` de `Ayudas.tsx`). */
 export const OPACIDAD_DE_LA_AYUDA = { suelo: 0.75, palo: 0.6 } as const
@@ -58,7 +58,7 @@ export interface MomentoDeLasAyudas {
   hechos: Readonly<Record<HechoDeLasAyudas, boolean>>
   /** La altura del aro, de la que cuelga el palo de delante. */
   aro: number
-  mano: Mano
+  mano: HandSide
   /** Sin movimiento (`prefers-reduced-motion` en la web): no late ni cae. */
   quieto?: boolean
 }
@@ -70,7 +70,7 @@ interface Pieza {
 
 export class AyudasDelJuego {
   readonly nodo = new Node3D()
-  private readonly estado = sinAyudas()
+  private readonly estado = noHints()
   private readonly fuerzas: Record<AyudaDeLaMaquina, number> = { suelo: 0, palo: 0, mando: 0 }
   private readonly hechos: Record<HechoDeLasAyudas, boolean> = { grab: false, cae: false }
   private readonly huellas: Pieza[] = []
@@ -85,14 +85,14 @@ export class AyudasDelJuego {
     /** El espacio de la máquina: el guion está escrito respecto del centro del aro. */
     maquina: Node3D,
     /** El mando de verdad de cada mano, junto al palo fantasma (los del kit), o ninguno. */
-    readonly mandos: readonly MandoDeVerdad[] = [],
+    readonly mandos: readonly RealController[] = [],
   ) {
     this.nodo.set_name('Ayudas')
     maquina.add_child(this.nodo)
     HUELLAS.forEach((h, i) => {
       // Una huella es un óvalo: el círculo de doce lados estirado a lo largo del pie.
-      const material = translucido(COLOR_DE_LA_AYUDA, 0, 3)
-      const nodo = malla(mallaPlana(triangulosDeArco(0, 1, 0, Math.PI * 2, 12)), material)
+      const material = translucent(HINT_MARK_COLOR, 0, 3)
+      const nodo = mesh(flatMesh(arcTriangles(0, 1, 0, Math.PI * 2, 12)), material)
       nodo.set_name(`Huella${i}`)
       nodo.position = new Vector3(h.x, HUELLAS_Y + CALCO, h.z)
       nodo.rotation = new Vector3(-Math.PI / 2, 0, 0)
@@ -101,8 +101,8 @@ export class AyudasDelJuego {
       this.nodo.add_child(nodo)
       this.huellas.push({ nodo, material })
     })
-    const material = translucido(COLOR_DE_LA_AYUDA, 0, 4)
-    const palo = cilindro(FANTASMA.radio, FANTASMA.radio, FANTASMA.largo, material, undefined, 12)
+    const material = translucent(HINT_MARK_COLOR, 0, 4)
+    const palo = cylinder(FANTASMA.radio, FANTASMA.radio, FANTASMA.largo, material, undefined, 12)
     palo.set_name('PaloFantasma')
     palo.visible = false
     this.nodo.add_child(palo)
@@ -111,7 +111,7 @@ export class AyudasDelJuego {
     this.nodo.add_child(this.sitioDelMando)
     for (const mando of mandos) this.sitioDelMando.add_child(mando.nodo)
     // Una ayuda no es decorado: no echa sombra, como en la web.
-    sinSombra(this.nodo)
+    withoutShadow(this.nodo)
   }
 
   /** Lo que se ve de cada ayuda ahora mismo, de 0 a 1. */
@@ -120,7 +120,7 @@ export class AyudasDelJuego {
   }
 
   /** Coloca el mando al lado de donde se para el fantasma, del lado de la mano. */
-  private colocar(aro: number, mano: Mano): void {
+  private colocar(aro: number, mano: HandSide): void {
     const clave = `${aro}:${mano}`
     if (clave === this.colocado) return
     this.colocado = clave
@@ -137,12 +137,12 @@ export class AyudasDelJuego {
     this.colocar(momento.aro, momento.mano)
     // Se acumulan: hacer algo no se deshace.
     for (const h of Object.keys(this.hechos) as HechoDeLasAyudas[]) this.hechos[h] = this.hechos[h] || momento.hechos[h]
-    const paso = avanzarLasAyudas(GUION_DE_AYUDAS, this.hechos, this.estado, dando ? delta : 0)
-    const pulso = momento.quieto ? 1 : latido(this.reloj, LATIDO.fuerza)
+    const paso = advanceHints(GUION_DE_AYUDAS, this.hechos, this.estado, dando ? delta : 0)
+    const pulso = momento.quieto ? 1 : throb(this.reloj, THROB.strength)
     let alguna = false
     for (const ayuda of GUION_DE_AYUDAS) {
-      const quiere = dando && paso.encendidas.has(ayuda.id) ? 1 : 0
-      this.fuerzas[ayuda.id] = acercarse(this.fuerzas[ayuda.id], quiere, delta)
+      const quiere = dando && paso.lit.has(ayuda.id) ? 1 : 0
+      this.fuerzas[ayuda.id] = moveToward(this.fuerzas[ayuda.id], quiere, delta)
       if (this.fuerzas[ayuda.id] > APAGADA) alguna = true
     }
     // Todas apagadas y ya escondidas: nada que pintar, y no se toca el motor.
@@ -156,7 +156,7 @@ export class AyudasDelJuego {
       opacidad(h.material, f.suelo * OPACIDAD_DE_LA_AYUDA.suelo * pulso)
     }
     // El palo fantasma, cayendo desde el de delante. No late: ya se mueve.
-    const vuelta = momento.quieto ? { bajada: CAIDA.recorrido / 2, se: 1 } : caidaDelFantasma(pase(this.reloj, CAIDA.periodo).avance)
+    const vuelta = momento.quieto ? { bajada: CAIDA.recorrido / 2, se: 1 } : caidaDelFantasma(sweepPhase(this.reloj, CAIDA.periodo).progress)
     const [x, y, z] = paloDelFantasma(momento.aro)
     this.palo.nodo.position = new Vector3(x, y - vuelta.bajada, z)
     this.palo.nodo.visible = f.palo > APAGADA

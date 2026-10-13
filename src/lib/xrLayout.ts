@@ -2,7 +2,7 @@ import { DIFFICULTY_ORDER, MAX_STICKS, PLAYER_OFFSET_Z, STICK_RADIUS, type Diffi
 import { GAME_MODE_LABELS, type GameMode } from './gameMode'
 import { REFERENCE_EYE_HEIGHT, isPlausibleEyeHeight } from './hoopHeight'
 import { EYE_HEIGHTS, eyesAt, type PanelPose, type Point } from './panelReading'
-import { GRADOS_DEL_MENU } from './plantillaDelMenu'
+import { MENU_DEGREES } from './menuTemplate'
 import { formatea, type TextKey } from './textos'
 import { seVe, type FilaDelMenu } from './menuDelJuego'
 
@@ -122,7 +122,7 @@ export interface MenuPose {
  *
  * A CALIBRAR CON EL VISOR (distancia entre 1,4 y 1,6).
  */
-export const XR_COLUMN = { distance: 1.5, azimuth: (GRADOS_DEL_MENU * Math.PI) / 180 } as const
+export const XR_COLUMN = { distance: 1.5, azimuth: (MENU_DEGREES * Math.PI) / 180 } as const
 
 /**
  * Cuánto crece el panel en la columna.

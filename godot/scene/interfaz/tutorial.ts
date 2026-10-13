@@ -12,10 +12,10 @@
  * de verdad de las dos manos**: aquí vale cualquiera de ellas. Con las manos desnudas, la frase del
  * pellizco. `-- --tutorial` lo enseña en plano.
  */
-import type { Punteria } from '@kit/runtime/ui/punteria'
+import type { PointerAim } from '@kit/runtime/ui/pointerAim'
 import { PanelDeTutorial, type MandoEnLaMano } from '@kit/runtime/ui/tutorial'
 
-import type { Lang } from '@/lib/ajustes'
+import type { Lang } from '@/lib/settings'
 import { traductor } from '@/lib/textos'
 import { FRASES, FRASES_CON_LAS_MANOS, TUTORIAL_BUTTONS, TUTORIAL_STEPS, type TutorialStepKey } from '@/lib/tutorial'
 import { TUTORIAL_BOTON, TUTORIAL_TEXT, XR_TUTORIAL_NEXT_OFFSET } from '@/lib/xrLayout'
@@ -33,7 +33,7 @@ export class TutorialDelJuego {
   private pintado: string | null = null
   private _paso: TutorialStepKey | null = null
 
-  constructor(acciones: { siguiente(): void; saltar(): void }, punteria: Punteria, manos: readonly MandoEnLaMano[] = []) {
+  constructor(acciones: { siguiente(): void; saltar(): void }, punteria: PointerAim, manos: readonly MandoEnLaMano[] = []) {
     this.vista = new PanelDeTutorial({
       rotulos: { next: 'Next', skip: 'Skip tutorial' },
       alSiguiente: () => acciones.siguiente(),

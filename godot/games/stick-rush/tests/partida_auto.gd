@@ -172,7 +172,7 @@ func comprobar(r: Dictionary) -> void:
 
 	# Al salón se le cuenta una vez, sin ser el reto, con los mismos puntos.
 	var resultados: Array = r.resultados
-	if resultados.size() != 1 or resultados[0].modo != "practice" or resultados[0].reto or int(resultados[0].puntos) != int(r.points):
+	if resultados.size() != 1 or resultados[0].mode != "practice" or resultados[0].challenge or int(resultados[0].points) != int(r.points):
 		fallos.append("al salón se le cuenta %s" % [resultados])
 	# Lo que se ve: la máquina de la web y la feria con las piezas del kit.
 	if not iguales(r.maquina, {"matte": 24, "frame": 2, "truss": 43, "bulbs": 8}):
@@ -226,7 +226,7 @@ func comprobar_los_repartos() -> void:
 
 func comprobar_el_reto(r: Dictionary) -> void:
 	var resultados: Array = salon.resultados
-	if resultados.size() != 1 or resultados[0].modo != "challenge" or not resultados[0].reto or int(resultados[0].puntos) != int(r.points):
+	if resultados.size() != 1 or resultados[0].mode != "challenge" or not resultados[0].challenge or int(resultados[0].points) != int(r.points):
 		fallos.append("al salón se le cuenta el reto como %s" % [resultados])
 	if r.outcome != "cleared" or int(r.sticks) != 13 or int(r.misses) != 1:
 		fallos.append("el reto acaba %s con %d palos y %d perdidos" % [r.outcome, r.sticks, r.misses])
@@ -253,7 +253,7 @@ func comprobar_a_dos(r: Dictionary) -> void:
 	if int(r.best) != 0 or r.record:
 		fallos.append("una tanda a dos ha tocado el récord del desafío: %d" % r.best)
 	var resultados: Array = r.resultados
-	if resultados.size() != 1 or resultados[0].modo != "duel" or resultados[0].reto or int(resultados[0].puntos) != uno:
+	if resultados.size() != 1 or resultados[0].mode != "duel" or resultados[0].challenge or int(resultados[0].points) != uno:
 		fallos.append("al salón se le cuenta la partida a dos como %s" % [resultados])
 	var pedidos: Dictionary = r.sfx.requested
 	if cuenta(pedidos, "countdown-3") != 2 or cuenta(pedidos, "go") != 2:

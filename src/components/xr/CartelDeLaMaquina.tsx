@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useXR } from '@react-three/xr'
-import { useHand } from '../../lib/ajustesCliente'
+import { useHand } from '../../lib/settingsClient'
 import { pulsosDelListon, sitioDelCartel } from '../../lib/cartelDeLaMaquina'
 import { useGame } from '../../lib/gameStore'
 import { reproducirPulsos } from '../../lib/haptics'
-import type { Medalla } from '../../lib/objetivo'
-import { CartelDeObjetivo } from './CartelDeObjetivo'
+import type { Medal } from '../../lib/goal'
+import { GoalSign } from './GoalSign'
 
 /** El cartel no se mueve: su sitio es el mismo toda la partida. */
 const SITIO = sitioDelCartel()
@@ -34,7 +34,7 @@ export function CartelDeLaMaquina({ hasDomUi = false }: { hasDomUi?: boolean }) 
   const cancelar = useRef(() => {})
   useEffect(() => () => cancelar.current(), [])
   const alCelebrar = useCallback(
-    (cruzada: Medalla) => {
+    (cruzada: Medal) => {
       cancelar.current()
       cancelar.current = reproducirPulsos(session?.inputSources ?? [], pulsosDelListon(cruzada, mano))
     },
@@ -44,13 +44,13 @@ export function CartelDeLaMaquina({ hasDomUi = false }: { hasDomUi?: boolean }) 
   if ((hasDomUi && mode == null) || cartel == null) return null
 
   return (
-    <CartelDeObjetivo
-      vista={cartel}
+    <GoalSign
+      view={cartel}
       position={SITIO.position}
       rotation={SITIO.rotation}
-      distancia={SITIO.distancia}
-      celebra={medalla}
-      alCelebrar={alCelebrar}
+      distance={SITIO.distancia}
+      celebrate={medalla}
+      onCelebrate={alCelebrar}
     />
   )
 }

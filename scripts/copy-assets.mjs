@@ -5,7 +5,7 @@
  * El HDRI, las texturas de la madera, los modelos del recinto y los perfiles de
  * mando no viajan en el código: son 3 MB que el navegador pide por HTTP mientras juega. Una
  * aplicación que monte Stick Rush tiene que servirlos desde su propio sitio y
- * decirle dónde con la opción `assetsBase` (ver `docs/montar-el-juego.md`).
+ * decirle dónde con la opción `assetsBase` (ver `docs/mounting-the-game.md`).
  *
  * Uso, desde el proyecto que lo consume:
  *

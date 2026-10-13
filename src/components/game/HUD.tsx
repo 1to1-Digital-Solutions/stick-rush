@@ -6,9 +6,9 @@ import { useGame } from '../../lib/gameStore'
 import { maxScore } from '../../lib/scoring'
 import { FRASES, FRASES_CON_LAS_MANOS } from '../../lib/tutorial'
 import { HeartIcon, StarIcon } from '../ui/icons'
-import { useLang } from '../../lib/ajustesCliente'
+import { useLang } from '../../lib/settingsClient'
 import { formatoDeCifra, formatea, traductor, traductorSuave } from '../../lib/textos'
-import { plural } from '../../lib/palabras'
+import { plural } from '../../lib/menuWords'
 import { PLAYER_LABELS, duelSummary } from '../../lib/duel'
 /**
  * Vidas que quedan, una por corazón: llenos los que conservas, de contorno los
@@ -225,11 +225,11 @@ export function HUD() {
       {/* La misión, de frente, hasta que se resuelve el primer palo: lo que en el visor dice el
           cartel de encima del marcador (`CartelDeLaMaquina`), con las mismas frases. Después lo
           que se lleva y las vidas ya están en el marcador de la esquina. */}
-      {cartel != null && faseDelCartel === 'antes' && (
+      {cartel != null && faseDelCartel === 'before' && (
         <div className="pointer-events-none fixed inset-x-0 top-4 z-10 flex justify-center px-24">
           <div className="animate-fade-slide-up rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 text-center backdrop-blur motion-reduce:animate-none">
-            <p className="text-sm font-bold text-white">{cartel.titulo}</p>
-            {cartel.detalle != null && <p className="text-xs text-white/60">{cartel.detalle}</p>}
+            <p className="text-sm font-bold text-white">{cartel.title}</p>
+            {cartel.detail != null && <p className="text-xs text-white/60">{cartel.detail}</p>}
           </div>
         </div>
       )}

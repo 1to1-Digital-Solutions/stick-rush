@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { dibujarLosNombres } from './XRMenu'
-import { ALTO_DE_LINEA } from './canvasPanel'
-import { lienzoQueApunta, problemasDeLegibilidad, type Escrito } from './legibilidad'
+import { LINE_HEIGHT } from './canvasPanel'
+import { recordingCanvas, legibilityProblems, type DrawnText } from './legibility'
 import { MENU_PANEL } from './XRMenu'
 import { GAME_MODE_HINTS, GAME_MODE_ORDER } from '../../lib/gameMode'
 import {
@@ -26,8 +26,8 @@ import {
 } from '../../lib/panelReading'
 import { traductor } from '../../lib/textos'
 import { PLAYER_COUNT_HINTS } from '../../lib/duel'
-import { MENU_EN } from '../../lib/palabras'
-import { fijarNombreDelJuego } from '../../lib/plantillaDelMenu'
+import { MENU_EN } from '../../lib/menuWords'
+import { setGameName } from '../../lib/menuTemplate'
 
 /** Plegado, como abre, y desplegado tras «Más opciones». */
 const PLEGADOS = [false, true] as const
@@ -58,13 +58,13 @@ function vistasDe(pose: MenuPose) {
 }
 
 /** Lo escrito, a la escala a la que se pinta el panel: la escala del grupo lo agranda todo. */
-function aEscala(escritos: readonly Escrito[], escala: number): Escrito[] {
-  return escritos.map((e) => ({ ...e, x: e.x * escala, y: e.y * escala, ancho: e.ancho * escala, alto: e.alto * escala }))
+function aEscala(escritos: readonly DrawnText[], escala: number): DrawnText[] {
+  return escritos.map((e) => ({ ...e, x: e.x * escala, y: e.y * escala, width: e.width * escala, height: e.height * escala }))
 }
 
 /** A qué distancia se miden los problemas: la de lectura del texto que peor se lee, con el escorzo. */
-function distancia(escritos: readonly Escrito[], pose: MenuPose): number {
-  return Math.max(...vistasDe(pose).map(({ pose: vista, ojos }) => worstReadingDistance(escritos, vista, ojos, ALTO_DE_LINEA)))
+function distancia(escritos: readonly DrawnText[], pose: MenuPose): number {
+  return Math.max(...vistasDe(pose).map(({ pose: vista, ojos }) => worstReadingDistance(escritos, vista, ojos, LINE_HEIGHT)))
 }
 
 describe('los nombres de las filas del menú se leen', () => {
@@ -72,14 +72,14 @@ describe('los nombres de las filas del menú se leen', () => {
     for (const lang of IDIOMAS) {
       for (const gameMode of GAME_MODE_ORDER) {
         for (const masOpciones of PLEGADOS) {
-          const { ctx, escritos } = lienzoQueApunta()
+          const { ctx, drawnTexts: escritos } = recordingCanvas()
           dibujarLosNombres(ctx, traductor(lang), gameMode, 1, masOpciones)
           expect(escritos.length, 'no se ha medido nada').toBeGreaterThan(0)
           for (const { nombre, pose } of SITIOS) {
             const escalados = aEscala(escritos, pose.scale)
             const panel = { width: PANEL_MEDIDO.width * pose.scale, height: PANEL_MEDIDO.height * pose.scale }
             expect(
-              problemasDeLegibilidad(escalados, { panel, distancia: distancia(escalados, pose) }),
+              legibilityProblems(escalados, { panel, distance: distancia(escalados, pose) }),
               `${lang} ${gameMode} ${masOpciones ? 'desplegado' : 'plegado'}, ${nombre}`,
             ).toEqual([])
           }
@@ -96,10 +96,10 @@ describe('los nombres de las filas del menú se leen', () => {
     for (const lang of IDIOMAS) {
       const t = traductor(lang)
       for (const gameMode of GAME_MODE_ORDER) {
-        const { ctx, escritos } = lienzoQueApunta()
+        const { ctx, drawnTexts: escritos } = recordingCanvas()
         dibujarLosNombres(ctx, t, gameMode)
         const frase = t(GAME_MODE_HINTS[gameMode])
-        expect(escritos.some((e) => frase.startsWith(e.texto.trim())), `${lang} ${gameMode}`).toBe(
+        expect(escritos.some((e) => frase.startsWith(e.text.trim())), `${lang} ${gameMode}`).toBe(
           true,
         )
       }
@@ -108,9 +108,9 @@ describe('los nombres de las filas del menú se leen', () => {
 
   it('la fila del modo dice «Modo» y cuál hay elegido: el que cuenta para medalla, «Reto»', () => {
     const escrito = (lang: (typeof IDIOMAS)[number], gameMode: (typeof GAME_MODE_ORDER)[number]) => {
-      const { ctx, escritos } = lienzoQueApunta()
+      const { ctx, drawnTexts: escritos } = recordingCanvas()
       dibujarLosNombres(ctx, traductor(lang), gameMode)
-      return escritos.map((e) => e.texto)
+      return escritos.map((e) => e.text)
     }
 
     expect(escrito('es', 'challenge')).toContain('Modo: Reto')
@@ -127,11 +127,11 @@ describe('los nombres de las filas del menú se leen', () => {
    * cero problemas igual que uno perfecto. Estrechado a la mitad tiene que cantar.
    */
   it('y la medida se entera cuando no caben', () => {
-    const { ctx, escritos } = lienzoQueApunta()
+    const { ctx, drawnTexts: escritos } = recordingCanvas()
     dibujarLosNombres(ctx, traductor('es'))
     const estrecho = { width: PANEL_MEDIDO.width / 3, height: PANEL_MEDIDO.height }
-    expect(problemasDeLegibilidad(escritos, { panel: estrecho }).join(' ')).toContain(
-      'se sale del panel',
+    expect(legibilityProblems(escritos, { panel: estrecho }).join(' ')).toContain(
+      'runs off the panel',
     )
   })
 })
@@ -140,12 +140,12 @@ describe('los nombres de las filas del menú se leen', () => {
  * Todo lo que puede escribir el panel: cada modo, y el desafío a dos, en los dos idiomas, plegado
  * y desplegado.
  */
-function todosLosMomentos(): { donde: string; escritos: Escrito[] }[] {
+function todosLosMomentos(): { donde: string; escritos: DrawnText[] }[] {
   return IDIOMAS.flatMap((lang) =>
     [...GAME_MODE_ORDER, 'a dos' as const].flatMap((momento) =>
       PLEGADOS.map((masOpciones) => {
         const gameMode = momento === 'a dos' ? 'challenge' : momento
-        const { ctx, escritos } = lienzoQueApunta()
+        const { ctx, drawnTexts: escritos } = recordingCanvas()
         dibujarLosNombres(ctx, traductor(lang), gameMode, momento === 'a dos' ? 2 : 1, masOpciones)
         return { donde: `${lang} ${momento}${masOpciones ? ' desplegado' : ''}`, escritos }
       }),
@@ -158,28 +158,28 @@ function todosLosMomentos(): { donde: string; escritos: Escrito[] }[] {
  * leía en la portada web. Es un nombre propio: no pasa por `t()`.
  */
 describe('el panel dice cómo se llama la cabina', () => {
-  afterEach(() => fijarNombreDelJuego(null))
+  afterEach(() => setGameName(null))
 
-  const titulo = (escritos: readonly Escrito[]) => escritos.find((e) => e.y === MENU_TITLE.y)
+  const titulo = (escritos: readonly DrawnText[]) => escritos.find((e) => e.y === MENU_TITLE.y)
 
   it('en cada modo e idioma, sin traducirlo', () => {
     for (const { donde, escritos } of todosLosMomentos()) {
-      expect(titulo(escritos)?.texto, donde).toBe('Stick Rush')
+      expect(titulo(escritos)?.text, donde).toBe('Stick Rush')
     }
   })
 
   it('el que le da el salón, y uno largo cabe sin encogerse ni pisar nada', () => {
     // El nombre más largo que puede traer una cabina del catálogo, y algo más.
-    fijarNombreDelJuego('Atrapa los palos que caen del aro')
+    setGameName('Atrapa los palos que caen del aro')
     for (const { donde, escritos } of todosLosMomentos()) {
-      expect(titulo(escritos)?.texto, donde).toBe('Atrapa los palos que caen del aro')
-      expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(MENU_TEXT)), donde).toEqual([])
+      expect(titulo(escritos)?.text, donde).toBe('Atrapa los palos que caen del aro')
+      expect(sizesOffList(escritos, LINE_HEIGHT, Object.values(MENU_TEXT)), donde).toEqual([])
       for (const { nombre, pose } of SITIOS) {
         const escalados = aEscala(escritos, pose.scale)
         const panel = { width: PANEL_MEDIDO.width * pose.scale, height: PANEL_MEDIDO.height * pose.scale }
-        expect(problemasDeLegibilidad(escalados, { panel, distancia: distancia(escalados, pose) }), `${donde}, ${nombre}`).toEqual([])
+        expect(legibilityProblems(escalados, { panel, distance: distancia(escalados, pose) }), `${donde}, ${nombre}`).toEqual([])
         for (const vista of vistasDe(pose)) {
-          expect(unreadableTexts(escalados, vista.pose, vista.ojos, ALTO_DE_LINEA), `${donde}, ${nombre}, ${vista.donde}`).toEqual([])
+          expect(unreadableTexts(escalados, vista.pose, vista.ojos, LINE_HEIGHT), `${donde}, ${nombre}, ${vista.donde}`).toEqual([])
         }
       }
     }
@@ -188,9 +188,9 @@ describe('el panel dice cómo se llama la cabina', () => {
 
 describe('el botón de «Más opciones»', () => {
   const escrito = (lang: (typeof IDIOMAS)[number], gameMode: (typeof GAME_MODE_ORDER)[number], masOpciones: boolean) => {
-    const { ctx, escritos } = lienzoQueApunta()
+    const { ctx, drawnTexts: escritos } = recordingCanvas()
     dibujarLosNombres(ctx, traductor(lang), gameMode, 1, masOpciones)
-    return escritos.map((e) => e.texto).join(' ')
+    return escritos.map((e) => e.text).join(' ')
   }
 
   it('dice qué hace, en su placa y en los dos idiomas: desplegar o volver a plegar', () => {
@@ -206,8 +206,8 @@ describe('el botón de «Más opciones»', () => {
     for (const lang of IDIOMAS) {
       for (const masOpciones of PLEGADOS) {
         const dicho = escrito(lang, 'challenge', masOpciones)
-        expect(dicho).not.toContain(traductor(lang)(MENU_EN.masOpciones).split(' ')[0])
-        expect(dicho).not.toContain(traductor(lang)(MENU_EN.menosOpciones).split(' ')[0])
+        expect(dicho).not.toContain(traductor(lang)(MENU_EN.moreOptions).split(' ')[0])
+        expect(dicho).not.toContain(traductor(lang)(MENU_EN.fewerOptions).split(' ')[0])
       }
     }
   })
@@ -224,19 +224,19 @@ describe('a dos, el menú dice lo que toca', () => {
   it('nombra la fila de contra quién y explica la partida a dos, en los dos idiomas', () => {
     for (const lang of IDIOMAS) {
       const t = traductor(lang)
-      const { ctx, escritos } = lienzoQueApunta()
+      const { ctx, drawnTexts: escritos } = recordingCanvas()
       dibujarLosNombres(ctx, t, 'challenge', 2)
-      const textos = escritos.map((e) => e.texto)
+      const textos = escritos.map((e) => e.text)
       expect(textos, lang).toContain(t('Players'))
       const frase = t(PLAYER_COUNT_HINTS[2])
-      expect(escritos.some((e) => frase.startsWith(e.texto.trim())), lang).toBe(true)
+      expect(escritos.some((e) => frase.startsWith(e.text.trim())), lang).toBe(true)
     }
   })
 
   it('y solo en el desafío: en la práctica, a dos no cuenta', () => {
-    const { ctx, escritos } = lienzoQueApunta()
+    const { ctx, drawnTexts: escritos } = recordingCanvas()
     dibujarLosNombres(ctx, traductor('en'), 'practice', 2)
-    expect(escritos.map((e) => e.texto)).not.toContain('Players')
+    expect(escritos.map((e) => e.text)).not.toContain('Players')
   })
 })
 
@@ -250,7 +250,7 @@ describe('cada letra del menú se lee de un vistazo', () => {
       for (const { nombre, pose } of SITIOS) {
         for (const vista of vistasDe(pose)) {
           expect(
-            unreadableTexts(aEscala(escritos, pose.scale), vista.pose, vista.ojos, ALTO_DE_LINEA),
+            unreadableTexts(aEscala(escritos, pose.scale), vista.pose, vista.ojos, LINE_HEIGHT),
             `${donde}, ${nombre}, ${vista.donde}`,
           ).toEqual([])
         }
@@ -260,7 +260,7 @@ describe('cada letra del menú se lee de un vistazo', () => {
 
   it('y todas se escriben con un tamaño de la lista, sin encogerse', () => {
     for (const { donde, escritos } of todosLosMomentos()) {
-      expect(sizesOffList(escritos, ALTO_DE_LINEA, Object.values(MENU_TEXT)), donde).toEqual([])
+      expect(sizesOffList(escritos, LINE_HEIGHT, Object.values(MENU_TEXT)), donde).toEqual([])
     }
   })
 
@@ -283,15 +283,15 @@ describe('cada letra del menú se lee de un vistazo', () => {
   it('el control: la explicación a 22 mm, abajo del todo, no llegaba', () => {
     const { escritos } = todosLosMomentos().find(({ donde }) => donde === 'es levels')!
     const ultima = escritos.reduce((abajo, e) => (e.y < abajo.y ? e : abajo))
-    const pequena = [{ ...ultima, alto: 0.022 * ALTO_DE_LINEA }]
-    expect(unreadableTexts(pequena, { position: XR_MENU_DESK_POSE.position }, eyesAt(1.6), ALTO_DE_LINEA)).toHaveLength(1)
+    const pequena = [{ ...ultima, height: 0.022 * LINE_HEIGHT }]
+    expect(unreadableTexts(pequena, { position: XR_MENU_DESK_POSE.position }, eyesAt(1.6), LINE_HEIGHT)).toHaveLength(1)
   })
 
   it('y en la columna, sin agrandar el panel, el texto no llegaría', () => {
     // El control de la escala: a metro y medio, el panel a su tamaño de diseño no se lee.
     const { escritos } = todosLosMomentos().find(({ donde }) => donde === 'es levels')!
     const fallos = vistasDe(XR_MENU_POSE).flatMap((vista) =>
-      unreadableTexts(escritos, vista.pose, vista.ojos, ALTO_DE_LINEA),
+      unreadableTexts(escritos, vista.pose, vista.ojos, LINE_HEIGHT),
     )
     expect(fallos.length).toBeGreaterThan(0)
   })
