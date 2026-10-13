@@ -1,52 +1,59 @@
-# Assets de terceros
+# Third-party assets
 
-Todos los assets de esta carpeta son **CC0** (dominio público), salvo las manos, que son
-**MIT**: los CC0 se pueden usar y modificar sin atribución, y se acreditan igualmente por
-cortesía; las manos exigen llevar el aviso de licencia, que va al final.
+Every asset in this folder is **CC0** (public domain), except the hands and the controller
+profiles and models, which are **MIT**: the CC0 ones may be used and modified without attribution,
+and are credited anyway as a courtesy; the MIT ones require carrying the licence notice, which is
+at the end.
 
-Se sirven desde `public/`, nunca desde un CDN externo: el juego tiene que funcionar en un visor
-conectado solo a la red local.
+They are served from `public/`, never from an external CDN: the game has to work on a headset
+connected to the local network only.
 
-| Archivo | Origen | Licencia |
+| File | Origin | Licence |
 |---|---|---|
 | `hdri/plaza_pueblo_1k.exr` | [ambientCG — Night Environment HDRI 009](https://ambientcg.com/view?id=NightEnvironmentHDRI009) | CC0 |
 | `textures/wood_*_1k.jpg` | [Poly Haven — Fine Grained Wood](https://polyhaven.com/a/fine_grained_wood) | CC0 |
-| `manos/generic-hand/{left,right}.glb` | [@webxr-input-profiles/assets](https://github.com/immersive-web/webxr-input-profiles) v1.0.20, mano articulada `generic-hand` | MIT |
-| `models/kit/{puesto,farol,banderola}.glb` | [Kenney — Fantasy Town Kit 2.0](https://kenney.nl/assets/fantasy-town-kit), vía el kit de xrcade (ver abajo) | CC0 |
-| `audio/feria.mp3` | [OpenGameArt — Upbeat Chiptune Theme, de nihilocrat](https://opengameart.org/content/upbeat-chiptune-theme) | CC0 |
+| `manos/generic-hand/{left,right}.glb` | [@webxr-input-profiles/assets](https://github.com/immersive-web/webxr-input-profiles) v1.0.20, the articulated hand `generic-hand` | MIT |
+| `webxr-profiles/**/profile.json`, `webxr-profiles/profilesList.json`, `webxr-profiles/{meta-quest-touch-plus,oculus-touch-v3}/{left,right}.glb` | [@webxr-input-profiles/assets](https://github.com/immersive-web/webxr-input-profiles) v1.0.20, the controller profiles and the models of the Quest controllers | MIT |
+| `models/kit/{puesto,farol,banderola}.glb` | [Kenney — Fantasy Town Kit 2.0](https://kenney.nl/assets/fantasy-town-kit), through the xrcade kit (see below) | CC0 |
+| `audio/feria.mp3` | [OpenGameArt — Upbeat Chiptune Theme, by nihilocrat](https://opengameart.org/content/upbeat-chiptune-theme) | CC0 |
 
-`wood_nor` / `wood_rough` son los mapas de normales y rugosidad de la textura
-`fine_grained_wood`, renombrados por brevedad. Su mapa de color no se usa: es una madera casi
-negra que dejaba los palos marrones en vez de amarillos.
+`wood_nor` / `wood_rough` are the normal and roughness maps of the `fine_grained_wood` texture,
+renamed for brevity. Its colour map is not used: it is an almost black wood that left the sticks
+brown instead of yellow.
 
-El HDRI es una plaza de pueblo de noche con guirnaldas de banderines, que es el escenario que
-pide el juego. Se usa el EXR de 1K (2 MB) en lugar del 2K (~8 MB) porque va de fondo lejano y
-además se aplica un desenfoque suave.
+The HDRI is a village square at night with garlands of bunting, which is the setting the game
+asks for. The 1K EXR (2 MB) is used instead of the 2K one (~8 MB) because it is a distant
+background and a soft blur is applied on top.
 
-La música de fondo es un minuto de tema alegre en bucle: es el fondo de la feria, no la
-partida, así que se oye cuando no pasa nada y desaparece debajo del palo en cuanto lo hay. Se
-sirve en mono a 64 kbps (445 KB) en vez del original en estéreo, porque va a poco volumen y
-por HTTP a un visor conectado a la red de casa.
+The background music is one minute of a cheerful theme on a loop: it is the background of the
+fairground, not the run, so it is heard when nothing is happening and disappears under the stick
+as soon as there is one. It is served in mono at 64 kbps (445 KB) instead of the original in
+stereo, because it plays at low volume and travels over HTTP to a headset connected to the home
+network.
 
-## El recinto — `models/kit/`
+## The fairground — `models/kit/`
 
-- **Obra:** Fantasy Town Kit 2.0 de Kenney: `stall-red` es `models/kit/puesto.glb`, `lantern`
-  es `models/kit/farol.glb` y `banner-red` es `models/kit/banderola.glb`.
-- **Autor:** Kenney — <https://kenney.nl/assets/fantasy-town-kit>
-- **Licencia:** [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/)
-  (dominio público). Se acredita por cortesía.
-- **Uso:** los puestos del anillo, las farolas de las que cuelgan las guirnaldas y una
-  banderola en cada farola. Salen del kit compartido del salón (`xrcade/kit/`), que pasa la
-  paleta del atlas a colores de vértice y deja cada pieza sin textura; **se cambian allí**, no
-  aquí: `organizate/scripts/repos/comunes.py` vigila que esta copia sea la del kit byte a byte.
+- **Work:** Fantasy Town Kit 2.0 by Kenney: `stall-red` is `models/kit/puesto.glb`, `lantern`
+  is `models/kit/farol.glb` and `banner-red` is `models/kit/banderola.glb`.
+- **Author:** Kenney — <https://kenney.nl/assets/fantasy-town-kit>
+- **Licence:** [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/)
+  (public domain). Credited as a courtesy.
+- **Use:** the stalls of the ring, the lamp posts the garlands hang from and a banner on each
+  lamp post. They come from the hall's shared kit (`xrcade/kit/`), which turns the palette of the
+  atlas into vertex colours and leaves each piece without a texture; **they are changed there**,
+  not here: `organizate/scripts/repos/comunes.py` checks that this copy is the kit's, byte for
+  byte.
 
-## Las manos — `manos/generic-hand/`
+## The hands and the controllers — `manos/generic-hand/`, `webxr-profiles/`
 
-La mano articulada genérica del grupo Immersive Web del W3C, la que dibuja la mano del jugador
-cuando el visor sigue las manos en vez de los mandos. La copia `scripts/sync-xr-profiles.mjs`
-desde el paquete, fuera de `webxr-profiles/` (el porqué, en el script).
+The generic articulated hand of the W3C Immersive Web group, the one that draws the player's hand
+when the headset tracks the hands instead of the controllers, and the group's controller
+profiles: every `profile.json` (which button is which on each controller) and the 3D models of
+the two Quest controllers, which the tutorial shows with the button to press lit up.
+`scripts/sync-xr-profiles.mjs` copies them from the package; the hand goes outside
+`webxr-profiles/` (the reason is in the script).
 
-Licencia **MIT**, que exige llevar este aviso en cada copia:
+**MIT** licence, which requires carrying this notice in every copy:
 
 ```
 MIT License
