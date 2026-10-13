@@ -20,8 +20,8 @@ import {
 } from '../../lib/xrLayout'
 import { LINE_HEIGHT } from './canvasPanel'
 import { recordingCanvas, legibilityProblems, type DrawnText } from './legibility'
-import { ALTO_DEL_MANDO } from './mandoDibujado'
-import { ALTO_DE_LA_MANO } from './manoDibujada'
+import { ALTO_DEL_MANDO } from './drawnController'
+import { ALTO_DE_LA_MANO } from './drawnHand'
 import { dibujarElPaso, PANEL_HEIGHT, PANEL_WIDTH, repartoDelPaso } from './XRTutorial'
 
 /**

@@ -16,7 +16,7 @@ import {
   ringSlots,
   type Vec3,
 } from './sceneryLayout'
-import { ALTURAS } from './feriaKit'
+import { ALTURAS } from './fairKit'
 
 /** Hacia dónde encara una pieza girada `rotationY`: su +Z local, en el mundo. */
 function facingDirection(rotationY: number): [number, number] {
@@ -76,7 +76,7 @@ describe('facingRotationY', () => {
 
 describe('recinto', () => {
   it('deja libre el espacio de juego alrededor del jugador', () => {
-    // Los puestos se miden con su pieza del kit, en `feriaKit.test.ts`.
+    // Los puestos se miden con su pieza del kit, en `fairKit.test.ts`.
     expect(GARLAND_RING_RADIUS).toBeGreaterThanOrEqual(SCENERY_CLEARANCE)
   })
 

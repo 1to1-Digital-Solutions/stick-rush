@@ -5,7 +5,7 @@ import { COUNTDOWN_SECONDS, useGame, useGameStoreValue, type OpcionesDelSalon } 
 import { CHALLENGE_LIVES, CHALLENGE_SETUP, DEFAULT_GAME_MODE } from './gameMode'
 import { buildStickLayout } from './stickLayout'
 import { HIGH_SCORE_KEYS } from './highScore'
-import { HAZANAS, HAZANAS_KEY } from './hazanas'
+import { HAZANAS, HAZANAS_KEY } from './feats'
 import { HOOP_ADJUST_RANGE, HOOP_ADJUST_STEP } from './hoopHeight'
 import { OWN_SCENERY_KEY } from './sceneryPreference'
 import { PLAZO_DEL_PASO, TUTORIAL_SEEN_KEY, TUTORIAL_SEEN_VALUE, type TutorialStepKey } from './tutorial'
@@ -538,7 +538,7 @@ describe('tutorial de la primera vez', () => {
 })
 
 /**
- * El calentamiento (`calentamiento.ts`): la primera partida con el visor, en el reto y con la
+ * El calentamiento (`warmup.ts`): la primera partida con el visor, en el reto y con la
  * lección delante, no cuenta.
  */
 describe('el calentamiento', () => {

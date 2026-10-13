@@ -10,7 +10,7 @@ import { crowdBob, crowdTempo } from '../../lib/fairMood'
 import { CROWD_SHADES } from '../../lib/gameConfig'
 import { ignoreRaycast } from './FairPieces'
 import type { FairMoodState } from './FairMood'
-import { useSoltarInstancias } from './soltarInstancias'
+import { useSoltarInstancias } from './disposeInstances'
 import { useReducedMotion } from './useReducedMotion'
 
 /**
@@ -47,7 +47,7 @@ export function Crowd({ moodRef }: { moodRef: RefObject<FairMoodState> }) {
   const spots = useMemo(() => crowdSpots(), [])
   const geometry = useMemo(() => silhouette(), [])
   const figures = useRef<(Object3D | null)[]>([])
-  // Sus matrices y colores se sueltan a mano al salir (`soltarInstancias.ts`).
+  // Sus matrices y colores se sueltan a mano al salir (`disposeInstances.ts`).
   const instancias = useSoltarInstancias()
   const reducedMotion = useReducedMotion()
 

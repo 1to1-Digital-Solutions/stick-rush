@@ -9,7 +9,7 @@ export interface ScreenPoint {
 /**
  * Abre el juego, espera a que la escena 3D esté montada y pintando y deja elegida **la
  * práctica**, que es lo que juegan casi todos estos tests: ahí se eligen los palos y la
- * velocidad. El menú abre en el reto —lo comprueba `modo.spec.ts`—; quien quiera lo que hay al
+ * velocidad. El menú abre en el reto —lo comprueba `mode.spec.ts`—; quien quiera lo que hay al
  * abrir pasa `mode: null`.
  *
  * El Canvas se carga con `lazy()` y solo en el navegador (ver `GameScene`), así

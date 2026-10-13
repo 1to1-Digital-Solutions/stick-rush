@@ -59,7 +59,7 @@ import {
 } from './progress'
 import { volumeFactor } from './settings'
 import { setScenery as setArcadeScenery, useLang, useScenery, useVolumes } from './settingsClient'
-import { llevaLaCuenta, partidaDelCartel } from './cartelDeLaMaquina'
+import { llevaLaCuenta, partidaDelCartel } from './machineSign'
 import {
   goalSign,
   medalToCelebrate,
@@ -85,7 +85,7 @@ import {
   estrenarHazanas,
   type CuentaDeHazanas,
   type ResultadoConHazanas,
-} from './hazanas'
+} from './feats'
 import { forgetOwnScenery, sceneryModeOf, sceneryOf } from './sceneryPreference'
 import { gameStorage } from './storage'
 import { randomSeed, deriveSeed, type Challenge } from './seed'
@@ -99,7 +99,7 @@ import {
   tutorialSeen as leerTutorialVisto,
   tutorialStep as pasoDelTutorial,
 } from './tutorial'
-import { enCalentamiento } from './calentamiento'
+import { enCalentamiento } from './warmup'
 
 export type GameState = 'menu' | 'countdown' | 'playing' | 'finished'
 
@@ -139,7 +139,7 @@ export interface OpcionesDelSalon {
   reto?: Challenge
   /**
    * Se llama una vez al acabar cada partida con puntuación (no al dejarla a medias), con las
-   * hazañas estrenadas en ella si hay alguna (`hazanas.ts`).
+   * hazañas estrenadas en ella si hay alguna (`feats.ts`).
    */
   onFinish?: (resultado: ResultadoConHazanas) => void
   /**
@@ -207,7 +207,7 @@ export interface GameStore {
    */
   enReto: boolean
   /**
-   * La lección corre sobre el reto: **lo que pasa aún no cuenta** (`calentamiento.ts`). Los palos
+   * La lección corre sobre el reto: **lo que pasa aún no cuenta** (`warmup.ts`). Los palos
    * perdidos no quitan vidas y la partida no se acaba; al cerrarse la lección el reto empieza de
    * cero.
    */
@@ -410,7 +410,7 @@ export interface GameStore {
   /**
    * Palo atrapado. `fallProgress` (fracción de su tiempo de caída: 0 recién
    * soltado, 1 a ras de suelo) decide el bonus por reflejos. `espaldas`, si se
-   * cogió de espaldas a él (`deEspaldas` de `hazanas.ts`): solo cuenta para su hazaña.
+   * cogió de espaldas a él (`deEspaldas` de `feats.ts`): solo cuenta para su hazaña.
    */
   catchStick: (fallProgress: number, espaldas?: boolean) => void
   /**
@@ -522,7 +522,7 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
   //
   // Con reto se entra jugando: el salón ya ha elegido juego y modo por quien juega.
   const [running, setRunning] = useState(() => reto != null)
-  // Si esta partida empezó calentando (`calentamiento.ts`). Se apaga solo al volver a empezar el
+  // Si esta partida empezó calentando (`warmup.ts`). Se apaga solo al volver a empezar el
   // reto de cero: mientras tanto la partida no se acaba, aunque la lección ya se haya retirado.
   const [calentamiento, setCalentamiento] = useState(false)
   const [avisoDeQueCuenta, setAvisoDeQueCuenta] = useState(false)
@@ -553,7 +553,7 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
   const [countdown, setCountdown] = useState(() => (reto != null ? COUNTDOWN_SECONDS : 0))
   const [prompt, setPrompt] = useState<'quit' | null>(null)
   const [runId, setRunId] = useState(0)
-  // Las hazañas de la partida en curso (`hazanas.ts`). No se pintan: se cuentan al atrapar y al
+  // Las hazañas de la partida en curso (`feats.ts`). No se pintan: se cuentan al atrapar y al
   // resolverse cada tanda, y se le cuentan al salón al acabar. A dos, las de las dos tandas.
   const hazanas = useRef<CuentaDeHazanas>(SIN_HAZANAS)
   // La corrección de la altura del aro sale de lo guardado en visitas
@@ -933,7 +933,7 @@ export function useGameStoreValue({ reto, onFinish, objetivo }: OpcionesDelSalon
     [clearRun, gameMode, players, duelAhora, endless, selectedLevel, immersive],
   )
 
-  // **La lección se cierra y el reto empieza de cero** (`calentamiento.ts`): por sus pasos, por
+  // **La lección se cierra y el reto empieza de cero** (`warmup.ts`): por sus pasos, por
   // «Siguiente», por «Saltar» o por su plazo, que en los cuatro casos deja el paso en `null`. La
   // lección ya queda anotada como vista (`finishTutorial` o el efecto de arriba), así que la
   // partida nueva no enseña; y avisa de que ahora cuenta hasta que se resuelva su primer palo.

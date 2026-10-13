@@ -17,9 +17,9 @@ import {
   stickFallProgress,
 } from '../../lib/gameConfig'
 import { pulsarAtrape } from '../../lib/haptics'
-import { deEspaldas } from '../../lib/hazanas'
+import { deEspaldas } from '../../lib/feats'
 import { publishStick, stickProbeRequested } from '../../lib/sceneProbe'
-import { stickPointerEvents } from '../../lib/punteros'
+import { stickPointerEvents } from '../../lib/pointers'
 import { PALO_TRAS_EL_MENU, opacidadHacia } from '../../lib/xrLayout'
 import { SWING_RELEASE_DECAY, hangingSwing } from '../../lib/stickSwing'
 import {
@@ -35,7 +35,7 @@ import {
  */
 const puntoDelPalo = new Vector3()
 
-/** Dónde están los ojos y hacia dónde miran al coger un palo, para su hazaña (`hazanas.ts`). */
+/** Dónde están los ojos y hacia dónde miran al coger un palo, para su hazaña (`feats.ts`). */
 const ojos = new Vector3()
 const mirada = new Vector3()
 const paloCogido = new Vector3()
@@ -377,7 +377,7 @@ export function Stick({
   })
 
   return (
-    // **Y solo está para el rayo mientras se pueda coger** (`lib/punteros.ts`). Apagar un palo
+    // **Y solo está para el rayo mientras se pueda coger** (`lib/pointers.ts`). Apagar un palo
     // con `visible` no lo aparta del puntero: el ya atrapado se quedaba escuchando, invisible,
     // a medio metro de la cara y justo entre la mano y el menú.
     <group

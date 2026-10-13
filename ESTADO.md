@@ -20,16 +20,16 @@ Qué mirar con las gafas, y dónde se toca:
 | ¿El paso atrás es el justo? ¿Se llega al palo del frente? | `PLAYER_OFFSET_Z` (`src/lib/gameConfig.ts`) |
 | ¿Máquina a buena altura? ¿Cuelgan por encima de la cara? | `HOOP_RISE_ABOVE_EYES` (`src/lib/hoopHeight.ts`) |
 | Columna de ajustes (30° a la izquierda, 1,5 m; antes a 55°): ¿se ve al entrar sin girarse? En el menú, los palos de delante y de ese lado se atenúan y vuelven al pulsar Jugar: ¿se lee limpio y la máquina sigue pareciendo entera? Web y Godot | `PALO_TRAS_EL_MENU`, `paloTapaElMenu`, `XR_COLUMN` (`src/lib/xrLayout.ts`) |
-| Menú de la plantilla común: «Modo: Reto», «Jugadores» y lo demás tras «Más opciones» (abajo a la izquierda). Con el reto no se ven el aro ni «Alrededor»: ¿se echa de menos ajustar el aro sentado? | `menuDelJuego.ts`, `XR_MENU_OPCIONES_OFFSET` |
+| Menú de la plantilla común: «Modo: Reto», «Jugadores» y lo demás tras «Más opciones» (abajo a la izquierda). Con el reto no se ven el aro ni «Alrededor»: ¿se echa de menos ajustar el aro sentado? | `gameMenu.ts`, `XR_MENU_OPCIONES_OFFSET` |
 | El nombre de la cabina arriba a la izquierda del menú (antes solo en la portada web): ¿se lee sin buscarlo, sin estorbar a «Aro»? Web y Godot | `MENU_TITLE` (`src/lib/xrLayout.ts`) |
-| **El calentamiento** (`src/lib/calentamiento.ts`): la primera partida con el visor, en el reto y con la lección delante, los palos perdidos no quitan vidas; al cerrarla, el reto empieza de cero con «Ahora cuenta para medalla» en el cartel. ¿Se entiende? Web y Godot | `enCalentamiento`, `partidaDelCartel` |
-| Los rótulos bajo los botones del final (Otra partida / Compartir / Menú): ¿se leen sin estorbar? | `ROTULOS_DEL_FINAL` (`XRHud.tsx`; Godot, `marcador.ts`) |
-| ¿Se lee el guante como mano y se ve cerrarse? En el salón va sin mando debajo | `src/components/xr/Guante.tsx`, `src/lib/guante.ts` |
-| Manos desnudas, en la web y en el salón | `src/components/xr/ManosDelJugador.tsx` |
+| **El calentamiento** (`src/lib/warmup.ts`): la primera partida con el visor, en el reto y con la lección delante, los palos perdidos no quitan vidas; al cerrarla, el reto empieza de cero con «Ahora cuenta para medalla» en el cartel. ¿Se entiende? Web y Godot | `enCalentamiento`, `partidaDelCartel` |
+| Los rótulos bajo los botones del final (Otra partida / Compartir / Menú): ¿se leen sin estorbar? | `ROTULOS_DEL_FINAL` (`XRHud.tsx`; Godot, `scoreboard.ts`) |
+| ¿Se lee el guante como mano y se ve cerrarse? En el salón va sin mando debajo | `src/components/xr/Glove.tsx`, `src/lib/glove.ts` |
+| Manos desnudas, en la web y en el salón | `src/components/xr/PlayerHands.tsx` |
 | ¿Se nota el atrape y el in extremis distinto? | `src/lib/haptics.ts`, `src/lib/hapticFeedback.ts` |
 | ¿La caída acelerando se lee como una caída? | `fallAcceleration` (`src/lib/gameConfig.ts`) |
-| **Pendiente de visor — el cartel del objetivo** (encima del marcador, 27° bajo la mirada; el menú abre en el reto): ¿se entiende la misión en los tres primeros segundos?, ¿se lee sin buscarlo?, ¿molesta al jugar? | `XR_CARTEL_POSITION` (`src/lib/xrLayout.ts`), `MISION_DEL_RETO` (`src/lib/cartelDeLaMaquina.ts`) |
-| Cartel: la letra (la misión sale a 1°); el marcador sin barra ni vidas, ¿se echan de menos? | `LETRA_DEL_CARTEL` (`CartelDeObjetivo.tsx`), `XR_HUD_WITH_SIGN`; en Godot, `CARTEL` (`godot/scene/interfaz/cartel.ts`) |
+| **Pendiente de visor — el cartel del objetivo** (encima del marcador, 27° bajo la mirada; el menú abre en el reto): ¿se entiende la misión en los tres primeros segundos?, ¿se lee sin buscarlo?, ¿molesta al jugar? | `XR_CARTEL_POSITION` (`src/lib/xrLayout.ts`), `MISION_DEL_RETO` (`src/lib/machineSign.ts`) |
+| Cartel: la letra (la misión sale a 1°); el marcador sin barra ni vidas, ¿se echan de menos? | `LETRA_DEL_CARTEL` (`CartelDeObjetivo.tsx`), `XR_HUD_WITH_SIGN`; en Godot, `CARTEL` (`godot/scene/ui/sign.ts`) |
 | Cartel: el listón cruzado (color, pulso, dos notas y un toque en la mano buena tras el atrape), ¿se nota sin distraer? | `medalVoices` (`src/lib/sound.ts`), `RETARDO_DEL_LISTON`, `tactoDelListon` |
 
 Lo que solo puede decir el visor del port de Godot está en «Lo que se sabe y lo que falta» de

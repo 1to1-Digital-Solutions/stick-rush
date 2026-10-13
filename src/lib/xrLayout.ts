@@ -4,7 +4,7 @@ import { REFERENCE_EYE_HEIGHT, isPlausibleEyeHeight } from './hoopHeight'
 import { EYE_HEIGHTS, eyesAt, type PanelPose, type Point } from './panelReading'
 import { MENU_DEGREES } from './menuTemplate'
 import { formatea, type TextKey } from './textos'
-import { seVe, type FilaDelMenu } from './menuDelJuego'
+import { seVe, type FilaDelMenu } from './gameMenu'
 
 /**
  * Dónde se coloca cada cosa de la interfaz inmersiva, en metros. Las alturas se
@@ -260,7 +260,7 @@ export const XR_HUD_POSITION: Vec3 = [0, 0.95, -0.85]
 export const XR_HUD_PANEL = { run: 0.27, finished: 0.42, livesRow: 0.06 } as const
 
 /**
- * El cartel del objetivo (`lib/objetivo.ts`, `lib/cartelDeLaMaquina.ts`): **de frente, justo
+ * El cartel del objetivo (`lib/objetivo.ts`, `lib/machineSign.ts`): **de frente, justo
  * encima del marcador**, que es la franja que ya se miraba para saber cómo iba la partida.
  *
  * Por debajo de la máquina y no encima del aro: los palos cuelgan y caen por delante de la cara,
@@ -342,11 +342,11 @@ export const XR_CONFIRM_SIZE: [number, number] = [0.78, 0.38]
  */
 export const XR_DUEL_POSITION: Vec3 = XR_CONFIRM_POSITION
 export const XR_DUEL_SIZE: [number, number] = [0.9, 0.26]
-/** A qué tamaño se escribe, en metros de alto de letra (`duelo.legible.test.ts`). */
+/** A qué tamaño se escribe, en metros de alto de letra (`duel.legible.test.ts`). */
 export const DUEL_TEXT = { title: 0.045, body: 0.034 } as const
 
 /**
- * A qué tamaño se escribe el aviso, en metros de alto de letra (`salida.legible.test.ts`).
+ * A qué tamaño se escribe el aviso, en metros de alto de letra (`exit.legible.test.ts`).
  */
 export const CONFIRM_TEXT = { title: 0.05, body: 0.034, button: 0.034 } as const
 
@@ -639,7 +639,7 @@ const FILAS_DEL_ROTULO: Record<(typeof MENU_LABELS)[number]['text'], readonly Fi
 
 /**
  * Los nombres de fila que se enseñan con cada modo: los de las filas a la vista
- * (`menuDelJuego.ts`). **Solo la práctica pregunta** palos y velocidad; en Niveles la fila de los
+ * (`gameMenu.ts`). **Solo la práctica pregunta** palos y velocidad; en Niveles la fila de los
  * palos es la escalera y la velocidad se ve apagada, la del nivel; el desafío va fijo
  * (`CHALLENGE_SETUP`) y sus filas no se ven, así que tampoco sus nombres: un rótulo sobre un hueco
  * se lee como una opción que falta. Lo plegado tras «Más opciones», tampoco.

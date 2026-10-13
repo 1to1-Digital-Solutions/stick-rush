@@ -12,8 +12,8 @@ aceleración que hace que cada dificultad dure lo mismo que en la web (`fallAcce
 `hoopFallSpeed`); la física de Godot no se usa. Se cogen **colgando o cayendo, hasta que tocan el
 suelo** (`canCatchStick`), y cuánto llevaban cayendo en tiempo decide el bonus de reflejos
 (`stickFallProgress`, `scoring.ts`). Lo que en la web hace cada `Stick.tsx` fotograma a fotograma es
-`scene/juego/tanda.ts`, y la partida es el `gameStore.ts` de la web sin React
-(`scene/juego/partida.ts`): práctica (tanda o sin fin, que recarga la máquina con otra semilla), los
+`scene/game/round.ts`, y la partida es el `gameStore.ts` de la web sin React
+(`scene/game/run.ts`): práctica (tanda o sin fin, que recarga la máquina con otra semilla), los
 quince niveles con sus estrellas y el desafío con tres vidas; récord, racha sin fin, estrellas,
 altura del aro y tutorial visto con el guardado del kit.
 
@@ -32,7 +32,7 @@ y se rehace si el aro cambia de altura (solo en el menú). **Los palos**, de mad
 relieve y la rugosidad de la web; al atraparlos se ponen verdes, crecen y se desvanecen con su onda;
 el que se escapa se queda en el suelo, teñido de rojo. Alrededor, **la feria**: la plaza de noche del
 HDRI de la web de fondo y de reflejos, **las piezas del kit de assets** (`public/models/kit/`: seis
-puestos, ocho farolas y sus banderolas, donde las pone `feriaKit.ts`, con el color en los vértices),
+puestos, ocho farolas y sus banderolas, donde las pone `fairKit.ts`, con el color en los vértices),
 las guirnaldas de bombillas, **el público** de `crowdLayout.ts` (42 siluetas en una malla múltiple
 que se mece en el shader) y la noria girando. Las bombillas y el público se animan con la racha
 (`fairMood.ts`). **Tu habitación** (`xrcade:scenery`) oculta la feria y deja la máquina, solo con
@@ -50,7 +50,7 @@ mientras se aprieta, y las manos desnudas se miran con su `manoDesnuda`. De pie,
 encima de los ojos medidos en el menú (`XRPlayerHeight.tsx`, `hoopHeight.ts`); sentado a los ojos, el
 mundo baja y el aro se queda en su cota. Vibra con la receta de la web (`pulsosDelAtrape`: el
 agarre de `tactos.ts`, más fuerte in extremis) en la mano que coge. **Las ayudas** del guion de la
-web (`guionDeAyudas.ts`): las huellas, el palo fantasma cayendo y el mando de verdad a su lado con el
+web (`hintScript.ts`): las huellas, el palo fantasma cayendo y el mando de verdad a su lado con el
 agarre latiendo; y **el tutorial** de la web —coger un palo, y otro de los de los lados—, que se
 aprende jugando, con su plazo por paso, y enciende el botón en **el mando de verdad de las dos
 manos**.
@@ -58,12 +58,12 @@ manos**.
 Suena con los efectos de la web renderizados de su `sound.ts` tal cual (el render del kit le pasa el
 contexto, `"context": true`): la nota del atrape que sube con la racha (ocho ficheros), el palo perdido, los tres
 segundos de la cuenta atrás, la salida, el final (ganar, perder o terminar) y el récord, con la regla
-de `useGameSound.ts` (`juego/sonido.ts`); y la música de la feria con su fundido. El idioma y los
+de `useGameSound.ts` (`game/sound.ts`); y la música de la feria con su fundido. El idioma y los
 volúmenes son los del salón, del guardado.
 
 **El menú abre en el reto** y **el objetivo se lee de frente, bajo la máquina**
-(`interfaz/cartel.ts`): el cartel de la web con lo que dice `objetivo.ts` y en el sitio de
-`cartelDeLaMaquina.ts`, encima del marcador —la misión hasta el primer palo, lo que se lleva, las
+(`ui/sign.ts`): el cartel de la web con lo que dice `objetivo.ts` y en el sitio de
+`machineSign.ts`, encima del marcador —la misión hasta el primer palo, lo que se lleva, las
 vidas y los palos que quedan mientras se juega, lo que faltó al acabar—, del mismo tamaño en el
 ojo que en la web; el marcador calla lo que el cartel ya dice (sin barra, sin vidas y sin la letra
 del final). Al cruzar un listón el cartel cambia de color, crece y vuelve, suena (`medal-*`) y se
@@ -72,7 +72,7 @@ llegan del salón nativo**: `main.ts` lee el metadato `goal` del autoload `XRcad
 `objetivoDe` del kit (lo mismo que su `base.objetivo()`, la prop `objetivo` de la web) y se lo pasa
 a la `Partida`; con él el cartel dice los listones, celebra cada medalla y dice «no cuenta» fuera
 del modo del récord. Sin salón, o si no le pone medallas, dice la misión y el récord guardado. Lo
-fija `tests/partida_auto.gd`, con el metadato y sin él.
+fija `tests/auto_run.gd`, con el metadato y sin él.
 
 **El reto del salón** (`semilla.ts`): con `-- --reto=<semilla>`, o si el autoload `XRcade` lleva
 `challenge_seed`, se entra directo en **el desafío** (el modo del récord de la cabina), sin menú ni
@@ -94,28 +94,28 @@ Por qué existe y qué se midió: `xrcade/docs/salir-en-steam.md`, sección 4.
 
 `highScore.ts` escuchaba el evento `storage` del navegador (`window`), así que el kit no dejaba
 cargarlo en el motor. Lo que no toca el navegador —las claves, leer, escribir, guardar si mejora y la
-racha sin fin— pasó a **`src/lib/marcas.ts`**, y `highScore.ts` lo reexporta tal cual y se queda con
+racha sin fin— pasó a **`src/lib/bests.ts`**, y `highScore.ts` lo reexporta tal cual y se queda con
 la suscripción entre pestañas: la web importa lo mismo que antes, con sus gates en verde (tipos,
-lint, cobertura al 100 % y los e2e). La escena importa `marcas.ts`.
+lint, cobertura al 100 % y los e2e). La escena importa `bests.ts`.
 
 ## Qué hay
 
 | Ruta | Qué es |
 |---|---|
 | `scene/main.ts` | La escena: la feria, la máquina, los palos, las tres formas de cogerlos (mano, ratón, jugador automático), la altura de los ojos, el sonido, lo que se siente, el reto y las capturas |
-| `scene/juego/partida.ts` | La partida: el `gameStore.ts` de la web sin React (lo elegido, las fases, los contadores, las tandas sin fin, la partida a dos, la lección y su plazo, lo que se guarda y lo que se le cuenta al salón) |
-| `scene/juego/tanda.ts` | Los palos de una tanda: lo que hace cada `Stick.tsx`, sin pintar |
-| `scene/juego/alcance.ts` | Qué palo coge la mano (la esfera del puño) o el ratón (el rayo) |
-| `scene/juego/sonido.ts` | Qué suena y cuándo (`useGameSound.ts`) |
-| `scene/mundo/` | La máquina (`maquina.ts`), los palos pintados (`palos.ts`), la feria, la plaza y tu habitación (`feria.ts`) y las ayudas (`ayudas.ts`); las piezas sueltas y el escenario son del kit |
-| `scene/interfaz/` | El menú, el marcador, el cartel del objetivo (`cartel.ts`), volver, terminar, el aviso, el final de cada tanda a dos (`PanelDelDuelo`), la cuenta atrás, el tutorial, los iconos de `xrIcons.ts` y el de contra quién, y dónde va cada panel con visor y en plano |
+| `scene/game/run.ts` | La partida: el `gameStore.ts` de la web sin React (lo elegido, las fases, los contadores, las tandas sin fin, la partida a dos, la lección y su plazo, lo que se guarda y lo que se le cuenta al salón) |
+| `scene/game/round.ts` | Los palos de una tanda: lo que hace cada `Stick.tsx`, sin pintar |
+| `scene/game/reach.ts` | Qué palo coge la mano (la esfera del puño) o el ratón (el rayo) |
+| `scene/game/sound.ts` | Qué suena y cuándo (`useGameSound.ts`) |
+| `scene/mundo/` | La máquina (`machine.ts`), los palos pintados (`sticks.ts`), la feria, la plaza y tu habitación (`fairground.ts`) y las ayudas (`hints.ts`); las piezas sueltas y el escenario son del kit |
+| `scene/interfaz/` | El menú, el marcador, el cartel del objetivo (`sign.ts`), volver, terminar, el aviso, el final de cada tanda a dos (`PanelDelDuelo`), la cuenta atrás, el tutorial, los iconos de `xrIcons.ts` y el de contra quién, y dónde va cada panel con visor y en plano |
 | `scene/**/*.motor.test.ts` | La partida contra el store de la web, la tanda contra `Stick.tsx` y el sonido contra `useGameSound.ts`, el mundo (y que lo del paquete es lo de la web byte a byte), y los paneles medidos con el instrumento de la web en los dos idiomas y pulsados con el ratón: corren con los tests de dominio |
 | `godot-kit.json` | Para el kit: el id, el repo (`..`), **la versión del kit** (`kit`, un tag de xrcade), los efectos (con la nota del atrape y la cuenta atrás en sus escalones) y la música |
 | `games/stick-rush/` | Lo que va en el `.pck`; `tests/` se queda fuera al exportar |
 | `games/stick-rush/{sfx,music,feria,texturas,hdri,mandos}/` | Los efectos renderizados (`npm run godot:sfx`), la música, las piezas del kit, la madera, la plaza y los mandos de Quest (`npm run godot:controllers`), con `CREDITS.md`. Se versionan. La plaza va comprimida para la GPU (BC6H y ASTC, 0,5 MB cada una en vez de 4) y la madera, sin pérdida y con sus mipmaps |
-| `games/stick-rush/tests/partida_auto.*` | La partida automática entera (práctica, Difícil, nueve palos, uno que se escapa adrede): palos, puntos, récord, lo que suena, la máquina y la feria, y lo que se le cuenta al salón; el reto con la semilla del salón, que entra jugando, da el mismo reparto dos veces y se cuenta como reto; y la partida a dos entera (`--a-dos`): las dos tandas con la misma semilla, gana el primero (el segundo deja escapar uno más), se apunta a la pareja sin tocar el récord, al salón una vez y suena a ganar |
-| `games/stick-rush/tests/menu_raton.*` | La escena de verdad con clics del ratón: velocidad, palos y aro, jugar, que un clic en un palo en la cuenta atrás no lo coge y jugando sí, que un clic al aire no coge nada, Escape, dejar la partida, el modo que pasa y salir |
-| `games/stick-rush/tests/xr_mando.*` | Dos partidas con visor simulado cogiendo con las dos manos: diestro sentado en el salón y zurdo de pie. La mano de cada atrape y su pulso, la altura del mundo y del aro, el anclaje, el giro, el tutorial con el mando en las manos y las ayudas |
+| `games/stick-rush/tests/auto_run.*` | La partida automática entera (práctica, Difícil, nueve palos, uno que se escapa adrede): palos, puntos, récord, lo que suena, la máquina y la feria, y lo que se le cuenta al salón; el reto con la semilla del salón, que entra jugando, da el mismo reparto dos veces y se cuenta como reto; y la partida a dos entera (`--a-dos`): las dos tandas con la misma semilla, gana el primero (el segundo deja escapar uno más), se apunta a la pareja sin tocar el récord, al salón una vez y suena a ganar |
+| `games/stick-rush/tests/menu_mouse.*` | La escena de verdad con clics del ratón: velocidad, palos y aro, jugar, que un clic en un palo en la cuenta atrás no lo coge y jugando sí, que un clic al aire no coge nada, Escape, dejar la partida, el modo que pasa y salir |
+| `games/stick-rush/tests/xr_controller.*` | Dos partidas con visor simulado cogiendo con las dos manos: diestro sentado en el salón y zurdo de pie. La mano de cada atrape y su pulso, la altura del mundo y del aro, el anclaje, el giro, el tutorial con el mando en las manos y las ayudas |
 | `tests/run.sh` | Todo lo del motor de una vez (`npm run godot:test`) |
 
 **Qué tests entran en el motor** lo decide el kit por el grafo de imports: 31 de los 48 ficheros de
@@ -201,12 +201,12 @@ comprueba que el hub lo monta, le cede la pantalla y vuelve al salón.
   interfaz se queda donde se plantó el mundo en vez de seguir la mirada (`XRGazeAnchor`); las huellas
   van dos milímetros por encima del suelo, porque Godot no tiene `polygonOffset` para lo translúcido;
   y la plaza del HDRI va de fondo, sin proyectarla sobre el suelo (`ground` de drei).
-- **No está**: el guante y la mano articulada dibujados (`ManosDelJugador.tsx`; con mandos se ve el
+- **No está**: el guante y la mano articulada dibujados (`PlayerHands.tsx`; con mandos se ve el
   mando de verdad solo durante el tutorial), coger con la mano desnuda (Stick Rush no tiene
   `pellizco.ts`, y el salón también lo tiene apagado), la cortina al cambiar de escenario
   (`SceneryFade`), el precalentado de shaders (`Calentar`) y `prefers-reduced-motion` (Godot no lo
   da: los palos se mecen y el público baila siempre). La luz se ha llevado de las intensidades de
-  three a las de Godot con una escala por luz (`ENERGIA_POR_UNIDAD` de `feria.ts`), puesta a ojo sobre
+  three a las de Godot con una escala por luz (`ENERGIA_POR_UNIDAD` de `fairground.ts`), puesta a ojo sobre
   las capturas del port: falta compararla lado a lado con la web.
 - **Lo que solo puede decir el visor**, además de lo de `salir-en-steam.md` 4.2 y 4.3:
   1. **Coger con la mano**: que la esfera de agarre de 9 cm en el `grip` de OpenXR caiga donde se

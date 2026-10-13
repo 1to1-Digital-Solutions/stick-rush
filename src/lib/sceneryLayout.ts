@@ -27,7 +27,7 @@ export const SCENERY_CLEARANCE = 3
 
 /**
  * Puestos del recinto, repartidos en círculo mirando al jugador. Cuánto miden
- * lo dice su pieza del kit (`feriaKit.ts`).
+ * lo dice su pieza del kit (`fairKit.ts`).
  */
 export const STALL_COUNT = 6
 export const STALL_RING_RADIUS = 6.4

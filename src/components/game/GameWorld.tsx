@@ -15,10 +15,10 @@ import {
 import { showsPlace } from '../../lib/settings'
 import { entryPlacement, type HostAnchor } from '../../lib/hostAnchor'
 import { useGame, type SceneryMode } from '../../lib/gameStore'
-import { DECOR_POINTER_EVENTS, MENU_POINTER_ORDER } from '../../lib/punteros'
+import { DECOR_POINTER_EVENTS, MENU_POINTER_ORDER } from '../../lib/pointers'
 import { sceneryOf } from '../../lib/sceneryPreference'
-import { ManosDelJugador } from '../xr/ManosDelJugador'
-import { CartelDeLaMaquina } from '../xr/CartelDeLaMaquina'
+import { ManosDelJugador } from '../xr/PlayerHands'
+import { CartelDeLaMaquina } from '../xr/MachineSign'
 import { XRCountdown } from '../xr/XRCountdown'
 import { XRGazeAnchor } from '../xr/XRGazeAnchor'
 import { XRDuelPanel, XRHud, XRQuitButton, XRQuitConfirm } from '../xr/XRHud'
@@ -26,7 +26,7 @@ import { XRMenu } from '../xr/XRMenu'
 import { XRPlayerHeight } from '../xr/XRPlayerHeight'
 import { XRSessionController } from '../xr/XRSessionController'
 import { XRTutorial } from '../xr/XRTutorial'
-import { Ayudas } from './Ayudas'
+import { Ayudas } from './Hints'
 import { PrewarmShaders } from './PrewarmShaders'
 import { Backdrop } from './Backdrop'
 import { Fairground } from './Fairground'
@@ -35,7 +35,7 @@ import { StickMachine } from './StickMachine'
 import { Ground } from './Ground'
 import { useGameMusic } from './useGameMusic'
 import { useGameSound } from './useGameSound'
-import { useSoltarMallas } from './soltarInstancias'
+import { useSoltarMallas } from './disposeInstances'
 import { XRWorldHeight } from '../xr/XRWorldHeight'
 
 /**
@@ -236,7 +236,7 @@ export function GameWorld({ hasDomUi = false, anchor }: GameWorldProps) {
           dejaba el menú a la espalda, invisible e imposible de apuntar.
           Va fuera del grupo del mundo a propósito: acompaña al jugador, no al
           decorado. */}
-      {/* Y gana el rayo pase lo que pase por delante (`lib/punteros.ts`): la pregunta de
+      {/* Y gana el rayo pase lo que pase por delante (`lib/pointers.ts`): la pregunta de
           salir sale en plena partida, con palos cayendo entre la mano y el botón, y ahí sí
           hay palos que se pueden coger. Es un orden, no una distancia. */}
       <XRGazeAnchor always={!hasDomUi} pointerEventsOrder={MENU_POINTER_ORDER}>
@@ -260,7 +260,7 @@ export function GameWorld({ hasDomUi = false, anchor }: GameWorldProps) {
           distancia en sentido contrario: la geometría que ve el jugador es
           idéntica y el origen se queda donde su dueño lo puso. */}
       <HostAnchored anchor={anchor}>
-        {/* **El mundo no está para el rayo** (`lib/punteros.ts`): quien juega está DENTRO de
+        {/* **El mundo no está para el rayo** (`lib/pointers.ts`): quien juega está DENTRO de
             la máquina, así que entre su mano y el menú hay siempre travesaños, palos y
             decorado. Nada de eso escucha nada, pero basta un anfitrión con un oyente por
             encima —el salón— para que todo lo que cuelgue de él cuente como tocado. Lo único

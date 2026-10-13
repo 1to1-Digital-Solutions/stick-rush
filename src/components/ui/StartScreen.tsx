@@ -16,7 +16,7 @@ import {
   startingLives,
 } from '../../lib/gameMode'
 import { PLAYER_COUNTS, PLAYER_COUNT_HINTS, PLAYER_COUNT_LABELS, juegaADos } from '../../lib/duel'
-import { MODOS_DEL_MENU, botonDeOpciones, seVe } from '../../lib/menuDelJuego'
+import { MODOS_DEL_MENU, botonDeOpciones, seVe } from '../../lib/gameMenu'
 import { MENU_EN, plural } from '../../lib/menuWords'
 import { gameName } from '../../lib/menuTemplate'
 import { useGame } from '../../lib/gameStore'
@@ -269,7 +269,7 @@ export function StartScreen() {
     setGameMode,
     startGame,
   } = useGame()
-  // **Solo la práctica pregunta** palos y velocidad, y tras «Más opciones» (`menuDelJuego.ts`). En
+  // **Solo la práctica pregunta** palos y velocidad, y tras «Más opciones» (`gameMenu.ts`). En
   // Niveles los dice el nivel —sus selectores se cambian por la escalera— y el desafío va fijo
   // (`CHALLENGE_SETUP`): se elige el modo y se le da a Jugar. Las filas no se enseñan ni apagadas.
   // Lo plegado es de la interfaz: no se guarda, y la portada abre plegada.

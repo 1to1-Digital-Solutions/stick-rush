@@ -57,7 +57,7 @@ const PLAZO_TOTAL = TUTORIAL_SECONDS
  * tiempo tapó un fallo real —los mandos no llegaban a registrarse porque su
  * perfil se descargaba de un CDN que la CSP bloquea—, que sí se podía haber
  * detectado mirando la consola dentro de la sesión. De ahí el test que la
- * vigila. Y con **las manos desnudas** sí engancha: `manos.spec.ts` atrapa un
+ * vigila. Y con **las manos desnudas** sí engancha: `hands.spec.ts` atrapa un
  * palo de verdad, así que la limitación es del modo `controller` del emulador y
  * no de que el juego no reciba eventos.
  *

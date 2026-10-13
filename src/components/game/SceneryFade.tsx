@@ -5,7 +5,7 @@ import { useFrame } from '@react-three/fiber'
 import { BackSide } from 'three'
 import type { Mesh, MeshBasicMaterial } from 'three'
 import { BACKDROP_COLOR } from '../../lib/gameConfig'
-import { DECOR_POINTER_EVENTS } from '../../lib/punteros'
+import { DECOR_POINTER_EVENTS } from '../../lib/pointers'
 import type { SceneryMode } from '../../lib/gameStore'
 
 /**
@@ -98,7 +98,7 @@ export function SceneryFade({
       {/* Y fuera del alcance de los punteros, dicho aquí además de heredarlo del mundo: es una
           esfera de 35 cm **alrededor de la cabeza**, y una forma que envuelve la mano cuenta
           como tocada a distancia cero. Estar invisible no la aparta: a la librería de punteros
-          la visibilidad no le dice nada (`lib/punteros.ts`). */}
+          la visibilidad no le dice nada (`lib/pointers.ts`). */}
       <mesh ref={meshRef} visible={false} pointerEvents={DECOR_POINTER_EVENTS}>
         {/* Vista desde dentro: la esfera envuelve al jugador. */}
         <sphereGeometry args={[CURTAIN_RADIUS, 16, 12]} />

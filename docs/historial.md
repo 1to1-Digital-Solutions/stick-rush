@@ -26,12 +26,12 @@
   desacoplado de `MACHINE_HEIGHT` (escritorio sigue en 1,95). La velocidad se escala con el
   recorrido, así que la dificultad no cambia. El invariante de alcance pasa a ser «cada palo
   **cruza** el brazo al caer, ≥ 40 cm de franja» (`hoopHeight.test.ts`), no «colgado al alcance».
-- **Manos en VR, montadas por la escena** (`components/xr/ManosDelJugador.tsx`, lógica en
-  `lib/manos.ts`), no por el `XRStore`: lo del store solo existe en la web propia y en el salón
+- **Manos en VR, montadas por la escena** (`components/xr/PlayerHands.tsx`, lógica en
+  `lib/hands.ts`), no por el `XRStore`: lo del store solo existe en la web propia y en el salón
   el store es del salón, que no dibuja manos. Así salen igual en los dos sitios. Se colocan como
   `MandoDeVerdad` (pose de WebXR con los padres deshechos, `colocarEnElOrigen`).
-  - Con mandos, un **guante** low-poly procedural en el `grip-space` (`Guante.tsx`, lógica en
-    `lib/guante.ts`): 16 cajas en una `InstancedMesh`, cierra el puño con el lateral y el índice
+  - Con mandos, un **guante** low-poly procedural en el `grip-space` (`Glove.tsx`, lógica en
+    `lib/glove.ts`): 16 cajas en una `InstancedMesh`, cierra el puño con el lateral y el índice
     con el gatillo; las yemas llevan la ayuda del agarre. Ya **no** va en `StickRushController`
     (que sigue dibujando el mando y los punteros solo en la web propia).
   - Sin mandos, la **mano articulada** `generic-hand` hueso a hueso (`fillPoses`), cargada sin
@@ -54,7 +54,7 @@
 - **Hápticos por contacto** (`lib/tactos.ts` común + `lib/haptics.ts`): atrapar = `agarre` en la
   mano que coge, ×1,8 si es in extremis (≥ 80 % de la caída). El palo que se escapa ya no vibra
   (`XRHaptics` borrado). Se conserva el toque del botón del menú (no es un contacto).
-- **Mando junto al gesto**: no aplica tal cual (stick-rush no tiene `Ayudas.tsx`); la ayuda del
+- **Mando junto al gesto**: no aplica tal cual (stick-rush no tiene `Hints.tsx`); la ayuda del
   agarre va en la mano dibujada.
 
 **Pendiente de visor:**
@@ -64,8 +64,8 @@
 | ¿El paso atrás es el justo? ¿Se llega al palo del frente? | `PLAYER_OFFSET_Z` (`gameConfig.ts`) |
 | ¿Máquina a buena altura? ¿Cuelgan por encima de la cara? | `HOOP_RISE_ABOVE_EYES` (`hoopHeight.ts`) |
 | Columna: distancia, ángulo, tamaño; ¿estorban los palos que cuelgan delante de ella? | `XR_COLUMN`, `XR_MENU_SCALE` (`xrLayout.ts`) |
-| ¿Se lee el guante como mano? ¿Se ve cerrarse? Posición sobre el mando real. **En el salón va sin mando dibujado debajo** (el del juego es del store propio): ¿se entiende así? | `PALMA`, `NUDILLOS`, `PULGAR` (`Guante.tsx`); `REPOSO`, `VELOCIDAD_DE_CIERRE` (`guante.ts`) |
-| Manos desnudas, en la web y en el salón: ¿el modelo encaja con la mano real? | `ManosDelJugador.tsx` (`ManoDesnuda`) |
+| ¿Se lee el guante como mano? ¿Se ve cerrarse? Posición sobre el mando real. **En el salón va sin mando dibujado debajo** (el del juego es del store propio): ¿se entiende así? | `PALMA`, `NUDILLOS`, `PULGAR` (`Glove.tsx`); `REPOSO`, `VELOCIDAD_DE_CIERRE` (`glove.ts`) |
+| Manos desnudas, en la web y en el salón: ¿el modelo encaja con la mano real? | `PlayerHands.tsx` (`ManoDesnuda`) |
 | ¿Se nota el atrape? ¿Y el in extremis distinto? | `IN_EXTREMIS`, `IN_EXTREMIS_BOOST` (`haptics.ts`); recetas en `tactos.ts` (común) |
 
 **En el salón, con manos desnudas no se atrapa**: el salón tiene `hand.grabPointer: false` a
@@ -106,7 +106,7 @@ bombillas que con mil. La racha llega al recinto por un **ref** (`FairMood.tsx`)
 el decorado no se vuelve a renderizar por nada que pase en la partida. Con
 `prefers-reduced-motion` el público se queda quieto y las bombillas no palpitan (el brillo sí
 sube, que eso no se mueve). La escena pasa de 29 a **30 llamadas en el menú**; el desglose vive
-en `e2e/recinto.spec.ts`. **Nada de esto está probado con las gafas.**
+en `e2e/fairground.spec.ts`. **Nada de esto está probado con las gafas.**
 
 **`v0.5.0` (2026-09-06): tres modos.** Además de práctica y desafío, **Niveles**: una
 escalera propia de 15 niveles (`levels.ts`: 5/9/13 palos por cada velocidad), sin vidas,
@@ -754,7 +754,7 @@ mitad de la nada. Ahora hay geometría alrededor y la foto se queda de cielo y d
   los triángulos. Los límites de instancias son el recuento exacto de piezas, sumado trozo a
   trozo, porque drei deja de pintar lo que sobra **sin avisar** (`FairPieces.tsx`).
   Lo que cuesta exactamente no se repite aquí: vive en el desglose de `MENU_DRAW_CALLS`
-  (`e2e/recinto.spec.ts`), que es quien lo mide. La cifra estaba escrita en cuatro sitios y
+  (`e2e/fairground.spec.ts`), que es quien lo mide. La cifra estaba escrita en cuatro sitios y
   ya había empezado a envejecer en unos antes que en otros.
 - **El decorado no se toca ni se apunta**: cada pieza lleva el raycast anulado. Si no,
   cada movimiento del ratón —y cada fotograma con los mandos apuntando— lanzaría un rayo
@@ -797,7 +797,7 @@ la validación del recinto —que es donde se contaba antes, y trata de otra cos
   cónico.
 - **Los palos y sus ganchos siguen sueltos**, a propósito: se cogen con la mano, y una
   instancia no se puede apuntar ni mover por su cuenta.
-- **Lo que lo vigila**: `MENU_DRAW_CALL_BUDGET` en `e2e/recinto.spec.ts`. El techo se bajó de
+- **Lo que lo vigila**: `MENU_DRAW_CALL_BUDGET` en `e2e/fairground.spec.ts`. El techo se bajó de
   120 a 45 al entrar esto — con 120, la máquina podía volver a dibujar cada tubo suelto y el
   test seguiría en verde. Un guardián con el listón donde estaba antes del arreglo no guarda
   nada.
@@ -812,7 +812,7 @@ prueba de verdad sea corta y sepa dónde mirar.
   porción pequeña de ellas. Medido sobre el build de producción en Chromium; el menú es el
   estado comparable porque la escena arranca siempre con los cinco palos de `MIN_STICKS`
   colgando. Qué se lleva cada parte —y cuánto sube el total con más palos— está desglosado
-  en el comentario de `MENU_DRAW_CALLS` (`e2e/recinto.spec.ts`), que es quien lo mide: ahí
+  en el comentario de `MENU_DRAW_CALLS` (`e2e/fairground.spec.ts`), que es quien lo mide: ahí
   vive la cuenta y ahí hay que actualizarla si el coste cambia.
 - **Las 285 piezas se pintan todas**: los `instanceCount` que llegan a WebGL son 120 tablas,
   55 postes y 110 bombillas, exactamente lo que declara `FAIR_PIECES`. Ese era el riesgo real
@@ -828,7 +828,7 @@ prueba de verdad sea corta y sepa dónde mirar.
   ni mover por su cuenta. **Ya no queda un recorte grande esperando**, así que si en hardware
   hay tirones habrá que buscar la causa por otro lado; recortar el recinto sigue siendo lo
   último que tocar.
-- **La medida se repite sola** (`e2e/recinto.spec.ts`), sin contadores en el código del juego:
+- **La medida se repite sola** (`e2e/fairground.spec.ts`), sin contadores en el código del juego:
   un `addInitScript` envuelve `drawElements` y `drawElementsInstanced` del prototipo de
   `WebGL2RenderingContext`, y un `requestAnimationFrame` registrado antes que el de la escena
   cierra cada fotograma. Vigila las dos cosas que importan: que las tres familias llegan
@@ -851,7 +851,7 @@ prueba de verdad sea corta y sepa dónde mirar.
 
 - ¿Va fluido al girar la cabeza o hay tirón? Si lo hay, el recinto es el último sospechoso:
   junto con la máquina pesa menos que los palos colgando (desglose en el comentario de
-  `MENU_DRAW_CALLS`, en `e2e/recinto.spec.ts`), así que hay que medir antes de
+  `MENU_DRAW_CALLS`, en `e2e/fairground.spec.ts`), así que hay que medir antes de
   recortarlo.
 - ¿Las casetas agobian a 6.4 m, o el recinto se ve vacío? → `STALL_RING_RADIUS`, con
   `SCENERY_CLEARANCE` (3 m) como suelo que los tests no dejan pisar.

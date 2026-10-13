@@ -66,7 +66,7 @@
     "comunes": "python3 \"$(git rev-parse --path-format=absolute --git-common-dir)/../../organizate/scripts/repos/comunes.py\" --comprobar stick-rush",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "capture": "CAPTURE=1 playwright test captura",
+    "capture": "CAPTURE=1 playwright test capture.spec",
     "sync:xr-profiles": "node scripts/sync-xr-profiles.mjs",
     "coverage": "vitest run --coverage",
     "godot:build": "node ../xrcade/godot-kit/build.mjs --project godot",

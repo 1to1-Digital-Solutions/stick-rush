@@ -7,7 +7,7 @@ import { Color, type MeshStandardMaterial } from 'three'
 import { bulbGlow, bulbPulse } from '../../lib/fairMood'
 import { MACHINE_BULB_COLOR, PARTY_BULB_COLOR } from '../../lib/gameConfig'
 import type { FairMoodState } from './FairMood'
-import { useSoltarInstancias } from './soltarInstancias'
+import { useSoltarInstancias } from './disposeInstances'
 import { useReducedMotion } from './useReducedMotion'
 
 /**
@@ -132,7 +132,7 @@ export function FairPieces({
   children: ReactNode
 }) {
   const bulbMaterial = useRef<MeshStandardMaterial>(null)
-  // Sus matrices y colores se sueltan a mano al salir (`soltarInstancias.ts`).
+  // Sus matrices y colores se sueltan a mano al salir (`disposeInstances.ts`).
   const boards = useSoltarInstancias()
   const poles = useSoltarInstancias()
   const bulbs = useSoltarInstancias()

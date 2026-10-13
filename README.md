@@ -4,7 +4,7 @@ A browser and mixed-reality game: sticks hang from a fairground machine, drop on
 after another at random intervals, and you have to catch them before they hit the
 ground.
 
-![Game in progress: the semicircular machine in the fairground with sticks hanging, one already falling, and the scoreboard reading 430 points, a ×2 streak and 2 of 11 sticks caught](docs/partida.jpg)
+![Game in progress: the semicircular machine in the fairground with sticks hanging, one already falling, and the scoreboard reading 430 points, a ×2 streak and 2 of 11 sticks caught](docs/gameplay.jpg)
 
 The machine is a **horizontal semicircular ring** and the player stands at its
 centre, so the sticks fall all around them, within arm's reach, instead of onto
@@ -161,7 +161,7 @@ It is a fully static site — no middleware, no Server Actions, no API routes. S
 headers (CSP, `Permissions-Policy`, HSTS and friends) are declared in
 `next.config.ts`; `connect-src 'self'` is what enforces the "no external requests"
 promise, and `xr-spatial-tracking=(self)` is what keeps WebXR working. Both are
-covered by tests in `e2e/seguridad.spec.ts`.
+covered by tests in `e2e/security.spec.ts`.
 
 ## Embedding the game
 
@@ -214,7 +214,7 @@ npm run lint       # ESLint
 npm run typecheck  # type checking
 npm test           # unit tests (Vitest)
 npm run test:e2e   # end-to-end (Playwright; builds and starts the server)
-npm run capture    # regenerates docs/partida.jpg, the screenshot in this README
+npm run capture    # regenerates docs/gameplay.jpg, the screenshot in this README
 ```
 
 Playwright needs its browser the first time: `npx playwright install chromium`.
@@ -225,7 +225,7 @@ of the immersive UI, and the round lifecycle. The e2e tests drive the real game 
 Chromium against the production build: menu, round, catching sticks with the mouse,
 game over, the challenge and its lives, the record, sharing the result, sound, the
 security headers, behaviour on a phone-sized screen, and what the fairground costs to
-draw (`e2e/recinto.spec.ts` counts the WebGL draw calls per frame, which is what a
+draw (`e2e/fairground.spec.ts` counts the WebGL draw calls per frame, which is what a
 headset pays for — see `ESTADO.md`).
 
 Chromium has no WebXR, so the immersive paths (`e2e/xr.spec.ts`: entering the
@@ -278,7 +278,7 @@ src/
     xrAnchor.ts         Angle maths behind the gaze anchor: deadzone and follow
     stickLayout.ts      Stick layout, shuffled fall order and score token states
     sceneryLayout.ts    Fairground layout: stall ring, light garlands, ferris wheel
-    feriaKit.ts         Where the xrcade kit pieces go: stalls, lamp posts, banners
+    fairKit.ts         Where the xrcade kit pieces go: stalls, lamp posts, banners
     shareResult.ts      Result text (pure) and the share sheet / clipboard fallback
     stickSwing.ts       Idle sway of the hanging sticks
     sound.ts            Synthesised game sounds (Web Audio, no files)

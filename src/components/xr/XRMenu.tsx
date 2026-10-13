@@ -11,7 +11,7 @@ import {
   STICK_COLOR,
 } from '../../lib/gameConfig'
 import { CHALLENGE_LIVES, GAME_MODE_HINTS, type GameMode } from '../../lib/gameMode'
-import { botonDeOpciones, seVe, siguienteModo } from '../../lib/menuDelJuego'
+import { botonDeOpciones, seVe, siguienteModo } from '../../lib/gameMenu'
 import { useGame } from '../../lib/gameStore'
 import { PLAYER_COUNT_HINTS, juegaADos, type PlayerCount } from '../../lib/duel'
 import { useLang } from '../../lib/settingsClient'
@@ -633,7 +633,7 @@ function RowLabels({ masOpciones }: { masOpciones: boolean }) {
 
 /**
  * El botón de «Más opciones», en la esquina opuesta a la de salir: despliega lo que la plantilla
- * deja plegado al abrir el menú (`menuDelJuego.ts`) y lo vuelve a plegar. Su nombre va escrito
+ * deja plegado al abrir el menú (`gameMenu.ts`) y lo vuelve a plegar. Su nombre va escrito
  * con los rótulos, encima de la placa.
  */
 function OpcionesButton({ masOpciones, onToggle }: { masOpciones: boolean; onToggle: () => void }) {

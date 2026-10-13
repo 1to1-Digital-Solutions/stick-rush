@@ -20,7 +20,7 @@ mapas de normales y de rugosidad, sin su mapa de color. Se acredita por cortesí
 Fantasy Town Kit 2.0 de Kenney (<https://kenney.nl/assets/fantasy-town-kit>), **CC0 1.0**: `stall-red`,
 `lantern` y `banner-red`, pasadas por el kit compartido de xrcade (`xrcade/kit/`), que les pone el
 color en los vértices. Son las mismas de `public/models/kit/`, byte a byte (lo comprueba
-`scene/mundo/mundo.motor.test.ts`).
+`scene/world/world.engine.test.ts`).
 
 ## Música de fondo — `music/feria.mp3`
 

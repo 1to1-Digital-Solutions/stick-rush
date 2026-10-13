@@ -3,7 +3,7 @@
 import { type ComponentProps, type ReactNode } from 'react'
 import { createInstances } from '@react-three/drei'
 import { MACHINE_BULB_COLOR } from '../../lib/gameConfig'
-import { useSoltarInstancias } from './soltarInstancias'
+import { useSoltarInstancias } from './disposeInstances'
 
 /**
  * Las piezas repetidas de la máquina, instanciadas.
@@ -98,7 +98,7 @@ export function MachinePieces({
   limits: MachinePieceCounts
   children: ReactNode
 }) {
-  // Sus matrices y colores se sueltan a mano al salir (`soltarInstancias.ts`).
+  // Sus matrices y colores se sueltan a mano al salir (`disposeInstances.ts`).
   const matte = useSoltarInstancias()
   const frame = useSoltarInstancias()
   const truss = useSoltarInstancias()

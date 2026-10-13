@@ -8,7 +8,7 @@ import {
   useXRInputSourceStateContext,
 } from '@react-three/xr'
 import { useGame } from '../../lib/gameStore'
-import { llevaLaAyuda } from '../../lib/manos'
+import { llevaLaAyuda } from '../../lib/hands'
 import { ControllerModel } from './XRControllerModel'
 
 /**

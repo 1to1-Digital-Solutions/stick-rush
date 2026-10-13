@@ -48,7 +48,7 @@ export function XRGazeAnchor({
   always?: boolean
   /**
    * Con qué prioridad se lleva el rayo lo que cuelgue de aquí frente al resto de la escena
-   * (`lib/punteros.ts`). Va en el grupo y no panel por panel porque es de la interfaz entera:
+   * (`lib/pointers.ts`). Va en el grupo y no panel por panel porque es de la interfaz entera:
    * entre la mano y cualquier botón hay siempre palos, que es de lo que va esta máquina.
    */
   pointerEventsOrder?: number

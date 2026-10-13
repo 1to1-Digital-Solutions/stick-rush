@@ -25,8 +25,8 @@ import { NO_RAYCAST } from '../raycast'
 import { ButtonHighlight, useButtonFeedback } from './buttonHighlight'
 import { CanvasPanel, paragraphHeight, drawParagraph, drawText, roundedRect } from './canvasPanel'
 import { RealController } from './RealController'
-import { dibujarMando } from './mandoDibujado'
-import { dibujarMano } from './manoDibujada'
+import { dibujarMando } from './drawnController'
+import { dibujarMano } from './drawnHand'
 import { PANEL_COLOR } from './XRUi'
 
 /**
@@ -38,9 +38,9 @@ import { PANEL_COLOR } from './XRUi'
  * palo de mentira—, y quien la miraba sin hacer nada salía igual que entró.
  *
  * **Y se enseña el gesto que le sirve a quien juega.** Con mandos, el botón de agarre
- * resaltado sobre el dibujo (`mandoDibujado.ts`) **y sobre el mando que se tiene en la mano**
+ * resaltado sobre el dibujo (`drawnController.ts`) **y sobre el mando que se tiene en la mano**
  * (`MandoDeVerdad.tsx`): con el visor puesto lo que hay ahí tiene cinco botones y ninguno con
- * su nombre escrito. Con las manos desnudas, el pellizco (`manoDibujada.ts`), que es lo que
+ * su nombre escrito. Con las manos desnudas, el pellizco (`drawnHand.ts`), que es lo que
  * mueve el puntero de agarre cuando no hay mando: cambia la frase y cambia el dibujo.
  *
  * **Siempre hay salida**: siguiente, saltar y un plazo por paso. Un hito que no llegue

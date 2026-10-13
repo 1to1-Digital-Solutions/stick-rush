@@ -1,14 +1,14 @@
 /**
- * La mejor puntuación, guardada entre visitas: las marcas de `marcas.ts` y lo que solo tiene el
+ * La mejor puntuación, guardada entre visitas: las marcas de `bests.ts` y lo que solo tiene el
  * navegador, la suscripción al evento `storage` de las otras pestañas y lo que ve el servidor.
  *
  * Todo lo demás —las claves, leer, escribir, guardar si mejora, la racha sin fin— está en
- * `marcas.ts`, sin navegador, y se reexporta de aquí tal cual: quien importaba de este fichero
+ * `bests.ts`, sin navegador, y se reexporta de aquí tal cual: quien importaba de este fichero
  * sigue importando lo mismo.
  */
-import { escucharElRecord } from './marcas'
+import { escucharElRecord } from './bests'
 
-export * from './marcas'
+export * from './bests'
 
 /**
  * Lo que ve el servidor al prerenderizar: no hay navegador, así que no hay

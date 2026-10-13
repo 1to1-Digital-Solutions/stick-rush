@@ -4,7 +4,7 @@
  * Todo lo que decide algo —dónde cuelga cada palo y cuándo se suelta, cómo cae, cuándo se puede
  * coger, cuántos puntos da, cuándo acaba la partida, qué suena y qué vibra— viene de
  * `stick-rush/src/lib`, el mismo código que usa la web y con sus mismos tests. La partida
- * (`juego/partida.ts`) es el `gameStore` de la web sin React, y la tanda (`juego/tanda.ts`) lo que en
+ * (`game/run.ts`) es el `gameStore` de la web sin React, y la tanda (`game/round.ts`) lo que en
  * la web hace cada `Stick.tsx` fotograma a fotograma. Aquí se cose todo y se pinta.
  *
  * Tres formas de coger palos, y las tres pasan por el mismo `atrapar`:
@@ -17,7 +17,7 @@
  *   escapar uno a propósito), para comprobar sin visor que la escena y la lógica están bien cosidas y
  *   para medir el coste. Juega siempre la misma partida: el reparto sale de una semilla fija.
  *
- * La escena de test `tests/xr_mando.tscn` juega con visor sin visor: mandos de mentira del kit y un
+ * La escena de test `tests/xr_controller.tscn` juega con visor sin visor: mandos de mentira del kit y un
  * jugador automático que lleva el puño a cada palo y aprieta el agarre.
  *
  * Suena con los mismos efectos que la web, renderizados de su `sound.ts` por el kit, con la misma
@@ -55,13 +55,13 @@ import { simulateControllers, viewWithSimulatedHead, type Simulation } from '@ki
 
 import { DIFFICULTY_SPEEDS, PLAYER_OFFSET_Z, STICK_MISS_Y, type Difficulty } from '@/lib/gameConfig'
 import type { GameMode } from '@/lib/gameMode'
-import { pulsosDelListon } from '@/lib/cartelDeLaMaquina'
+import { pulsosDelListon } from '@/lib/machineSign'
 import { pulsosDelAtrape } from '@/lib/haptics'
 import { headsetEyeHeight, hoopFallSpeed } from '@/lib/hoopHeight'
 import * as hostAnchor from '@/lib/hostAnchor'
 import { MUSIC_VOLUME } from '@/lib/music'
 import { MUSIC_FADE_MS, fadeVolume } from '@/lib/musicFade'
-import { deEspaldas, type ResultadoConHazanas } from '@/lib/hazanas'
+import { deEspaldas, type ResultadoConHazanas } from '@/lib/feats'
 import { randomSeed } from '@/lib/seed'
 import { duelOver } from '@/lib/duel'
 import { getDuelTally } from '@/lib/duelTally'
@@ -71,15 +71,15 @@ import { followRatio } from '@/lib/xrAnchor'
 import * as xrLayout from '@/lib/xrLayout'
 
 import { volumeLevels } from '@kit/runtime/settings'
-import { InterfazDelJuego } from './interfaz/interfaz'
-import { paloEnElRayo, paloEnLaMano } from './juego/alcance'
-import { Partida, type FaseDeLaPartida } from './juego/partida'
-import { SOUNDS, sonidosDesde, type Pistas } from './juego/sonido'
-import { Tanda, claveDeLaTanda, cuerpoDelPalo, type Palo } from './juego/tanda'
-import { AyudasDelJuego } from './mundo/ayudas'
-import { Feria } from './mundo/feria'
-import { Maquina } from './mundo/maquina'
-import { PalosPintados } from './mundo/palos'
+import { InterfazDelJuego } from './ui/ui'
+import { paloEnElRayo, paloEnLaMano } from './game/reach'
+import { Partida, type FaseDeLaPartida } from './game/run'
+import { SOUNDS, sonidosDesde, type Pistas } from './game/sound'
+import { Tanda, claveDeLaTanda, cuerpoDelPalo, type Palo } from './game/round'
+import { AyudasDelJuego } from './world/hints'
+import { Feria } from './world/fairground'
+import { Maquina } from './world/machine'
+import { PalosPintados } from './world/sticks'
 
 const SFX_DIR = 'res://games/stick-rush/sfx'
 const MUSIC_PATH = 'res://games/stick-rush/music/feria.mp3'
@@ -204,7 +204,7 @@ export default class StickRush extends Node3D {
   /**
    * La partida a dos (`--a-dos`, o el metadato `a_dos`): el menú sale con el desafío y a dos
    * elegidos y, con el jugador automático, se juegan las dos tandas seguidas, la segunda con la
-   * semilla de la primera (`tests/partida_auto.gd`).
+   * semilla de la primera (`tests/auto_run.gd`).
    */
   private aDos = false
   /** La semilla del reparto con que empezó cada tanda, para comprobar que a dos es la misma. */
@@ -435,7 +435,7 @@ export default class StickRush extends Node3D {
 
   /**
    * Le cuenta al salón cómo ha acabado una partida (`Resultado` de `semilla.ts`, con las hazañas
-   * estrenadas en ella si hay alguna: `hazanas.ts`), si hay salón.
+   * estrenadas en ella si hay alguna: `feats.ts`), si hay salón.
    */
   private contarAlSalon(resultado: ResultadoConHazanas): void {
     this.resultados.push(resultado)
@@ -581,7 +581,7 @@ export default class StickRush extends Node3D {
 
   /**
    * Si el palo que coge el puño (su posición global) queda a la espalda de la cabeza, para su hazaña
-   * (`deEspaldas` de `hazanas.ts`). Solo con visor: con el ratón la cámara mira siempre a la máquina.
+   * (`deEspaldas` de `feats.ts`). Solo con visor: con el ratón la cámara mira siempre a la máquina.
    */
   private deEspaldasAlPuno(puno: Vector3): boolean {
     const camara = this.player?.camara

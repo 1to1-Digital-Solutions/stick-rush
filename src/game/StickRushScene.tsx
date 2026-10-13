@@ -4,7 +4,7 @@ import { GameProvider } from '../components/GameProvider'
 import { GameWorld } from '../components/game/GameWorld'
 import { setAssetsBase } from '../lib/assets'
 import type { HostAnchor } from '../lib/hostAnchor'
-import type { ResultadoConHazanas } from '../lib/hazanas'
+import type { ResultadoConHazanas } from '../lib/feats'
 import type { Goal } from '../lib/goal'
 import { setGameName } from '../lib/menuTemplate'
 import type { Challenge } from '../lib/seed'
@@ -45,7 +45,7 @@ export interface StickRushSceneProps {
   /**
    * Se llama **una vez** al acabar cada partida con puntuación, en cualquier modo, con sus
    * puntos aunque no sean récord. Dejar la partida a medias o salir no la acaba. Lleva `hazanas`
-   * con los nombres de API estrenados en la partida, si hay alguno (`lib/hazanas.ts`).
+   * con los nombres de API estrenados en la partida, si hay alguno (`lib/feats.ts`).
    */
   onFinish?: (resultado: ResultadoConHazanas) => void
   /**

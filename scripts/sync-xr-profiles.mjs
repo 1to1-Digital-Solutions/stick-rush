@@ -48,7 +48,7 @@ const MODELOS = ['meta-quest-touch-plus', 'oculus-touch-v3']
 
 /**
  * La mano articulada que pinta la escena cuando se juega con las manos
- * desnudas (`ManosDelJugador.tsx`, ruta en `lib/manos.ts`): 190 KB, sin
+ * desnudas (`PlayerHands.tsx`, ruta en `lib/hands.ts`): 190 KB, sin
  * texturas, servida con el juego porque la CSP bloquea el CDN.
  *
  * **Va en `public/manos/`, fuera de `webxr-profiles/`**, por dos motivos: el

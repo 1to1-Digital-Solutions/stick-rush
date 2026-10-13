@@ -201,7 +201,7 @@ const BUTTON_HIT: [number, number, number] = [0.15, 0.11, 0.06]
  * Con el visor puesto un icono solo se adivina: debajo de cada placa, lo que hace, con las palabras
  * comunes del salón («Otro reto» u «Otra partida», y el menú). Van **debajo de la placa**, en un solo
  * lienzo para los dos (una llamada de dibujo), y se miden en los dos idiomas
- * (`rotulosDelFinal.legible.test.ts`). `y` es su centro respecto de la fila de botones.
+ * (`finalLabels.legible.test.ts`). `y` es su centro respecto de la fila de botones.
  *
  * Sin botón en medio, cada rótulo tiene casi el doble del hueco entre botones (`ancho`): «Another
  * challenge» no cabía en uno solo sin bajar la letra. El lienzo, y con él el panel del final, se
@@ -503,7 +503,7 @@ function QuitButton({ onSelect }: { onSelect: () => void }) {
  *
  * Aparte del componente para poder **medirlo**: un panel del visor se pinta en un lienzo que
  * nadie mira al tamaño al que se lee, así que un texto que se sale o dos que se pisan solo
- * se descubren con las gafas puestas. Lo mide `salida.legible.test.ts`, en los dos idiomas
+ * se descubren con las gafas puestas. Lo mide `exit.legible.test.ts`, en los dos idiomas
  * —el español es más largo y es donde se sale—.
  */
 export function dibujarElAviso(ctx: CanvasRenderingContext2D, t: (clave: TextKey) => string): void {
@@ -588,7 +588,7 @@ export function XRQuitConfirm() {
  * Lo que se escribe al acabar una tanda de la partida a dos: de quién era y a quién le pasa el
  * mando o, con las dos jugadas, quién gana, los puntos de los dos y lo que lleva la pareja.
  *
- * Aparte del componente para poder **medirlo** en los dos idiomas (`duelo.legible.test.ts`): el
+ * Aparte del componente para poder **medirlo** en los dos idiomas (`duel.legible.test.ts`): el
  * español es más largo y es donde el texto se sale. Las frases vienen ya dichas (`duelSummary`).
  */
 export function dibujarElDuelo(ctx: CanvasRenderingContext2D, dicho: DuelSummary): void {

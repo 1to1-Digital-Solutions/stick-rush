@@ -14,7 +14,7 @@ import {
 import { Crowd } from './Crowd'
 import { FairMood, type FairMoodState } from './FairMood'
 import { Bulb, FairPieces, type PieceCounts } from './FairPieces'
-import { FeriaKit } from './FeriaKit'
+import { FeriaKit } from './FairKit'
 import { FerrisWheel, WHEEL_PIECES } from './FerrisWheel'
 import { useReducedMotion } from './useReducedMotion'
 
@@ -62,7 +62,7 @@ function postTop({ position }: RingSlot): Vec3 {
 
 /**
  * Los tramos de bombillas entre farola y farola. Las farolas las pinta
- * `FeriaKit` en los mismos sitios (`lib/feriaKit.ts`), desfasadas respecto a
+ * `FeriaKit` en los mismos sitios (`lib/fairKit.ts`), desfasadas respecto a
  * los puestos para que no queden unas tapando a otros.
  */
 function Garlands() {
