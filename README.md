@@ -146,12 +146,10 @@ src/
   lib/          The logic, pure and tested without a browser: layout, scoring, modes, store
 e2e/            Playwright tests, and the WebXR emulator they install
 godot/          The Godot port (see godot/README.md)
-docs/           The mounting contract, the project history and the README screenshot
+docs/           The mounting contract and the README screenshot
 public/         Static assets (see public/CREDITS.md)
 scripts/        The assets copier (stick-rush-assets) and the profile sync
 ```
-
-`ESTADO.md` is the handoff between work sessions and `docs/historial.md` the long history.
 
 ## Credits
 
