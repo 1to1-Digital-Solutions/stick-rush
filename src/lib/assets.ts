@@ -1,28 +1,28 @@
 /**
- * Dónde están los ficheros estáticos del juego (el HDRI, las texturas de la
- * madera y los perfiles de mando de `public/`).
+ * Where the game's static files are (the HDRI, the wood textures and the
+ * controller profiles of `public/`).
  *
- * Montado en su propia web cuelgan de la raíz, pero dentro de otra aplicación
- * el sitio lo decide quien lo monta: los ficheros se copian a su `public/` y la
- * base se pasa como opción (ver `game/StickRush.tsx`). Por eso las rutas se
- * guardan relativas y se resuelven al pedir cada recurso, no al importar el
- * módulo que las declara.
+ * Mounted on its own website they hang from the root, but inside another
+ * application the place is decided by whoever mounts it: the files are copied to
+ * its `public/` and the base is passed as an option (see `game/StickRush.tsx`).
+ * That is why the paths are kept relative and resolved when each resource is
+ * requested, not when the module that declares them is imported.
  *
- * Es estado de módulo y no un contexto de React porque el store de WebXR se
- * crea fuera del árbol (`components/xr/xrStore.ts`) y también necesita la base.
- * A cambio, la base es una por página: montar dos juegos a la vez con bases
- * distintas no funcionaría, cosa que WebXR tampoco permite (una sesión).
+ * It is module state and not a React context because the WebXR store is
+ * created outside the tree (`components/xr/xrStore.ts`) and needs the base too.
+ * In exchange, the base is one per page: mounting two games at once with
+ * different bases would not work, which WebXR does not allow either (one session).
  */
 
-/** La raíz del sitio: lo que sirve la propia web del juego. */
+/** The root of the site: what the game's own website serves. */
 const DEFAULT_ASSETS_BASE = '/'
 
 let assetsBase = DEFAULT_ASSETS_BASE
 
 /**
- * Deja la base lista para concatenar: siempre con barra final, y la raíz
- * cuando no se da ninguna. Una base sin barra final convertiría
- * `/juegos/stick-rush` + `hdri/…` en `/juegos/stick-rushhdri/…`.
+ * Leaves the base ready to concatenate: always with a trailing slash, and the
+ * root when none is given. A base without a trailing slash would turn
+ * `/juegos/stick-rush` + `hdri/…` into `/juegos/stick-rushhdri/…`.
  */
 function normalizeBase(base: string): string {
   const trimmed = base.trim()
@@ -30,12 +30,12 @@ function normalizeBase(base: string): string {
   return trimmed.endsWith('/') ? trimmed : `${trimmed}/`
 }
 
-/** Cambia de dónde cuelgan los ficheros estáticos del juego. */
+/** Changes where the game's static files hang from. */
 export function setAssetsBase(base: string): void {
   assetsBase = normalizeBase(base)
 }
 
-/** URL pública de un fichero de `public/`, dada su ruta relativa. */
+/** Public URL of a file of `public/`, given its relative path. */
 export function assetUrl(path: string): string {
   return `${assetsBase}${path.replace(/^\/+/, '')}`
 }

@@ -11,16 +11,16 @@ import {
 } from './xrAnchor'
 
 /**
- * La interfaz inmersiva tiene que caer siempre dentro del campo de visión.
+ * The immersive ui always has to fall inside the field of view.
  *
- * Esto no es cosmético: colgada de `<XROrigin>` en una posición fija, al entrar
- * en el visor aparecía a la espalda del jugador —el −Z del origen lo decide la
- * calibración de la sala, no hacia dónde mire—. No veía el menú, no podía
- * elegir nada y el botón de salir era inalcanzable. Los tests de aquí fijan que
- * eso no vuelva a pasar, y se ejecutan sin navegador ni visor.
+ * This is not cosmetic: hung from `<XROrigin>` at a fixed position, on entering
+ * the headset it appeared behind the player's back —the origin's −Z is decided by the
+ * calibration of the room, not by where they look—. They did not see the menu, could not
+ * choose anything and the exit button was unreachable. The tests here pin down that
+ * this does not happen again, and they run without a browser or a headset.
  */
 
-/** Simula unos segundos de reencuadre a 90 fps. */
+/** Simulates a few seconds of reframing at 90 fps. */
 function settle(state: AnchorState, gazeYaw: number, seconds = 3): AnchorState {
   const step = 1 / 90
   let current = state
@@ -30,40 +30,40 @@ function settle(state: AnchorState, gazeYaw: number, seconds = 3): AnchorState {
   return current
 }
 
-describe('aritmética de ángulos', () => {
-  it('normaliza cualquier vuelta al rango [−π, π)', () => {
+describe('angle arithmetic', () => {
+  it('normalises any turn to the range [−π, π)', () => {
     expect(normalizeAngle(0)).toBeCloseTo(0)
     expect(normalizeAngle(Math.PI * 2)).toBeCloseTo(0)
     expect(normalizeAngle(-Math.PI * 2.5)).toBeCloseTo(-Math.PI / 2)
-    // La antípoda es el mismo ángulo por ±π; se resuelve como −π.
+    // The antipode is the same angle by ±π; it is resolved as −π.
     expect(Math.abs(normalizeAngle(Math.PI * 3))).toBeCloseTo(Math.PI)
   })
 
-  it('sobrevive a una cámara que aún no ha dado una pose válida', () => {
-    // En el primer frame de la sesión la matriz puede venir sin inicializar.
+  it('survives a camera that has not yet given a valid pose', () => {
+    // In the first frame of the session the matrix may come uninitialised.
     expect(normalizeAngle(Number.NaN)).toBe(0)
     expect(normalizeAngle(Number.POSITIVE_INFINITY)).toBe(0)
   })
 
-  it('va por el camino corto aunque haya que cruzar por detrás', () => {
-    // De 170° a −170° son 20° girando por detrás, no 340° dando la vuelta.
+  it('goes the short way even if it has to cross behind', () => {
+    // From 170° to −170° is 20° turning behind, not 340° going all the way round.
     const from = (170 * Math.PI) / 180
     const to = (-170 * Math.PI) / 180
     expect(Math.abs(angleDelta(from, to))).toBeCloseTo((20 * Math.PI) / 180, 5)
   })
 
-  it('no se pasa de largo al acercarse', () => {
-    // Con la fracción al máximo llega justo al objetivo, nunca más allá.
+  it('does not overshoot on approaching', () => {
+    // With the fraction at its maximum it arrives right at the target, never beyond.
     expect(approachAngle(0, 1, 1)).toBeCloseTo(1)
     expect(approachAngle(0, 1, 0)).toBeCloseTo(0)
-    // Fracciones fuera de rango no rompen nada.
+    // Fractions out of range break nothing.
     expect(approachAngle(0, 1, 5)).toBeCloseTo(1)
     expect(approachAngle(0, 1, -3)).toBeCloseTo(0)
   })
 
-  it('el reencuadre tarda lo mismo a 72 fps que a 120', () => {
-    // Con `factor * delta` a pelo, un visor rápido reencuadraría más despacio
-    // que uno lento. La exponencial recorre lo mismo en el mismo tiempo real.
+  it('the reframing takes the same at 72 fps as at 120', () => {
+    // With a bare `factor * delta`, a fast headset would reframe more slowly
+    // than a slow one. The exponential travels the same in the same real time.
     const slow = settle(initialAnchorState(0), 2, 1)
     const fastStep = 1 / 120
     let fast = initialAnchorState(0)
@@ -73,30 +73,30 @@ describe('aritmética de ángulos', () => {
     expect(fast.yaw).toBeCloseTo(slow.yaw, 2)
   })
 
-  it('un delta absurdo no dispara el reencuadre más allá del objetivo', () => {
+  it('an absurd delta does not shoot the reframing beyond the target', () => {
     expect(followRatio(0)).toBe(0)
     expect(followRatio(-1)).toBe(0)
     expect(followRatio(1000)).toBeLessThanOrEqual(1)
   })
 })
 
-describe('la interfaz alcanza al jugador mire donde mire', () => {
-  it('entrar de espaldas al origen la trae delante', () => {
-    // El caso real que rompía el visor: la sesión arranca con el jugador
-    // mirando justo al contrario que el −Z del espacio de la sala.
+describe('the ui catches up with the player wherever they look', () => {
+  it('entering with the back to the origin brings it in front', () => {
+    // The real case that broke the headset: the session starts with the player
+    // looking right opposite the −Z of the room's space.
     const anchored = settle(initialAnchorState(0), Math.PI)
     expect(Math.abs(angleDelta(anchored.yaw, Math.PI))).toBeLessThan(
       XR_ANCHOR_DEADZONE,
     )
   })
 
-  it('acaba quieta y alineada, no persiguiendo para siempre', () => {
+  it('ends up still and aligned, not chasing forever', () => {
     const anchored = settle(initialAnchorState(0), Math.PI)
     expect(anchored.following).toBe(false)
     expect(angleDelta(anchored.yaw, Math.PI)).toBeCloseTo(0, 2)
   })
 
-  it('desde cualquier orientación de partida termina de frente', () => {
+  it('from any starting orientation it ends up facing front', () => {
     for (let deg = -180; deg <= 180; deg += 15) {
       const gaze = (deg * Math.PI) / 180
       const anchored = settle(initialAnchorState(0), gaze)
@@ -107,18 +107,18 @@ describe('la interfaz alcanza al jugador mire donde mire', () => {
   })
 })
 
-describe('pero no se pega a la cara', () => {
-  it('mirar de reojo no la mueve: hay que poder apuntarle', () => {
-    // Si la interfaz siguiera la mirada frame a frame, el objetivo huiría del
-    // rayo y no habría forma de pulsar un botón.
+describe('but it does not stick to the face', () => {
+  it('glancing sideways does not move it: you have to be able to aim at it', () => {
+    // If the ui followed the gaze frame by frame, the target would flee from the
+    // ray and there would be no way to press a button.
     const state = initialAnchorState(0)
     const nudged = stepAnchor(state, XR_ANCHOR_DEADZONE * 0.9, 1 / 90)
     expect(nudged).toBe(state)
   })
 
-  it('una vez que arranca, no se detiene en el borde de la zona muerta', () => {
-    // Sin histéresis la interfaz se pararía nada más volver a entrar en la zona
-    // muerta y quedaría permanentemente torcida en el borde.
+  it('once it starts, it does not stop at the edge of the dead zone', () => {
+    // Without hysteresis the ui would stop as soon as it entered the dead
+    // zone again and would be left permanently crooked at the edge.
     let state = initialAnchorState(0)
     state = stepAnchor(state, Math.PI, 1 / 90)
     expect(state.following).toBe(true)
@@ -128,11 +128,30 @@ describe('pero no se pega a la cara', () => {
     expect(angleDelta(anchored.yaw, Math.PI)).toBeCloseTo(0, 2)
   })
 
-  it('el giro es progresivo, no un salto', () => {
-    // Un tirón instantáneo de 180° marea. En un frame debe recorrer solo una
-    // parte del camino.
+  it('the turn is progressive, not a jump', () => {
+    // An instant 180° jerk is dizzying. In one frame it must travel only a
+    // part of the way.
     const state = stepAnchor(initialAnchorState(0), Math.PI, 1 / 90)
     expect(Math.abs(state.yaw)).toBeGreaterThan(0)
     expect(Math.abs(state.yaw)).toBeLessThan(Math.PI / 2)
+  })
+})
+
+describe('with the column to one side, looking at it does not scare it away', () => {
+  const options = { leftDeadzone: XR_ANCHOR_DEADZONE + 1 }
+
+  it('turning left as far as the column leaves the ui still', () => {
+    const state = initialAnchorState(0)
+    expect(stepAnchor(state, XR_ANCHOR_DEADZONE + 0.9, 1 / 90, options)).toBe(state)
+  })
+
+  it('to the right the dead zone is still the usual one', () => {
+    const state = initialAnchorState(0)
+    expect(stepAnchor(state, -(XR_ANCHOR_DEADZONE + 0.1), 1 / 90, options).following).toBe(true)
+  })
+
+  it('and beyond the column, the ui does come behind', () => {
+    const state = initialAnchorState(0)
+    expect(stepAnchor(state, XR_ANCHOR_DEADZONE + 1.1, 1 / 90, options).following).toBe(true)
   })
 })

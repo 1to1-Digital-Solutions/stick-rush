@@ -7,7 +7,6 @@ import {
   GARLAND_RING_RADIUS,
   SCENERY_CLEARANCE,
   STALL_RING_RADIUS,
-  STALL_SIZE,
   WHEEL_CABIN_DROP,
   WHEEL_CABIN_HEIGHT,
   WHEEL_CENTER,
@@ -17,14 +16,15 @@ import {
   ringSlots,
   type Vec3,
 } from './sceneryLayout'
+import { HEIGHTS } from './fairKit'
 
-/** Hacia dónde encara una pieza girada `rotationY`: su +Z local, en el mundo. */
+/** Which way a part turned `rotationY` faces: its local +Z, in the world. */
 function facingDirection(rotationY: number): [number, number] {
   return [Math.sin(rotationY), Math.cos(rotationY)]
 }
 
 describe('ringSlots', () => {
-  it('planta todas las piezas a la distancia pedida', () => {
+  it('plants all the parts at the requested distance', () => {
     for (const slot of ringSlots(6, 6.4)) {
       const [x, y, z] = slot.position
       expect(Math.hypot(x, z)).toBeCloseTo(6.4, 6)
@@ -32,10 +32,10 @@ describe('ringSlots', () => {
     }
   })
 
-  it('las reparte a intervalos iguales', () => {
+  it('lays them out at equal intervals', () => {
     const angles = ringSlots(8, 3)
       .map(({ position: [x, , z] }) => Math.atan2(x, z))
-      // atan2 salta de +π a −π a mitad de vuelta: se normaliza a [0, 2π).
+      // atan2 jumps from +π to −π halfway round: it is normalised to [0, 2π).
       .map((angle) => (angle + Math.PI * 2) % (Math.PI * 2))
       .sort((a, b) => a - b)
 
@@ -45,57 +45,49 @@ describe('ringSlots', () => {
     }
   })
 
-  it('deja cada pieza mirando al jugador y no de espaldas', () => {
+  it('leaves each part looking at the player and not with its back turned', () => {
     for (const slot of ringSlots(5, 6.4, 0.3)) {
       const [fx, fz] = facingDirection(slot.rotationY)
       const [x, , z] = slot.position
       const distance = Math.hypot(x, z)
-      // El frente de la pieza y la dirección hacia el centro son el mismo
-      // vector: su producto escalar vale 1.
+      // The front of the part and the direction towards the centre are the same
+      // vector: their dot product is worth 1.
       expect(fx * (-x / distance) + fz * (-z / distance)).toBeCloseTo(1, 6)
     }
   })
 
-  it('no se rompe con un anillo vacío', () => {
+  it('does not break with an empty ring', () => {
     expect(ringSlots(0, 5)).toEqual([])
   })
 
-  it('es puro: dos llamadas iguales dan el mismo anillo', () => {
+  it('is pure: two equal calls give the same ring', () => {
     expect(ringSlots(6, 6.4, 0.2)).toEqual(ringSlots(6, 6.4, 0.2))
   })
 })
 
 describe('facingRotationY', () => {
-  it('gira media vuelta lo que está justo delante del jugador', () => {
-    // Delante es −Z; encararle desde ahí es mirar hacia +Z, o sea sin giro.
+  it('turns half a turn what is right in front of the player', () => {
+    // In front is −Z; facing them from there is looking towards +Z, that is, with no turn.
     const [fx, fz] = facingDirection(facingRotationY([0, 0, -5]))
     expect(fx).toBeCloseTo(0, 6)
     expect(fz).toBeCloseTo(1, 6)
   })
 })
 
-describe('recinto', () => {
-  it('deja libre el espacio de juego alrededor del jugador', () => {
-    // Lo que más se acerca al centro no es la esquina de la caseta sino la
-    // punta del toldo, que vuela un buen trozo por delante de ella.
-    const stallReach = Math.hypot(
-      STALL_SIZE.width / 2,
-      STALL_SIZE.depth / 2 + STALL_SIZE.awningReach,
-    )
-    expect(STALL_RING_RADIUS - stallReach).toBeGreaterThanOrEqual(
-      SCENERY_CLEARANCE,
-    )
+describe('fairground', () => {
+  it('leaves the playing space around the player free', () => {
+    // The stalls are measured with their kit piece, in `fairKit.test.ts`.
     expect(GARLAND_RING_RADIUS).toBeGreaterThanOrEqual(SCENERY_CLEARANCE)
   })
 
-  it('no mete las casetas dentro de la noria', () => {
+  it('does not put the stalls inside the Ferris wheel', () => {
     const [x, , z] = WHEEL_CENTER
     expect(Math.hypot(x, z) - WHEEL_RADIUS).toBeGreaterThan(STALL_RING_RADIUS)
   })
 
-  it('deja girar la noria sin arrastrar las cabinas por el suelo', () => {
-    // La cabina más baja es la del punto inferior del aro, con todo su vuelo.
-    // Lo que roza es el fondo de la góndola, no el punto del que cuelga.
+  it('lets the Ferris wheel turn without dragging the cabins along the floor', () => {
+    // The lowest cabin is the one at the bottom point of the ring, with all its overhang.
+    // What grazes is the bottom of the gondola, not the point it hangs from.
     const cabinFloor =
       WHEEL_CENTER[1] -
       WHEEL_RADIUS -
@@ -104,11 +96,11 @@ describe('recinto', () => {
     expect(cabinFloor).toBeGreaterThan(GROUND_Y)
   })
 
-  it('asoma la noria por encima de las casetas', () => {
-    expect(WHEEL_CENTER[1] + WHEEL_RADIUS).toBeGreaterThan(STALL_SIZE.height * 2)
+  it('makes the Ferris wheel peek over the stalls', () => {
+    expect(WHEEL_CENTER[1] + WHEEL_RADIUS).toBeGreaterThan(HEIGHTS.puesto * 2)
   })
 
-  it('cuelga las guirnaldas por dentro del anillo de casetas', () => {
+  it('hangs the garlands inside the ring of stalls', () => {
     expect(GARLAND_RING_RADIUS).toBeLessThan(STALL_RING_RADIUS)
   })
 })
@@ -126,29 +118,29 @@ describe('garlandBulbs', () => {
     },
   )
 
-  it('cuelga una bombilla por hueco, sin ponerlas sobre los postes', () => {
+  it('hangs one bulb per gap, without putting them on the posts', () => {
     const bulbs = garlandBulbs({ from: [0, 3, 0], to: [4, 3, 0], count: 3 })
     expect(bulbs).toHaveLength(3)
     expect(bulbs.map(([x]) => x)).toEqual([1, 2, 3])
   })
 
-  it('hunde el tramo por el centro, no lo deja tirante', () => {
+  it('sinks the span in the centre, it does not leave it taut', () => {
     const bulbs = garlandBulbs({ from: [0, 3, 0], to: [4, 3, 0], count: 3, sag: 0.5 })
     const heights = bulbs.map(([, y]) => y)
     expect(heights[1]).toBeCloseTo(3 - 0.5, 6)
-    // Simétrico: las dos puntas cuelgan igual y por encima del centro.
+    // Symmetric: the two ends hang the same and above the centre.
     expect(heights[0]).toBeCloseTo(heights[2], 6)
     expect(heights[0]).toBeGreaterThan(heights[1])
   })
 
-  it('sigue el desnivel entre dos postes de distinta altura', () => {
+  it('follows the slope between two posts of different height', () => {
     const bulbs = garlandBulbs({ from: [0, 2, 0], to: [4, 4, 0], count: 3, sag: 0 })
     expect(bulbs.map(([, y]) => y)).toEqual([2.5, 3, 3.5])
   })
 
-  it('mantiene las bombillas por encima de la máquina', () => {
-    // Si un tramo cuelga hasta la altura del aro, el jugador se encuentra
-    // bombillas justo donde busca palos.
+  it('keeps the bulbs above the machine', () => {
+    // If a span hangs down to the height of the hoop, the player finds
+    // bulbs right where they look for sticks.
     for (const [from, to] of spans) {
       for (const [, y] of garlandBulbs({ from, to })) {
         expect(y).toBeGreaterThan(MACHINE_HEIGHT)
@@ -156,19 +148,19 @@ describe('garlandBulbs', () => {
     }
   })
 
-  it('tiende una guirnalda entre cada dos postes, cerrando el círculo', () => {
+  it('strings a garland between each two posts, closing the circle', () => {
     expect(spans).toHaveLength(GARLAND_POST_COUNT)
     const bulbs = spans.flatMap(([from, to]) => garlandBulbs({ from, to }))
     expect(bulbs).toHaveLength(GARLAND_POST_COUNT * GARLAND_BULBS_PER_SPAN)
-    // Ninguna se sale del recinto ni se cuela dentro de él: van por la cuerda,
-    // que va de poste a poste.
+    // None leaves the fairground nor sneaks inside it: they go along the chord,
+    // which goes from post to post.
     for (const [x, , z] of bulbs) {
       expect(Math.hypot(x, z)).toBeLessThanOrEqual(GARLAND_RING_RADIUS + 1e-9)
       expect(Math.hypot(x, z)).toBeGreaterThan(SCENERY_CLEARANCE * 0.9)
     }
   })
 
-  it('no se rompe con un tramo sin bombillas', () => {
+  it('does not break with a span with no bulbs', () => {
     expect(garlandBulbs({ from: [0, 3, 0], to: [1, 3, 0], count: 0 })).toEqual([])
   })
 })

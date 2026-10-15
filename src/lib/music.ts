@@ -1,27 +1,27 @@
 import { assetUrl } from './assets'
 
 /**
- * La música de fondo: dónde está y a qué volumen suena.
+ * The background music: where it is and at what volume it plays.
  *
- * Es lo único del juego que **no** está sintetizado. Los efectos salen de
- * osciladores porque son cortos y responden a lo que pasa; un minuto de música
- * hecho a mano sonaría a lo que es. Así que es un fichero, y por eso viaja en
- * `public/`: nunca desde un CDN, que el visor puede estar conectado solo a la
- * red de casa.
+ * It is the only thing in the game that is **not** synthesised. The effects come out of
+ * oscillators because they are short and respond to what happens; a minute of music
+ * made by hand would sound like what it is. So it is a file, and that is why it travels in
+ * `public/`: never from a CDN, since the headset may be connected only to the
+ * home network.
  */
 
-/** El bucle de la feria, relativo a la base de los ficheros estáticos. */
+/** The fairground loop, relative to the base of the static files. */
 const MUSIC_PATH = 'audio/feria.mp3'
 
 /**
- * A qué volumen suena, de 0 a 1.
+ * At what volume it plays, from 0 to 1.
  *
- * Bajo a propósito: es el fondo del sitio, no la partida. Tiene que oírse
- * cuando no pasa nada y desaparecer debajo del juego en cuanto lo hay.
+ * Low on purpose: it is the background of the place, not the run. It has to be heard
+ * when nothing is happening and disappear under the game as soon as there is one.
  */
 export const MUSIC_VOLUME = 0.22
 
-/** La URL de la que se pide la música, ya con la base de quien monte el juego. */
+/** The URL the music is requested from, already with the base of whoever mounts the game. */
 export function musicUrl(): string {
   return assetUrl(MUSIC_PATH)
 }

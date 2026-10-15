@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from 'next'
 import { Righteous, Poppins } from 'next/font/google'
 import './globals.css'
-import { idiomaDeLaPeticion } from '../lib/idioma-servidor'
-import { traductor } from '../lib/textos'
+import { requestLang } from '../lib/server-lang'
+import { gameName } from '../lib/menuTemplate'
+import { translator } from '../lib/textos'
 
 const righteous = Righteous({
   variable: '--font-heading',
@@ -17,16 +18,17 @@ const poppins = Poppins({
 })
 
 /**
- * Lo que dice la pestaña y lo que se lee al compartir el enlace, en el idioma del arcade.
+ * What the tab says and what is read when the link is shared, in the hall's language.
  *
- * Es una función y no una constante porque el idioma llega en la cookie de la petición
- * (ver `lib/ajustes.ts`), y eso solo se puede leer aquí dentro.
+ * It is a function and not a constant because the language arrives in the request's cookie
+ * (see `lib/settings.ts`), and that can only be read in here.
  */
 export async function generateMetadata(): Promise<Metadata> {
-  const t = traductor(await idiomaDeLaPeticion())
+  const t = translator(await requestLang())
 
   return {
-    title: 'Stick Rush',
+    // Like the catalogue's cabinet: the game's own website does not go through the hall, so it is the package's.
+    title: gameName(),
     description: t('Catch the sticks falling from the machine before they hit the ground. Play in the browser or in mixed reality (VR/AR).'),
   }
 }
@@ -36,8 +38,8 @@ export const viewport: Viewport = {
   themeColor: '#0F172A',
   width: 'device-width',
   initialScale: 1,
-  // Sin `maximumScale`: bloquear el zoom incumple WCAG 1.4.4 y deja fuera a
-  // quien necesita ampliar para leer el menú.
+  // No `maximumScale`: blocking zoom breaks WCAG 1.4.4 and leaves out
+  // whoever needs to zoom in to read the menu.
 }
 
 export default async function RootLayout({
@@ -45,10 +47,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  // El idioma sale de la cookie que pone el menú del arcade: el `lang` del
-  // documento es lo que usan los lectores de pantalla para elegir voz, así
-  // que tiene que decir en qué idioma está lo que hay dentro.
-  const lang = await idiomaDeLaPeticion()
+  // The language comes from the cookie the hall's menu sets: the document's
+  // `lang` is what screen readers use to choose a voice, so it has to say
+  // what language the content inside is in.
+  const lang = await requestLang()
 
   return (
     <html lang={lang} className={`${righteous.variable} ${poppins.variable}`}>

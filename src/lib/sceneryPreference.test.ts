@@ -1,51 +1,51 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { SCENERIES, readScenery } from './ajustes'
+import { SCENERIES, readScenery } from './settings'
 import { OWN_SCENERY_KEY, forgetOwnScenery, sceneryModeOf, sceneryOf } from './sceneryPreference'
 
 /**
- * El escenario del arcade visto desde Stick Rush (`sceneryPreference.ts`).
+ * The hall's scenery seen from Stick Rush (`sceneryPreference.ts`).
  *
- * La preferencia y la regla del decorado se prueban con el puente (`ajustes.test.ts` y
- * `ajustesCliente.test.tsx`). Lo que queda aquí es lo que es de este juego: la traducción a
- * `scene` y `passthrough`, y que la clave propia del juego no mande y desaparezca.
+ * The preference and the rule of the scenery are tested with the bridge (`settings.test.ts` and
+ * `settingsClient.test.tsx`). What is left here is what belongs to this game: the translation to
+ * `scene` and `passthrough`, and that the game's own key does not rule and disappears.
  */
 
 afterEach(() => {
   window.localStorage.clear()
 })
 
-describe('la traducción en el borde', () => {
-  it('el sitio dibujado del arcade es la plaza, y la habitación es el passthrough', () => {
+describe('the translation at the edge', () => {
+  it('the drawn place of the hall is the square, and the room is the passthrough', () => {
     expect(sceneryModeOf('place')).toBe('scene')
     expect(sceneryModeOf('room')).toBe('passthrough')
   })
 
-  it('va y vuelve sin perder nada', () => {
+  it('goes and comes back without losing anything', () => {
     for (const scenery of SCENERIES) expect(sceneryOf(sceneryModeOf(scenery))).toBe(scenery)
   })
 
-  it('lo que elige el menú del juego se escribe con los valores del arcade', () => {
-    // Escritos a mano: si se escribiera `passthrough` en la clave del arcade, el salón lo leería
-    // como basura y volvería al sitio dibujado.
+  it('what the menu of the game chooses is written with the values of the hall', () => {
+    // Written by hand: if `passthrough` were written in the hall's key, the hall would read it
+    // as rubbish and go back to the drawn place.
     expect(sceneryOf('scene')).toBe('place')
     expect(sceneryOf('passthrough')).toBe('room')
   })
 })
 
-describe('la clave propia del juego', () => {
-  it('es la del juego, escrita a mano', () => {
-    // Si se apartara, se quedaría sin borrar la de verdad y se borraría una que no existe.
+describe('the own key of the game', () => {
+  it('is the one of the game, written by hand', () => {
+    // If it drifted, the real one would stay unerased and one that does not exist would be erased.
     expect(OWN_SCENERY_KEY).toBe('stick-rush:scenery')
   })
 
-  it('no manda: con ella en passthrough y la del arcade sin poner, se ve la plaza', () => {
+  it('does not rule: with it on passthrough and the one of the hall unset, the square is seen', () => {
     window.localStorage.setItem(OWN_SCENERY_KEY, 'passthrough')
 
     expect(sceneryModeOf(readScenery(window.localStorage))).toBe('scene')
   })
 
-  it('se borra sin trasladarla a la del arcade', () => {
+  it('is erased without carrying it over to the one of the hall', () => {
     window.localStorage.setItem(OWN_SCENERY_KEY, 'passthrough')
 
     forgetOwnScenery(window.localStorage)
@@ -54,7 +54,7 @@ describe('la clave propia del juego', () => {
     expect(window.localStorage.getItem('xrcade:scenery')).toBeNull()
   })
 
-  it('no toca lo que se eligió en el salón', () => {
+  it('does not touch what was chosen in the hall', () => {
     window.localStorage.setItem('xrcade:scenery', 'room')
 
     forgetOwnScenery(window.localStorage)
@@ -62,14 +62,14 @@ describe('la clave propia del juego', () => {
     expect(readScenery(window.localStorage)).toBe('room')
   })
 
-  it('sin almacenamiento, o con uno que lanza, no revienta', () => {
-    const roto = {
+  it('with no storage, or with one that throws, it does not blow up', () => {
+    const broken = {
       removeItem() {
-        throw new Error('bloqueado')
+        throw new Error('blocked')
       },
     }
 
     expect(() => forgetOwnScenery(null)).not.toThrow()
-    expect(() => forgetOwnScenery(roto)).not.toThrow()
+    expect(() => forgetOwnScenery(broken)).not.toThrow()
   })
 })

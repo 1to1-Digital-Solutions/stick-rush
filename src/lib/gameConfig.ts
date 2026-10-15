@@ -1,14 +1,21 @@
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert' | 'impossible'
 
 /**
- * Velocidad de caída en metros por segundo. La escena está a escala humana
- * (1 unidad = 1 metro) y un palo recorre ~1.45 m desde que se suelta hasta el
- * suelo, así que en Fácil dura algo menos de 6 s y en Imposible, siete décimas.
+ * **Mean** fall speed in metres per second. The scene is at human scale
+ * (1 unit = 1 metre) and a stick travels ~1.45 m from its release to the
+ * ground, so on Easy it lasts a little under 6 s and on Impossible, seven
+ * tenths.
  *
- * Se recalculan cada vez que cambia la geometría —primero al acercar el aro al
- * jugador, luego al encogerlo un 8 %—, porque el recorrido cambia con ella y si
- * no todas las dificultades se desplazarían sin que nadie lo decidiera.
- * `gameConfig.test.ts` vigila que los márgenes de reacción sigan en su sitio.
+ * It is a mean and not a constant: the stick falls accelerating (see
+ * `fallAcceleration`). It is still expressed like this because what decides the
+ * difficulty is how long the fall lasts, and that is distance over mean speed,
+ * the same as when it fell at a fixed speed: moving to gravity touched no time.
+ *
+ * They are recalculated every time the geometry changes —first when the hoop
+ * was brought closer to the player, then when it was shrunk by 8 %—, because the
+ * distance changes with it and otherwise all the difficulties would shift
+ * without anyone deciding it. `gameConfig.test.ts` watches that the reaction
+ * margins stay in place.
  */
 export const DIFFICULTY_SPEEDS: Record<Difficulty, number> = {
   easy: 0.257,
@@ -18,7 +25,7 @@ export const DIFFICULTY_SPEEDS: Record<Difficulty, number> = {
   impossible: 2.16,
 }
 
-/** Etiqueta visible para el usuario (idioma del producto: español). */
+/** Label visible to the user (product language: Spanish). */
 export const DIFFICULTY_LABELS = {
   easy: 'Easy',
   medium: 'Medium',
@@ -27,7 +34,7 @@ export const DIFFICULTY_LABELS = {
   impossible: 'Impossible',
 } as const satisfies Record<Difficulty, string>
 
-/** Orden de dificultades de menor a mayor para construir selectores. */
+/** Order of difficulties from lowest to highest to build selectors. */
 export const DIFFICULTY_ORDER: Difficulty[] = [
   'easy',
   'medium',
@@ -37,9 +44,9 @@ export const DIFFICULTY_ORDER: Difficulty[] = [
 ]
 
 /**
- * Color de cada botón de dificultad: progresa de verde (fácil) a rojo
- * (imposible). Sirve como señal visual de prioridad/riesgo, siempre
- * acompañada de texto para no depender solo del color.
+ * Colour of each difficulty button: it progresses from green (easy) to red
+ * (impossible). It serves as a visual signal of priority/risk, always
+ * accompanied by text so as not to depend on colour alone.
  */
 export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
   easy: '#15803d',
@@ -50,114 +57,103 @@ export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
 }
 
 /**
- * Rojo de las vidas del desafío. Uno solo para el menú de escritorio, el
- * marcador y el visor: un corazón que cambia de color al pasar de un sitio a
- * otro deja de leerse como lo mismo.
+ * Red of the challenge's lives. A single one for the desktop menu, the
+ * scoreboard and the headset: a heart that changes colour when going from one
+ * place to another stops reading as the same thing.
  */
 export const LIFE_COLOR = '#f87171'
 
-/** Color de los palos: madera pintada de amarillo de feria. */
+/** Colour of the sticks: wood painted fairground yellow. */
 export const STICK_COLOR = '#e8b93f'
-/** Verde del acierto: el palo se enciende al atraparlo. */
+/** Green of the hit: the stick lights up when it is caught. */
 export const STICK_CAUGHT_COLOR = '#22c55e'
-/** Rojo del fallo: el palo que toca el suelo se queda teñido. */
+/** Red of the miss: the stick that touches the ground stays tinted. */
 export const STICK_MISSED_COLOR = '#b91c1c'
 
-/** Tonos de la máquina, a rayas de caseta de feria. */
+/** Shades of the machine, in fairground-stall stripes. */
 export const MACHINE_STRIPE_COLORS = ['#c1121f', '#f4ece0']
-/** Postes y remates de la máquina. */
+/** Posts and finials of the machine. */
 export const MACHINE_FRAME_COLOR = '#9a7b33'
-/** Celosía (aro superior, montantes y diagonales): hierro pintado. */
+/** Truss (top hoop, uprights and diagonals): painted iron. */
 export const MACHINE_TRUSS_COLOR = '#6d6357'
-/** Bombillas de la guirnalda. */
+/** Bulbs of the garland. */
 export const MACHINE_BULB_COLOR = '#ffd479'
 
-/** Fondo y niebla fuera de AR: noche de plaza, a juego con el escenario. */
+/** Background and fog outside AR: a night in the square, matching the scenery. */
 export const BACKDROP_COLOR = '#0d1017'
 
-/**
- * Tonos del recinto de feria que rodea al jugador (ver `sceneryLayout.ts`). Los
- * toldos, las bombillas y el herraje son los mismos de la máquina: el recinto
- * tiene que parecer el sitio del que ha salido, no otro decorado.
- */
-export const FAIR_WOOD_COLOR = '#4a3a2c'
-/** Tablero del mostrador: lo más claro de la caseta, para que se lea de noche. */
-export const FAIR_COUNTER_COLOR = '#cbb894'
-/**
- * Carteles de las casetas. Son varios para que el círculo no parezca la misma
- * caseta repetida seis veces, que es justo lo que delata un decorado generado.
- */
-export const FAIR_SIGN_COLORS = ['#1d3557', '#7a1f2b', '#1f5f4a']
-/** Premios apilados dentro de la caseta, a la vista sobre el mostrador. */
-export const FAIR_PRIZE_COLORS = ['#e8b93f', '#c1121f', '#4c8fbd']
-/** Tonos de la ropa del público: oscuros, para que sean siluetas contra las luces. */
+/** Shades of the crowd's clothes: dark, so that they are silhouettes against the lights. */
 export const CROWD_SHADES = ['#2b2430', '#3b2e28', '#233040', '#3a2c3c', '#2f3a2e']
-/** El blanco al que tiran las bombillas cuando la racha monta la fiesta. */
+/** The white the bulbs lean towards when the streak gets the party going. */
 export const PARTY_BULB_COLOR = '#fff6e6'
 
-/** Límites de palos seleccionables. */
+/** Limits of selectable sticks. */
 export const MIN_STICKS = 5
 export const MAX_STICKS = 13
 
 /**
- * Geometría de la máquina y de los palos, en metros.
+ * Geometry of the machine and of the sticks, in metres.
  *
- * El aro es un semicírculo **horizontal** (en el plano XZ) que rodea al jugador
- * por delante: él se planta en el centro y estira el brazo para atrapar los
- * palos, que le caen alrededor y no encima. Con el arco vertical de antes, los
- * palos del centro le caían literalmente sobre la cabeza.
+ * The hoop is a **horizontal** semicircle (in the XZ plane) that surrounds the
+ * player in front: they stand at the centre and stretch out their arm to catch
+ * the sticks, which fall around them and not on top of them. With the vertical
+ * arch of before, the centre sticks literally fell on their head.
  */
 /**
- * Radio del aro. Manda el alcance real del brazo: los palos se cogen con la
- * mano (agarre), no apuntando, así que tienen que caer dentro del volumen que
- * el jugador alcanza sin moverse de sitio. Con el 1.25 m del diseño original se
- * veían lejos y no había forma de llegar a ellos en el visor.
+ * Radius of the hoop. It is ruled by the real reach of the arm: the sticks are
+ * caught with the hand (grip), not by pointing, so they have to fall inside the
+ * volume the player reaches without moving from the spot. With the 1.25 m of the
+ * original design they looked far away and there was no way to get to them in
+ * the headset.
  */
 export const MACHINE_RADIUS = 0.57
 /**
- * Altura **nominal** del aro: justo encima de la cabeza. Los palos cuelgan hasta
- * ~1.4 m y caen atravesando la altura del pecho, que es donde la mano llega
- * cómoda.
+ * **Nominal** height of the hoop: just above the head. The sticks hang down to
+ * ~1.4 m and fall through chest height, which is where the hand reaches
+ * comfortably.
  *
- * **No se encoge con el resto.** La máquina se redujo un 8 % porque se veía
- * demasiado grande, pero esta cota la manda la estatura del jugador, no el
- * tamaño de la máquina: bajarla dejaría el aro a la altura de los ojos.
+ * **It does not shrink with the rest.** The machine was reduced by 8 % because it
+ * looked too big, but this height is ruled by the player's stature, not by the
+ * size of the machine: lowering it would leave the hoop at eye level.
  *
- * Y por eso mismo tampoco es fija: en el visor la altura de verdad sale de la
- * del jugador (ver `hoopHeight.ts`), y esta es la que le corresponde a la
- * estatura de referencia. Es la que se usa en escritorio y la que hace de
- * respaldo cuando el visor no dice a qué altura está la cabeza.
+ * And for that same reason it is not fixed either: in the headset the real
+ * height comes from the player's (see `hoopHeight.ts`), and this is the one that
+ * corresponds to the reference stature. It is the one used on desktop and the
+ * one that acts as a fallback when the headset does not say how high the head is.
  */
 export const MACHINE_HEIGHT = 1.95
 export const STICK_LENGTH = 0.39
 export const STICK_RADIUS = 0.02
 export const GROUND_Y = 0
-/** Hueco entre el aro y el palo, ocupado por el hilo del que cuelga. */
+/** Gap between the hoop and the stick, taken up by the cord it hangs from. */
 export const STICK_CORD_LENGTH = 0.11
 
 /**
- * Dónde se planta el jugador respecto al centro del aro, en metros.
+ * Where the player stands with respect to the centre of the hoop, in metres (−Z is towards the arch).
  *
- * No va en el centro geométrico. El aro es un **semi**círculo por delante, así
- * que toda su masa queda hacia −Z y desde el centro exacto el jugador se siente
- * echado hacia atrás: en el visor había que dar un paso adelante para estar
- * bien colocado. Se le adelanta hacia el arco, pero **poco**.
+ * It has been moved twice, always because of what was seen with the headset on:
  *
- * **Estaba a −0,18 y era demasiado**: «el jugador arranca muy pegado a la máquina, quizás
- * medio pasito para atrás, o incluso menos». Esos dieciséis centímetros lo dejan casi en el
- * centro del aro, que es donde los palos de los extremos quedan a un lado y no a la espalda,
- * y la máquina se ve entera en vez de encima.
+ * - **At −0.18 it was too much**: "the player starts very close to the machine, maybe half a
+ *   little step back". It was left at −0.02, almost at the centre of the hoop.
+ * - **And from there, a mini-step back** ("it is perfect", with this single touch-up): ten
+ *   centimetres **behind** the centre. The front sticks end up a little farther away
+ *   —65 cm horizontally, within the 75 of the arm— and the ones at the ends, which used to
+ *   fall to one side, now fall a little in front: the whole machine is seen in front and
+ *   nothing falls on top of whoever plays. What is still demanded is that each stick **crosses**
+ *   the reach of the arm as it falls (`xrInteraction.test.ts`, `hoopHeight.test.ts`).
+ *
+ * TO BE CALIBRATED WITH THE HEADSET.
  */
-export const PLAYER_OFFSET_Z = -0.02
+export const PLAYER_OFFSET_Z = 0.08
 
-/** Posición del jugador: los pies, en el suelo, adelantados hacia el aro. */
+/** Position of the player: the feet, on the ground, one step behind the centre of the hoop. */
 export const PLAYER_POSITION: [number, number, number] = [
   0,
   GROUND_Y,
   PLAYER_OFFSET_Z,
 ]
 
-/** Distancia desde el jugador hasta un punto de la escena, en metros. */
+/** Distance from the player to a point of the scene, in metres. */
 export function distanceFromPlayer([x, y, z]: [
   number,
   number,
@@ -167,38 +163,79 @@ export function distanceFromPlayer([x, y, z]: [
   return Math.hypot(x - px, y - PLAYER_SHOULDER_HEIGHT, z - pz)
 }
 
-/** Altura de hombro de referencia, origen del alcance del brazo. */
+/** Reference shoulder height, origin of the reach of the arm. */
 export const PLAYER_SHOULDER_HEIGHT = 1.45
 
 /**
- * Cota del anclaje a partir de la cual el palo se considera perdido: la que
- * deja su punta justo sobre el suelo. Medirlo en el anclaje hacía que el palo
- * entero se hundiera bajo el suelo (y siguiera siendo atrapable) antes de
- * contar como perdido.
+ * Height of the anchor from which the stick is considered lost: the one that
+ * leaves its tip right on the ground. Measuring it at the anchor made the whole
+ * stick sink under the ground (and remain catchable) before counting as lost.
  */
 export const STICK_MISS_Y = GROUND_Y + STICK_CORD_LENGTH + STICK_LENGTH
 
-/** Recorrido de un palo desde que se suelta hasta que se da por perdido. */
+/** Distance a stick travels from its release until it is given up as lost. */
 export const STICK_FALL_DISTANCE = MACHINE_HEIGHT - STICK_MISS_Y
 
 /**
- * Segundos que tarda un palo en llegar al suelo en cada dificultad. Es el
- * margen real que tiene el jugador para atraparlo, y lo que se ajusta al tocar
- * `DIFFICULTY_SPEEDS` o la geometría de la máquina.
+ * Seconds a stick takes to reach the ground on each difficulty. It is the real
+ * margin the player has to catch it, and what gets adjusted when touching
+ * `DIFFICULTY_SPEEDS` or the geometry of the machine.
  */
 export function fallDurationSeconds(difficulty: Difficulty): number {
   return STICK_FALL_DISTANCE / DIFFICULTY_SPEEDS[difficulty]
 }
 
 /**
- * Cuánto ha caído un palo cuyo anclaje está a la cota `y`: 0 recién soltado, 1
- * a punto de tocar el suelo. Es lo que convierte "dónde lo cogí" en el bonus de
- * reflejos de la puntuación (ver `scoring.ts`).
+ * Acceleration with which a stick falls, in m/s², so that it travels `distance`
+ * at the mean speed `meanSpeed`.
  *
- * `hoopHeight` es la cota desde la que salió ese palo: con el aro acomodado al
- * jugador (ver `hoopHeight.ts`) el recorrido cambia, y medirlo siempre contra la
- * altura nominal regalaría reflejos a quien lo tenga bajo y se los quitaría a
- * quien lo tenga alto.
+ * The stick is released **at rest** —it hung from a cord— and accelerates the
+ * way anything falls: at a fixed speed it "floated" at first and arrived slow at
+ * the bottom, and the eye noticed. But with real gravity (9.81) any stick touches
+ * the ground in half a second, faster than Impossible does now, and Easy would
+ * stop being easy. That is why each difficulty is **the same real fall in slow
+ * motion**: the duration of each level is kept and the acceleration comes from
+ * it (d = ½·a·T² with T = d/v̄, hence a = 2·v̄²/d). Impossible ends up at
+ * ~6.4 m/s², almost real time; Easy, at ~0.09.
+ *
+ * Neither is the hoop raised nor is an initial impulse given to compensate: the
+ * hoop is ruled by the reach of the arm (`hoopHeight.ts`), and a stick that
+ * starts with speed looks pushed, not released.
+ */
+export function fallAcceleration(
+  meanSpeed: number,
+  distance: number = STICK_FALL_DISTANCE,
+): number {
+  if (!Number.isFinite(meanSpeed) || !Number.isFinite(distance) || distance <= 0) {
+    return 0
+  }
+  return (2 * meanSpeed * meanSpeed) / distance
+}
+
+/** How far a stick has dropped `seconds` after being released with that acceleration. */
+export function fallDrop(seconds: number, acceleration: number): number {
+  if (!(seconds > 0)) return 0
+  return 0.5 * acceleration * seconds * seconds
+}
+
+/**
+ * How far a stick whose anchor is at height `y` has fallen, **in time**: 0
+ * just released, 1 about to touch the ground. It is what turns "when I caught
+ * it" into the reflex bonus of the score (see `scoring.ts`) and into the
+ * in extremis tap (`haptics.ts`).
+ *
+ * It is measured in time and not in distance because what is rewarded are the
+ * reflexes. Falling with acceleration the two things no longer coincide: halfway
+ * through its time a stick has only dropped a quarter of the distance, and
+ * measuring the place would give away bonus to whoever catches it up high only
+ * because the stick goes slowly there. As it starts from rest, the fraction of
+ * time is the root of the fraction of distance, whatever the difficulty; there
+ * is no need to know which one it is.
+ *
+ * `hoopHeight` is the height that stick left from: with the hoop fitted to the
+ * player (see `hoopHeight.ts`) the distance changes, and always measuring it
+ * against the nominal height would give away reflexes to whoever has it low and
+ * take them from whoever has it high.
  */
 export function stickFallProgress(
   y: number,
@@ -209,13 +246,13 @@ export function stickFallProgress(
     return 0
   }
   const fallen = (hoopHeight - y) / distance
-  return Math.min(Math.max(fallen, 0), 1)
+  return Math.sqrt(Math.min(Math.max(fallen, 0), 1))
 }
 
 /**
- * Punto del aro para `t` en [0, 1], repartiendo de izquierda a derecha por
- * delante del jugador (mira hacia -Z). Es la misma curva que sigue la máquina y
- * de la que cuelgan los palos.
+ * Point of the hoop for `t` in [0, 1], spreading from left to right in front of
+ * the player (who looks towards -Z). It is the same curve the machine follows
+ * and the sticks hang from.
  */
 export function machinePoint(
   t: number,
@@ -230,17 +267,17 @@ export function machinePoint(
 }
 
 /**
- * Rutas de los assets locales (CC0, ver public/CREDITS.md), relativas a la base
- * desde la que se sirven: quien monta el juego decide dónde están (ver
- * `assets.ts`), así que se resuelven al pedirlos con `assetUrl()`.
+ * Paths of the local assets (CC0, see public/CREDITS.md), relative to the base
+ * they are served from: whoever mounts the game decides where they are (see
+ * `assets.ts`), so they are resolved when requested with `assetUrl()`.
  */
 export const HDRI_PATH = 'hdri/plaza_pueblo_1k.exr'
 
 /**
- * Mapas de la madera de los palos. Se usan el relieve y la rugosidad, que son
- * los que dan la sensación de madera con peso, pero no el mapa de color: es una
- * madera casi negra y, como el tinte multiplica, dejaba los palos marrón oscuro
- * en vez de amarillos. El color va plano, como madera pintada.
+ * Maps of the sticks' wood. The relief and the roughness are used, which are
+ * the ones that give the feeling of wood with weight, but not the colour map: it
+ * is an almost black wood and, as the tint multiplies, it left the sticks dark
+ * brown instead of yellow. The colour goes flat, like painted wood.
  */
 export const WOOD_TEXTURES = {
   normalMap: 'textures/wood_nor_1k.jpg',

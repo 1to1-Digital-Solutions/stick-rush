@@ -1,58 +1,65 @@
 import { MACHINE_HEIGHT, machinePoint } from './gameConfig'
+import { randomFrom, deriveSeed } from './seed'
 
-/** Posición y momento de salida de un palo dentro de una partida. */
+/** Position and release moment of a stick within a run. */
 export interface StickLayout {
-  /** Clave estable por partida: fuerza el remontaje al empezar otra. */
+  /** Stable key per round: it forces the remount when another one starts. */
   key: string
-  /** Punto del aro del que cuelga. */
+  /** Point of the hoop it hangs from. */
   anchor: [number, number, number]
-  /** Segundos que espera colgando antes de soltarse. */
+  /** Seconds it waits hanging before being released. */
   delay: number
-  /** Su hueco dentro del ciclo del vaivén, en [0, 1). Ver `stickSwing.ts`. */
+  /** Its slot within the swing cycle, in [0, 1). See `stickSwing.ts`. */
   swingPhase: number
 }
 
 /**
- * Pseudo-aleatorio determinista en [0, 1) a partir de dos enteros (índice
- * y partida). Evita Math.random() en render (impuro) manteniendo el jitter
- * estable durante el ciclo de vida de cada palo.
+ * What each draw of a round comes from, to derive it from the seed with `deriveSeed`.
+ *
+ * Each thing that is drawn carries its own stream: the fall turn, the hesitation of each stick
+ * before being released and its swing. That way, adding a new draw does not change the ones
+ * already there, and the swing —which is only decoration— does not take numbers the layout needs.
  */
-export function seededRandom(a: number, b: number): number {
-  const x = Math.sin(a * 374761393 + b * 668265263) * 43758.5453
-  return x - Math.floor(x)
-}
+const STREAM = { order: 1, delay: 2, swing: 3 } as const
 
 /**
- * Turno de caída de cada palo, barajado.
+ * Fall turn of each stick, shuffled.
  *
- * Devuelve las posiciones del aro en el orden en que se sueltan: `order[0]` es
- * el palo que cae primero. Fisher-Yates sembrado con `runId`, así que la
- * secuencia es distinta en cada partida pero estable dentro de ella.
+ * Returns the positions of the hoop in the order in which they are released: `order[0]` is
+ * the stick that falls first. Fisher-Yates seeded with the seed of the round, so
+ * the sequence is different in each run but stable within it, and the
+ * same for everyone who plays one same challenge (`seed.ts`).
  */
-export function fallOrder(stickCount: number, runId: number): number[] {
+export function fallOrder(stickCount: number, seed: number): number[] {
   const order = Array.from({ length: Math.max(stickCount, 0) }, (_, i) => i)
+  const random = randomFrom(deriveSeed(seed, STREAM.order))
   for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(seededRandom(i, runId) * (i + 1))
+    const j = Math.floor(random() * (i + 1))
     ;[order[i], order[j]] = [order[j], order[i]]
   }
   return order
 }
 
+/** A number in [0, 1) belonging to one stick and to what is drawn for it. */
+function stickDraw(seed: number, stream: number, index: number): number {
+  return randomFrom(deriveSeed(seed, stream, index))()
+}
+
 /**
- * Reparte los palos por el aro y escalona su caída.
+ * Lays the sticks out along the hoop and staggers their fall.
  *
- * La posición en el aro y el momento de caer son **independientes**: los
- * anclajes van de izquierda a derecha evitando los extremos exactos (ahí están
- * los postes), pero el turno de cada palo sale de `fallOrder`. Antes el retardo
- * se calculaba a partir del índice, así que los palos caían siempre en orden,
- * de izquierda a derecha, y la partida era predecible.
+ * The position on the hoop and the moment of falling are **independent**: the
+ * anchors go from left to right avoiding the exact ends (the posts are
+ * there), but the turn of each stick comes from `fallOrder`. Before, the delay
+ * was computed from the index, so the sticks always fell in order,
+ * from left to right, and the run was predictable.
  */
 export function buildStickLayout(
   stickCount: number,
-  runId: number,
+  seed: number,
   hoopHeight: number = MACHINE_HEIGHT,
 ): StickLayout[] {
-  const order = fallOrder(stickCount, runId)
+  const order = fallOrder(stickCount, seed)
   const turnOf: number[] = []
   order.forEach((stickIndex, turn) => {
     turnOf[stickIndex] = turn
@@ -61,31 +68,24 @@ export function buildStickLayout(
   return Array.from({ length: stickCount }, (_, index) => {
     const t = stickCount === 1 ? 0.5 : (index + 1) / (stickCount + 1)
     return {
-      key: `${runId}-${index}`,
+      key: `${seed}-${index}`,
       anchor: machinePoint(t, hoopHeight),
-      // Un turno por palo, más un jitter para que no suene a metrónomo.
-      delay: turnOf[index] * (1 + seededRandom(index, runId) * 0.5),
-      swingPhase: seededRandom(index + SWING_PHASE_SEED, runId),
+      // One turn per stick, plus a jitter so that it does not sound like a metronome.
+      delay: turnOf[index] * (1 + stickDraw(seed, STREAM.delay, index) * 0.5),
+      swingPhase: stickDraw(seed, STREAM.swing, index),
     }
   })
 }
 
-/**
- * Desplazamiento de la semilla del vaivén. Sin él, la fase del balanceo saldría
- * del mismo valor que el jitter del retardo y el palo que más tarda en caer
- * sería siempre el que más adelantado va meciéndose.
- */
-const SWING_PHASE_SEED = 977
-
-/** Cómo ha acabado (o no) cada palo, para pintar el marcador. */
+/** How each stick has ended (or not), to draw the scoreboard. */
 export type StickStatus = 'caught' | 'missed' | 'pending'
 
 /**
- * Estado de cada palo del marcador a partir de los contadores de la partida.
+ * State of each stick of the scoreboard from the counters of the run.
  *
- * El store solo guarda agregados (atrapados y resueltos), no el desenlace de
- * cada palo: para el marcador basta con pintar primero los atrapados, luego los
- * perdidos y al final los que siguen en juego.
+ * The store only keeps aggregates (caught and settled), not the outcome of
+ * each stick: for the scoreboard it is enough to draw the caught ones first, then the
+ * lost ones and at the end the ones still in play.
  */
 export function stickStatuses(
   score: number,

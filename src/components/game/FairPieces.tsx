@@ -7,21 +7,24 @@ import { Color, type MeshStandardMaterial } from 'three'
 import { bulbGlow, bulbPulse } from '../../lib/fairMood'
 import { MACHINE_BULB_COLOR, PARTY_BULB_COLOR } from '../../lib/gameConfig'
 import type { FairMoodState } from './FairMood'
+import { useDisposeInstances } from './disposeInstances'
 import { useReducedMotion } from './useReducedMotion'
 
 /**
- * Las tres piezas con las que está construido el recinto de feria: tablas
- * (cajas), postes (cilindros) y bombillas (esferas).
+ * The three in-code pieces of the fairground venue: boards (boxes), poles
+ * (cylinders) and bulbs (spheres). With them the Ferris wheel and the
+ * bulbs of the garlands are made; the stalls and the lampposts are pieces of the
+ * xrcade kit (`FairKit`).
  *
- * Van instanciadas porque el decorado son cientos de trozos y en el visor lo
- * que se paga no es el número de triángulos sino el de llamadas de dibujo: así
- * todo el recinto —casetas, guirnaldas y noria— cabe en tres. Cada pieza se
- * coloca con su `position`/`rotation`/`scale` normales dentro de los grupos que
- * la contienen, y el color va por instancia.
+ * They are instanced because they are more than a hundred bits and in the headset what is paid
+ * is not the number of triangles but the number of draw calls: this way the Ferris wheel and
+ * the garlands fit in three. Each piece is
+ * placed with its normal `position`/`rotation`/`scale` inside the groups that
+ * contain it, and the colour goes per instance.
  *
- * Las geometrías son unitarias (caja de 1 m, cilindro de 1 m de alto y de
- * diámetro, esfera de radio 1), de modo que la escala de cada pieza son
- * directamente sus medidas en metros.
+ * The geometries are unit ones (a 1 m box, a cylinder 1 m tall and 1 m in
+ * diameter, a sphere of radius 1), so that the scale of each piece is
+ * directly its measurements in metres.
  */
 
 const [BoardInstances, BoardInstance] = createInstances()
@@ -29,12 +32,12 @@ const [PoleInstances, PoleInstance] = createInstances()
 const [BulbInstances, BulbInstance] = createInstances()
 
 /**
- * Cuántas piezas de cada familia gasta un trozo del recinto.
+ * How many pieces of each family a bit of the venue spends.
  *
- * Cada `<Instances>` se dimensiona de antemano y, si las piezas superan su
- * límite, drei deja de pintar las que sobran **sin avisar**. Por eso el tamaño
- * no es un número escrito a mano —que se quedaría viejo al añadir una caseta o
- * un premio— sino la suma de lo que declara cada trozo: ver `FAIR_PIECES` en
+ * Each `<Instances>` is sized beforehand and, if the pieces exceed its
+ * limit, drei stops painting the ones left over **without warning**. That is why the size
+ * is not a number written by hand —which would go stale on adding a cabin or
+ * a stretch of garland— but the sum of what each bit declares: see `FAIR_PIECES` in
  * `Fairground`.
  */
 export interface PieceCounts {
@@ -44,45 +47,45 @@ export interface PieceCounts {
 }
 
 /**
- * El decorado no se toca ni se apunta: sin esto, cada movimiento del ratón —y
- * cada fotograma con los mandos del visor apuntando— lanzaría un rayo contra
- * las cientos de piezas del recinto para nada.
+ * The decor is neither touched nor pointed at: without this, every movement of the mouse —and
+ * every frame with the headset's controllers pointing— would cast a ray against
+ * the more than a hundred pieces of the venue for nothing.
  *
- * Se exporta porque no todo el decorado son instancias: los aros de la noria
- * son mallas sueltas y tienen que anularlo igual (y son las piezas con más
- * triángulos de todo el recinto).
+ * It is exported because not all the decor is instances: the rings of the Ferris wheel
+ * are loose meshes and have to cancel it just the same (and they are the pieces with the most
+ * triangles of the whole venue).
  */
 export const ignoreRaycast = () => null
 
 type PieceProps = ComponentProps<typeof BoardInstance>
 
-/** Tabla, panel o cajón: cualquier pieza recta del recinto. */
+/** Board, panel or crate: any straight piece of the venue. */
 export function Board(props: PieceProps) {
   return <BoardInstance raycast={ignoreRaycast} {...props} />
 }
 
-/** Poste, montante o radio: cualquier pieza cilíndrica. */
+/** Pole, upright or spoke: any cylindrical piece. */
 export function Pole(props: PieceProps) {
   return <PoleInstance raycast={ignoreRaycast} {...props} />
 }
 
-/** Bombilla de feria: no ilumina, se ve encendida. */
+/** Fairground bulb: it does not light, it looks lit. */
 export function Bulb(props: PieceProps) {
   return <BulbInstance raycast={ignoreRaycast} {...props} />
 }
 
-/** Los dos colores entre los que se mueve la bombilla; se reservan una vez. */
+/** The two colours the bulb moves between; they are allocated once. */
 const BULB_COLOR = new Color(MACHINE_BULB_COLOR)
 const PARTY_COLOR = new Color(PARTY_BULB_COLOR)
-/** Lo que tarda el brillo en llegar a su nuevo valor: fracción por segundo. */
+/** How long the glow takes to reach its new value: fraction per second. */
 const GLOW_EASE = 3
 
 /**
- * Las bombillas responden a la racha (`lib/fairMood.ts`): suben de brillo con
- * ella y, con fiesta, palpitan hacia el blanco. Se toca el material de la
- * familia entera —todas las bombillas de la feria son un solo material—, así
- * que cuesta lo mismo con cien que con mil. Con el movimiento reducido el
- * palpitar se apaga; el brillo sigue subiendo, que eso no se mueve.
+ * The bulbs respond to the streak (`lib/fairMood.ts`): they get brighter with
+ * it and, with a party on, they throb towards white. The material of the whole
+ * family is touched —all the bulbs of the fairground are a single material—, so
+ * it costs the same with a hundred as with a thousand. With reduced motion the
+ * throbbing goes off; the glow keeps rising, since that does not move.
  */
 function BulbMood({
   moodRef,
@@ -107,16 +110,16 @@ function BulbMood({
 }
 
 /**
- * Proveedor de las tres familias de piezas. Van anidadas porque cada
- * `createInstances` reparte su contexto a los descendientes; el orden entre
- * ellas da igual, lo que importa es que el decorado quede dentro de las tres.
+ * Provider of the three families of pieces. They are nested because each
+ * `createInstances` hands its context to the descendants; the order between
+ * them does not matter, what matters is that the decor ends up inside all three.
  *
- * `limits` es el recuento exacto de piezas que va a colgar de aquí: reservar de
- * menos las pierde en silencio y reservar de más deja búferes sin usar.
+ * `limits` is the exact count of pieces that will hang from here: allocating too
+ * few loses them silently and allocating too many leaves buffers unused.
  *
- * `frustumCulled={false}`: el mesh instanciado vive en el origen y su volumen
- * envolvente no sigue a las instancias, así que dejar que el motor decida si se
- * ve haría desaparecer el recinto entero al mirar hacia otro lado.
+ * `frustumCulled={false}`: the instanced mesh lives at the origin and its bounding
+ * volume does not follow the instances, so letting the engine decide whether it is
+ * seen would make the whole venue disappear on looking another way.
  */
 export function FairPieces({
   limits,
@@ -124,22 +127,26 @@ export function FairPieces({
   children,
 }: {
   limits: PieceCounts
-  /** La racha, para que las bombillas respondan a ella (ver `FairMood`). */
+  /** The streak, so that the bulbs respond to it (see `FairMood`). */
   moodRef: RefObject<FairMoodState>
   children: ReactNode
 }) {
   const bulbMaterial = useRef<MeshStandardMaterial>(null)
+  // Their matrices and colours are disposed of by hand on leaving (`disposeInstances.ts`).
+  const boards = useDisposeInstances()
+  const poles = useDisposeInstances()
+  const bulbs = useDisposeInstances()
 
   return (
-    <BoardInstances limit={limits.boards} frustumCulled={false}>
+    <BoardInstances ref={boards} limit={limits.boards} frustumCulled={false}>
       <boxGeometry />
       <meshStandardMaterial roughness={0.85} metalness={0.05} />
 
-      <PoleInstances limit={limits.poles} frustumCulled={false}>
+      <PoleInstances ref={poles} limit={limits.poles} frustumCulled={false}>
         <cylinderGeometry args={[0.5, 0.5, 1, 8]} />
         <meshStandardMaterial roughness={0.6} metalness={0.25} />
 
-        <BulbInstances limit={limits.bulbs} frustumCulled={false}>
+        <BulbInstances ref={bulbs} limit={limits.bulbs} frustumCulled={false}>
           <sphereGeometry args={[1, 8, 6]} />
           <meshStandardMaterial
             ref={bulbMaterial}

@@ -1,94 +1,102 @@
+import { pulsesFor, type HandSide, type HandPulse, type HapticEvent } from './hapticFeedback'
+
 /**
- * Vibración de los mandos (haptics de WebXR).
+ * Vibration of the controllers (WebXR haptics).
  *
- * En el visor el acierto se cuenta de tres formas a la vez: el palo destella en
- * verde, suena un "ding" y **el mando da un golpe**. La vibración es la única de
- * las tres que llega aunque el jugador esté mirando otro palo y tenga el sonido
- * quitado, y además cae en la mano que ha cogido el palo, así que confirma
- * *quién* lo cogió y no solo *que* se cogió.
+ * **What vibrates is the contact, and in the hand that touches** (`.claude/rules/xr.md`, "Each
+ * contact is felt in the hand that touches, and nothing else"). In this game there is a single
+ * contact: **catching a stick**. It is translated into a `grab` of the common recipes
+ * (`hapticFeedback.ts`), in the hand that caught it, and with a little more strength if it was
+ * caught in extremis, about to touch the ground: that is the one that is celebrated.
  *
- * No hay nada que descargar: el motor del mando lo expone el propio WebXR en
- * `XRInputSource.gamepad.hapticActuators`, un array de actuadores con `pulse()`.
- * Fuera de una sesión inmersiva —el ratón en escritorio, o una mano desnuda sin
- * mando— no hay actuador y el juego sigue igual, sin vibración.
+ * And what is not contact does not vibrate. **The stick that gets away no longer vibrates**: it
+ * used to give a long pulse in both controllers, but no hand has touched it, and the sound and the
+ * red stick on the ground already say it. What is kept is the tap of a menu button
+ * (`PRESS_PULSE`): it is not a contact with anything of the game, it is the confirmation that the
+ * ray has pressed, and it goes in the hand that points.
  *
- * Como en `sound.ts`, la receta son datos puros (probables sin navegador) y las
- * dos funciones de abajo son lo único que habla con el hardware. Hay dos porque
- * hay dos formas de saber a qué mando le toca vibrar: el acierto y la pulsación
- * de un botón vienen de un evento de puntero y se cobran en la mano que lo
- * produjo (`pulseHaptics`), mientras que el palo que toca el suelo no lo
- * produce nadie y se anuncia en los dos (`pulseAllHaptics`).
+ * There is nothing to download: the controller's motor is exposed by WebXR itself in
+ * `XRInputSource.gamepad.hapticActuators`, an array of actuators with `pulse()`.
+ * Outside an immersive session —the mouse on desktop, or a bare hand without a
+ * controller— there is no actuator and the game goes on the same, without vibration.
  */
 
-/** Un golpe de vibración. */
+/** A pulse of vibration. */
 export interface HapticPulse {
-  /** Cuánto aprieta, de 0 (nada) a 1 (todo lo que dé el mando). */
+  /** How hard it presses, from 0 (nothing) to 1 (everything the controller gives). */
   intensity: number
-  /** Cuánto dura, en milisegundos. */
+  /** How long it lasts, in milliseconds. */
   durationMs: number
 }
 
 /**
- * El golpe del acierto: seco y corto.
+ * The tap of a button of the immersive menu: just enough to notice that it has
+ * been activated.
  *
- * Corto a propósito. Una partida encadena hasta trece aciertos y el mando se
- * lleva pegado a la mano: alargarlo convertiría una racha en un zumbido
- * continuo, que deja de leerse como "otro palo" y empieza a molestar. Fuerte,
- * en cambio, sí: el golpe llega con el brazo en movimiento, que es cuando peor
- * se nota.
- */
-export const CATCH_PULSE: HapticPulse = { intensity: 0.7, durationMs: 45 }
-
-/**
- * El golpe del fallo: largo y blando, lo contrario del acierto.
- *
- * El sonido ya distingue acierto de fallo, así que la vibración tiene que
- * hacerlo también o dirá menos que él justo cuando el jugador la tiene por
- * única señal —mirando otro palo, o con el sonido quitado—. Se distinguen por
- * las dos cosas a la vez, como en el resto del juego: dura el triple y aprieta
- * la mitad, de modo que uno se siente como un golpe seco y el otro como un
- * lamento. Puede sonar en los dos mandos a la vez, y por eso conviene que sea
- * suave: no lo ha provocado ninguna de las dos manos.
- */
-export const MISS_PULSE: HapticPulse = { intensity: 0.35, durationMs: 140 }
-
-/**
- * El toque de un botón del menú inmersivo: lo justo para notar que se ha
- * activado.
- *
- * Los botones se pulsan **apuntando** con el rayo, así que la mano no toca
- * nada y no hay nada que confirme la pulsación salvo lo que cambie en la
- * escena, que a veces es un panel entero cambiando y a veces un palito que se
- * enciende al otro lado del menú. El más discreto de los tres golpes a
- * propósito: elegir trece palos son trece pulsaciones seguidas.
+ * The buttons are pressed **by pointing** with the ray, so the hand touches
+ * nothing and there is nothing to confirm the press except whatever changes in
+ * the scene, which is sometimes a whole panel changing and sometimes a little
+ * stick that lights up on the other side of the menu. Discreet on purpose:
+ * choosing thirteen sticks is thirteen presses in a row.
  */
 export const PRESS_PULSE: HapticPulse = { intensity: 0.25, durationMs: 18 }
 
-/** Lo único que se le pide al mando: dar un golpe. */
+/**
+ * From what moment of the fall a stick has been caught **in extremis**: 0 just
+ * released, 1 touching the ground (`stickFallProgress`, in time). It is the last fifth of the
+ * time, which with the stick accelerating is a little over a third of the distance: the stretch
+ * in which it gets away. TO BE CALIBRATED WITH THE HEADSET.
+ */
+export const IN_EXTREMIS = 0.8
+
+/**
+ * How much stronger the stick caught in extremis feels than any other one. It multiplies the
+ * intensity of the common `grab` (0.25 → 0.45): it has to feel different without becoming
+ * a strike. TO BE CALIBRATED WITH THE HEADSET.
+ */
+export const IN_EXTREMIS_BOOST = 1.8
+
+/** The contact of catching a stick, told from the hand that catches it. */
+export function catchHaptic(hand: HandSide): HapticEvent {
+  return { type: 'grab', hand }
+}
+
+/**
+ * The pulses of catching a stick with that hand, caught at that point of the fall.
+ *
+ * @param fallProgress how far the stick had fallen when it was caught, from 0 to 1.
+ */
+export function catchPulses(hand: HandSide, fallProgress: number): HandPulse[] {
+  const pulses = pulsesFor(catchHaptic(hand))
+  if (!(fallProgress >= IN_EXTREMIS)) return pulses
+  return pulses.map((p) => ({ ...p, intensity: Math.min(1, p.intensity * IN_EXTREMIS_BOOST) }))
+}
+
+/**
+ * The hand that produced a pointer event, if it is from a controller or from an XR hand.
+ *
+ * The mouse has no hand, and neither does a source without a side (`'none'`): neither of the
+ * two can be charged with a contact.
+ */
+export function eventHand(event: unknown): HandSide | null {
+  const handedness = inputSourceOf(event)?.handedness
+  return handedness === 'left' || handedness === 'right' ? handedness : null
+}
+
+/** The only thing asked of the controller: to give a pulse. */
 interface HapticActuator {
   pulse(value: number, duration: number): Promise<boolean>
 }
 
 /**
- * Lo único que se le pide a la sesión: quién tiene algo en la mano ahora mismo.
+ * The vibration motor of a controller, if there is one.
  *
- * `XRSession.inputSources` está vivo —los mandos entran y salen de la lista al
- * encenderse o dormirse—, así que se lee en el momento de vibrar y no se
- * guarda.
- */
-export interface HapticSession {
-  inputSources: Iterable<XRInputSource>
-}
-
-/**
- * El motor de vibración de un mando, si lo hay.
+ * The mouse and bare hands carry no controller, and a controller without a motor
+ * (or a browser that does not implement `pulse`) does not vibrate: the three cases
+ * are playing without vibration, not a failure.
  *
- * El ratón y las manos desnudas no llevan mando, y un mando sin motor (o un
- * navegador que no implemente `pulse`) no vibra: los tres casos son jugar sin
- * vibración, no un fallo.
- *
- * Se usa el primer actuador: los mandos de visor declaran uno, y cuando hay
- * varios el primero es el del cuerpo del mando.
+ * The first actuator is used: headset controllers declare one, and when there
+ * are several the first is the one of the controller's body.
  */
 function actuatorOf(inputSource: XRInputSource | undefined): HapticActuator | undefined {
   const actuator = inputSource?.gamepad?.hapticActuators?.[0]
@@ -96,11 +104,11 @@ function actuatorOf(inputSource: XRInputSource | undefined): HapticActuator | un
 }
 
 /**
- * El mando que ha disparado este evento, si lo hay.
+ * The controller that fired this event, if there is one.
  *
- * El evento llega de @pmndrs/pointer-events y trae en `pointerState` el estado
- * del puntero que lo produjo: para un mando de XR es su `XRControllerState`,
- * con el `inputSource` de WebXR dentro.
+ * The event arrives from @pmndrs/pointer-events and brings in `pointerState` the
+ * state of the pointer that produced it: for an XR controller it is its
+ * `XRControllerState`, with the WebXR `inputSource` inside.
  */
 function inputSourceOf(event: unknown): XRInputSource | undefined {
   if (typeof event !== 'object' || event == null) return undefined
@@ -109,26 +117,26 @@ function inputSourceOf(event: unknown): XRInputSource | undefined {
 }
 
 /**
- * ¿Lo devuelto por el mando es una promesa a la que agarrarse?
+ * Is what the controller returned a promise to hold on to?
  *
- * La especificación dice que `pulse()` devuelve una, pero eso es una promesa
- * del navegador, no una garantía: encadenarle el `catch` a ciegas convertiría
- * un mando que devuelva otra cosa en un error en plena captura.
+ * The specification says that `pulse()` returns one, but that is a promise
+ * of the browser, not a guarantee: chaining the `catch` to it blindly would turn
+ * a controller that returns something else into an error in the middle of a catch.
  */
 function isPromise(value: unknown): value is Promise<unknown> {
   return typeof (value as Promise<unknown> | undefined)?.catch === 'function'
 }
 
 /**
- * Le pide el golpe a un motor de vibración concreto.
+ * Asks a specific vibration motor for the pulse.
  *
- * Que el mando se niegue a vibrar es un desenlace previsto —el visor ha perdido
- * el foco, la sesión se está cerrando— y significa jugar sin vibración: el
- * destello y el sonido siguen ahí. Se recogen sus dos formas de negarse, porque
- * llegan por caminos distintos: la promesa rechazada (sin el `catch` sería un
- * rechazo suelto por cada palo atrapado) y la excepción en el acto, que subiría
- * por el manejador del agarre y sí se llevaría por delante lo que quede de la
- * captura.
+ * The controller refusing to vibrate is a foreseen outcome —the headset has lost
+ * focus, the session is closing— and means playing without vibration: the
+ * flash and the sound are still there. Its two ways of refusing are handled,
+ * because they arrive by different paths: the rejected promise (without the
+ * `catch` it would be a loose rejection for each stick caught) and the exception
+ * on the spot, which would go up through the grip handler and would indeed take
+ * down whatever is left of the catch.
  */
 function fire(actuator: HapticActuator, pulse: HapticPulse): boolean {
   try {
@@ -141,10 +149,10 @@ function fire(actuator: HapticActuator, pulse: HapticPulse): boolean {
 }
 
 /**
- * Hace vibrar el mando que ha disparado `event`.
+ * Makes the controller that fired `event` vibrate.
  *
- * @returns si el mando llegó a recibir el golpe. Con el ratón, con la mano
- *   desnuda o con un mando sin motor devuelve `false` y no ocurre nada.
+ * @returns whether the controller got to receive the pulse. With the mouse, with
+ *   the bare hand or with a controller without a motor it returns `false` and nothing happens.
  */
 export function pulseHaptics(event: unknown, pulse: HapticPulse): boolean {
   const actuator = actuatorOf(inputSourceOf(event))
@@ -152,27 +160,51 @@ export function pulseHaptics(event: unknown, pulse: HapticPulse): boolean {
   return fire(actuator, pulse)
 }
 
-/**
- * Hace vibrar todos los mandos de la sesión.
- *
- * Para lo que no ha provocado ninguna mano: el palo que se escapa toca el suelo
- * solo, sin evento de puntero del que sacar un mando, así que el aviso va a las
- * dos —además, no saber en cuál se habría notado es parte de lo que significa—.
- * Un mando que se niegue a vibrar no impide que el otro lo haga.
- *
- * @returns cuántos mandos recibieron el golpe. Fuera de sesión, con las manos
- *   desnudas o con mandos sin motor devuelve 0 y no ocurre nada.
- */
-export function pulseAllHaptics(
-  session: HapticSession | null | undefined,
-  pulse: HapticPulse,
-): number {
-  if (session == null) return 0
+/** How a pulse that goes out later is scheduled; `setTimeout` except in the tests. */
+export type Schedule = (run: () => void, ms: number) => () => void
 
-  let pulsed = 0
-  for (const inputSource of session.inputSources) {
-    const actuator = actuatorOf(inputSource)
-    if (actuator != null && fire(actuator, pulse)) pulsed++
+const withSetTimeout: Schedule = (run, ms) => {
+  const id = setTimeout(run, ms)
+  return () => clearTimeout(id)
+}
+
+/**
+ * Plays some pulses in the controllers of their hand.
+ *
+ * The ones that carry a `delay` are scheduled; the rest go out on the spot. It returns how to
+ * cancel the ones left pending, to call it on unmount: a pulse that went out afterwards
+ * would vibrate for something that is no longer there.
+ *
+ * @param sources the controllers among which to look for each hand's one: the session's, or only
+ *   the one that produced the event.
+ */
+export function playPulses(
+  sources: Iterable<XRInputSource | undefined>,
+  pulses: readonly HandPulse[],
+  schedule: Schedule = withSetTimeout,
+): () => void {
+  const list = [...sources]
+  const pending: (() => void)[] = []
+  for (const pulse of pulses) {
+    const actuator = actuatorOf(list.find((source) => source?.handedness === pulse.hand))
+    if (actuator == null) continue
+    const haptic = { intensity: pulse.intensity, durationMs: pulse.ms }
+    if (pulse.delay > 0) pending.push(schedule(() => fire(actuator, haptic), pulse.delay))
+    else fire(actuator, haptic)
   }
-  return pulsed
+  return () => {
+    for (const cancel of pending) cancel()
+  }
+}
+
+/**
+ * Makes their hand feel that it has caught a stick.
+ *
+ * @returns how to cancel whatever is left pending. With the mouse, the bare hand or a controller
+ *   without a motor nothing happens.
+ */
+export function pulseCatch(event: unknown, fallProgress: number): () => void {
+  const hand = eventHand(event)
+  if (hand == null) return () => {}
+  return playPulses([inputSourceOf(event)], catchPulses(hand, fallProgress))
 }

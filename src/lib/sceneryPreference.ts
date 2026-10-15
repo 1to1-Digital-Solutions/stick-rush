@@ -1,53 +1,54 @@
-import type { Scenery } from './ajustes'
-// Solo el tipo: se borra al compilar, así que no crea un ciclo real con el store aunque el
-// store importe de aquí.
+import type { Scenery } from './settings'
+// Only the type: it is erased on compiling, so it creates no real cycle with the store even
+// though the store imports from here.
 import type { SceneryMode } from './gameStore'
 
 /**
- * El escenario del arcade, traducido a como lo llama este juego.
+ * The hall's scenery, translated to what this game calls it.
  *
- * **La preferencia no es de este juego.** Se guarda en `xrcade:scenery`, con los valores del
- * arcade (`place` y `room`), y la regla de cuándo se quita el decorado es `showsPlace`: las dos
- * en `lib/ajustes.ts`, la copia del puente con el salón; el hook y el cambio están en
- * `lib/ajustesCliente.ts`. Stick Rush llama a lo mismo `scene` y `passthrough` en todo su
- * código —el store, el fundido, el selector del menú—, así que la traducción se hace aquí, en
- * el borde, y el resto del juego no se entera de que el valor viene de otro sitio.
+ * **The preference does not belong to this game.** It is stored in `xrcade:scenery`, with the
+ * hall's values (`place` and `room`), and the rule of when the scenery is removed is `showsPlace`:
+ * both in `lib/settings.ts`, the copy of the bridge with the hall; the hook and the change are in
+ * `lib/settingsClient.ts`. Stick Rush calls the same thing `scene` and `passthrough` in all its
+ * code —the store, the fade, the menu's selector—, so the translation is done here, at
+ * the edge, and the rest of the game does not find out that the value comes from elsewhere.
  *
- * **Por qué no tiene uno propio.** El salón entra siempre en `immersive-ar` cuando el visor la
- * tiene, así que el tipo de sesión no dice qué eligió quien juega. Con un escenario por juego,
- * quien eligiera «passthrough» en esta cabina entraría sin plaza aunque en el salón hubiera
- * elegido el sitio dibujado, y no habría forma de saber cuál de las dos manda.
+ * **Why it has none of its own.** The hall always enters `immersive-ar` when the headset has
+ * it, so the session type does not say what whoever plays chose. With one scenery per game,
+ * whoever chose «passthrough» in this cabinet would come in with no square even if in the hall
+ * they had chosen the drawn place, and there would be no way of knowing which of the two rules.
  */
 
-/** Cómo llama este juego al escenario del arcade: `place` es la plaza, `room` la habitación. */
+/** What this game calls the hall's scenery: `place` is the square, `room` the room. */
 export function sceneryModeOf(scenery: Scenery): SceneryMode {
   return scenery === 'room' ? 'passthrough' : 'scene'
 }
 
-/** Lo que se escribe en el arcade cuando se elige desde este juego. */
+/** What is written in the hall when it is chosen from this game. */
 export function sceneryOf(mode: SceneryMode): Scenery {
   return mode === 'passthrough' ? 'room' : 'place'
 }
 
 /**
- * La clave del escenario propio del juego, que no escribe nadie.
+ * The key of the game's own scenery, which nobody writes.
  *
- * Si está en el navegador, se borra al montar el estado de la partida y **no se traslada** a la
- * del arcade: la elección que manda es la del salón. Dejarla no rompería nada —no la lee nadie—,
- * pero borrarla evita que quien mire el almacenamiento crea que hay dos preferencias.
+ * If it is in the browser, it is erased when the run's state is mounted and **it is not carried
+ * over** to the hall's: the choice that rules is the hall's. Leaving it would break nothing
+ * —nobody reads it—, but erasing it keeps whoever looks at the storage from believing there are
+ * two preferences.
  */
 export const OWN_SCENERY_KEY = 'stick-rush:scenery'
 
 /**
- * Olvida el escenario propio del juego.
+ * Forgets the game's own scenery.
  *
- * Aguanta un almacenamiento que no está o que lanza: no hay nada que olvidar, y el juego sigue
- * con el del arcade.
+ * It withstands a storage that is not there or that throws: there is nothing to forget, and the
+ * game carries on with the hall's.
  */
 export function forgetOwnScenery(storage: Pick<Storage, 'removeItem'> | null): void {
   try {
     storage?.removeItem(OWN_SCENERY_KEY)
   } catch {
-    // Almacenamiento capado: tampoco se pudo guardar nada en esa clave.
+    // Storage cut off: nothing could be stored under that key either.
   }
 }

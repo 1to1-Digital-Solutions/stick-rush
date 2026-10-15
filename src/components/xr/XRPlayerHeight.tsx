@@ -4,48 +4,48 @@ import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useXR } from '@react-three/xr'
 import { Vector3 } from 'three'
-import { usePlayHeight } from '../../lib/ajustesCliente'
+import { usePlayHeight } from '../../lib/settingsClient'
 import { useGame } from '../../lib/gameStore'
 import { hasFloorReference, headsetEyeHeight } from '../../lib/hoopHeight'
 import { followRatio } from '../../lib/xrAnchor'
 
 /**
- * Mide a qué altura tiene la cabeza quien lleva el visor, para que el aro se
- * ponga a su alcance (ver `@/lib/hoopHeight`).
+ * Measures at what height whoever wears the headset has their head, so that the hoop is
+ * put within their reach (see `@/lib/hoopHeight`).
  *
- * **Solo mientras se elige la partida.** Con los palos cayendo, un aro que
- * persiguiera la cabeza subiría al ponerse de puntillas y bajaría al agacharse
- * a por un palo, justo cuando el jugador está calculando dónde va a estar. La
- * altura se toma en el menú y se queda quieta hasta el siguiente.
+ * **Only while the run is being chosen.** With the sticks falling, a hoop that
+ * chased the head would rise on standing on tiptoe and drop on crouching
+ * for a stick, just when the player is working out where it is going to be. The
+ * height is taken in the menu and stays still until the next one.
  *
- * **Suavizado y con umbral.** La cabeza no para de moverse; sin filtro, el aro
- * temblaría con la respiración, y sin umbral cada milímetro repintaría la
- * máquina entera. Se sigue la medida despacio y solo se avisa al juego cuando
- * el cambio se nota.
+ * **Smoothed and with a threshold.** The head never stops moving; without a filter, the hoop
+ * would tremble with the breathing, and without a threshold every millimetre would repaint the
+ * whole machine. The measurement is followed slowly and the game is only told when
+ * the change is noticeable.
  *
- * Debe montarse dentro de <XR> para poder leer el estado de la sesión.
+ * It must be mounted inside <XR> to be able to read the session's state.
  */
 export function XRPlayerHeight() {
   const mode = useXR((state) => state.mode)
-  // Solo un espacio de referencia con suelo permite saber la estatura: en uno
-  // `local` la cabeza nace en el cero y su cota no mide desde el suelo. Se mira
-  // la sesión y no `useXRSessionFeatureEnabled`, que da por no habilitado lo
-  // que el navegador simplemente no publica (ver `hasFloorReference`).
+  // Only a reference space with a floor lets the height be known: in a
+  // `local` one the head is born at zero and its height does not measure from the floor. The
+  // session is looked at and not `useXRSessionFeatureEnabled`, which takes as not enabled what
+  // the browser simply does not publish (see `hasFloorReference`).
   const floorLevel = useXR((state) =>
     hasFloorReference(state.session?.enabledFeatures),
   )
   const { gameState, setPlayerEyeHeight } = useGame()
-  // Con el mundo entero bajando hasta el jugador (ver `XRWorldHeight`), el aro
-  // ya viene con él: seguir además su estatura lo bajaría dos veces y acabaría
-  // por debajo de las manos. Ahí el aro se queda en su cota de diseño y es el
-  // decorado el que se acerca — la corrección manual del menú sigue valiendo.
-  const aLaAlturaDeLosOjos = usePlayHeight() === 'eyes'
+  // With the whole world coming down to the player (see `XRWorldHeight`), the hoop
+  // already comes with it: following their height as well would lower it twice and it would end up
+  // below the hands. There the hoop stays at its design height and it is the
+  // scenery that comes closer — the menu's manual correction still applies.
+  const atEyeHeight = usePlayHeight() === 'eyes'
 
   const smoothed = useRef<number | null>(null)
   const reported = useRef<number | null>(null)
 
-  // Fuera de la sesión no hay a quién medir: el aro vuelve a su altura de
-  // referencia y la próxima sesión empieza a medir de cero.
+  // Outside the session there is nobody to measure: the hoop goes back to its reference
+  // height and the next session starts measuring from scratch.
   useEffect(() => {
     if (mode != null) return
     smoothed.current = null
@@ -56,8 +56,8 @@ export function XRPlayerHeight() {
   useFrame((state, delta) => {
     if (mode == null || gameState !== 'menu') return
 
-    // El mundo ya se acerca solo: el aro se queda donde se dibujó.
-    if (aLaAlturaDeLosOjos) {
+    // The world already comes closer by itself: the hoop stays where it was drawn.
+    if (atEyeHeight) {
       if (reported.current !== null) {
         reported.current = null
         setPlayerEyeHeight(null)
@@ -69,9 +69,9 @@ export function XRPlayerHeight() {
     const measured = headsetEyeHeight(headPosition.y, floorLevel)
     if (measured == null) return
 
-    // La primera medida entra entera —el aro tiene que estar colocado antes de
-    // que el jugador mire—; a partir de ahí se persigue despacio, con la misma
-    // interpolación independiente del framerate que usa el anclaje.
+    // The first measurement goes in whole —the hoop has to be in place before
+    // the player looks—; from then on it is chased slowly, with the same
+    // framerate-independent interpolation the anchor uses.
     smoothed.current =
       smoothed.current == null
         ? measured
@@ -91,16 +91,16 @@ export function XRPlayerHeight() {
   return null
 }
 
-/** Cuánto tiene que cambiar la medida para mover el aro, en metros. */
+/** How much the measurement has to change to move the hoop, in metres. */
 const REPORT_THRESHOLD = 0.02
 
 /**
- * Cuánto tarda la medida en seguir a la cabeza, como constante de tiempo
- * exponencial (1/s). Bastante más lenta que el anclaje de la interfaz: aquí no
- * se persigue un giro sino una estatura, que no cambia.
+ * How long the measurement takes to follow the head, as an exponential time
+ * constant (1/s). Quite a lot slower than the UI's anchor: here it is not
+ * a turn that is chased but a height, which does not change.
  */
 const SMOOTHING_SPEED = 1.2
 
-// Reutilizado entre frames: crear un vector dentro de useFrame genera basura en
-// cada uno de los 90 fotogramas por segundo del visor.
+// Reused between frames: creating a vector inside useFrame generates garbage in
+// each of the headset's 90 frames per second.
 const headPosition = new Vector3()

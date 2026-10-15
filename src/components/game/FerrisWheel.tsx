@@ -26,38 +26,38 @@ import {
 } from './FairPieces'
 
 /**
- * Noria al fondo del recinto.
+ * Ferris wheel at the back of the venue.
  *
- * Es lo que da profundidad al escenario: algo grande, lejano y en movimiento
- * que el HDRI no puede aportar, porque una foto de fondo no cambia al mover la
- * cabeza. Gira despacio —una vuelta larga— para que se note que está viva sin
- * llamar la atención mientras caen los palos.
+ * It is what gives depth to the scenery: something big, far away and moving
+ * that the HDRI cannot provide, because a background photo does not change on moving the
+ * head. It turns slowly —one long turn— so that it is noticed to be alive without
+ * drawing attention while the sticks fall.
  *
- * La rueda gira en su plano XY local y el conjunto encara al jugador, así que
- * se ve de frente y no de canto.
+ * The wheel turns in its local XY plane and the whole faces the player, so
+ * it is seen from the front and not edge-on.
  */
 
-/** Separación entre los dos aros de la rueda. */
+/** Gap between the two rings of the wheel. */
 const RIM_GAP = 1.3
 /**
- * Grosor del aro, de los radios y de las bombillas. Van generosos a propósito:
- * a doce metros, una rueda de tubos finos se deshace en una maraña de líneas
- * que apenas se distingue del edificio que tiene detrás.
+ * Thickness of the ring, of the spokes and of the bulbs. They are generous on purpose:
+ * at twelve metres, a wheel of thin tubes falls apart into a tangle of lines
+ * that is barely told apart from the building behind it.
  */
 const RIM_TUBE = 0.12
 const SPOKE_THICKNESS = 0.11
 const BULB_RADIUS = 0.14
 
-/** Alto del pie, del suelo al eje. */
+/** Height of the leg, from the ground to the axle. */
 const LEG_HEIGHT = WHEEL_CENTER[1] - GROUND_Y
-/** Cuánto se abre cada pie hacia delante y hacia atrás. */
+/** How much each leg opens forwards and backwards. */
 const LEG_SPREAD = 3.2
 
 /**
- * Lo que gasta la noria del presupuesto de instancias (ver `PieceCounts`). Los
- * tres postes fijos son los dos pies y el eje; por cabina van un radio y la
- * horquilla de la que cuelga, la góndola, y una bombilla en cada aro. Los aros
- * no cuentan: son mallas sueltas, no instancias.
+ * What the Ferris wheel spends of the instance budget (see `PieceCounts`). The
+ * three fixed poles are the two legs and the axle; per cabin there go a spoke and the
+ * hanger it hangs from, the gondola, and a bulb on each ring. The rings
+ * do not count: they are loose meshes, not instances.
  */
 export const WHEEL_PIECES: PieceCounts = {
   boards: WHEEL_CABIN_COUNT,
@@ -66,9 +66,9 @@ export const WHEEL_PIECES: PieceCounts = {
 }
 
 /**
- * Cabina colgada del aro: la horquilla y la góndola, las dos por debajo del
- * punto del que cuelgan. El grupo que las contiene deshace el giro de la rueda,
- * así que caen a plomo den la vuelta que den.
+ * Cabin hung from the ring: the hanger and the gondola, both below the
+ * point they hang from. The group that contains them undoes the turn of the wheel,
+ * so they hang plumb however far round they go.
  */
 function Cabin({ color }: { color: string }) {
   const hangerLength = WHEEL_CABIN_DROP - WHEEL_CABIN_HEIGHT / 2
@@ -94,7 +94,7 @@ export function FerrisWheel({ spinning }: { spinning: boolean }) {
   const cabinRefs = useRef<Group[]>([])
   const angle = useRef(0)
 
-  // Un radio y una cabina por hueco, repartidos por toda la vuelta.
+  // One spoke and one cabin per slot, spread over the whole turn.
   const spokes = useMemo(
     () =>
       Array.from({ length: WHEEL_CABIN_COUNT }, (_, index) => {
@@ -112,8 +112,8 @@ export function FerrisWheel({ spinning }: { spinning: boolean }) {
     if (!spinning || wheelRef.current == null) return
     angle.current += delta * WHEEL_SPEED
     wheelRef.current.rotation.z = angle.current
-    // Las cabinas van montadas en la rueda, así que girarían con ella y
-    // acabarían boca abajo: cada una deshace el giro y se queda a plomo.
+    // The cabins are mounted on the wheel, so they would turn with it and
+    // end up upside down: each one undoes the turn and stays plumb.
     for (const cabin of cabinRefs.current) cabin.rotation.z = -angle.current
   })
 
@@ -122,7 +122,7 @@ export function FerrisWheel({ spinning }: { spinning: boolean }) {
 
   return (
     <group position={WHEEL_CENTER} rotation={[0, facingRotationY(WHEEL_CENTER), 0]}>
-      {/* Pies abiertos hacia delante y hacia atrás, fuera del plano de la rueda */}
+      {/* Legs open forwards and backwards, out of the plane of the wheel */}
       {[-1, 1].map((side) => (
         <Pole
           key={`leg-${side}`}
@@ -156,7 +156,7 @@ export function FerrisWheel({ spinning }: { spinning: boolean }) {
 
         {spokes.map((spoke, index) => (
           <group key={`spoke-${index}`}>
-            {/* El radio nace vertical: se gira hasta apuntar a su hueco del aro. */}
+            {/* The spoke is born vertical: it is turned until it points at its slot of the ring. */}
             <Pole
               position={[
                 (spoke.direction[0] * WHEEL_RADIUS) / 2,
@@ -167,7 +167,7 @@ export function FerrisWheel({ spinning }: { spinning: boolean }) {
               scale={[SPOKE_THICKNESS, WHEEL_RADIUS, SPOKE_THICKNESS]}
               color={MACHINE_TRUSS_COLOR}
             />
-            {/* Una bombilla en cada aro, para que el contorno se vea de noche */}
+            {/* A bulb on each ring, so that the outline is seen at night */}
             {[-1, 1].map((side) => (
               <Bulb
                 key={`rim-bulb-${side}`}

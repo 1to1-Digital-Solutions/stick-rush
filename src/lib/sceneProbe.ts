@@ -1,52 +1,52 @@
 /**
- * Dónde está cada palo, para quien mire desde fuera del Canvas.
+ * Where each stick is, for whoever looks from outside the Canvas.
  *
- * Los palos son objetos de three: desde el DOM no hay forma de seleccionarlos,
- * ni de saber cuál está cayendo, ni a qué altura va. Un test de navegador que
- * quiera comprobar que un palo se atrapa **con la mano desnuda** solo podría
- * mover la mano al azar y esperar a acertar, que depende de la suerte y de la
- * máquina donde corra. Y el agarre con la mano no deja rastro en el DOM: no hay
- * botón que pulsar ni foco que seguir, solo un puntero de la librería tocando
- * un cilindro.
+ * The sticks are three objects: from the DOM there is no way of selecting them,
+ * nor of knowing which one is falling, nor at what height it is. A browser test that
+ * wants to check that a stick is caught **with the bare hand** could only
+ * move the hand at random and hope to hit, which depends on luck and on the
+ * machine where it runs. And the grab with the hand leaves no trace in the DOM: there is no
+ * button to press nor focus to follow, only a pointer of the library touching
+ * a cylinder.
  *
- * Esto lo evita publicando dónde están los palos, pero **solo si alguien lo ha
- * pedido**: la escena escribe en `window.__stickRushSticks` si esa propiedad ya
- * existe, y si no existe no hace nada. Ningún navegador la trae de serie, así
- * que quien no la cree —o sea, todo el mundo menos los tests— paga una
- * comprobación por fotograma y nada más.
+ * This avoids it by publishing where the sticks are, but **only if someone has
+ * asked for it**: the scene writes to `window.__stickRushSticks` if that property already
+ * exists, and if it does not exist it does nothing. No browser ships with it, so
+ * whoever does not create it —that is, everybody except the tests— pays one
+ * check per frame and nothing more.
  */
 
-/** Un palo y dónde está, en metros del mundo. */
+/** A stick and where it is, in metres of the world. */
 export interface StickProbe {
   x: number
   y: number
   z: number
-  /** Si ahora mismo se puede coger (ver `canCatchStick`). */
+  /** Whether it can be caught right now (see `canCatchStick`). */
   catchable: boolean
 }
 
 declare global {
   interface Window {
     /**
-     * Los palos vivos, por su clave de partida, un fotograma por detrás.
+     * The live sticks, by their run key, one frame behind.
      *
-     * `undefined` significa que nadie lo ha pedido y la escena no publica nada.
-     * Un objeto vacío significa que sí se ha pedido y ahora mismo no hay palos:
-     * en el menú no hay nada colgando.
+     * `undefined` means that nobody has asked for it and the scene publishes nothing.
+     * An empty object means that it has been asked for and right now there are no sticks:
+     * in the menu there is nothing hanging.
      */
     __stickRushSticks?: Record<string, StickProbe>
   }
 }
 
-/** ¿Hay alguien mirando? */
+/** Is anyone looking? */
 export function stickProbeRequested(): boolean {
   return typeof window !== 'undefined' && '__stickRushSticks' in window
 }
 
 /**
- * Publica dónde está un palo, si alguien lo había pedido. Con `null` se borra,
- * que es lo que hace un palo al desmontarse: dejar su clave puesta haría creer
- * a quien mire que sigue habiendo un palo ahí, quieto para siempre.
+ * Publishes where a stick is, if someone had asked for it. With `null` it is erased,
+ * which is what a stick does on unmounting: leaving its key in place would make
+ * whoever looks believe that there is still a stick there, still forever.
  */
 export function publishStick(id: string, probe: StickProbe | null): void {
   if (!stickProbeRequested()) return

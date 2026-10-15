@@ -2,91 +2,99 @@ import { MACHINE_HEIGHT, STICK_FALL_DISTANCE, STICK_MISS_Y } from './gameConfig'
 import { gameStorage } from './storage'
 
 /**
- * A qué altura queda el aro para quien está jugando.
+ * At what height the hoop ends up for whoever is playing.
  *
- * **El problema que resuelve.** `MACHINE_HEIGHT` es una cota fija, elegida para
- * una persona de pie de estatura media. De pie está bien; sentado, o con
- * alguien más bajo, el mismo aro queda por encima de la cabeza y los palos
- * pasan fuera del alcance del brazo. El juego se vuelve injugable sin que nada
- * falle.
+ * **The problem it solves.** `MACHINE_HEIGHT` is a fixed height, chosen for
+ * a standing person of average stature. Standing it is fine; seated, or with
+ * someone shorter, the same hoop ends up above the head and the sticks
+ * pass out of the arm's reach. The game becomes unplayable without anything
+ * failing.
  *
- * **Cómo se resuelve.** La altura sale de la del visor: el aro se planta
- * `HOOP_RISE_ABOVE_EYES` por encima de los ojos, que es la relación con la que
- * se diseñó la máquina. Encima hay una corrección manual, porque el dato del
- * visor no siempre está disponible ni siempre acierta: quien juega sentado en
- * un sofá con el espacio calibrado de pie necesita bajarlo a mano.
+ * **How it is solved.** The height comes from the headset's: the hoop is planted
+ * `HOOP_RISE_ABOVE_EYES` above the eyes, which is the relation the machine was
+ * designed with. On top there is a manual correction, because the headset's
+ * data is not always available nor always right: whoever plays seated on
+ * a sofa with the space calibrated standing needs to lower it by hand.
  *
- * **El dato del visor solo vale con el suelo puesto.** WebXR entrega la pose de
- * la cabeza dentro de un espacio de referencia, y solo los de tipo `*-floor`
- * tienen el origen en el suelo: en un `local` la cabeza nace en el cero y su
- * cota no dice nada de la estatura. Por eso `headsetEyeHeight` exige que la
- * sesión traiga `local-floor`; cuando no lo trae no se inventa nada y el ajuste
- * manual se queda como única forma de acomodar el aro.
+ * **The headset's data is only valid with the floor in place.** WebXR delivers the pose of
+ * the head inside a reference space, and only those of type `*-floor`
+ * have the origin on the floor: in a `local` one the head is born at zero and its
+ * height says nothing about the stature. That is why `headsetEyeHeight` demands that the
+ * session brings `local-floor`; when it does not, nothing is made up and the manual
+ * adjustment stays as the only way to accommodate the hoop.
  *
- * Los dos límites del enunciado —ni inalcanzable, ni dentro del suelo— se
- * sostienen con dos vallas distintas: el ajuste manual está acotado **respecto
- * a quien juega** (`HOOP_ADJUST_RANGE`, lo que separa el aro del brazo), y por
- * encima hay un tope absoluto (`HOOP_MIN_HEIGHT`/`HOOP_MAX_HEIGHT`) por si el
- * dato de partida es disparatado.
+ * The two limits of the statement —neither unreachable, nor inside the floor— are
+ * held up with two different fences: the manual adjustment is bounded **relative
+ * to whoever plays** (`HOOP_ADJUST_RANGE`, what separates the hoop from the arm), and
+ * above it there is an absolute cap (`HOOP_MIN_HEIGHT`/`HOOP_MAX_HEIGHT`) in case the
+ * starting data is absurd.
  *
- * Aquí solo vive la aritmética, sin three.js ni React, para poder probar el
- * comportamiento sin navegador ni visor.
+ * Only the arithmetic lives here, with no three.js nor React, to be able to test the
+ * behaviour with no browser nor headset.
  */
 
 /**
- * Altura de ojos de la persona con la que se diseñó la escena: una de pie, de
- * estatura media. Para ella se eligieron `MACHINE_HEIGHT` y las cotas de la
- * interfaz inmersiva (`@/lib/xrLayout`), así que las dos cuelgan de aquí. Sin
- * dato del visor, todo se queda donde ha estado siempre.
+ * Eye height of the person the scene was designed with: a standing one, of
+ * average stature. `MACHINE_HEIGHT` and the heights of the immersive
+ * ui (`@/lib/xrLayout`) were chosen for them, so both hang from here. With no
+ * data from the headset, everything stays where it has always been.
  */
 export const REFERENCE_EYE_HEIGHT = 1.6
 
 /**
- * Cuánto queda el aro por encima de los ojos. Es la relación que hace jugable la
- * máquina —los palos cuelgan hasta la altura del pecho, que es donde la mano
- * llega cómoda—, así que es lo que se conserva al cambiar de jugador.
+ * How far the hoop ends up above the eyes in the headset. It is the relation that makes the
+ * machine playable —the sticks hang above the chest and fall through it, which is where the
+ * hand reaches comfortably—, so it is what is kept when the player changes.
+ *
+ * **It was `MACHINE_HEIGHT − REFERENCE_EYE_HEIGHT` (35 cm) and it has been raised to 50** (with
+ * the headset: «the machine higher»). It no longer comes from the desktop height: with 35 cm
+ * the sticks hung at face height; with 50 they hang above and come down to the hand. The
+ * desktop stays at `MACHINE_HEIGHT`, which is what its camera sees. The longer travel
+ * does not change the difficulty: the speed is scaled with it (`hoopFallSpeed`).
+ *
+ * TO BE CALIBRATED WITH THE HEADSET.
  */
-export const HOOP_RISE_ABOVE_EYES = MACHINE_HEIGHT - REFERENCE_EYE_HEIGHT
+export const HOOP_RISE_ABOVE_EYES = 0.5
 
 /**
- * Alturas de ojos que se aceptan como las de una persona, en metros: desde
- * sentado en el suelo hasta alguien muy alto de pie. Fuera de ahí la medida no
- * es una estatura sino un espacio de referencia mal entendido (o un visor sobre
- * la mesa), y se descarta.
+ * Eye heights that are accepted as those of a person, in metres: from
+ * seated on the floor to someone very tall standing. Outside of that the measurement is
+ * not a stature but a misunderstood reference space (or a headset on
+ * the table), and it is discarded.
  *
- * **Las mismas que en los otros doce.** El tope estaba en 2,0, que son los ojos de alguien
- * de 2,15: existe, y en este juego se le dejaba sin corregir la altura mientras en los demás
- * sí. Cada repo escribe estas cifras donde quiere —aquí, en `uiHeight.ts`, dentro de
- * `xrLayout.ts`— así que no las comparaba nadie; ahora sí, en `scripts/repos/comunes.py`.
+ * **The same as in the other twelve.** The cap was at 2.0, which are the eyes of someone
+ * 2.15 tall: they exist, and in this game their height was left uncorrected while in the others
+ * it was not. Each repo writes these figures wherever it wants —here, in `uiHeight.ts`, inside
+ * `xrLayout.ts`— so nobody compared them; now somebody does, in `scripts/repos/comunes.py`.
  */
 export const MIN_EYE_HEIGHT = 0.9
 export const MAX_EYE_HEIGHT = 2.2
 
 /**
- * Cuánto se puede corregir la altura a mano, arriba o abajo, en metros.
+ * How much the height can be corrected by hand, up or down, in metres.
  *
- * No es un número redondo elegido a ojo: lo manda el brazo. Los palos cuelgan a
- * unos 60 cm del jugador en horizontal y el alcance cómodo son 75, así que
- * queda algo menos de 26 cm de margen vertical antes de que el aro se salga de
- * lo que se toca sin moverse del sitio (`hoopHeight.test.ts` lo comprueba palo a
- * palo). Hacia abajo el límite es el mismo por simetría, y deja el aro 15 cm
- * sobre los ojos: justo por encima de la cabeza, que es donde tiene que estar.
+ * It is not a round number chosen by eye: the arm dictates it. The sticks hang
+ * some 60 cm from the player horizontally and the comfortable reach is 75, so
+ * there is a little under 26 cm of vertical margin left before the hoop leaves
+ * what can be touched without moving from the spot (`hoopHeight.test.ts` checks it stick by
+ * stick). Downwards the limit is the same by symmetry, and it leaves the hoop 15 cm
+ * above the eyes: just above the head, which is where it has to be.
  */
 export const HOOP_ADJUST_RANGE = 0.2
 
-/** Cuánto sube o baja el aro por cada toque, en metros. */
+/** How much the hoop goes up or down with each tap, in metres. */
 export const HOOP_ADJUST_STEP = 0.05
 
 /**
- * Topes absolutos, en metros. Son la última valla, no el ajuste: con un dato de
- * partida razonable nunca llegan a morder. Están para que ninguna medida
- * disparatada acabe metiendo el aro en el suelo —los palos necesitan recorrido
- * para caer— ni colgándolo del techo.
+ * Absolute caps, in metres. They are the last fence, not the adjustment: with reasonable
+ * starting data they never get to bite. They are there so that no absurd
+ * measurement ends up putting the hoop into the floor —the sticks need travel
+ * to fall— nor hanging it from the ceiling.
  */
 export const HOOP_MIN_HEIGHT = 1.05
 export const HOOP_MAX_HEIGHT = 2.6
 
-/** ¿Puede esa medida ser la altura de ojos de una persona? */
+/** Can that measurement be the eye height of a person? */
 export function isPlausibleEyeHeight(
   value: number | null | undefined,
 ): value is number {
@@ -99,34 +107,34 @@ export function isPlausibleEyeHeight(
 }
 
 /**
- * Altura de ojos que entrega el visor, o `null` si no hay dato en el que
- * apoyarse.
+ * Eye height the headset delivers, or `null` if there is no data to
+ * lean on.
  *
- * @param cameraY    cota de la cabeza sobre el origen de la sesión, en metros
- * @param floorLevel si ese origen está en el suelo (espacio `*-floor`)
+ * @param cameraY    height of the head above the session's origin, in metres
+ * @param floorLevel whether that origin is on the floor (`*-floor` space)
  */
 export function headsetEyeHeight(
   cameraY: number,
   floorLevel: boolean,
 ): number | null {
-  // Sin suelo el origen es el punto donde arrancó la sesión, y la cota de la
-  // cabeza mide desde ahí: no es una estatura y no se puede usar como tal.
+  // With no floor the origin is the point where the session started, and the height of
+  // the head measures from there: it is not a stature and cannot be used as one.
   if (!floorLevel) return null
   return isPlausibleEyeHeight(cameraY) ? cameraY : null
 }
 
 /**
- * ¿Tiene esta sesión el origen en el suelo, a la vista de las prestaciones que
- * dice haber habilitado?
+ * Does this session have the origin on the floor, in view of the features it
+ * says it has enabled?
  *
- * `local-floor` se pide como **requerida** al abrir la sesión (lo hace
- * @react-three/xr, ver `xrStore.ts`), así que una sesión viva la tiene por
- * fuerza: sin ella el visor habría rechazado abrirla. Pero `enabledFeatures` es
- * opcional en la especificación y hay navegadores que no la publican, y ahí
- * exigirla equivale a renunciar a medir al jugador en visores donde el dato es
- * perfectamente bueno. Cuando la lista falta se da por buena, que es lo que la
- * sesión garantiza; y si aun así el espacio no fuera de suelo, la cota nacería
- * cerca del cero y `isPlausibleEyeHeight` la descartaría igual.
+ * `local-floor` is requested as **required** when the session opens (it is done by
+ * @react-three/xr, see `xrStore.ts`), so a live session has it
+ * necessarily: without it the headset would have refused to open it. But `enabledFeatures` is
+ * optional in the specification and there are browsers that do not publish it, and there
+ * demanding it amounts to giving up measuring the player in headsets where the data is
+ * perfectly good. When the list is missing it is taken as good, which is what the
+ * session guarantees; and if even so the space were not a floor one, the height would be born
+ * near zero and `isPlausibleEyeHeight` would discard it anyway.
  */
 export function hasFloorReference(
   enabledFeatures: readonly string[] | null | undefined,
@@ -138,39 +146,46 @@ export function hasFloorReference(
   )
 }
 
-/** Deja la corrección manual dentro de lo que se permite mover el aro. */
+/** Keeps the manual correction inside what the hoop is allowed to move. */
 export function clampHoopAdjustment(value: number): number {
   if (!Number.isFinite(value)) return 0
   return Math.min(HOOP_ADJUST_RANGE, Math.max(-HOOP_ADJUST_RANGE, value))
 }
 
 export type HoopHeightInput = {
-  /** Lo que dice el visor, o `null`/`undefined` si no lo dice. */
+  /** What the headset says, or `null`/`undefined` if it does not say it. */
   eyeHeight?: number | null
-  /** Corrección manual, en metros. */
+  /** Manual correction, in metres. */
   adjustment?: number
 }
 
-/** Altura del aro para quien está jugando, en metros. */
+/**
+ * Height of the hoop for whoever is playing, in metres.
+ *
+ * With the headset's height, `HOOP_RISE_ABOVE_EYES` above the eyes; without it —desktop, or a
+ * headset that does not say where the floor is—, the nominal height `MACHINE_HEIGHT`. In both
+ * cases with the manual correction on top.
+ */
 export function hoopHeightFor({
   eyeHeight,
   adjustment = 0,
 }: HoopHeightInput): number {
-  const eyes = isPlausibleEyeHeight(eyeHeight)
-    ? eyeHeight
-    : REFERENCE_EYE_HEIGHT
-  const height = eyes + HOOP_RISE_ABOVE_EYES + clampHoopAdjustment(adjustment)
+  const base = isPlausibleEyeHeight(eyeHeight)
+    ? eyeHeight + HOOP_RISE_ABOVE_EYES
+    : MACHINE_HEIGHT
+  const height = base + clampHoopAdjustment(adjustment)
   return Math.min(HOOP_MAX_HEIGHT, Math.max(HOOP_MIN_HEIGHT, height))
 }
 
 /**
- * Velocidad de caída corregida para la altura del aro.
+ * Average fall speed corrected for the height of the hoop (the stick's
+ * acceleration comes from it, see `fallAcceleration`).
  *
- * Subir el aro alarga el recorrido hasta el suelo, así que a velocidad fija el
- * palo tardaría más en llegar y cada estatura jugaría una dificultad distinta.
- * Se escala con el recorrido para que Fácil dure lo mismo para todo el mundo:
- * acomodar el aro es ergonomía, no una ventaja. Es también lo que mantiene
- * válidos los tiempos que vigila `gameConfig.test.ts`.
+ * Raising the hoop lengthens the travel down to the floor, so with the same
+ * average speed the stick would take longer to arrive and each stature would play a different difficulty.
+ * It is scaled with the travel so that Easy lasts the same for everybody:
+ * accommodating the hoop is ergonomics, not an advantage. It is also what keeps
+ * the times `gameConfig.test.ts` watches valid.
  */
 export function hoopFallSpeed(speed: number, hoopHeight: number): number {
   const distance = hoopHeight - STICK_MISS_Y
@@ -179,36 +194,36 @@ export function hoopFallSpeed(speed: number, hoopHeight: number): number {
 }
 
 /**
- * Dónde se guarda la corrección manual. Con prefijo, como el récord, para no
- * chocar con nada más del mismo origen.
+ * Where the manual correction is stored. With a prefix, like the record, so as not
+ * to clash with anything else of the same origin.
  */
 export const HOOP_ADJUST_KEY = 'stick-rush:hoop-adjust'
 
 /**
- * Interpreta lo leído del almacenamiento.
+ * Interprets what was read from storage.
  *
- * Es entrada externa —cualquiera puede editarla desde las herramientas del
- * navegador—, así que se acota igual que si viniera del menú: lo que no se
- * entienda cuenta como "sin corrección" en vez de propagar un `NaN` a la
- * geometría de la escena.
+ * It is external input —anyone can edit it from the browser's
+ * tools—, so it is bounded the same as if it came from the menu: whatever is not
+ * understood counts as "no correction" instead of propagating a `NaN` to the
+ * scene's geometry.
  */
 export function parseHoopAdjustment(raw: string | null): number {
   if (raw == null || raw.trim() === '') return 0
   return clampHoopAdjustment(Number(raw))
 }
 
-/** Corrección guardada, o 0 si no hay ninguna legible. */
+/** Stored correction, or 0 if there is no readable one. */
 export function readHoopAdjustment(storage: Storage | null): number {
   if (!storage) return 0
   try {
     return parseHoopAdjustment(storage.getItem(HOOP_ADJUST_KEY))
   } catch {
-    // Almacenamiento bloqueado: se juega con el aro donde lo deje el visor.
+    // Storage blocked: the game is played with the hoop where the headset leaves it.
     return 0
   }
 }
 
-/** Guarda la corrección, ya acotada, para la próxima partida y la próxima visita. */
+/** Stores the correction, already bounded, for the next run and the next visit. */
 export function writeHoopAdjustment(
   storage: Storage | null,
   value: number,
@@ -217,18 +232,18 @@ export function writeHoopAdjustment(
   try {
     storage.setItem(HOOP_ADJUST_KEY, String(clampHoopAdjustment(value)))
   } catch {
-    // Cuota agotada o escritura prohibida: el aro se queda donde está durante
-    // esta visita, y la siguiente vuelve a empezar. No es motivo para
-    // interrumpir el juego con un aviso.
+    // Quota exhausted or writing forbidden: the hoop stays where it is during
+    // this visit, and the next one starts over. It is no reason to
+    // interrupt the game with a notice.
   }
 }
 
-/** Corrección con la que arranca el juego en este navegador. */
+/** Correction the game starts with in this browser. */
 export function getHoopAdjustment(): number {
   return readHoopAdjustment(gameStorage())
 }
 
-/** Recuerda la corrección elegida en el menú del visor. */
+/** Remembers the correction chosen in the headset's menu. */
 export function saveHoopAdjustment(value: number): void {
   writeHoopAdjustment(gameStorage(), value)
 }

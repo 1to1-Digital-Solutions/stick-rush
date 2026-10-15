@@ -20,17 +20,17 @@ function getSnapshot(): boolean {
   return matchReducedMotion()?.matches ?? false
 }
 
-/** En el servidor no hay preferencia que leer: se asume movimiento normal. */
+/** On the server there is no preference to read: normal motion is assumed. */
 function getServerSnapshot(): boolean {
   return false
 }
 
 /**
- * Si el sistema pide reducir el movimiento.
+ * Whether the system asks to reduce motion.
  *
- * Es el equivalente para la escena 3D de la media query que `globals.css` ya
- * aplica a las animaciones del menú: dentro del Canvas no hay CSS que valga,
- * así que la preferencia hay que leerla y pasarla a mano.
+ * It is the equivalent for the 3D scene of the media query that `globals.css` already
+ * applies to the menu animations: inside the Canvas no CSS is any use,
+ * so the preference has to be read and passed by hand.
  */
 export function useReducedMotion(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)

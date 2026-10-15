@@ -3,65 +3,43 @@ import { MACHINE_RADIUS, MAX_STICKS, MIN_STICKS } from './gameConfig'
 import {
   buildStickLayout,
   fallOrder,
-  seededRandom,
   stickStatuses,
 } from './stickLayout'
 
-describe('seededRandom', () => {
-  it('devuelve siempre un valor en [0, 1)', () => {
-    for (let i = 0; i < 50; i++) {
-      for (let run = 0; run < 5; run++) {
-        const value = seededRandom(i, run)
-        expect(value).toBeGreaterThanOrEqual(0)
-        expect(value).toBeLessThan(1)
-      }
-    }
-  })
-
-  it('es determinista: la misma semilla da el mismo valor', () => {
-    expect(seededRandom(3, 7)).toBe(seededRandom(3, 7))
-  })
-
-  it('cambia con el palo y con la partida', () => {
-    expect(seededRandom(3, 7)).not.toBe(seededRandom(4, 7))
-    expect(seededRandom(3, 7)).not.toBe(seededRandom(3, 8))
-  })
-})
-
 describe('buildStickLayout', () => {
-  it('crea un palo por cada unidad pedida', () => {
+  it('creates one stick for each unit requested', () => {
     for (let count = MIN_STICKS; count <= MAX_STICKS; count++) {
       expect(buildStickLayout(count, 1)).toHaveLength(count)
     }
   })
 
-  it('cuelga todos los palos del aro, sin apoyarlos en los postes', () => {
+  it('hangs all the sticks from the hoop, without resting them on the posts', () => {
     const layout = buildStickLayout(MAX_STICKS, 1)
     for (const stick of layout) {
       const [x, , z] = stick.anchor
       expect(Math.hypot(x, z)).toBeCloseTo(MACHINE_RADIUS, 6)
-      // Los extremos exactos del semicírculo son donde van los postes.
+      // The exact ends of the semicircle are where the posts go.
       expect(Math.abs(x)).toBeLessThan(MACHINE_RADIUS)
     }
   })
 
-  it('los reparte de izquierda a derecha sin solaparlos', () => {
+  it('lays them out from left to right without overlapping them', () => {
     const xs = buildStickLayout(9, 1).map((stick) => stick.anchor[0])
     expect(xs).toEqual([...xs].sort((a, b) => a - b))
     expect(new Set(xs).size).toBe(xs.length)
   })
 
-  it('centra el reparto: es simétrico respecto al frente del jugador', () => {
+  it('centres the layout: it is symmetric about the front of the player', () => {
     const xs = buildStickLayout(7, 1).map((stick) => stick.anchor[0])
     expect(xs[3]).toBeCloseTo(0, 6)
     expect(xs[0]).toBeCloseTo(-xs[6], 6)
   })
 
-  it('escalona la caída: uno sale ya y el resto se van repartiendo', () => {
+  it('staggers the fall: one goes right away and the rest are spread out', () => {
     const delays = buildStickLayout(MAX_STICKS, 4).map((stick) => stick.delay)
 
-    // Exactamente un palo abre la partida, y cada turno espera en torno a un
-    // segundo más que el anterior, más el jitter.
+    // Exactly one stick opens the run, and each turn waits around one
+    // second more than the previous one, plus the jitter.
     expect(delays.filter((delay) => delay === 0)).toHaveLength(1)
     const sorted = [...delays].sort((a, b) => a - b)
     sorted.forEach((delay, turn) => {
@@ -70,10 +48,10 @@ describe('buildStickLayout', () => {
     })
   })
 
-  it('no suelta los palos en el orden en que están colgados', () => {
-    // El fallo que se veía en el visor: caían siempre de izquierda a derecha,
-    // así que la partida era predecible. Se comprueba en varias partidas
-    // porque una baraja concreta podría salir casi ordenada por azar.
+  it('does not release the sticks in the order in which they hang', () => {
+    // The bug that was seen in the headset: they always fell from left to right,
+    // so the run was predictable. It is checked in several runs
+    // because one particular shuffle could come out almost sorted by chance.
     const correlated = [1, 2, 3, 4, 5].filter((runId) => {
       const delays = buildStickLayout(MAX_STICKS, runId).map((s) => s.delay)
       const ascending = delays.every(
@@ -84,13 +62,13 @@ describe('buildStickLayout', () => {
     expect(correlated).toEqual([])
   })
 
-  it('reparte turnos distintos en cada partida', () => {
+  it('deals different turns in each run', () => {
     const first = fallOrder(MAX_STICKS, 1)
     const second = fallOrder(MAX_STICKS, 2)
     expect(first).not.toEqual(second)
   })
 
-  it('cada palo cae exactamente una vez', () => {
+  it('each stick falls exactly once', () => {
     for (let count = MIN_STICKS; count <= MAX_STICKS; count++) {
       const order = fallOrder(count, 7)
       expect([...order].sort((a, b) => a - b)).toEqual(
@@ -99,13 +77,13 @@ describe('buildStickLayout', () => {
     }
   })
 
-  it('desordena los retardos sin volverlos metronómicos', () => {
+  it('scrambles the delays without making them metronomic', () => {
     const delays = buildStickLayout(MAX_STICKS, 4).map((stick) => stick.delay)
     const gaps = delays.slice(1).map((delay, i) => delay - delays[i])
     expect(new Set(gaps.map((gap) => gap.toFixed(4))).size).toBeGreaterThan(1)
   })
 
-  it('da a cada palo un hueco propio en el ciclo del vaivén', () => {
+  it('gives each stick a slot of its own in the swing cycle', () => {
     const phases = buildStickLayout(MAX_STICKS, 4).map(
       (stick) => stick.swingPhase,
     )
@@ -113,12 +91,12 @@ describe('buildStickLayout', () => {
       expect(phase).toBeGreaterThanOrEqual(0)
       expect(phase).toBeLessThan(1)
     }
-    // Si dos palos comparten fase se mecen a la vez, que es el efecto de bloque
-    // que el vaivén quiere evitar.
+    // If two sticks share a phase they rock at once, which is the block effect
+    // the swing wants to avoid.
     expect(new Set(phases).size).toBe(phases.length)
   })
 
-  it('mantiene el vaivén estable dentro de la partida y lo cambia entre partidas', () => {
+  it('keeps the swing stable within the run and changes it between runs', () => {
     const first = buildStickLayout(MAX_STICKS, 4).map((s) => s.swingPhase)
     expect(buildStickLayout(MAX_STICKS, 4).map((s) => s.swingPhase)).toEqual(
       first,
@@ -128,24 +106,32 @@ describe('buildStickLayout', () => {
     )
   })
 
-  it('da claves únicas y distintas en cada partida', () => {
+  it('gives unique keys, different in each run', () => {
     const first = buildStickLayout(MIN_STICKS, 1).map((stick) => stick.key)
     const second = buildStickLayout(MIN_STICKS, 2).map((stick) => stick.key)
     expect(new Set(first).size).toBe(first.length)
     expect(first).not.toEqual(second)
   })
 
-  it('es puro: dos llamadas iguales dan el mismo reparto', () => {
+  it('is pure: two equal calls give the same layout', () => {
     expect(buildStickLayout(8, 3)).toEqual(buildStickLayout(8, 3))
   })
 
-  it('varía la secuencia entre partidas con los mismos palos', () => {
+  it('with a 32-bit seed, like the one of the challenge, it is still the same round', () => {
+    // The hall's seeds are huge unsigned integers; the round cannot depend on
+    // anything other than it.
+    const seed = 4_000_000_123
+    expect(buildStickLayout(MAX_STICKS, seed)).toEqual(buildStickLayout(MAX_STICKS, seed))
+    expect(fallOrder(MAX_STICKS, seed)).not.toEqual(fallOrder(MAX_STICKS, seed + 1))
+  })
+
+  it('varies the sequence between runs with the same sticks', () => {
     const first = buildStickLayout(8, 3).map((stick) => stick.delay)
     const second = buildStickLayout(8, 4).map((stick) => stick.delay)
     expect(first).not.toEqual(second)
   })
 
-  it('coloca el palo único en el centro', () => {
+  it('places the single stick in the centre', () => {
     const [only] = buildStickLayout(1, 1)
     expect(only.anchor[0]).toBeCloseTo(0, 6)
     expect(only.anchor[2]).toBeCloseTo(-MACHINE_RADIUS, 6)
@@ -153,7 +139,7 @@ describe('buildStickLayout', () => {
 })
 
 describe('stickStatuses', () => {
-  it('pinta primero los atrapados, luego los perdidos y al final los pendientes', () => {
+  it('draws the caught ones first, then the lost ones and at the end the pending ones', () => {
     expect(stickStatuses(2, 3, 5)).toEqual([
       'caught',
       'caught',
@@ -163,16 +149,16 @@ describe('stickStatuses', () => {
     ])
   })
 
-  it('marca todos los palos al acabar la partida', () => {
+  it('marks all the sticks when the run ends', () => {
     expect(stickStatuses(5, 5, 5)).toEqual(Array(5).fill('caught'))
     expect(stickStatuses(0, 5, 5)).toEqual(Array(5).fill('missed'))
   })
 
-  it('arranca la partida con todo pendiente', () => {
+  it('starts the run with everything pending', () => {
     expect(stickStatuses(0, 0, 3)).toEqual(['pending', 'pending', 'pending'])
   })
 
-  it('no se rompe con un marcador vacío', () => {
+  it('does not break with an empty scoreboard', () => {
     expect(stickStatuses(0, 0, 0)).toEqual([])
   })
 })

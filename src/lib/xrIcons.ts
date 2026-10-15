@@ -1,39 +1,39 @@
 /**
- * Siluetas de los iconos de la interfaz inmersiva.
+ * Silhouettes of the icons of the immersive ui.
  *
- * En VR/AR no hay letras: `<Text>` de drei descarga las fuentes de un CDN que la
- * CSP bloquea, así que cada botón se explica con un dibujo. Los primeros iconos
- * se montaron apilando primitivas (un prisma triangular junto a una caja) y en
- * el visor no se leían: dos piezas próximas se ven como dos objetos, no como una
- * figura. Aquí un icono es un **contorno cerrado** —una sola silueta— del que se
- * saca la geometría; lo que se dibuja es exactamente lo que se ve.
+ * In VR/AR there are no letters: drei's `<Text>` downloads the fonts from a CDN that the
+ * CSP blocks, so each button is explained with a drawing. The first icons
+ * were built by stacking primitives (a triangular prism next to a box) and in
+ * the headset they could not be read: two parts close together are seen as two objects, not as one
+ * figure. Here an icon is a **closed outline** —a single silhouette— from which the
+ * geometry is taken; what is drawn is exactly what is seen.
  *
- * Los puntos van en el cuadro normalizado [-1, 1], así que el `size` del
- * componente es la mitad del lado del icono y dos iconos con el mismo `size` se
- * ven del mismo tamaño. Vive en `lib` y no en el componente porque la forma es
- * comprobable sin navegador: que el tejado corone la casa o que la punta de la
- * flecha sea más ancha que el asta son justo los fallos que se vieron con las
- * gafas puestas.
+ * The points go in the normalised square [-1, 1], so the `size` of the
+ * component is half the side of the icon and two icons with the same `size` are
+ * seen at the same size. It lives in `lib` and not in the component because the shape can be
+ * checked without a browser: that the roof crowns the house or that the tip of the
+ * arrow is wider than the shaft are precisely the failures that were seen with the
+ * headset on.
  */
 
-/** Punto del contorno, en el cuadro normalizado [-1, 1]. */
+/** Point of the outline, in the normalised square [-1, 1]. */
 export type IconPoint = readonly [number, number]
 
-/** Una pieza del icono: su contorno y, si los tiene, sus huecos. */
+/** A part of the icon: its outline and, if it has them, its holes. */
 export type IconPath = {
   readonly outline: readonly IconPoint[]
   readonly holes?: readonly (readonly IconPoint[])[]
 }
 
-/** Un icono es una o más piezas independientes. */
+/** An icon is one or more independent parts. */
 export type IconShape = readonly IconPath[]
 
 /**
- * Casa: volver al menú.
+ * House: back to the menu.
  *
- * Silueta de una pieza (tejado, alero y cuerpo) con la puerta como hueco. El
- * alero sobresale del cuerpo para que el tejado se lea aunque el icono sea de
- * cinco centímetros a un metro de distancia.
+ * Silhouette in one part (roof, eaves and body) with the door as a hole. The
+ * eaves stick out from the body so that the roof reads even if the icon is
+ * five centimetres at a metre away.
  */
 export const XR_HOME_ICON: IconShape = [
   {
@@ -58,14 +58,14 @@ export const XR_HOME_ICON: IconShape = [
 ]
 
 /**
- * Corazón: una vida.
+ * Heart: one life.
  *
- * Es lo que el modo desafío pone en juego, y lo único que lo explica en el
- * visor: tres corazones encendidos en el menú son las tres vidas con las que se
- * empieza, y en el marcador las que quedan. Se dibuja de una pieza —dos lóbulos
- * arriba y punta abajo— porque a un metro de distancia dos medios círculos y un
- * triángulo se leen como tres objetos sueltos, que es lo que ya falló con los
- * primeros iconos del menú.
+ * It is what the challenge mode puts at stake, and the only thing that explains it in the
+ * headset: three lit hearts in the menu are the three lives you
+ * start with, and on the scoreboard the ones that are left. It is drawn in one part —two lobes
+ * at the top and a tip at the bottom— because at a metre away two half circles and a
+ * triangle read as three loose objects, which is what already failed with the
+ * first icons of the menu.
  */
 export const XR_HEART_ICON: IconShape = [
   {
@@ -103,11 +103,11 @@ export const XR_HEART_ICON: IconShape = [
 ]
 
 /**
- * Cuerpo del altavoz, común al icono de sonido y al de silencio: caja y cono.
+ * Body of the speaker, common to the sound icon and the mute one: box and cone.
  *
- * Los dos estados comparten silueta a propósito. Lo que cambia es lo que sale
- * del cono —ondas u aspa—, así que el botón se lee como el mismo control en dos
- * posiciones y no como dos botones distintos.
+ * The two states share a silhouette on purpose. What changes is what comes out
+ * of the cone —waves or a cross—, so the button reads as the same control in two
+ * positions and not as two different buttons.
  */
 const SPEAKER_OUTLINE: readonly IconPoint[] = [
   [-0.95, -0.3],
@@ -119,11 +119,11 @@ const SPEAKER_OUTLINE: readonly IconPoint[] = [
 ]
 
 /**
- * Altavoz con ondas: el juego suena.
+ * Speaker with waves: the game sounds.
  *
- * Las ondas son dos arcos concéntricos al vértice del cono, despegados de él y
- * entre sí: pegados se funden en una mancha y el icono deja de leerse a un
- * metro, que es el fallo que ya tuvieron los primeros iconos del menú.
+ * The waves are two arcs concentric with the vertex of the cone, detached from it and
+ * from each other: stuck together they merge into a blot and the icon stops being readable at a
+ * metre, which is the failure the first icons of the menu already had.
  */
 export const XR_SOUND_ICON: IconShape = [
   { outline: SPEAKER_OUTLINE },
@@ -158,16 +158,16 @@ export const XR_SOUND_ICON: IconShape = [
 ]
 
 /**
- * Altavoz con un aspa: el juego está en silencio.
+ * Speaker with a cross: the game is muted.
  *
- * El aspa ocupa el sitio de las ondas en vez de cruzar el altavoz. Tachar la
- * silueta con una barra del mismo color no se ve como un tachón: se ve como una
- * sola mancha, porque el relleno de las dos piezas es el mismo.
+ * The cross takes the place of the waves instead of crossing the speaker. Striking the
+ * silhouette through with a bar of the same colour is not seen as a strike-through: it is seen as a
+ * single blot, because the fill of the two parts is the same.
  */
 export const XR_MUTED_ICON: IconShape = [
   { outline: SPEAKER_OUTLINE },
   {
-    // Aspa de una pieza: una cruz girada 45°, con sus cuatro brazos en diagonal.
+    // Cross in one part: a plus sign turned 45°, with its four arms on the diagonal.
     outline: [
       [0.53, 0.23],
       [0.73, 0.43],
@@ -186,11 +186,11 @@ export const XR_MUTED_ICON: IconShape = [
 ]
 
 /**
- * Nota musical: la música de fondo suena.
+ * Musical note: the background music sounds.
  *
- * Cabeza, plica y corchete en una sola pieza, con el trazo tan grueso como el
- * del altavoz: a un metro lo que se lee es la silueta, y una nota de líneas
- * finas se deshace antes de llegar.
+ * Head, stem and flag in a single part, with the stroke as thick as that
+ * of the speaker: at a metre what is read is the silhouette, and a note of thin
+ * lines falls apart before arriving.
  */
 export const XR_MUSIC_ICON: IconShape = [
   {
@@ -210,11 +210,11 @@ export const XR_MUSIC_ICON: IconShape = [
 ]
 
 /**
- * La misma nota con un aspa al lado: la música está apagada.
+ * The same note with a cross beside it: the music is off.
  *
- * El aspa ocupa el sitio del corchete en vez de cruzar la nota, por lo mismo
- * que en el altavoz callado: tachar la silueta con una barra del mismo relleno
- * se ve como una mancha, no como un tachón.
+ * The cross takes the place of the flag instead of crossing the note, for the same reason
+ * as in the muted speaker: striking the silhouette through with a bar of the same fill
+ * is seen as a blot, not as a strike-through.
  */
 export const XR_MUSIC_OFF_ICON: IconShape = [
   {
@@ -232,7 +232,7 @@ export const XR_MUSIC_OFF_ICON: IconShape = [
     ],
   },
   {
-    // Aspa de una pieza: una cruz girada 45°, con sus cuatro brazos en diagonal.
+    // Cross in one part: a plus sign turned 45°, with its four arms on the diagonal.
     outline: [
       [0.53, -0.23],
       [0.73, -0.03],
@@ -251,8 +251,8 @@ export const XR_MUSIC_OFF_ICON: IconShape = [
 ]
 
 /**
- * Estrella de nivel: una pieza de cinco puntas. Llena la ganada; la que falta
- * se pinta apagada y más pequeña, para que no dependa solo del color.
+ * Level star: one part with five points. Full the one earned; the missing one
+ * is painted switched off and smaller, so that it does not depend only on the colour.
  */
 export const XR_STAR_ICON: IconShape = [
   {
@@ -272,32 +272,9 @@ export const XR_STAR_ICON: IconShape = [
 ]
 
 /**
- * Avión de papel: compartir el resultado.
+ * Check mark: done.
  *
- * De una sola pieza, como el resto: el símbolo habitual de compartir son tres
- * nodos unidos por dos líneas, y cinco piezas sueltas a un metro de distancia
- * son cinco manchas. El avión conserva el significado —enviar esto a alguien—
- * con un contorno cerrado, y lo que lo distingue de un triángulo cualquiera es
- * la muesca de la cola.
- */
-export const XR_SHARE_ICON: IconShape = [
-  {
-    outline: [
-      // Morro, cola de arriba, muesca y cola de abajo.
-      [1, 1],
-      [-1, 0.05],
-      [-0.3, -0.15],
-      [-0.05, -1],
-    ],
-  },
-]
-
-/**
- * Marca de verificación: hecho.
- *
- * Confirma que el resultado salió del visor —compartido o, al menos, copiado—,
- * porque dentro de la sesión no hay ningún aviso del sistema que lo diga. Es un
- * trazo con cuerpo y no una línea: a un metro, un trazo fino desaparece.
+ * It is a stroke with body and not a line: at a metre, a thin stroke disappears.
  */
 export const XR_CHECK_ICON: IconShape = [
   {
@@ -313,67 +290,40 @@ export const XR_CHECK_ICON: IconShape = [
 ]
 
 /**
- * Aspa: no se pudo.
+ * The triangles of the menu —the start one, the ones to raise and lower the hoop— are not
+ * silhouettes: they come from a three-sided prism (`cylinderGeometry` with three
+ * segments), which is a solid part and not an outline. There the only thing that has
+ * to be got right is the turn, and it is precisely what went wrong in the start button:
+ * on composing two quarter turns, the axis of the prism ended up pointing to one
+ * side, so instead of the play symbol its edge was seen, a sliver of
+ * one centimetre.
  *
- * La misma figura que tacha el altavoz del icono de silencio, aquí sola y a
- * tamaño completo. Sirve para avisar de que el resultado no salió del visor: un
- * botón que se pulsa y no cambia nada se lee como una avería del juego.
- */
-export const XR_CROSS_ICON: IconShape = [
-  {
-    outline: [
-      [0, 0.529],
-      [0.46, 0.989],
-      [0.989, 0.483],
-      [0.529, 0],
-      [0.989, -0.483],
-      [0.46, -0.989],
-      [0, -0.529],
-      [-0.46, -0.989],
-      [-0.989, -0.483],
-      [-0.529, 0],
-      [-0.989, 0.483],
-      [-0.46, 0.989],
-    ],
-  },
-]
-
-
-/**
- * Los triángulos del menú —el de empezar, los de subir y bajar el aro— no son
- * siluetas: salen de un prisma de tres lados (`cylinderGeometry` con tres
- * segmentos), que es una pieza sólida y no un contorno. Ahí lo único que hay
- * que acertar es el giro, y es justo lo que se torció en el botón de empezar:
- * al componer dos cuartos de vuelta, el eje del prisma acababa apuntando a un
- * lado, así que en vez del símbolo de reproducir se veía su canto, una lasca de
- * un centímetro.
- *
- * El prisma nace con el eje en vertical y un vértice al frente, de modo que el
- * giro tiene que llevar ese eje hacia el jugador —para que el grosor quede de
- * frente y el dibujo se vea entero— y el vértice hacia donde caiga la punta.
+ * The prism is born with the axis vertical and a vertex at the front, so the
+ * turn has to take that axis towards the player —so that the thickness faces
+ * front and the drawing is seen whole— and the vertex towards where the tip falls.
  */
 export type TriangleTip = 'up' | 'down' | 'right'
 
-/** Giro que deja el triángulo de frente con la punta hacia cada lado. */
+/** Turn that leaves the triangle facing front with the tip towards each side. */
 export const XR_TRIANGLE_ROTATION: Record<
   TriangleTip,
   readonly [number, number, number]
 > = {
   up: [-Math.PI / 2, 0, 0],
   down: [Math.PI / 2, 0, 0],
-  // De frente y luego un cuarto de vuelta sobre el eje que mira al jugador: la
-  // punta pasa de arriba a la derecha, como en cualquier botón de reproducir.
+  // Facing front and then a quarter turn about the axis that looks at the player: the
+  // tip goes from up to the right, as in any play button.
   right: [-Math.PI / 2, Math.PI / 2, 0],
 }
 
 /**
- * Dónde queda el centro del dibujo respecto al eje del prisma, en unidades de
+ * Where the centre of the drawing ends up relative to the axis of the prism, in units of
  * `size`.
  *
- * La punta sale a un radio del eje y el lado opuesto se queda a medio, así que
- * un triángulo colocado por su eje se ve corrido hacia la punta. Quien lo pinta
- * resta esto para que a igual `position` todos los iconos caigan en el mismo
- * sitio de su placa, como ya pasa con las siluetas.
+ * The tip comes out one radius from the axis and the opposite side stays at half, so
+ * a triangle placed by its axis is seen shifted towards the tip. Whoever paints it
+ * subtracts this so that at the same `position` all the icons fall in the same
+ * place of their plate, as already happens with the silhouettes.
  */
 export const XR_TRIANGLE_CENTER: Record<
   TriangleTip,
@@ -385,32 +335,32 @@ export const XR_TRIANGLE_CENTER: Record<
 }
 
 /**
- * Las dos montañas del icono de escenario, apoyadas en la MISMA línea de suelo.
+ * The two mountains of the scenery icon, resting on the SAME ground line.
  *
- * Vive aquí y no en el componente por lo mismo que el resto: la forma se comprueba sin
- * navegador. Los dos fallos que este icono puede tener —punta abajo, o una montaña flotando
- * sobre la otra— son exactamente los que no se ven leyendo el JSX y sí con las gafas puestas,
- * que es el sitio más caro para descubrirlos.
+ * It lives here and not in the component for the same reason as the rest: the shape is checked without
+ * a browser. The two failures this icon can have —tip down, or one mountain floating
+ * over the other— are exactly the ones that are not seen reading the JSX and are with the headset on,
+ * which is the most expensive place to discover them.
  *
- * Se colocan por la BASE y no por el centro: con la punta arriba, la base de un triángulo
- * queda medio radio por debajo de su eje, así que dos montañas de radios distintos centradas
- * a la misma altura se apoyan en suelos distintos.
+ * They are placed by the BASE and not by the centre: with the tip up, the base of a triangle
+ * ends up half a radius below its axis, so two mountains of different radii centred
+ * at the same height rest on different grounds.
  */
-export type SceneMountain = { readonly radio: number; readonly x: number; readonly y: number }
+export type SceneMountain = { readonly radius: number; readonly x: number; readonly y: number }
 
-/** Radio y posición horizontal de cada montaña, en unidades de `size`. */
-const SCENE_MOUNTAINS: readonly { radio: number; x: number }[] = [
-  { radio: 0.62, x: -0.5 },
-  { radio: 0.48, x: 0.45 },
+/** Radius and horizontal position of each mountain, in units of `size`. */
+const SCENE_MOUNTAINS: readonly { radius: number; x: number }[] = [
+  { radius: 0.62, x: -0.5 },
+  { radius: 0.48, x: 0.45 },
 ]
 
-/** Altura del suelo compartido, en unidades de `size`: la base de la montaña mayor. */
+/** Height of the shared ground, in units of `size`: the base of the bigger mountain. */
 const SCENE_GROUND = -0.31
 
 export function sceneMountains(size: number): SceneMountain[] {
-  return SCENE_MOUNTAINS.map(({ radio, x }) => ({
-    radio: radio * size,
+  return SCENE_MOUNTAINS.map(({ radius, x }) => ({
+    radius: radius * size,
     x: x * size,
-    y: (SCENE_GROUND + radio / 2) * size,
+    y: (SCENE_GROUND + radius / 2) * size,
   }))
 }

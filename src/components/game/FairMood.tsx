@@ -3,19 +3,19 @@
 import { useEffect, type RefObject } from 'react'
 import { useGame } from '../../lib/gameStore'
 
-/** Lo que la feria mira del juego: por ahora, la racha. */
+/** What the fairground watches of the game: for now, the streak. */
 export interface FairMoodState {
   streak: number
 }
 
 /**
- * Lleva la racha del juego a un ref que el recinto lee en cada fotograma.
+ * Carries the streak of the game to a ref that the venue reads on every frame.
  *
- * Es el único trozo del decorado que escucha al estado, y no pinta nada: si el
- * público o las bombillas leyeran `useGame()` directamente, cada cambio de la
- * partida volvería a renderizar cientos de instancias para mover un número.
- * Aquí el cambio llega a un ref y la escena lo lee donde ya está mirando el
- * reloj: en `useFrame`.
+ * It is the only bit of the decor that listens to the state, and it paints nothing: if the
+ * crowd or the bulbs read `useGame()` directly, every change of the
+ * run would render hundreds of instances again to move one number.
+ * Here the change reaches a ref and the scene reads it where it is already watching the
+ * clock: in `useFrame`.
  */
 export function FairMood({ moodRef }: { moodRef: RefObject<FairMoodState> }) {
   const { streak } = useGame()

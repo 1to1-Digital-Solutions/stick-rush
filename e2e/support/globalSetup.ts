@@ -1,34 +1,32 @@
 import path from 'node:path'
 import { build } from 'esbuild'
 
-/**
- * Rutas relativas a la raíz del proyecto, que es desde donde se lanza
- * Playwright. No se usa `import.meta.url` porque Playwright carga este fichero
- * como CommonJS y ahí no existe.
- */
-const SOURCE = path.join(process.cwd(), 'e2e/support/xr-emulator.src.ts')
-
-/** Bundle del emulador que consumen los tests XR. */
-export const XR_EMULATOR_BUNDLE = path.join(
-  process.cwd(),
-  'e2e/support/xr-emulator.bundle.js',
-)
+const SUPPORT = path.join(process.cwd(), 'e2e/support')
+export const XR_EMULATOR_BUNDLE = path.join(SUPPORT, 'xr-emulator.bundle.js')
+export const HOST_BUNDLE = path.join(SUPPORT, 'host.bundle.js')
 
 /**
- * Empaqueta el emulador WebXR antes de correr la suite.
- *
- * `page.addInitScript` necesita un fichero plano que el navegador pueda evaluar,
- * y el emulador es TypeScript con imports. Se compila aquí, una vez por
- * ejecución, en lugar de commitear un artefacto de 400 KB que quedaría
- * desincronizado con la versión de `iwer` del lockfile.
+ * Bundles before the suite what is injected into the browser: the WebXR emulator (IWER,
+ * a pretend Quest 3, because Chromium ships no WebXR and without it the immersive paths
+ * never run) and the test host, which mounts `<StickRushScene>` inside
+ * someone else's Canvas, as the xrcade hall does.
  */
 export default async function globalSetup() {
-  await build({
-    entryPoints: [SOURCE],
-    outfile: XR_EMULATOR_BUNDLE,
+  await Promise.all([
+    bundle('xr-emulator.src.ts', XR_EMULATOR_BUNDLE),
+    bundle('host.src.tsx', HOST_BUNDLE),
+  ])
+}
+
+function bundle(entry: string, outfile: string) {
+  return build({
+    entryPoints: [path.join(SUPPORT, entry)],
+    outfile,
     bundle: true,
     format: 'iife',
     platform: 'browser',
+    jsx: 'automatic',
+    define: { 'process.env.NODE_ENV': '"production"' },
     logLevel: 'warning',
   })
 }

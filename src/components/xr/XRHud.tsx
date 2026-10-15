@@ -2,54 +2,61 @@
 
 import { useXR } from '@react-three/xr'
 import { LIFE_COLOR } from '../../lib/gameConfig'
-import { startingLives } from '../../lib/gameMode'
+import { anotherOfMode, startingLives, type GameMode } from '../../lib/gameMode'
 import { useCallback } from 'react'
 
 import { useGame } from '../../lib/gameStore'
-import { useLang } from '../../lib/ajustesCliente'
-import { traductor, type TextKey } from '../../lib/textos'
+import { useLang } from '../../lib/settingsClient'
+import { translator, type TextKey } from '../../lib/textos'
 import { CanvasPanel, drawParagraph, drawText } from './canvasPanel'
 import { scoreRatio } from '../../lib/scoring'
 import { type StickStatus, stickStatuses } from '../../lib/stickLayout'
-import { type ShareStatus, useShareResult } from '../../lib/useShareResult'
 import {
   XR_END_RUN_POSITION,
   XR_END_RUN_YAW,
   XR_HUD_POSITION,
+  xrHudLayout,
   CONFIRM_BOXES,
   CONFIRM_TEXT,
   XR_CONFIRM_POSITION,
   XR_CONFIRM_SIZE,
   XR_QUIT_POSITION,
   XR_QUIT_YAW,
+  DUEL_TEXT,
+  XR_DUEL_POSITION,
+  XR_DUEL_SIZE,
 } from '../../lib/xrLayout'
+import { duelSummary, type DuelSummary } from '../../lib/duel'
 import {
   PANEL_COLOR,
   XRCheckIcon,
-  XRCrossIcon,
   XRHeartIcon,
   XRHomeIcon,
   XRPanel,
+  XRPlayersIcon,
   XRPressable,
   XRRepeatIcon,
-  XRShareIcon,
   XRStarsRow,
 } from './XRUi'
 /**
- * Marcador dentro de la escena, para sesiones inmersivas.
+ * Scoreboard inside the scene, for immersive sessions.
  *
- * El HUD normal es DOM y en inmersivo no se ve, así que el jugador se quedaba
- * sin marcador ni resultado. Este lo sustituye con geometría: una ficha por
- * palo, atrapado / perdido / pendiente.
+ * The normal HUD is DOM and in immersive it is not seen, so the player was left
+ * with no scoreboard and no result. This one replaces it with geometry: one token per
+ * stick, caught / missed / pending.
  *
- * No usa texto a propósito: `<Text>` de drei descarga las fuentes de un CDN
- * (troika resuelve la tipografía contra jsdelivr), y el juego debe verse aunque
- * el visor esté en una red local sin salida. Cada estado se distingue por color
- * *y* por tamaño y altura, para no depender solo del color.
+ * **In the run that counts for a medal it keeps quiet about what the sign above already says**
+ * (`MachineSign`): the points and the lives are read there, with the threshold still to go, and here
+ * the tokens and the streak remain. Repeating them underneath was forcing a choice of where to look.
  *
- * Va dentro de <XROrigin>, así que sus medidas son metros vistos por el
- * jugador. Queda por delante y por debajo del aro para no cruzarse con los
- * palos que caen.
+ * It uses no text on purpose: drei's `<Text>` downloads the fonts from a CDN
+ * (troika resolves the typeface against jsdelivr), and the game must be visible even if
+ * the headset is on a local network with no way out. Each state is told by colour
+ * *and* by size and height, so as not to depend on colour alone.
+ *
+ * It goes inside <XROrigin>, so its measurements are metres as seen by the
+ * player. It sits in front of and below the hoop so as not to cross the
+ * falling sticks.
  */
 
 const TOKEN_SPACING = 0.07
@@ -59,27 +66,27 @@ const TOKEN_STYLE: Record<
   StickStatus,
   { color: string; emissive: number; scale: number; lift: number }
 > = {
-  // Atrapado: verde, ficha grande y elevada.
+  // Caught: green, a big raised token.
   caught: { color: '#22c55e', emissive: 1.4, scale: 1.15, lift: 0.012 },
-  // Perdido: rojo, ficha pequeña y hundida.
+  // Missed: red, a small sunken token.
   missed: { color: '#dc2626', emissive: 0.25, scale: 0.7, lift: -0.012 },
-  // Pendiente: gris apagado, tamaño intermedio.
+  // Pending: dull grey, in-between size.
   pending: { color: '#475569', emissive: 0, scale: 0.9, lift: 0 },
 }
 
 /**
- * Barra de puntuación: se llena conforme el jugador se acerca al máximo posible
- * de esa partida.
+ * Score bar: it fills up as the player gets closer to the maximum possible
+ * in that run.
  *
- * Es la forma de dar puntos sin escribir un número. `<Text>` de drei descargaría
- * la fuente de un CDN que la CSP bloquea, así que la puntuación se lee como
- * proporción —cuánto has sacado de lo que había— que además es más útil de un
- * vistazo que una cifra absoluta sin escala.
+ * It is the way of giving points without writing a number. drei's `<Text>` would download
+ * the font from a CDN that the CSP blocks, so the score is read as a
+ * proportion —how much you have got out of what there was— which is also more useful at a
+ * glance than an absolute figure with no scale.
  *
- * Por lo mismo, el récord es una **marca** sobre el carril y no una cifra: en la
- * escala de esta partida, hasta dónde hay que llegar. Si con la dificultad y el
- * número de palos elegidos el récord ni siquiera es alcanzable, la marca se
- * queda al final del carril, que es exactamente lo que significa.
+ * For the same reason, the record is a **mark** on the track and not a figure: on the
+ * scale of this run, how far there is to go. If with the chosen difficulty and
+ * number of sticks the record is not even reachable, the mark
+ * stays at the end of the track, which is exactly what it means.
  */
 function ScoreBar({
   ratio,
@@ -96,12 +103,12 @@ function ScoreBar({
 
   return (
     <group position={[0, -0.055, 0]}>
-      {/* Carril */}
+      {/* Track */}
       <mesh>
         <boxGeometry args={[width, 0.012, 0.006]} />
         <meshBasicMaterial color="#1c2634" toneMapped={false} />
       </mesh>
-      {/* Relleno, anclado a la izquierda para que crezca hacia la derecha. */}
+      {/* Fill, anchored on the left so it grows to the right. */}
       <mesh position={[(filled - width) / 2, 0, 0.004]}>
         <boxGeometry args={[filled, 0.012, 0.006]} />
         <meshBasicMaterial
@@ -109,8 +116,8 @@ function ScoreBar({
           toneMapped={false}
         />
       </mesh>
-      {/* Marca del récord. Al batirlo crece además de cambiar el color de la
-          barra: con las gafas puestas el color solo no basta. */}
+      {/* Record mark. On beating it it also grows besides changing the colour of the
+          bar: with the headset on colour alone is not enough. */}
       {recordRatio > 0 && (
         <mesh position={[width * (recordRatio - 0.5), 0, 0.008]}>
           <boxGeometry args={[0.005, isRecord ? 0.034 : 0.024, 0.006]} />
@@ -122,8 +129,8 @@ function ScoreBar({
 }
 
 /**
- * Racha viva: una cuña por palo encadenado, hasta cinco. A partir de ahí no
- * añaden información y solo ensanchan el marcador.
+ * Live streak: one wedge per chained stick, up to five. Beyond that they
+ * add no information and only widen the scoreboard.
  */
 function StreakPips({ streak }: { streak: number }) {
   const shown = Math.min(streak, 5)
@@ -145,21 +152,20 @@ function StreakPips({ streak }: { streak: number }) {
   )
 }
 
-/** Separación y tamaño de los corazones de vida en el marcador. */
+/** Spacing and size of the life hearts on the scoreboard. */
 const LIFE_SPACING = 0.05
 const LIFE_SIZE = 0.019
-/** Dónde va la fila de vidas dentro del marcador, y cuánto lo alarga. */
+/** Where the row of lives goes inside the scoreboard. How much it lengthens it is said by `xrHudLayout`. */
 const LIFE_ROW_Y = -0.105
-const LIFE_ROW_HEIGHT = 0.06
-/** El gastado se apaga a gris y encoge; el vivo va del rojo de siempre. */
+/** The spent one dims to grey and shrinks; the live one is the usual red. */
 const LIFE_SPENT_COLOR = '#3f4a5a'
 
 /**
- * Vidas que quedan en un desafío: un corazón por vida, encogido y apagado el
- * que se ha gastado. Con el visor puesto es lo que dice si la próxima que se
- * escape cierra la partida, y por eso va debajo de la barra de puntuación, en
- * el sitio fijo del marcador y no entre las fichas de los palos, que se mueven
- * con cuántos haya en juego.
+ * Lives left in a challenge: one heart per life, the spent one shrunk and
+ * dimmed. With the headset on it is what says whether the next one that
+ * gets away closes the run, and that is why it goes under the score bar, in
+ * the scoreboard's fixed place and not among the sticks' tokens, which move
+ * with how many are in play.
  */
 function Lives({ lives, total, y }: { lives: number; total: number; y: number }) {
   const width = (total - 1) * LIFE_SPACING
@@ -181,20 +187,57 @@ function Lives({ lives, total, y }: { lives: number; total: number; y: number })
   )
 }
 
-/** Placas de los botones de fin de partida: la de repetir y la de las demás. */
+/** Plates of the end-of-run buttons: the repeat one and the back-to-menu one. */
 const PLAY_BUTTON = { color: '#15803d', emissive: '#22c55e', intensity: 0.4 }
 const NEUTRAL_BUTTON = { color: '#334155', emissive: '#94a3b8', intensity: 0.2 }
-/** Se pudo / no se pudo: el mismo verde y el mismo rojo que las fichas de palo. */
-const DONE_BUTTON = { color: '#166534', emissive: '#22c55e', intensity: 0.5 }
-const FAILED_BUTTON = { color: '#b91c1c', emissive: '#dc2626', intensity: 0.4 }
 
-/** Separación entre los botones de fin de partida, con aire entre sus zonas. */
-const BUTTON_SPACING = 0.16
+/** Spacing between the end-of-run buttons, with air between their areas. */
+const BUTTON_SPACING = 0.36
 const BUTTON_HIT: [number, number, number] = [0.15, 0.11, 0.06]
-/** Lo que ocupan los tres botones de lado a lado, zonas sensibles incluidas. */
-const BUTTONS_WIDTH = BUTTON_SPACING * 2 + BUTTON_HIT[0]
 
-/** Placa de un botón de fin de partida. */
+/**
+ * The labels under the end-of-run buttons.
+ *
+ * With the headset on an icon is only guessed at: under each plate, what it does, with the hall's
+ * common words («Otro reto» or «Otra partida», and the menu). They go **under the plate**, on a single
+ * canvas for both (one draw call), and they are measured in the two languages
+ * (`finalLabels.legible.test.ts`). `y` is their centre relative to the row of buttons.
+ *
+ * With no button in the middle, each label has almost twice the gap between buttons (`maxWidth`): «Another
+ * challenge» did not fit in a single one without lowering the letter size. The canvas, and with it the end panel,
+ * widens to leave them that room.
+ */
+export const FINAL_LABELS = { width: 4 * BUTTON_SPACING, height: 0.06, y: -0.08, size: 0.047, maxWidth: 2 * BUTTON_SPACING - 0.04 } as const
+
+/** What each button says, from left to right: repeat and back to the menu. */
+export function finalTexts(gameMode: GameMode): readonly TextKey[] {
+  return [anotherOfMode(gameMode), 'Menu']
+}
+
+/** Paints the labels, each one under its button. Outside the component to measure it with the recording canvas. */
+export function drawFinalLabels(ctx: CanvasRenderingContext2D, t: (key: TextKey) => string, gameMode: GameMode): void {
+  finalTexts(gameMode).forEach((text, i) => {
+    drawText(ctx, t(text), (i === 0 ? -1 : 1) * BUTTON_SPACING, 0, {
+      size: FINAL_LABELS.size,
+      color: '#e2e8f0',
+      weight: '700',
+      maxWidth: FINAL_LABELS.maxWidth,
+    })
+  })
+}
+
+/** The labels' canvas, under the row of buttons. */
+function FinalLabels({ gameMode }: { gameMode: GameMode }) {
+  const t = translator(useLang())
+  const draw = useCallback((ctx: CanvasRenderingContext2D) => drawFinalLabels(ctx, t, gameMode), [t, gameMode])
+  return (
+    <group position={[0, FINAL_LABELS.y, 0.004]}>
+      <CanvasPanel width={FINAL_LABELS.width} height={FINAL_LABELS.height} draw={draw} fallbackColor="#000000" />
+    </group>
+  )
+}
+
+/** Plate of an end-of-run button. */
 function ButtonPlate({
   style,
 }: {
@@ -210,48 +253,6 @@ function ButtonPlate({
         roughness={0.5}
       />
     </mesh>
-  )
-}
-
-/**
- * Cómo queda el botón de compartir después de pulsarlo.
- *
- * Con el visor puesto no hay ningún aviso del sistema que diga si el resultado
- * salió, así que lo dice el propio botón: cambia de dibujo *y* de color, nunca
- * solo de color. Cancelar deja el botón como estaba, porque no ha pasado nada.
- */
-const SHARE_FEEDBACK: Record<
-  ShareStatus,
-  { style: typeof NEUTRAL_BUTTON; Icon: typeof XRShareIcon }
-> = {
-  idle: { style: NEUTRAL_BUTTON, Icon: XRShareIcon },
-  cancelled: { style: NEUTRAL_BUTTON, Icon: XRShareIcon },
-  shared: { style: DONE_BUTTON, Icon: XRCheckIcon },
-  copied: { style: DONE_BUTTON, Icon: XRCheckIcon },
-  unavailable: { style: FAILED_BUTTON, Icon: XRCrossIcon },
-}
-
-/**
- * Compartir el resultado sin quitarse el visor.
- *
- * Dentro de la sesión la hoja de compartir del sistema puede no abrirse; ahí el
- * texto se queda en el portapapeles y el jugador lo pega al salir (ver
- * `shareResult.ts`). Lo que no puede pasar es que el botón no conteste, y por
- * eso el resultado del intento se ve en la propia placa.
- */
-function ShareButton({ position }: { position: [number, number, number] }) {
-  const { status, share } = useShareResult()
-  const { style, Icon } = SHARE_FEEDBACK[status]
-
-  return (
-    <XRPressable
-      position={position}
-      onSelect={() => void share()}
-      hitSize={BUTTON_HIT}
-    >
-      <ButtonPlate style={style} />
-      <Icon position={[0, 0, 0.008]} />
-    </XRPressable>
   )
 }
 
@@ -296,22 +297,24 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
     gameState,
     startGame,
     resetGame,
+    player,
+    signPhase,
   } = useGame()
-  const sinFin = gameMode === 'practice' && endless
-  // Fuera de sesión inmersiva manda el HUD en DOM, y en el menú manda XRMenu.
-  // Durante el tutorial tampoco: un marcador vacío al lado de la demostración
-  // es una ficha por palo compitiendo con los palos que la demostración está
-  // contando. Aparece con la cuenta atrás, que es cuando empieza a medir algo.
-  if ((hasDomUi && mode == null) || gameState === 'menu' || gameState === 'tutorial') {
+  const endlessPractice = gameMode === 'practice' && endless
+  // Outside the immersive session the DOM HUD rules, and in the menu XRMenu rules.
+  // It appears with the countdown, which is when it starts measuring something. There is no longer a
+  // tutorial phase to dodge: the lesson runs with the run under way and
+  // its panel plants itself above this one (see `XR_TUTORIAL_POSITION`).
+  if ((hasDomUi && mode == null) || gameState === 'menu') {
     return null
   }
 
   const width = Math.max(stickCount - 1, 0) * TOKEN_SPACING
-  // Sin fin, las fichas son las de la tanda que cuelga: las de la partida
-  // entera no cabrían, y la barra de abajo ya cuenta lo acumulado.
+  // Endless, the tokens are those of the hanging round: those of the whole
+  // run would not fit, and the bar below already counts what has accumulated.
   const tokens = stickStatuses(
-    sinFin ? waveScore : score,
-    sinFin ? waveResolved : resolved,
+    endlessPractice ? waveScore : score,
+    endlessPractice ? waveResolved : resolved,
     stickCount,
   ).map(
     (state, index) => ({
@@ -321,56 +324,75 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
     }),
   )
   const finished = gameState === 'finished'
-  // Sin fin los puntos no tienen techo: la barra mide la racha viva contra la
-  // mejor racha, que es lo que se guarda de ese modo.
-  const ratio = sinFin
+  // Endless, the points have no ceiling: the bar measures the live streak against the
+  // best streak, which is what is saved for that mode.
+  const ratio = endlessPractice
     ? Math.min(1, streak / Math.max(bestPoints, streak, 1))
     : scoreRatio(points, difficulty, stickCount)
-  const recordRatio = sinFin
+  const recordRatio = endlessPractice
     ? bestPoints > 0
       ? Math.min(1, bestPoints / Math.max(bestPoints, streak, 1))
       : 0
     : scoreRatio(bestPoints, difficulty, stickCount)
-  // En desafío el marcador crece para dejarles sitio: las vidas se ven durante
-  // la partida y siguen ahí al acabar, que es con las que se acabó. En Niveles
-  // ese sitio lo ocupan las estrellas al terminar.
+  // In challenge the scoreboard grows to make room for them: the lives are seen during
+  // the run and are still there at the end, which are the ones it ended with. In Levels
+  // that place is taken by the stars on finishing.
   const totalLives = startingLives(gameMode)
-  const showLives = lives != null && totalLives != null
+  // With the goal sign above, the points and the lives are read there.
+  const onSign = signPhase != null
+  const showLives = lives != null && totalLives != null && !onSign
   const showStars = finished && levelResult != null
+  const layout = xrHudLayout({ finished, row: showLives || showStars, sign: onSign })
   return (
     <group position={XR_HUD_POSITION}>
-      {/* Panel de fondo: en AR el mundo real está detrás, sin él las fichas
-          pierden contraste sobre cualquier pared. */}
-      <XRPanel
-        // Al acabar, el ancho no puede depender de cuántos palos se jugaran:
-        // con los pocos de una partida corta, la fila de tres botones se
-        // saldría del panel y perdería el fondo que la despega del passthrough.
-        width={Math.max(width + 0.2, finished ? BUTTONS_WIDTH + 0.06 : 0)}
-        height={(finished ? 0.42 : 0.27) + (showLives || showStars ? LIFE_ROW_HEIGHT : 0)}
-        color={PANEL_COLOR}
-        opacity={0.72}
-      />
+      {/* Background panel: in AR the real world is behind, without it the tokens
+          lose contrast against any wall. */}
+      <group position={[0, layout.centre, 0]}>
+        <XRPanel
+          // At the end, the width cannot depend on how many sticks were played:
+          // with the few of a short run, the row of buttons would
+          // run off the panel and lose the background that lifts it off the passthrough.
+          width={Math.max(width + 0.2, finished ? FINAL_LABELS.width + 0.06 : 0)}
+          height={layout.height}
+          color={PANEL_COLOR}
+          opacity={0.72}
+        />
+      </group>
 
-      <group position={[0, finished ? 0.1 : 0.04, 0]}>
+      <group position={[0, layout.content, 0]}>
         {tokens.map((token) => (
           <Token key={token.index} state={token.state} x={token.x} />
         ))}
         <StreakPips streak={streak} />
-        <ScoreBar
-          ratio={ratio}
-          recordRatio={recordRatio}
-          isRecord={isRecord}
-          width={Math.max(width, 0.28)}
-        />
+        {!onSign && (
+          <ScoreBar
+            ratio={ratio}
+            recordRatio={recordRatio}
+            isRecord={isRecord}
+            width={Math.max(width, 0.28)}
+          />
+        )}
         {showLives && <Lives lives={lives} total={totalLives} y={LIFE_ROW_Y} />}
+        {/* For two, whose round it is: the pair of chips with the one of whoever has the controller
+            lit and grown (the one on this side, player 1; the one opposite, player 2), to the
+            left of the lives. At the end the notice to pass the controller says it, above. */}
+        {player != null && !finished && (
+          <XRPlayersIcon
+            position={[-0.17, LIFE_ROW_Y, 0.004]}
+            size={0.011}
+            table="#94a3b8"
+            near={player === 0 ? { color: '#22c55e', scale: 1.3 } : { color: '#475569' }}
+            far={player === 1 ? { color: '#22c55e', scale: 1.3 } : { color: '#475569' }}
+          />
+        )}
         {showStars && (
           <XRStarsRow stars={levelResult.stars} position={[0, LIFE_ROW_Y, 0]} size={0.02} />
         )}
       </group>
       {/*
-        Al acabar, la partida ya no encadena sola: el jugador decide. Antes se
-        reiniciaba tras una pausa y no había forma de volver a elegir palos ni
-        dificultad sin quitarse el visor.
+        At the end, the run no longer chains by itself: the player decides. Before, it
+        restarted after a pause and there was no way to choose sticks or
+        difficulty again without taking the headset off.
       */}
       {finished && (
         <group position={[0, -0.12, 0]}>
@@ -383,10 +405,6 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
             <XRRepeatIcon position={[0, 0, 0.008]} size={0.026} />
           </XRPressable>
 
-          {/* En medio: compartir es lo nuevo, y así repetir y volver al menú
-              siguen en las puntas donde ya estaban. */}
-          <ShareButton position={[0, 0, 0]} />
-
           <XRPressable
             position={[BUTTON_SPACING, 0, 0]}
             onSelect={resetGame}
@@ -395,6 +413,7 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
             <ButtonPlate style={NEUTRAL_BUTTON} />
             <XRHomeIcon position={[0, 0, 0.008]} />
           </XRPressable>
+          <FinalLabels gameMode={gameMode} />
         </group>
       )}
     </group>
@@ -402,24 +421,24 @@ export function XRHud({ hasDomUi = false }: { hasDomUi?: boolean }) {
 }
 
 /**
- * Botón de volver al menú durante la partida, apartado a un lado para no
- * cruzarse con los palos. Sin él, entrar en una partida en el visor era un
- * callejón sin salida: no había forma de cambiar de opciones.
+ * Button to go back to the menu during the run, set aside to one side so as not to
+ * cross the sticks. Without it, entering a run in the headset was a
+ * dead end: there was no way to change options.
  */
 export function XRQuitButton({ hasDomUi = false }: { hasDomUi?: boolean }) {
   const mode = useXR((state) => state.mode)
   const { gameState, gameMode, endless, askToQuit, endRun } = useGame()
 
-  // También durante la cuenta atrás: si al jugador se le ocurre que se ha
-  // equivocado de opciones, esos tres segundos son su última oportunidad.
+  // During the countdown too: if it occurs to the player that they got
+  // the options wrong, those three seconds are their last chance.
   if ((hasDomUi && mode == null) || (gameState !== 'playing' && gameState !== 'countdown')) {
     return null
   }
 
   return (
     <>
-      {/* Sin fin no se acaba sola: terminar es su única salida con resumen. Va
-          en la punta contraria a la de volver al menú para no confundirlas. */}
+      {/* Endless does not end by itself: finishing is its only way out with a summary. It goes
+          at the tip opposite to the back-to-menu one so as not to confuse them. */}
       {gameMode === 'practice' && endless && gameState === 'playing' && (
         <XRPressable
           position={XR_END_RUN_POSITION}
@@ -439,7 +458,7 @@ export function XRQuitButton({ hasDomUi = false }: { hasDomUi?: boolean }) {
           <XRCheckIcon position={[0, 0, 0.012]} />
         </XRPressable>
       )}
-      {/* Pregunta antes de dejarla: el botón se pulsa sin querer y salir pierde lo hecho. */}
+      {/* It asks before leaving it: the button gets pressed by accident and quitting loses what was done. */}
       <QuitButton onSelect={askToQuit} />
     </>
   )
@@ -447,10 +466,10 @@ export function XRQuitButton({ hasDomUi = false }: { hasDomUi?: boolean }) {
 
 function QuitButton({ onSelect }: { onSelect: () => void }) {
   return (
-    // El giro cuelga del botón, no de la placa: girando solo la placa, su borde
-    // izquierdo se adelantaba por delante del icono y se comía el dibujo desde
-    // ese lado. Es lo que hacía ilegible al icono anterior, cuya punta de flecha
-    // caía justo en la parte que quedaba enterrada.
+    // The turn hangs from the button, not from the plate: turning only the plate, its left
+    // edge came forward in front of the icon and ate the drawing from
+    // that side. It is what made the previous icon illegible, whose arrowhead
+    // fell right on the part that was buried.
     <XRPressable
       position={XR_QUIT_POSITION}
       rotation={[0, XR_QUIT_YAW, 0]}
@@ -472,22 +491,22 @@ function QuitButton({ onSelect }: { onSelect: () => void }) {
 }
 
 /**
- * El aviso antes de dejar la partida.
+ * The notice before leaving the run.
  *
- * **No se sale de golpe.** El botón se pulsa sin querer —con el visor puesto no se ve lo
- * que hay a los lados y la mano va a por los palos— y salir pierde lo que se lleve hecho.
- * Así que se para la partida y se pregunta; mientras se pregunta no cae ningún palo, porque
- * si no, decidir costaría puntos.
+ * **There is no leaving all at once.** The button gets pressed by accident —with the headset on what
+ * is at the sides is not seen and the hand goes for the sticks— and quitting loses what has been done.
+ * So the run is stopped and the question asked; while it is asked no stick falls, because
+ * otherwise deciding would cost points.
  */
 /**
- * Lo que se escribe en el aviso de dejar la partida.
+ * What is written on the notice to leave the run.
  *
- * Aparte del componente para poder **medirlo**: un panel del visor se pinta en un lienzo que
- * nadie mira al tamaño al que se lee, así que un texto que se sale o dos que se pisan solo
- * se descubren con las gafas puestas. Lo mide `salida.legible.test.ts`, en los dos idiomas
- * —el español es más largo y es donde se sale—.
+ * Apart from the component to be able to **measure it**: a headset panel is painted on a canvas that
+ * nobody looks at at the size it is read at, so a text that runs off or two that overlap are only
+ * discovered with the headset on. `exit.legible.test.ts` measures it, in the two languages
+ * —Spanish is longer and is where it runs off—.
  */
-export function dibujarElAviso(ctx: CanvasRenderingContext2D, t: (clave: TextKey) => string): void {
+export function drawNotice(ctx: CanvasRenderingContext2D, t: (key: TextKey) => string): void {
   drawParagraph(ctx, t('Leave the game?'), 0, 0.1, {
     size: CONFIRM_TEXT.title,
     color: '#e2e8f0',
@@ -520,9 +539,9 @@ export function dibujarElAviso(ctx: CanvasRenderingContext2D, t: (clave: TextKey
 
 export function XRQuitConfirm() {
   const { prompt, resetGame, keepPlaying } = useGame()
-  const t = traductor(useLang())
+  const t = translator(useLang())
 
-  const escribir = useCallback((ctx: CanvasRenderingContext2D) => dibujarElAviso(ctx, t), [t])
+  const write = useCallback((ctx: CanvasRenderingContext2D) => drawNotice(ctx, t), [t])
 
   if (prompt !== 'quit') return null
 
@@ -552,14 +571,77 @@ export function XRQuitConfirm() {
         </mesh>
       </XRPressable>
 
-      {/* El texto va encima de las placas: el lienzo es transparente salvo donde escribe. */}
+      {/* The text goes on top of the plates: the canvas is transparent except where it writes. */}
       <group position={[0, 0, 0.03]}>
         <CanvasPanel
           width={XR_CONFIRM_SIZE[0]}
           height={XR_CONFIRM_SIZE[1]}
-          draw={escribir}
+          draw={write}
           fallbackColor={PANEL_COLOR}
         />
+      </group>
+    </group>
+  )
+}
+
+/**
+ * What is written when a round of the two-player match ends: whose it was and who they pass the
+ * controller to or, with both played, who wins, the points of both and what the pair has so far.
+ *
+ * Apart from the component to be able to **measure it** in the two languages (`duel.legible.test.ts`):
+ * Spanish is longer and is where the text runs off. The phrases come already said (`duelSummary`).
+ */
+export function drawDuel(ctx: CanvasRenderingContext2D, summary: DuelSummary): void {
+  const width = XR_DUEL_SIZE[0] - 0.04
+  drawText(ctx, summary.title, 0, 0.08, {
+    size: DUEL_TEXT.title,
+    color: summary.winner != null ? '#fbbf24' : '#ffffff',
+    weight: '700',
+    maxWidth: width,
+  })
+  if (summary.pass != null) {
+    drawText(ctx, summary.pass, 0, 0.015, { size: DUEL_TEXT.body, color: '#4ade80', weight: '700', maxWidth: width })
+    return
+  }
+  // One line per player: together on one they do not fit at the panel's letter size.
+  summary.lines.forEach((line, i) => {
+    drawText(ctx, line.text, 0, 0.025 - i * 0.045, {
+      size: DUEL_TEXT.body,
+      color: line.player === summary.winner ? '#fbbf24' : '#e2e8f0',
+      maxWidth: width,
+    })
+  })
+  if (summary.tally != null) {
+    drawText(ctx, summary.tally, 0, -0.08, { size: DUEL_TEXT.body, color: '#94a3b8', maxWidth: width })
+  }
+}
+
+/**
+ * The end of a two-player round, inside the headset: **the notice to pass the controller** or who has won.
+ *
+ * With letters and not with tokens like the scoreboard: «pass the controller to player 2» cannot be said with
+ * a silhouette. It goes in front, in the place of the quit notice (`XR_DUEL_POSITION`), and the scoreboard's
+ * buttons are still underneath: the play one starts the other player's round, or a new match.
+ */
+export function XRDuelPanel({ hasDomUi = false }: { hasDomUi?: boolean }) {
+  const mode = useXR((state) => state.mode)
+  const { gameState, duel, duelTally } = useGame()
+  const lang = useLang()
+
+  const write = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      if (duel != null) drawDuel(ctx, duelSummary(duel, duelTally, lang))
+    },
+    [duel, duelTally, lang],
+  )
+
+  if ((hasDomUi && mode == null) || gameState !== 'finished' || duel == null) return null
+
+  return (
+    <group position={XR_DUEL_POSITION}>
+      <XRPanel width={XR_DUEL_SIZE[0]} height={XR_DUEL_SIZE[1]} color={PANEL_COLOR} />
+      <group position={[0, 0, 0.01]}>
+        <CanvasPanel width={XR_DUEL_SIZE[0]} height={XR_DUEL_SIZE[1]} draw={write} fallbackColor={PANEL_COLOR} />
       </group>
     </group>
   )

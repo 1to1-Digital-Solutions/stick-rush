@@ -4,19 +4,19 @@ import { createXRStore } from '@react-three/xr'
 import { assetUrl } from '../../lib/assets'
 import { StickRushController } from './XRController'
 
-/** El mismo volumen de agarre para la mano desnuda, algo más ajustado. */
+/** The same grab volume for the bare hand, somewhat tighter. */
 const HAND_GRAB_RADIUS = 0.06
 
-/** Dónde viven los perfiles de mando servidos junto al resto de assets. */
+/** Where the controller profiles live, served alongside the rest of the assets. */
 const XR_PROFILES_PATH = 'webxr-profiles/'
 
 /**
- * Ruta absoluta a los perfiles.
+ * Absolute path to the profiles.
  *
- * @react-three/xr resuelve las rutas con `new URL(path, baseAssetPath)`, que
- * exige una base absoluta: una ruta como `/webxr-profiles/` lanza. En el
- * servidor no hay `window`, pero tampoco hay sesión XR, así que ese valor no
- * llega a usarse nunca.
+ * @react-three/xr resolves paths with `new URL(path, baseAssetPath)`, which
+ * demands an absolute base: a path like `/webxr-profiles/` throws. On the
+ * server there is no `window`, but there is no XR session either, so that value never
+ * gets used.
  */
 function profilesBasePath(): string {
   const path = assetUrl(XR_PROFILES_PATH)
@@ -25,32 +25,34 @@ function profilesBasePath(): string {
 }
 
 /**
- * Store de WebXR compartido entre los botones de entrada (DOM) y el
- * componente <XR> dentro del Canvas. Se crea una sola vez, la primera vez que
- * alguno lo pide, para que ambos lados apunten a la misma sesión.
+ * WebXR store shared between the entry buttons (DOM) and the
+ * <XR> component inside the Canvas. It is created only once, the first time
+ * either of them asks for it, so that both sides point at the same session.
  *
- * Se crea al pedirlo y no al importar el módulo porque su `baseAssetPath`
- * depende de dónde estén los ficheros del juego, y eso lo decide quien lo monta
- * (ver `lib/assets.ts`): fijándolo en el import quedaría atado a la raíz antes
- * de que nadie hubiera podido decir otra cosa.
+ * It is created on request and not on importing the module because its `baseAssetPath`
+ * depends on where the game's files are, and that is decided by whoever mounts it
+ * (see `lib/assets.ts`): fixing it at import would leave it tied to the root before
+ * anybody had been able to say otherwise.
  *
- * Dos decisiones, las dos salidas de probar con el visor puesto:
+ * Two decisions, both of them the result of testing with the headset on:
  *
- * - **Los perfiles de mando se sirven desde la propia app** (`baseAssetPath`).
- *   Por defecto se descargan de `cdn.jsdelivr.net`; la CSP lo bloquea, y al
- *   fallar la promesa @react-three/xr se traga el error en un
- *   `.catch(console.error)` y **nunca registra el mando**. Sin estado de mando
- *   no se monta ni el rayo ni el puntero de agarre: en el visor eso era
- *   quedarse sin mandos y sin poder pulsar nada. Los ficheros se copian con
+ * - **The controller profiles are served from the app itself** (`baseAssetPath`).
+ *   By default they are downloaded from `cdn.jsdelivr.net`; the CSP blocks it, and when
+ *   the promise fails @react-three/xr swallows the error in a
+ *   `.catch(console.error)` and **never registers the controller**. Without controller state
+ *   neither the ray nor the grab pointer is mounted: in the headset that meant
+ *   being left without controllers and unable to press anything. The files are copied with
  *   `npm run sync:xr-profiles`.
- * - **El mando lo dibuja el juego**, no la librería: `StickRushController` monta
- *   un mando de geometría propia (con la pista del gatillo de agarre) y sus dos
- *   punteros. El modelo real es un `.glb` del mismo CDN, y auto-hospedarlo
- *   costaría los 100 MB del paquete de assets para algo que se ve de refilón.
+ * - **The controller is drawn by the game**, not by the library: `StickRushController` mounts
+ *   a controller of its own geometry (with the hint of the grab trigger) and its two
+ *   pointers. The real model is a `.glb` from the same CDN, and self-hosting it
+ *   would cost the 100 MB of the assets package for something seen in passing.
  *
- * Las manos desnudas van sin modelo: en AR se ven las de verdad por
- * passthrough, y en VR el cursor del agarre basta para situarlas. Su modelo sí
- * es una descarga del CDN y no hay equivalente local ligero.
+ * - **The hands are NOT drawn by the store** (`hand.model: false`), neither the glove with
+ *   controllers nor the articulated hand without them: the scene mounts them
+ *   (`PlayerHands`). What hangs from here only exists on the game's own website, and
+ *   the game is played mostly inside the xrcade hall, whose store does not
+ *   draw hands. Turning them on here too would paint them twice.
  */
 let store: ReturnType<typeof createXRStore> | null = null
 
@@ -59,6 +61,7 @@ export function getXrStore(): ReturnType<typeof createXRStore> {
     baseAssetPath: profilesBasePath(),
     controller: StickRushController,
     hand: {
+      // The scene draws it (`PlayerHands`), which is what also shows up in the hall.
       model: false,
       grabPointer: { radius: HAND_GRAB_RADIUS, cursorModel: true },
       rayPointer: { rayModel: true, cursorModel: true },
@@ -69,19 +72,19 @@ export function getXrStore(): ReturnType<typeof createXRStore> {
 }
 
 /**
- * Cierra la sesión inmersiva, si la hay.
+ * Closes the immersive session, if there is one.
  *
- * Hace falta al desmontar el juego. El store vive fuera del árbol de React y
- * `<XR>` no cierra nada al desmontarse: una aplicación que quite el juego con
- * el visor puesto —el hub volviendo a su salón— dejaría viva una sesión atada a
- * un Canvas que ya no existe, y el jugador se quedaría mirando una escena
- * congelada, sin poder volver ni empezar otra (WebXR da una sesión por
- * documento). En su propia web pasa lo mismo al navegar entre `/` y `/game`.
+ * It is needed when the game is unmounted. The store lives outside the React tree and
+ * `<XR>` closes nothing on unmounting: an application that removes the game with
+ * the headset on —the hub going back to its hall— would leave alive a session tied to
+ * a Canvas that no longer exists, and the player would be left looking at a frozen
+ * scene, unable to go back or start another (WebXR gives one session per
+ * document). On its own website the same happens when navigating between `/` and `/game`.
  */
 export function endXrSession(): void {
   const session = store?.getState().session
   if (session == null) return
-  // Que la llamada falle es un desenlace previsto: la sesión puede estar
-  // cerrándose ya porque el jugador haya salido por su cuenta.
+  // The call failing is an expected outcome: the session may already be
+  // closing because the player left on their own.
   void session.end().catch(() => {})
 }

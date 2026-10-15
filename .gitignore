@@ -17,7 +17,7 @@
 /blob-report
 /.playwright
 
-# worktrees de trabajo (checkouts separados del mismo repo)
+# work worktrees (separate checkouts of the same repo)
 /.claude/worktrees
 
 # next.js
@@ -47,5 +47,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# bundle generado del emulador WebXR para los tests
+# generated bundle of the WebXR emulator for the tests
 /e2e/support/xr-emulator.bundle.js
+# and the one of the test host
+/e2e/support/host.bundle.js

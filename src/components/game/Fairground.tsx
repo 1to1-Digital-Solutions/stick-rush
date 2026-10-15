@@ -1,14 +1,11 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
-import { MACHINE_TRUSS_COLOR } from '../../lib/gameConfig'
+import { Suspense, useMemo, useRef } from 'react'
 import {
   GARLAND_BULBS_PER_SPAN,
   GARLAND_POST_COUNT,
   GARLAND_POST_HEIGHT,
   GARLAND_RING_RADIUS,
-  STALL_COUNT,
-  STALL_RING_RADIUS,
   garlandBulbs,
   ringSlots,
   type RingSlot,
@@ -16,101 +13,75 @@ import {
 } from '../../lib/sceneryLayout'
 import { Crowd } from './Crowd'
 import { FairMood, type FairMoodState } from './FairMood'
-import { Bulb, FairPieces, Pole, type PieceCounts } from './FairPieces'
-import { FairStall, STALL_PIECES } from './FairStall'
+import { Bulb, FairPieces, type PieceCounts } from './FairPieces'
+import { FairKit } from './FairKit'
 import { FerrisWheel, WHEEL_PIECES } from './FerrisWheel'
 import { useReducedMotion } from './useReducedMotion'
 
 /**
- * El recinto de feria en el que está montada la máquina: casetas alrededor,
- * guirnaldas de bombillas cerrando el círculo por arriba, público entre las
- * casetas y una noria al fondo. Las bombillas y el público responden a la racha
- * (`lib/fairMood.ts`), que les llega por un ref y no por props: el recinto no
- * se vuelve a renderizar por nada que pase en la partida.
+ * The fairground venue the machine is set up in: stalls around,
+ * garlands of bulbs strung between lampposts closing the circle from
+ * above, a crowd between the stalls and a Ferris wheel at the back. The stalls, the
+ * lampposts and their banners are pieces of the xrcade kit (`FairKit`); the
+ * bulbs, the Ferris wheel and the crowd are made in code. The bulbs and the crowd respond to the streak
+ * (`lib/fairMood.ts`), which reaches them through a ref and not through props: the venue is
+ * not rendered again by anything that happens in the run.
  *
- * Solo se pinta con el escenario puesto. En passthrough el decorado es la
- * habitación del jugador, y esto la taparía (ver `SceneBackdrop`).
+ * It is only painted with the scenery on. In passthrough the decor is the
+ * player's room, and this would cover it (see `SceneBackdrop`).
  */
 
 const GARLAND_BULB_RADIUS = 0.055
-const GARLAND_POST_THICKNESS = 0.12
 
 /**
- * Lo que gastan las guirnaldas del presupuesto de instancias: cada poste, con
- * su base, y el tramo de bombillas que sale de él hacia el siguiente.
+ * What the garlands spend of the instance budget: the stretch of
+ * bulbs that goes from each lamppost to the next. The lampposts spend
+ * nothing from here: they are pieces of the kit, with their own `InstancedMesh`.
  */
 const GARLAND_PIECES: PieceCounts = {
   boards: 0,
-  poles: GARLAND_POST_COUNT * 2,
+  poles: 0,
   bulbs: GARLAND_POST_COUNT * GARLAND_BULBS_PER_SPAN,
 }
 
 /**
- * Sitio a reservar en las tres familias de piezas (ver `PieceCounts`). Sale de
- * lo que declara cada trozo del recinto, y no de un recuento a mano, para que
- * añadir una caseta o un premio no haga desaparecer piezas en silencio.
+ * Room to allocate in the three families of pieces (see `PieceCounts`). It comes from
+ * what each bit of the venue declares, and not from a count by hand, so that
+ * adding a cabin or a stretch does not make pieces disappear silently.
  */
 const FAIR_PIECES: PieceCounts = {
-  boards:
-    STALL_COUNT * STALL_PIECES.boards +
-    GARLAND_PIECES.boards +
-    WHEEL_PIECES.boards,
-  poles:
-    STALL_COUNT * STALL_PIECES.poles +
-    GARLAND_PIECES.poles +
-    WHEEL_PIECES.poles,
-  bulbs:
-    STALL_COUNT * STALL_PIECES.bulbs +
-    GARLAND_PIECES.bulbs +
-    WHEEL_PIECES.bulbs,
+  boards: GARLAND_PIECES.boards + WHEEL_PIECES.boards,
+  poles: GARLAND_PIECES.poles + WHEEL_PIECES.poles,
+  bulbs: GARLAND_PIECES.bulbs + WHEEL_PIECES.bulbs,
 }
 
-/** La punta del poste, de donde se tienden las guirnaldas. */
+/** The tip of the lamppost, where the garlands are strung from. */
 function postTop({ position }: RingSlot): Vec3 {
   return [position[0], GARLAND_POST_HEIGHT, position[2]]
 }
 
 /**
- * Postes con sus tramos de bombillas. Los postes van desfasados respecto a las
- * casetas para que no queden unos tapando a otras.
+ * The stretches of bulbs between lamppost and lamppost. The lampposts are painted by
+ * `FairKit` in the same places (`lib/fairKit.ts`), offset from
+ * the stalls so that they do not end up covering one another.
  */
 function Garlands() {
-  const { posts, bulbs } = useMemo(() => {
+  const bulbs = useMemo(() => {
     const posts = ringSlots(
       GARLAND_POST_COUNT,
       GARLAND_RING_RADIUS,
       Math.PI / GARLAND_POST_COUNT,
     )
-    const bulbs = posts.flatMap((post, index) =>
+    return posts.flatMap((post, index) =>
       garlandBulbs({
         from: postTop(post),
         to: postTop(posts[(index + 1) % posts.length]),
       }),
     )
-    return { posts, bulbs }
   }, [])
 
   return (
     <group>
-      {posts.map((post, index) => (
-        <group key={`post-${index}`} position={post.position}>
-          <Pole
-            position={[0, GARLAND_POST_HEIGHT / 2, 0]}
-            scale={[
-              GARLAND_POST_THICKNESS,
-              GARLAND_POST_HEIGHT,
-              GARLAND_POST_THICKNESS,
-            ]}
-            color={MACHINE_TRUSS_COLOR}
-          />
-          <Pole
-            position={[0, 0.06, 0]}
-            scale={[0.34, 0.12, 0.34]}
-            color={MACHINE_TRUSS_COLOR}
-          />
-        </group>
-      ))}
-
       {bulbs.map((position, index) => (
         <Bulb
           key={`garland-bulb-${index}`}
@@ -123,18 +94,19 @@ function Garlands() {
 }
 
 export function Fairground() {
-  // La noria es lo único que se mueve aquí; con el movimiento reducido se queda
-  // parada, como el vaivén de los palos.
+  // The Ferris wheel is the only thing that moves here; with reduced motion it stays
+  // stopped, like the sway of the sticks.
   const reducedMotion = useReducedMotion()
-  const stalls = useMemo(() => ringSlots(STALL_COUNT, STALL_RING_RADIUS), [])
   const mood = useRef<FairMoodState>({ streak: 0 })
 
   return (
     <FairPieces limits={FAIR_PIECES} moodRef={mood}>
       <FairMood moodRef={mood} />
-      {stalls.map((slot, index) => (
-        <FairStall key={`stall-${index}`} slot={slot} index={index} />
-      ))}
+      {/* Its own Suspense: while the models download, the rest of the venue
+          is already seen. */}
+      <Suspense fallback={null}>
+        <FairKit />
+      </Suspense>
       <Garlands />
       <Crowd moodRef={mood} />
       <FerrisWheel spinning={!reducedMotion} />

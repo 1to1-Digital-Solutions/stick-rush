@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useReducedMotion } from './useReducedMotion'
 
 /**
- * `matchMedia` de mentira: jsdom no lo implementa. Guarda los oyentes para
- * poder simular que el sistema cambia de preferencia con la página abierta.
+ * A fake `matchMedia`: jsdom does not implement it. It keeps the listeners to
+ * be able to simulate the system changing preference with the page open.
  */
 function stubMatchMedia(matches: boolean) {
   const listeners = new Set<() => void>()
@@ -43,13 +43,13 @@ function renderHook() {
 }
 
 afterEach(() => {
-  // Sin `globals` en la config de Vitest, Testing Library no limpia sola.
+  // Without `globals` in the Vitest config, Testing Library does not clean up by itself.
   cleanup()
   vi.unstubAllGlobals()
 })
 
 describe('useReducedMotion', () => {
-  it('dice que no cuando el sistema no pide reducir el movimiento', () => {
+  it('says no when the system does not ask to reduce motion', () => {
     const media = stubMatchMedia(false)
     const { seen } = renderHook()
 
@@ -59,14 +59,14 @@ describe('useReducedMotion', () => {
     )
   })
 
-  it('dice que sí cuando la preferencia ya venía puesta', () => {
+  it('says yes when the preference was already set', () => {
     stubMatchMedia(true)
     const { seen } = renderHook()
 
     expect(seen.current).toBe(true)
   })
 
-  it('se entera si la preferencia cambia con la página abierta', () => {
+  it('finds out if the preference changes with the page open', () => {
     const media = stubMatchMedia(false)
     const { seen } = renderHook()
 
@@ -77,7 +77,7 @@ describe('useReducedMotion', () => {
     expect(seen.current).toBe(false)
   })
 
-  it('deja de escuchar al desmontarse', () => {
+  it('stops listening on unmounting', () => {
     const media = stubMatchMedia(false)
     const { view } = renderHook()
     expect(media.listenerCount).toBe(1)
@@ -86,7 +86,7 @@ describe('useReducedMotion', () => {
     expect(media.listenerCount).toBe(0)
   })
 
-  it('no se rompe en un navegador sin matchMedia', () => {
+  it('does not break in a browser without matchMedia', () => {
     vi.stubGlobal('matchMedia', undefined)
     const { seen } = renderHook()
 

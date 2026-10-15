@@ -9,7 +9,7 @@ import {
   type Sound,
 } from './sound'
 
-/** Todos los sonidos del juego, para las reglas que valen para cualquiera. */
+/** All the sounds of the game, for the rules that hold for any of them. */
 const EVERY_SOUND: Sound[] = [
   { name: 'catch', streak: 1 },
   { name: 'catch', streak: MAX_STICKS },
@@ -21,34 +21,37 @@ const EVERY_SOUND: Sound[] = [
   { name: 'over', outcome: 'loss' },
   { name: 'over', outcome: 'close' },
   { name: 'record' },
+  { name: 'medal', rank: 0 },
+  { name: 'medal', rank: 1 },
+  { name: 'medal', rank: 2 },
 ]
 
-describe('recetas de los sonidos', () => {
-  it('el acierto sube de tono con la racha', () => {
+describe('recipes of the sounds', () => {
+  it('the catch goes up in pitch with the streak', () => {
     expect(catchFrequency(2)).toBeGreaterThan(catchFrequency(1))
     expect(catchFrequency(5)).toBeGreaterThan(catchFrequency(4))
   })
 
-  it('la subida del acierto tiene tope', () => {
-    // Sin tope, una racha larga acabaría chillando: 13 palos son 12 semitonos,
-    // una octava entera, y el armónico se iría por encima de los 2,6 kHz.
+  it('the rise of the catch has a cap', () => {
+    // Without a cap, a long streak would end up shrieking: 13 sticks are 12 semitones,
+    // a whole octave, and the harmonic would go above 2.6 kHz.
     expect(catchFrequency(MAX_STICKS)).toBe(catchFrequency(100))
   })
 
-  it('el tic de la cuenta sube conforme se acerca la salida', () => {
+  it('the tick of the count goes up as the start gets closer', () => {
     expect(countdownFrequency(1)).toBeGreaterThan(countdownFrequency(2))
     expect(countdownFrequency(2)).toBeGreaterThan(countdownFrequency(3))
   })
 
-  it('una cuenta atrás más larga no empieza más grave, solo tarda más', () => {
-    // La tensión se reparte en los tres últimos segundos; los anteriores
-    // comparten tono en vez de arrastrar la nota hacia lo inaudible.
+  it('a longer countdown does not start lower, it just takes longer', () => {
+    // The tension is spread over the last three seconds; the earlier ones
+    // share a tone instead of dragging the note towards the inaudible.
     expect(countdownFrequency(6)).toBe(countdownFrequency(3))
   })
 
-  it('el acierto asciende y el fallo desciende', () => {
-    // Que no se distingan solo por el tono: con el visor puesto no siempre se
-    // está mirando el palo que cae.
+  it('the catch ascends and the miss descends', () => {
+    // So that they are not told apart only by the pitch: with the headset on you are not
+    // always looking at the stick that falls.
     for (const voice of soundVoices({ name: 'catch', streak: 1 })) {
       expect(voice.to).toBeGreaterThan(voice.from)
     }
@@ -57,7 +60,7 @@ describe('recetas de los sonidos', () => {
     }
   })
 
-  it('el fallo es más grave que el acierto', () => {
+  it('the miss is lower than the catch', () => {
     const highestMiss = Math.max(
       ...soundVoices({ name: 'miss' }).map((voice) => voice.from),
     )
@@ -67,7 +70,7 @@ describe('recetas de los sonidos', () => {
     expect(highestMiss).toBeLessThan(lowestCatch)
   })
 
-  it('el fallo dura más que el acierto: se oye en medio de una racha', () => {
+  it('the miss lasts longer than the catch: it is heard in the middle of a streak', () => {
     const missDuration = Math.max(
       ...soundVoices({ name: 'miss' }).map((voice) => voice.duration),
     )
@@ -77,7 +80,7 @@ describe('recetas de los sonidos', () => {
     expect(missDuration).toBeGreaterThan(catchDuration)
   })
 
-  it('ninguna voz se sale del rango que el oído agradece', () => {
+  it('no voice leaves the range the ear is grateful for', () => {
     const streaks = Array.from({ length: MAX_STICKS }, (_, i) => i + 1)
     const sounds: Sound[] = [
       ...EVERY_SOUND,
@@ -94,7 +97,7 @@ describe('recetas de los sonidos', () => {
     }
   })
 
-  it('un dato imposible no deja el sonido en silencio ni en ultrasonidos', () => {
+  it('an impossible value does not leave the sound in silence nor in ultrasound', () => {
     for (const streak of [Number.NaN, 0, -3]) {
       expect(catchFrequency(streak)).toBeGreaterThan(60)
       expect(catchFrequency(streak)).toBeLessThan(2100)
@@ -105,30 +108,30 @@ describe('recetas de los sonidos', () => {
     }
   })
 
-  it('ningún sonido satura el volumen general', () => {
-    // Las voces se suman en el nodo maestro: pasar de 1 recorta la onda y
-    // suena a distorsión, no a más volumen. Lo que se suma es lo que suena **a
-    // la vez**: un arpegio de tres notas encadenadas no satura nada, y sumarlo
-    // entero prohibiría cualquier sonido que no sea un golpe.
+  it('no sound saturates the master volume', () => {
+    // The voices add up in the master node: going past 1 clips the wave and
+    // sounds like distortion, not like more volume. What adds up is what sounds **at
+    // the same time**: an arpeggio of three chained notes saturates nothing, and adding it up
+    // whole would forbid any sound that is not a hit.
     for (const sound of EVERY_SOUND) {
       const voices = soundVoices(sound)
       expect(voices.length).toBeGreaterThan(0)
 
-      const instantes = voices.flatMap((voice) => [voice.delay, voice.delay + voice.duration / 2])
-      const simultaneo = Math.max(
-        ...instantes.map((t) =>
+      const instants = voices.flatMap((voice) => [voice.delay, voice.delay + voice.duration / 2])
+      const simultaneous = Math.max(
+        ...instants.map((t) =>
           voices
             .filter((voice) => t >= voice.delay && t < voice.delay + voice.duration)
             .reduce((sum, voice) => sum + voice.gain, 0),
         ),
       )
 
-      expect(simultaneo).toBeGreaterThan(0)
-      expect(simultaneo).toBeLessThanOrEqual(1)
+      expect(simultaneous).toBeGreaterThan(0)
+      expect(simultaneous).toBeLessThanOrEqual(1)
     }
   })
 
-  it('toda voz dura algo', () => {
+  it('every voice lasts something', () => {
     for (const sound of EVERY_SOUND) {
       expect(soundVoices(sound).length).toBeGreaterThan(0)
       for (const voice of soundVoices(sound)) {
@@ -139,9 +142,9 @@ describe('recetas de los sonidos', () => {
   })
 })
 
-/* --- Doble de la Web Audio API ------------------------------------------ */
-// jsdom no la implementa, así que el motor se prueba contra un contexto de
-// mentira que anota lo que se le pide.
+/* --- Double of the Web Audio API ---------------------------------------- */
+// jsdom does not implement it, so the engine is tested against a fake
+// context that notes down what it is asked for.
 
 interface ParamCall {
   method: 'set' | 'ramp'
@@ -224,8 +227,8 @@ function fakeContext() {
   return { context, engine: createSoundEngine(context as unknown as AudioContext) }
 }
 
-describe('motor de sonido', () => {
-  it('crea un oscilador por voz y lo programa dentro de su ventana', () => {
+describe('sound engine', () => {
+  it('creates one oscillator per voice and schedules it within its window', () => {
     const { context, engine } = fakeContext()
     const voices = soundVoices({ name: 'catch', streak: 1 })
 
@@ -236,15 +239,15 @@ describe('motor de sonido', () => {
       const voice = voices[index]
       expect(oscillator.type).toBe(voice.type)
       expect(oscillator.startedAt).toBe(context.currentTime + voice.delay)
-      // Programar la parada es lo que impide que el oscilador siga sonando
-      // para siempre: no hay quien lo apague después.
+      // Scheduling the stop is what prevents the oscillator from going on sounding
+      // forever: there is no one to switch it off afterwards.
       expect(oscillator.stoppedAt).toBe(
         context.currentTime + voice.delay + voice.duration,
       )
     })
   })
 
-  it('todo lo que suena pasa por el volumen general', () => {
+  it('everything that sounds goes through the master volume', () => {
     const { context, engine } = fakeContext()
     const master = context.gains[0]
 
@@ -257,9 +260,9 @@ describe('motor de sonido', () => {
     }
   })
 
-  it('ninguna rampa exponencial apunta a cero', () => {
-    // `exponentialRampToValueAtTime(0)` lanza excepción y deja la partida sin
-    // sonido a partir de ahí. Vale para el volumen y para la frecuencia.
+  it('no exponential ramp points at zero', () => {
+    // `exponentialRampToValueAtTime(0)` throws an exception and leaves the run without
+    // sound from there on. It holds for the volume and for the frequency.
     const { context, engine } = fakeContext()
 
     for (const sound of EVERY_SOUND) engine.play(sound)
@@ -274,9 +277,9 @@ describe('motor de sonido', () => {
     }
   })
 
-  it('suelta los nodos en cuanto el sonido calla', () => {
-    // Una partida de 13 palos crea decenas de osciladores; sin esto se quedan
-    // todos colgando del maestro.
+  it('disposes of the nodes as soon as the sound goes silent', () => {
+    // A run of 13 sticks creates dozens of oscillators; without this they all stay
+    // hanging from the master.
     const { context, engine } = fakeContext()
     engine.play({ name: 'catch', streak: 3 })
 
@@ -288,22 +291,22 @@ describe('motor de sonido', () => {
     }
   })
 
-  it('con el contexto cerrado no intenta sonar', () => {
-    // Pasa al abandonar la página con una partida en marcha.
+  it('with the context closed it does not try to sound', () => {
+    // It happens on leaving the page with a run in progress.
     const { context, engine } = fakeContext()
     context.state = 'closed'
 
     engine.play({ name: 'miss' })
 
     expect(context.oscillators).toHaveLength(0)
-    // Un contexto cerrado no se reanuda: pedirlo lanza excepción.
+    // A closed context is not resumed: asking for it throws an exception.
     expect(context.resume).not.toHaveBeenCalled()
   })
 
-  it('con el contexto suspendido calla y pide el audio de vuelta', () => {
-    // Pasa al quitarse el visor a media partida: el reloj del contexto se para
-    // y todo lo que se programe se amontona en el mismo instante. Sin esto, los
-    // palos perdidos mientras tanto sonarían de golpe al volver a ponérselo.
+  it('with the context suspended it stays silent and asks for the audio back', () => {
+    // It happens on taking the headset off in the middle of a run: the context's clock stops
+    // and everything that is scheduled piles up at the same instant. Without this, the
+    // sticks missed in the meantime would sound all at once on putting it back on.
     const { context, engine } = fakeContext()
     context.state = 'suspended'
 
@@ -315,10 +318,10 @@ describe('motor de sonido', () => {
   })
 })
 
-describe('soltar el motor de sonido', () => {
-  it('suelta el maestro del que cuelga todo', () => {
-    // Cada juego montado en el salón trae el suyo: si no se soltara al quitar
-    // la escena, los nodos se irían acumulando en el contexto del anfitrión.
+describe('disposing of the sound engine', () => {
+  it('disposes of the master everything hangs from', () => {
+    // Each game mounted in the hall brings its own: if it were not disposed of on removing
+    // the scene, the nodes would pile up in the host's context.
     const { context, engine } = fakeContext()
     const master = context.gains[0]
 
@@ -328,18 +331,18 @@ describe('soltar el motor de sonido', () => {
   })
 })
 
-describe('el volumen de los efectos del arcade', () => {
-  it('nace en el que se eligió, sin tener que tocar nada después', () => {
+describe('the volume of the arcade effects', () => {
+  it('is born at the one that was chosen, without having to touch anything afterwards', () => {
     const context = new FakeAudioContext()
     createSoundEngine(context as unknown as AudioContext, 0.5)
 
-    // El maestro es el primero que se crea: es el que cuelga del destino.
+    // The master is the first one created: it is the one that hangs from the destination.
     expect(context.gains[0].gain.value).toBeCloseTo(MASTER_GAIN * 0.5, 6)
   })
 
-  it('se cambia sin rehacer el audio', () => {
-    // Mover el deslizador en el arcade no puede cerrar el contexto y abrir
-    // otro: sería un corte de sonido por cada empujón.
+  it('is changed without rebuilding the audio', () => {
+    // Moving the slider in the arcade cannot close the context and open
+    // another: it would be a cut in the sound for each nudge.
     const { context, engine } = fakeContext()
 
     engine.setVolume(0.25)
@@ -347,9 +350,9 @@ describe('el volumen de los efectos del arcade', () => {
     expect(context.gains[0].gain.value).toBeCloseTo(MASTER_GAIN * 0.25, 6)
   })
 
-  it('no se sale de lo que el navegador admite', () => {
-    // Lo que llega son ajustes de fuera: un número imposible subiría la
-    // ganancia por encima de uno y eso satura, no suena más alto.
+  it('does not leave what the browser accepts', () => {
+    // What arrives are settings from outside: an impossible number would raise the
+    // gain above one and that saturates, it does not sound louder.
     const { context, engine } = fakeContext()
 
     engine.setVolume(4)
@@ -360,51 +363,82 @@ describe('el volumen de los efectos del arcade', () => {
   })
 })
 
-describe('el cierre de la partida', () => {
-  /** La nota más aguda de un sonido, que es por donde se reconoce a dónde va. */
-  const agudo = (sound: Sound) =>
+describe('the closing of the run', () => {
+  /** The highest note of a sound, which is how you recognise where it is going. */
+  const highest = (sound: Sound) =>
     Math.max(...soundVoices(sound).map((voice) => Math.max(voice.from, voice.to)))
-  const grave = (sound: Sound) =>
+  const lowest = (sound: Sound) =>
     Math.min(...soundVoices(sound).map((voice) => Math.min(voice.from, voice.to)))
-  const dura = (sound: Sound) =>
+  const lasts = (sound: Sound) =>
     Math.max(...soundVoices(sound).map((voice) => voice.delay + voice.duration))
 
-  it('ganar sube y perder baja, que es lo que el oído entiende solo', () => {
-    const ganar = soundVoices({ name: 'over', outcome: 'win' })
-    const perder = soundVoices({ name: 'over', outcome: 'loss' })
+  it('winning goes up and losing goes down, which is what the ear understands on its own', () => {
+    const win = soundVoices({ name: 'over', outcome: 'win' })
+    const loss = soundVoices({ name: 'over', outcome: 'loss' })
 
-    // La última voz de ganar es la más aguda de las tres; la de perder, la más grave.
-    expect(ganar[ganar.length - 1].to).toBeGreaterThan(ganar[0].from)
-    expect(perder[perder.length - 1].to).toBeLessThan(perder[0].from)
+    // The last voice of winning is the highest of the three; that of losing, the lowest.
+    expect(win[win.length - 1].to).toBeGreaterThan(win[0].from)
+    expect(loss[loss.length - 1].to).toBeLessThan(loss[0].from)
   })
 
-  it('terminar sin más no dice ni bien ni mal', () => {
-    // En práctica no hay nada que ganar ni que perder: el cierre solo avisa de que se
-    // acabó, así que se queda entre los otros dos.
-    const cerrar = agudo({ name: 'over', outcome: 'close' })
+  it('just finishing says neither good nor bad', () => {
+    // In practice there is nothing to win nor to lose: the closing only warns that it is
+    // over, so it stays between the other two.
+    const closing = highest({ name: 'over', outcome: 'close' })
 
-    expect(cerrar).toBeLessThan(agudo({ name: 'over', outcome: 'win' }))
-    expect(grave({ name: 'over', outcome: 'close' })).toBeGreaterThan(
-      grave({ name: 'over', outcome: 'loss' }),
+    expect(closing).toBeLessThan(highest({ name: 'over', outcome: 'win' }))
+    expect(lowest({ name: 'over', outcome: 'close' })).toBeGreaterThan(
+      lowest({ name: 'over', outcome: 'loss' }),
     )
   })
 
-  it('los tres duran más que atrapar o perder un palo', () => {
-    // Un final que dure lo que un acierto se confunde con un acierto, y con el visor
-    // puesto el marcador está donde uno no siempre está mirando.
-    const palo = Math.max(dura({ name: 'catch', streak: 1 }), dura({ name: 'miss' }))
+  it('the three last longer than catching or missing a stick', () => {
+    // An ending that lasts what a catch does is confused with a catch, and with the headset
+    // on the scoreboard is where one is not always looking.
+    const stick = Math.max(lasts({ name: 'catch', streak: 1 }), lasts({ name: 'miss' }))
 
     for (const outcome of ['win', 'loss', 'close'] as const) {
-      expect(dura({ name: 'over', outcome })).toBeGreaterThan(palo)
+      expect(lasts({ name: 'over', outcome })).toBeGreaterThan(stick)
     }
   })
 
-  it('el récord suena por encima de todo lo demás y después del cierre', () => {
-    // Va aparte del cierre porque batir la marca puede pasar ganando o terminando sin
-    // más, y hay que oír las dos cosas.
+  it('the record sounds above everything else and after the closing', () => {
+    // It goes apart from the closing because beating the best can happen winning or just
+    // finishing, and both things have to be heard.
     const record = soundVoices({ name: 'record' })
 
-    expect(grave({ name: 'record' })).toBeGreaterThan(agudo({ name: 'over', outcome: 'win' }))
+    expect(lowest({ name: 'record' })).toBeGreaterThan(highest({ name: 'over', outcome: 'win' }))
     expect(record[0].delay).toBeGreaterThan(0.3)
+  })
+})
+
+describe('the medal threshold', () => {
+  const notes = (rank: 0 | 1 | 2) => soundVoices({ name: 'medal', rank })
+
+  it('is two short notes upwards, a fifth', () => {
+    for (const rank of [0, 1, 2] as const) {
+      const [first, second] = notes(rank)
+      expect(notes(rank)).toHaveLength(2)
+      expect(second.from).toBeCloseTo(first.from * 1.5)
+      expect(second.delay).toBeGreaterThan(first.delay)
+    }
+  })
+
+  it('higher the better the medal, without going past 2 kHz', () => {
+    expect(notes(1)[0].from).toBeGreaterThan(notes(0)[0].from)
+    expect(notes(2)[0].from).toBeGreaterThan(notes(1)[0].from)
+    for (const rank of [0, 1, 2] as const) {
+      for (const voice of notes(rank)) expect(Math.max(voice.from, voice.to)).toBeLessThan(2000)
+    }
+  })
+
+  it('sounds after the catch that crossed it and ends long before a closing', () => {
+    const catchVoices = soundVoices({ name: 'catch', streak: 1 })
+    const catchEnd = Math.max(...catchVoices.map((voice) => voice.delay + voice.duration))
+    const end = (voices: ReturnType<typeof soundVoices>) => Math.max(...voices.map((voice) => voice.delay + voice.duration))
+
+    expect(notes(0)[0].delay).toBeGreaterThanOrEqual(catchEnd)
+    expect(end(notes(2))).toBeLessThan(end(soundVoices({ name: 'over', outcome: 'win' })))
+    expect(end(notes(2))).toBeLessThan(0.5)
   })
 })

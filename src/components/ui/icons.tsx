@@ -1,15 +1,15 @@
 /**
- * Iconos del menú y del marcador de escritorio.
+ * Icons of the menu and of the desktop scoreboard.
  *
- * Viven aparte porque los comparten el menú (elegir modo) y el HUD (vidas que
- * quedan): un corazón que se dibujara distinto en cada sitio haría dudar de si
- * hablan de lo mismo. Nada que ver con `xrIcons.ts`, que son siluetas 3D para el
- * visor, donde no hay SVG ni letras.
+ * They live apart because the menu (choosing a mode) and the HUD (lives
+ * left) share them: a heart drawn differently in each place would make one
+ * doubt whether they talk about the same thing. Nothing to do with `xrIcons.ts`,
+ * which are 3D silhouettes for the headset, where there is no SVG or letters.
  */
 
 /**
- * Corazón: una vida. Lleno mientras se conserva y de contorno cuando se ha
- * gastado, para que el estado se distinga por forma y no solo por color.
+ * Heart: a life. Filled while it is kept and outlined once it has been
+ * spent, so that the state is told apart by shape and not only by colour.
  */
 export function HeartIcon({
   spent = false,
@@ -33,31 +33,7 @@ export function HeartIcon({
   )
 }
 
-/**
- * Compartir: un nodo que sale hacia otros dos. Es el símbolo que ya llevan los
- * botones de compartir del sistema, así que no necesita explicarse.
- */
-export function ShareIcon({ className = 'size-5' }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className={`${className} shrink-0`}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="18" cy="5" r="2.6" />
-      <circle cx="6" cy="12" r="2.6" />
-      <circle cx="18" cy="19" r="2.6" />
-      <path d="m8.3 10.8 7.4-4.3m0 11-7.4-4.3" />
-    </svg>
-  )
-}
-
-/** Infinito: en práctica no hay nada que se agote. */
+/** Infinity: in practice there is nothing that runs out. */
 export function InfinityIcon({ className = 'size-5' }: { className?: string }) {
   return (
     <svg
@@ -75,8 +51,8 @@ export function InfinityIcon({ className = 'size-5' }: { className?: string }) {
 }
 
 /**
- * Estrella de nivel: llena la ganada, de contorno la que falta. Es lo que
- * distingue las dos por forma y no solo por color.
+ * Level star: the earned one filled, the missing one outlined. It is what
+ * tells the two apart by shape and not only by colour.
  */
 export function StarIcon({
   earned = true,

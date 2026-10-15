@@ -6,31 +6,32 @@ import { useXR } from '@react-three/xr'
 import { Euler, Quaternion, Vector3, type Group } from 'three'
 import { useGame } from '../../lib/gameStore'
 import {
+  XR_ANCHOR_DEADZONE,
   initialAnchorState,
   stepAnchor,
   type AnchorState,
 } from '../../lib/xrAnchor'
-import { usePlayHeight } from '../../lib/ajustesCliente'
-import { xrUiRiseOverWorld } from '../../lib/xrLayout'
+import { usePlayHeight } from '../../lib/settingsClient'
+import { XR_COLUMN, xrUiRiseOverWorld } from '../../lib/xrLayout'
 
 /**
- * Mantiene la interfaz inmersiva donde el jugador la ve: delante de su cara y a
- * la altura de sus ojos.
+ * Keeps the immersive UI where the player sees it: in front of their face and at
+ * the height of their eyes.
  *
- * Todo lo que cuelgue de aquí conserva sus coordenadas de siempre (el menú a
- * 95 cm hacia −Z, por ejemplo), pero ese −Z pasa a ser **hacia donde mira el
- * jugador** en vez de una dirección fija de la sala. Sin esto, entrar en el
- * visor mirando hacia otro lado dejaba el menú a la espalda: ni se veía ni se
- * podía apuntar (ver `@/lib/xrAnchor`).
+ * Everything that hangs from here keeps its usual coordinates (the menu
+ * 95 cm towards −Z, for example), but that −Z becomes **where the player is
+ * looking** instead of a fixed direction of the room. Without this, entering the
+ * headset looking another way left the menu behind the player's back: it could neither be seen nor
+ * pointed at (see `@/lib/xrAnchor`).
  *
- * El grupo también acompaña al jugador si camina, de modo que la interfaz no se
- * queda anclada a un punto del cuarto, y se acomoda a su estatura (ver
- * `xrUiRise`): la mide `<XRPlayerHeight>` mientras el menú está delante, así
- * que durante la partida el panel se queda quieto en vez de perseguir la
- * cabeza.
+ * The group also goes with the player if they walk, so the UI does not
+ * stay anchored to a point of the room, and it adapts to their height (see
+ * `xrUiRise`): `<XRPlayerHeight>` measures it while the menu is in front, so
+ * during the run the panel stays still instead of chasing the
+ * head.
  *
- * Toda la decisión de *cuándo* girar está en `stepAnchor`, que se prueba sin
- * navegador; aquí solo se lee la cámara y se aplica el resultado.
+ * The whole decision of *when* to turn is in `stepAnchor`, which is tested without a
+ * browser; here the camera is only read and the result applied.
  */
 export function XRGazeAnchor({
   children,
@@ -39,16 +40,16 @@ export function XRGazeAnchor({
 }: {
   children: ReactNode
   /**
-   * Colocar la interfaz también fuera de sesión inmersiva. Es lo que hace falta
-   * cuando el anfitrión no pone interfaz en DOM —el salón de xrcade, sin visor—:
-   * ahí esto es la única interfaz que hay, y dejarla sin colocar la deja donde
-   * caiga, normalmente a la espalda de quien mira.
+   * Place the UI outside the immersive session too. It is what is needed
+   * when the host puts no DOM UI —the xrcade hall, without a headset—:
+   * there this is the only UI there is, and leaving it unplaced leaves it wherever
+   * it falls, normally behind the back of whoever is looking.
    */
   always?: boolean
   /**
-   * Con qué prioridad se lleva el rayo lo que cuelgue de aquí frente al resto de la escena
-   * (`lib/punteros.ts`). Va en el grupo y no panel por panel porque es de la interfaz entera:
-   * entre la mano y cualquier botón hay siempre palos, que es de lo que va esta máquina.
+   * With what priority whatever hangs from here takes the ray against the rest of the scene
+   * (`lib/pointers.ts`). It goes on the group and not panel by panel because it belongs to the whole UI:
+   * between the hand and any button there are always sticks, which is what this machine is about.
    */
   pointerEventsOrder?: number
 }) {
@@ -57,33 +58,33 @@ export function XRGazeAnchor({
   const mode = useXR((state) => state.mode)
   const { playerEyeHeight } = useGame()
 
-  // Cada sesión empieza de cero: al entrar, la interfaz debe plantarse delante
-  // del jugador de inmediato, sin el giro de reencuadre.
+  // Every session starts from scratch: on entering, the UI must plant itself in front
+  // of the player right away, without the reframing turn.
   useEffect(() => {
     anchor.current = null
   }, [mode])
 
-  // Si el mundo entero ya ha bajado hasta quien juega, la interfaz vino con
-  // él y no le hace falta corrección propia (ver `xrUiRiseOverWorld`).
-  const aLaAlturaDeLosOjos = usePlayHeight() === 'eyes'
+  // If the whole world has already come down to whoever plays, the UI came with
+  // it and needs no correction of its own (see `xrUiRiseOverWorld`).
+  const atEyeHeight = usePlayHeight() === 'eyes'
   useFrame((state, delta) => {
     const group = ref.current
-    // Fuera de sesión inmersiva no hay nada que colocar si manda el DOM; si no
-    // lo hay (`always`), esta interfaz es la única y se coloca igual, delante de
-    // donde mire la cámara que ponga el anfitrión.
+    // Outside the immersive session there is nothing to place if the DOM rules; if there
+    // is none (`always`), this UI is the only one and it is placed anyway, in front of
+    // wherever the camera the host puts is looking.
     if (group == null || (mode == null && !always)) return
 
     const { camera } = state
     camera.getWorldPosition(gazePosition)
     camera.getWorldQuaternion(gazeQuaternion)
 
-    // El orden YXZ aísla el giro horizontal en el primer ángulo: así la
-    // interfaz sigue a dónde mira el jugador sin inclinarse cuando levanta o
-    // baja la cabeza, que es lo que la haría bailar.
+    // The YXZ order isolates the horizontal turn in the first angle: that way the
+    // UI follows where the player looks without tilting when they raise or
+    // lower their head, which is what would make it wobble.
     gazeEuler.setFromQuaternion(gazeQuaternion, 'YXZ')
 
-    // El anclaje trabaja en el espacio del padre (`<XROrigin>`), así que hay
-    // que descontar la orientación de ese padre en vez de darla por cero.
+    // The anchor works in the parent's space (`<XROrigin>`), so the
+    // orientation of that parent has to be discounted instead of taking it as zero.
     let parentYaw = 0
     const parent = group.parent
     if (parent != null) {
@@ -98,15 +99,15 @@ export function XRGazeAnchor({
     const next =
       previous == null
         ? initialAnchorState(gazeYaw)
-        : stepAnchor(previous, gazeYaw, delta)
+        : stepAnchor(previous, gazeYaw, delta, ANCHOR_OPTIONS)
     anchor.current = next
 
-    // A la altura de los ojos de quien juega, no a la del suelo: las cotas de
-    // `xrLayout` son las de la persona de referencia y suben o bajan con él, así
-    // que sentado no se encuentra el panel a la altura de la frente.
+    // At the eye height of whoever plays, not at the floor's: the heights in
+    // `xrLayout` are those of the reference person and rise or drop with the player, so
+    // seated they do not find the panel at forehead height.
     group.position.set(
       gazePosition.x,
-      xrUiRiseOverWorld(playerEyeHeight, aLaAlturaDeLosOjos),
+      xrUiRiseOverWorld(playerEyeHeight, atEyeHeight),
       gazePosition.z,
     )
     group.rotation.set(0, next.yaw, 0)
@@ -119,8 +120,14 @@ export function XRGazeAnchor({
   )
 }
 
-// Reutilizados entre frames: crear vectores dentro de useFrame genera basura en
-// cada uno de los 90 fotogramas por segundo del visor.
+/**
+ * The menu's column is on the left on purpose (`XR_COLUMN`): towards that side the dead
+ * zone is lengthened by how far aside it is, so that turning to look at it does not make it flee.
+ */
+const ANCHOR_OPTIONS = { leftDeadzone: XR_ANCHOR_DEADZONE + XR_COLUMN.azimuth }
+
+// Reused between frames: creating vectors inside useFrame generates garbage in
+// each of the headset's 90 frames per second.
 const gazePosition = new Vector3()
 const gazeQuaternion = new Quaternion()
 const gazeEuler = new Euler()

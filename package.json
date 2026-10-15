@@ -1,8 +1,9 @@
 {
   "name": "stick-rush",
-  "version": "0.20.0",
+  "version": "0.30.0",
   "private": true,
-  "description": "Atrapa los palos que caen de la máquina antes de que toquen el suelo. Juego web en 3D para navegador y realidad mixta (VR/AR), montable dentro de otra aplicación.",
+  "description": "Catch the sticks that drop from the machine before they hit the ground. A 3D web game for the browser and mixed reality (VR/AR) that can be mounted inside another application.",
+  "homepage": "https://stick-rush.vercel.app",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -22,13 +23,39 @@
     "src/lib",
     "public",
     "scripts/copy-assets.mjs",
-    "docs/montar-el-juego.md",
+    "docs/mounting-the-game.md",
     "!**/*.test.ts",
     "!**/*.test.tsx"
   ],
   "sideEffects": [
     "*.css"
   ],
+  "xrcade": {
+    "capabilities": [
+      "lang",
+      "volumes",
+      "scenery",
+      "playHeight",
+      "playHeightOffset",
+      "hand"
+    ],
+    "budget": {
+      "drawCalls": {
+        "menu": {
+          "measured": 33,
+          "margin": 4
+        },
+        "run": {
+          "measured": 56,
+          "margin": 4
+        },
+        "goal-sign": {
+          "min": 1,
+          "max": 2
+        }
+      }
+    }
+  },
   "scripts": {
     "dev": "next dev",
     "dev:https": "next dev --experimental-https",
@@ -37,11 +64,16 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "comunes": "node scripts/require-sibling.mjs @git-common/../../organizate/scripts/repos/comunes.py && python3 \"$(git rev-parse --path-format=absolute --git-common-dir)/../../organizate/scripts/repos/comunes.py\" --comprobar stick-rush",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "capture": "CAPTURE=1 playwright test captura",
+    "capture": "CAPTURE=1 playwright test capture.spec",
     "sync:xr-profiles": "node scripts/sync-xr-profiles.mjs",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "godot:build": "node scripts/require-sibling.mjs ../xrcade/godot-kit/build.mjs && node ../xrcade/godot-kit/build.mjs --project godot",
+    "godot:sfx": "node scripts/require-sibling.mjs ../xrcade/godot-kit/render-sfx.mjs && node ../xrcade/godot-kit/render-sfx.mjs --project godot",
+    "godot:controllers": "node scripts/require-sibling.mjs ../xrcade/godot-kit/controllers.mjs && node ../xrcade/godot-kit/controllers.mjs --project godot",
+    "godot:test": "godot/tests/run.sh"
   },
   "peerDependencies": {
     "@react-three/drei": "^10.7.8",
@@ -50,6 +82,9 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "three": "^0.185.1"
+  },
+  "overrides": {
+    "three": "$three"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
@@ -66,12 +101,14 @@
     "@types/three": "^0.185.4",
     "@vitest/coverage-v8": "^3.2.7",
     "@webxr-input-profiles/assets": "^1.0.20",
+    "esbuild": "^0.28.2",
     "eslint": "^9",
-    "eslint-config-next": "^16.3.3",
+    "eslint-config-next": "16.3.6",
+    "iwer": "~2.4.0",
     "jsdom": "^30.0.1",
-    "next": "^16.3.3",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "next": "16.3.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "tailwindcss": "^4",
     "three": "^0.185.1",
     "typescript": "^5",

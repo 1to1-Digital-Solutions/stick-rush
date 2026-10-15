@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /**
- * Copia los ficheros estáticos del juego a donde los sirva quien lo monta.
+ * Copies the game's static files to wherever whoever mounts it serves them.
  *
- * El HDRI, las texturas de la madera y los perfiles de mando no viajan en el
- * código: son 3 MB que el navegador pide por HTTP mientras juega. Una
- * aplicación que monte Stick Rush tiene que servirlos desde su propio sitio y
- * decirle dónde con la opción `assetsBase` (ver `docs/montar-el-juego.md`).
+ * The HDRI, the wood textures, the fairground models and the controller
+ * profiles do not travel in the code: they are 3 MB the browser requests over HTTP while playing. An
+ * application that mounts Stick Rush has to serve them from its own site and
+ * tell it where with the `assetsBase` option (see `docs/mounting-the-game.md`).
  *
- * Uso, desde el proyecto que lo consume:
+ * Usage, from the project that consumes it:
  *
  *   npx stick-rush-assets public/juegos/stick-rush
  *
- * Es idempotente: se ejecuta otra vez tras subir la versión del juego y deja el
- * destino con los ficheros de la versión nueva.
+ * It is idempotent: it is run again after bumping the game's version and leaves
+ * the destination with the files of the new version.
  */
 import { existsSync } from 'node:fs'
 import { cp, mkdir, rm } from 'node:fs/promises'
@@ -22,25 +22,26 @@ import { fileURLToPath } from 'node:url'
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const source = join(packageRoot, 'public')
 
-/** Lo que necesita el juego. El resto de `public/` es de su propia web. */
-const ASSETS = ['audio', 'hdri', 'textures', 'webxr-profiles', 'CREDITS.md']
+/** What the game needs. The rest of `public/` belongs to its own website. */
+const ASSETS = ['audio', 'hdri', 'manos', 'models', 'textures', 'webxr-profiles', 'CREDITS.md']
 
 async function main() {
   const target = process.argv[2]
   if (!target) {
-    console.error('Uso: stick-rush-assets <directorio de destino>')
+    console.error('Usage: stick-rush-assets <destination directory>')
     process.exit(1)
   }
 
-  // Antes de tocar el destino: que falte uno solo se nota en el visor y tarde
-  // —el escenario sin HDRI, o los mandos sin registrar—, así que aquí se para
-  // en vez de dejar la copia a medias. Es la red que avisa si alguna vez se
-  // renombra un directorio de `public/` y esta lista se queda atrás.
+  // Before touching the destination: a single one missing is noticed in the
+  // headset and late —the scenery without HDRI, or the controllers not
+  // registered—, so it stops here instead of leaving the copy half done. It is
+  // the net that warns if a directory of `public/` is ever renamed and this
+  // list is left behind.
   const missing = ASSETS.filter((asset) => !existsSync(join(source, asset)))
   if (missing.length > 0) {
     console.error(
-      `Faltan en el paquete de Stick Rush: ${missing.join(', ')}. ` +
-        'Reinstala la versión del juego; si persiste, es un fallo suyo.',
+      `Missing from the Stick Rush package: ${missing.join(', ')}. ` +
+        'Reinstall the version of the game; if it persists, it is a bug of the game.',
     )
     process.exit(1)
   }
@@ -50,14 +51,14 @@ async function main() {
 
   for (const asset of ASSETS) {
     const to = join(destination, asset)
-    // Se rehace cada uno desde cero para que al subir de versión no queden
-    // ficheros huérfanos de la anterior. Se borra solo lo que se va a copiar:
-    // el destino puede ser un directorio compartido con otras cosas.
+    // Each one is redone from scratch so that bumping the version leaves no
+    // orphan files from the previous one. Only what is going to be copied is
+    // deleted: the destination may be a directory shared with other things.
     await rm(to, { recursive: true, force: true })
     await cp(join(source, asset), to, { recursive: true })
   }
 
-  console.log(`Ficheros de Stick Rush copiados a ${destination}`)
+  console.log(`Stick Rush files copied to ${destination}`)
 }
 
 await main()

@@ -1,0 +1,34 @@
+{
+  "id": "stick-rush",
+  "repo": "..",
+  "kit": "v0.22.0",
+  "sfx": {
+    "module": "src/lib/sound.ts",
+    "factory": "createSoundEngine",
+    "context": true,
+    "play": "play",
+    "sounds": {
+      "catch-1": { "args": [{ "name": "catch", "streak": 1 }] },
+      "catch-2": { "args": [{ "name": "catch", "streak": 2 }] },
+      "catch-3": { "args": [{ "name": "catch", "streak": 3 }] },
+      "catch-4": { "args": [{ "name": "catch", "streak": 4 }] },
+      "catch-5": { "args": [{ "name": "catch", "streak": 5 }] },
+      "catch-6": { "args": [{ "name": "catch", "streak": 6 }] },
+      "catch-7": { "args": [{ "name": "catch", "streak": 7 }] },
+      "catch-8": { "args": [{ "name": "catch", "streak": 8 }] },
+      "miss": { "args": [{ "name": "miss" }] },
+      "countdown-3": { "args": [{ "name": "countdown", "secondsLeft": 3 }] },
+      "countdown-2": { "args": [{ "name": "countdown", "secondsLeft": 2 }] },
+      "countdown-1": { "args": [{ "name": "countdown", "secondsLeft": 1 }] },
+      "go": { "args": [{ "name": "go" }] },
+      "over-win": { "args": [{ "name": "over", "outcome": "win" }] },
+      "over-loss": { "args": [{ "name": "over", "outcome": "loss" }] },
+      "over-close": { "args": [{ "name": "over", "outcome": "close" }] },
+      "record": { "args": [{ "name": "record" }] },
+      "medal-bronze": { "args": [{ "name": "medal", "rank": 0 }] },
+      "medal-silver": { "args": [{ "name": "medal", "rank": 1 }] },
+      "medal-gold": { "args": [{ "name": "medal", "rank": 2 }] }
+    }
+  },
+  "music": { "feria": "public/audio/feria.mp3" }
+}

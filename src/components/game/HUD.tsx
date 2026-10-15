@@ -1,20 +1,22 @@
 'use client'
 
 import { DIFFICULTY_LABELS, LIFE_COLOR } from '../../lib/gameConfig'
-import { startingLives } from '../../lib/gameMode'
+import { anotherOfMode, startingLives } from '../../lib/gameMode'
 import { useGame } from '../../lib/gameStore'
 import { maxScore } from '../../lib/scoring'
-import { type ShareStatus, useShareResult } from '../../lib/useShareResult'
-import { HeartIcon, ShareIcon, StarIcon } from '../ui/icons'
-import { useLang } from '../../lib/ajustesCliente'
-import { traductor } from '../../lib/textos'
+import { PHRASES, PHRASES_WITH_HANDS } from '../../lib/tutorial'
+import { HeartIcon, StarIcon } from '../ui/icons'
+import { useLang } from '../../lib/settingsClient'
+import { formatFigure, formatText, translator, softTranslator } from '../../lib/textos'
+import { plural } from '../../lib/menuWords'
+import { PLAYER_LABELS, duelSummary } from '../../lib/duel'
 /**
- * Vidas que quedan, una por corazón: llenos los que conservas, de contorno los
- * gastados. Solo en desafío; en práctica no hay nada que perder y una fila de
- * corazones intactos toda la partida sería decorado.
+ * Lives left, one per heart: full the ones you keep, outlined the
+ * spent ones. Only in challenge; in practice there is nothing to lose and a row of
+ * untouched hearts for the whole run would be decoration.
  *
- * Lo lee el lector de pantalla desde el `aria-label` del marcador, del que
- * forma parte: aquí sería un segundo anuncio compitiendo con el mismo cambio.
+ * The screen reader reads it from the `aria-label` of the scoreboard, which it
+ * is part of: here it would be a second announcement competing with the same change.
  */
 function Lives({ lives, total }: { lives: number; total: number }) {
   return (
@@ -31,58 +33,83 @@ function Lives({ lives, total }: { lives: number; total: number }) {
 }
 
 /**
- * Qué se le dice al jugador después de pulsar «Compartir».
+ * The end of a round of the two-player match.
  *
- * Compartir de verdad y copiar se confirman: el primero porque la hoja del
- * sistema se cierra y no deja rastro en la página, el segundo porque un texto
- * que va al portapapeles sin avisar parece un botón que no hace nada. Cancelar
- * no dice nada, que es lo que ha pedido quien cancela.
+ * After the first one, **the notice to pass the controller**: what whoever has just played scored and
+ * whose turn it is, with the start button worded for whoever is going to press it. After the second one,
+ * who wins —or the tie—, the points of both and the pair's tally. The record does not show: a
+ * two-player round is nobody's best (`lib/duel.ts`).
  */
-const SHARE_MESSAGES: Record<ShareStatus, string> = {
-  idle: '',
-  shared: 'Shared!',
-  copied: 'Result copied to the clipboard.',
-  cancelled: '',
-  unavailable:
-    'This browser will not share or copy: write the score down yourself.',
-}
-
-/**
- * Sacar el resultado del dispositivo: la hoja de compartir del sistema si la
- * hay y el portapapeles si no (ver `shareResult.ts`).
- *
- * El aviso se pinta siempre, vacío mientras no haya nada que decir: una región
- * viva que aparece a la vez que su texto no se anuncia, porque el lector de
- * pantalla no llega a verla antes del cambio.
- */
-function ShareResultButton() {
-  const t = traductor(useLang())
-  const { status, share } = useShareResult()
-  const message = SHARE_MESSAGES[status]
+function DuelOver() {
+  const lang = useLang()
+  const t = translator(lang)
+  const { duel, duelTally, startGame, resetGame } = useGame()
+  // It is only painted in the two-player match; the type does not know that.
+  if (duel == null) return null
+  const summary = duelSummary(duel, duelTally, lang)
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => void share()}
-        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/15 px-6 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-white/80 transition-colors hover:border-[var(--color-accent)] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="duel-over-title"
+        className="animate-fade-slide-up flex w-full max-w-sm flex-col items-center gap-6 rounded-2xl border border-white/10 bg-[var(--color-muted)] p-8 text-center shadow-2xl"
       >
-        <ShareIcon />
-         {t('Share')}
-</button>
-      <p
-        aria-live="polite"
-        aria-atomic="true"
-        className="min-h-5 text-xs text-white/60"
-      >
-        {message}
-      </p>
-    </>
+        <h2
+          id="duel-over-title"
+          className={`text-glow-primary text-3xl tracking-wide ${
+            summary.winner != null ? 'text-[var(--color-accent)]' : 'text-[var(--color-primary)]'
+          }`}
+        >
+          {summary.title}
+        </h2>
+        {summary.pass != null ? (
+          <p className="text-lg font-semibold text-white">{summary.pass}</p>
+        ) : (
+          <ul className="flex flex-col gap-1 text-base">
+            {summary.lines.map((line) => (
+              <li
+                key={line.player}
+                className={
+                  line.player === summary.winner ? 'font-bold text-[var(--color-accent)]' : 'text-white/60'
+                }
+              >
+                {line.text}
+              </li>
+            ))}
+          </ul>
+        )}
+        {summary.tally != null && <p className="text-sm text-white/50">{summary.tally}</p>}
+        <div className="flex w-full flex-col items-center gap-2">
+          <button
+            type="button"
+            onClick={() => startGame()}
+            className="cta-gradient w-full rounded-xl px-6 py-3 text-base font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          >
+            {summary.next == null
+              ? t('Play')
+              : formatText(t('{player}, your turn'), { player: t(PLAYER_LABELS[summary.next]) })}
+          </button>
+          <button
+            type="button"
+            onClick={resetGame}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/10 px-6 py-2 text-sm font-semibold uppercase tracking-wide text-white/80 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+          >
+            {t('Back to the menu')}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
 export function HUD() {
-  const t = traductor(useLang())
+  // The language is asked for once and passed whole: the words are translated and the figures
+  // are grouped the way of the language, and with one thing on one side and another on the other the
+  // scoreboard ended up in Spanish with the thousands written the English way.
+  const lang = useLang()
+  const t = translator(lang)
   const {
     score,
     points,
@@ -102,61 +129,70 @@ export function HUD() {
     outcome,
     gameState,
     countdown,
+    bareHanded,
+    tutorialStep,
     finishTutorial,
+    nextTutorialStep,
     resetGame,
+    startGame,
     endRun,
+    duel,
+    player,
+    sign,
+    signPhase,
   } = useGame()
+  const tutorialPhrases = bareHanded ? PHRASES_WITH_HANDS : PHRASES
 
-  const sinFin = gameMode === 'practice' && endless
+  const isEndless = gameMode === 'practice' && endless
   const levels = gameMode === 'levels'
-  // Renombrada frente a `bestPoints`, que es el récord del jugador: esto es el
-  // techo de esta partida y confundirlos cambia lo que se lee en pantalla.
+  // Renamed as opposed to `bestPoints`, which is the player's record: this is the
+  // ceiling of this run and confusing them changes what is read on screen.
   const maxPossible = maxScore(difficulty, stickCount)
   const totalLives = startingLives(gameMode)
-  // Las vidas se anuncian antes que los palos y solo cuando las hay: en
-  // desafío es el dato que decide si sigues jugando.
+  // The lives are announced before the sticks and only when there are any: in
+  // challenge it is the fact that decides whether you keep playing.
   const livesLabel =
     lives != null && totalLives != null
-      ? `Lives ${lives} of ${totalLives}. `
+      ? formatText(t('Lives {lives} of {total}. '), { lives, total: totalLives })
       : ''
-  // El desafío se gana o se pierde, y el jugador tiene que saber cuál de las
-  // dos le ha pasado antes de mirar ninguna cifra. La práctica no se pierde:
-  // ahí el título se queda como estaba.
+  // The challenge is won or lost, and the player has to know which of the
+  // two happened to them before looking at any figure. Practice is not lost:
+  // there the title stays as it was.
   const title = levels
-    ? levelResult?.passed
-      ? `Level ${activeLevel} cleared!`
-      : `Level ${activeLevel} not cleared`
+    ? formatText(t(levelResult?.passed ? 'Level {level} cleared!' : 'Level {level} not cleared'), { level: activeLevel })
     : gameMode !== 'challenge'
-      ? 'Game over!'
+      ? t('Game over!')
       : outcome === 'cleared'
-        ? 'Challenge cleared!'
-        : 'You are out of lives'
-  // Sin fin, lo atrapado se cuenta de la partida entera y no «de N»: los palos
-  // no se acaban. Y el nivel se anuncia antes que nada en Niveles.
-  const caughtLabel = sinFin
-    ? `Caught ${score}, endless, set ${wave + 1}`
-    : `Caught ${score} of ${stickCount}`
-  const levelLabel = levels ? `Level ${activeLevel}. ` : ''
+        ? t('Challenge cleared!')
+        : t('You are out of lives')
+  // Endless, what was caught is counted over the whole run and not «of N»: the sticks
+  // do not run out. And the level is announced before anything else in Levels.
+  const caughtLabel = isEndless
+    ? formatText(t('Caught {score}, endless, set {set}'), { score, set: wave + 1 })
+    : formatText(t('Caught {score} of {total}'), { score, total: stickCount })
+  const levelLabel = levels ? formatText(t('Level {level}. '), { level: activeLevel }) : ''
   return (
     <>
-      {/* Marcador permanente durante la partida */}
+      {/* Permanent scoreboard during the run */}
       <div className="pointer-events-none fixed right-4 top-4 z-10 flex flex-col items-end gap-1">
-        {/* El número por sí solo no dice nada leído en voz alta, así que el
-            marcador se anuncia entero cada vez que cambia. */}
+        {/* The number by itself says nothing when read aloud, so the
+            scoreboard is announced whole every time it changes. */}
         <div
           role="status"
           aria-live="polite"
-          aria-label={`${points} points. ${levelLabel}${livesLabel}${caughtLabel}`}
+          aria-label={`${formatText(t('{points} points. '), { points })}${levelLabel}${livesLabel}${caughtLabel}`}
           className="rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 backdrop-blur"
         >
           <p className="text-xs uppercase tracking-[0.2em] text-white/50">
              {t('Points')}
 </p>
           <p className="text-2xl font-bold tabular-nums text-[var(--color-primary)]">
-            {points.toLocaleString('en-GB')}
+            {formatFigure(points, lang)}
           </p>
           <p className="text-xs font-medium text-white/50">
-            {sinFin ? `${score} sticks · set ${waveScore} / ${stickCount}` : `${score} / ${stickCount} sticks`}
+            {isEndless
+              ? formatText(t('{score} sticks · set {set} / {total}'), { score, set: waveScore, total: stickCount })
+              : formatText(t('{score} / {total} sticks'), { score, total: stickCount })}
           </p>
           {lives != null && totalLives != null && (
             <span className="mt-1.5 flex justify-end">
@@ -165,21 +201,41 @@ export function HUD() {
           )}
         </div>
 
-        {/* La racha solo aparece cuando hay algo que presumir: a partir de dos
-            palos seguidos. Con el "x1" permanente sería ruido. */}
+        {/* The streak only appears when there is something to show off: from two
+            sticks in a row. With the permanent "x1" it would be noise. */}
         {streak >= 2 && (
           <span className="animate-fade-slide-up rounded-md border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/15 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--color-accent)] backdrop-blur">
-            Streak ×{streak}
+            {formatText(t('Streak ×{streak}'), { streak })}
           </span>
         )}
 
         <span className="rounded-md border border-white/10 bg-[var(--color-muted)]/80 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white/60 backdrop-blur">
-          {levels ? `Level ${activeLevel} · ` : ''}{DIFFICULTY_LABELS[difficulty]}
+          {levels ? formatText(t('Level {level} · '), { level: activeLevel }) : ''}{t(DIFFICULTY_LABELS[difficulty])}
         </span>
+
+        {/* With two players, whose round it is: with two people taking turns, the scoreboard has to
+            say so, or the second one does not know whether it is their turn yet. */}
+        {player != null && (
+          <span className="rounded-md border border-[var(--color-primary)]/50 bg-[var(--color-primary)]/15 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur">
+            {t(PLAYER_LABELS[player])}
+          </span>
+        )}
       </div>
 
-      {/* Sin fin no se acaba sola: este botón es su única salida con resumen. */}
-      {sinFin && gameState === 'playing' && (
+      {/* The mission, head-on, until the first stick is resolved: what in the headset the
+          sign above the scoreboard says (`MachineSign`), with the same phrases. Afterwards what
+          has been scored and the lives are already in the scoreboard in the corner. */}
+      {sign != null && signPhase === 'before' && (
+        <div className="pointer-events-none fixed inset-x-0 top-4 z-10 flex justify-center px-24">
+          <div className="animate-fade-slide-up rounded-lg border border-white/10 bg-[var(--color-muted)]/80 px-4 py-2 text-center backdrop-blur motion-reduce:animate-none">
+            <p className="text-sm font-bold text-white">{sign.title}</p>
+            {sign.detail != null && <p className="text-xs text-white/60">{sign.detail}</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Endless does not end by itself: this button is its only exit with a summary. */}
+      {isEndless && gameState === 'playing' && (
         <div className="fixed left-4 top-4 z-10">
           <button
             type="button"
@@ -191,42 +247,53 @@ export function HUD() {
         </div>
       )}
       {/*
-        Tutorial en marcha (solo se llega aquí dentro del visor, ver
-        `XRTutorial`). Lo que el jugador mira es la demostración en 3D; esto es
-        su reflejo en el DOM, que sigue montado bajo la sesión inmersiva: deja
-        el salto a un botón de verdad —alcanzable con teclado, como el resto del
-        overlay— y no solo a un objeto de la escena.
+        Tutorial under way (you only get here inside the headset, see
+        `XRTutorial`). What the player looks at is the 3D panel; this is its
+        reflection in the DOM, which stays mounted under the immersive session: it leaves the
+        lesson **and its two exits** in real elements —announceable and
+        reachable by keyboard, like the rest of the overlay— and not only in objects
+        of the scene, which can only be pointed at with the controller.
+
+        The phrase is the same one the panel paints, chosen by the same criterion:
+        whoever plays with bare hands has no button to hold.
       */}
-      {gameState === 'tutorial' && (
+      {tutorialStep !== null && gameState === 'playing' && (
         <div className="fixed inset-x-0 bottom-6 z-20 flex justify-center px-6">
           <div className="animate-fade-slide-up flex items-center gap-4 rounded-xl border border-white/10 bg-[var(--color-muted)]/90 px-5 py-3 backdrop-blur motion-reduce:animate-none">
-            <p className="text-sm text-white/70">
-               {t('How it plays, in a few seconds.')}
-</p>
+            <p role="note" className="text-sm text-white/70">
+              {t(tutorialPhrases[tutorialStep])}
+            </p>
+            <button
+              type="button"
+              onClick={nextTutorialStep}
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            >
+              {t('Next')}
+            </button>
             <button
               type="button"
               onClick={finishTutorial}
               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
             >
-               {t('Skip tutorial')}
-</button>
+              {t('Skip tutorial')}
+            </button>
           </div>
         </div>
       )}
 
-      {/* Cuenta atrás antes del primer palo. No bloquea la escena: el jugador
-          ve la máquina cargada mientras se prepara. */}
+      {/* Countdown before the first stick. It does not block the scene: the player
+          sees the loaded machine while getting ready. */}
       {gameState === 'countdown' && (
         <div className="pointer-events-none fixed inset-0 z-20 flex items-center justify-center">
           <p
-            // `timer` y no `status`: es exactamente lo que describe la ARIA
-            // para una cuenta, y además deja el `status` libre para el
-            // marcador, que convive con ella en pantalla.
+            // `timer` and not `status`: it is exactly what ARIA describes
+            // for a count, and it also leaves `status` free for the
+            // scoreboard, which shares the screen with it.
             role="timer"
             aria-live="assertive"
-            aria-label={`Starting in ${countdown}`}
-            // La clave fuerza el remontaje en cada número, y con él la
-            // animación: sin ella el texto cambiaría sin dar el golpe.
+            aria-label={formatText(t('Starting in {seconds}'), { seconds: countdown })}
+            // The key forces the remount on every number, and with it the
+            // animation: without it the text would change without giving the kick.
             key={countdown}
             className="animate-countdown-pop text-glow-primary text-[10rem] font-bold leading-none tabular-nums text-[var(--color-primary)] motion-reduce:animate-none"
           >
@@ -235,8 +302,11 @@ export function HUD() {
         </div>
       )}
 
-      {/* Pantalla de fin de partida */}
-      {gameState === 'finished' && (
+      {/* With two players, the end of each round is the notice to pass the controller or who has won. */}
+      {gameState === 'finished' && duel != null && <DuelOver />}
+
+      {/* End-of-run screen */}
+      {gameState === 'finished' && duel == null && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/60 px-6 backdrop-blur-sm">
           <div
             role="dialog"
@@ -253,7 +323,7 @@ export function HUD() {
             {levelResult && (
               <div
                 role="img"
-                aria-label={levelResult.stars === 1 ? '1 star' : `${levelResult.stars} stars`}
+                aria-label={softTranslator(lang)(plural(levelResult.stars, '{stars} star', '{stars} stars'), { stars: levelResult.stars })}
                 className="flex items-center gap-1 text-[var(--color-accent)]"
               >
                 {Array.from({ length: 3 }, (_, index) => (
@@ -263,33 +333,33 @@ export function HUD() {
             )}
             <div className="flex flex-col items-center gap-1">
               <p className="text-5xl font-bold tabular-nums text-[var(--color-accent)]">
-                {points.toLocaleString('en-GB')}
+                {formatFigure(points, lang)}
               </p>
-              {!sinFin && (
+              {!isEndless && (
                 <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-                  of {maxPossible.toLocaleString('en-GB')} possible
+                  {formatText(t('of {max} possible'), { max: formatFigure(maxPossible, lang) })}
                 </p>
               )}
-              {/* El récord: batido, se anuncia; si no, se enseña la marca que
-                  había que superar, que es lo que da sentido a la cifra de
-                  arriba. Nunca los dos: dirían lo mismo. En Niveles no hay
-                  récord: hay estrellas, y lo que se anuncia es lo que abren. */}
+              {/* The record: beaten, it is announced; if not, the best that
+                  had to be beaten is shown, which is what gives meaning to the figure
+                  above. Never both: they would say the same. In Levels there is no
+                  record: there are stars, and what is announced is what they open. */}
               {levelResult ? (
                 levelResult.unlocked != null && (
                   <p className="animate-fade-slide-up mt-2 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)]/15 px-3 py-1 text-sm font-bold uppercase tracking-wide text-[var(--color-accent)] motion-reduce:animate-none">
-                    Level {levelResult.unlocked} unlocked
+                    {formatText(t('Level {level} unlocked'), { level: levelResult.unlocked })}
                   </p>
                 )
               ) : isRecord ? (
                 <p className="animate-fade-slide-up mt-2 rounded-full border border-[var(--color-accent)] bg-[var(--color-accent)]/15 px-3 py-1 text-sm font-bold uppercase tracking-wide text-[var(--color-accent)] motion-reduce:animate-none">
-                  {sinFin ? 'Best streak!' : 'New record!'}
+                  {t(isEndless ? 'Best streak!' : 'New record!')}
                 </p>
               ) : (
                 bestPoints > 0 && (
                   <p className="mt-2 text-sm text-white/50">
-                    {sinFin ? 'Your best streak:' : 'Your record:'}{' '}
+                    {t(isEndless ? 'Your best streak:' : 'Your record:')}{' '}
                     <span className="font-bold tabular-nums text-white/80">
-                      {sinFin ? `×${bestPoints}` : bestPoints.toLocaleString('en-GB')}
+                      {isEndless ? `×${bestPoints}` : formatFigure(bestPoints, lang)}
                     </span>
                   </p>
                 )
@@ -297,7 +367,7 @@ export function HUD() {
             </div>
 
             <p className="text-lg text-white/80">
-              {sinFin ? (
+              {isEndless ? (
                 <>
                   {t('You caught')}{' '}
                   <span className="font-bold text-[var(--color-accent)]">{score}</span>{' '}
@@ -314,8 +384,8 @@ export function HUD() {
               )}
             </p>
             <dl className="flex w-full flex-wrap justify-center gap-x-6 gap-y-3 text-sm">
-              {/* Con cuántas vidas se acabó: junto a la puntuación, es lo que
-                  resume un desafío y lo que se comparte de él. */}
+              {/* With how many lives it ended: next to the score, it is what
+                  sums up a challenge and what is shared of it. */}
               {lives != null && totalLives != null && (
                 <div className="flex flex-col items-center gap-1">
                   <dt className="text-xs uppercase tracking-wide text-white/40">
@@ -340,19 +410,26 @@ export function HUD() {
                    {t('Difficulty')}
 </dt>
                 <dd className="font-bold text-white/80">
-                  {DIFFICULTY_LABELS[difficulty]}
+                  {t(DIFFICULTY_LABELS[difficulty])}
                 </dd>
               </div>
             </dl>
             <div className="flex w-full flex-col items-center gap-2">
+              {/* What is highlighted is repeating: the same run again, without going through the menu. */}
+              <button
+                type="button"
+                onClick={() => startGame()}
+                className="cta-gradient w-full rounded-xl px-6 py-3 text-base font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+              >
+                {t(anotherOfMode(gameMode))}
+              </button>
               <button
                 type="button"
                 onClick={resetGame}
-                className="cta-gradient w-full rounded-xl px-6 py-3 text-base font-bold uppercase tracking-[0.15em] text-[#3b1d00] transition-[filter,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/10 px-6 py-2 text-sm font-semibold uppercase tracking-wide text-white/80 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
               >
-                 {t('Back to the menu')}
-</button>
-              <ShareResultButton />
+                {t('Back to the menu')}
+              </button>
             </div>
           </div>
         </div>

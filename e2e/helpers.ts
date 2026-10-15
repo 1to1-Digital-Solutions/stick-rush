@@ -1,21 +1,28 @@
 import { expect, type Page } from '@playwright/test'
 
-/** Punto en píxeles dentro del canvas. */
+/** A point in pixels inside the canvas. */
 export interface ScreenPoint {
   x: number
   y: number
 }
 
 /**
- * Abre el juego y espera a que la escena 3D esté montada y pintando.
+ * Opens the game, waits for the 3D scene to be mounted and painting and leaves **practice**
+ * chosen, which is what almost all of these tests play: that is where the sticks and the
+ * speed are chosen. The menu opens on the challenge —`mode.spec.ts` checks it—; whoever wants
+ * what is there on opening passes `mode: null`.
  *
- * El Canvas se carga con `lazy()` y solo en el navegador (ver `GameScene`), así
- * que al llegar al HTML todavía no existe. Además, R3F no dimensiona el canvas
- * hasta el primer `requestAnimationFrame`, que no se ejecuta si la pestaña está
- * en segundo plano: esperar a que tenga tamaño es lo que distingue "cargando"
- * de "listo".
+ * The Canvas is loaded with `lazy()` and only in the browser (see `GameScene`), so
+ * on reaching the HTML it does not exist yet. Besides, R3F does not size the canvas
+ * until the first `requestAnimationFrame`, which does not run if the tab is
+ * in the background: waiting for it to have a size is what tells "loading"
+ * from "ready".
  */
-export async function openGame(page: Page, path = '/') {
+export async function openGame(
+  page: Page,
+  path = '/',
+  { mode = 'Practice' }: { mode?: ModeName | null } = {},
+) {
   await page.goto(path)
   await expect(page.getByRole('heading', { name: 'STICK RUSH' })).toBeVisible()
 
@@ -26,11 +33,22 @@ export async function openGame(page: Page, path = '/') {
       timeout: 30_000,
     })
     .toBeGreaterThan(0)
+  if (mode != null) await modeButton(page, mode).click()
+  if (mode === 'Practice') await showMoreOptions(page)
 }
 
 /**
- * Botón de un modo en el menú. Su nombre accesible arrastra la línea de ayuda
- * ("Challenge Three lives: …"), así que se busca por cómo empieza.
+ * Unfolds what the menu leaves folded behind «Más opciones» (the sticks, the speed and the
+ * length of the practice), if it is folded.
+ */
+export async function showMoreOptions(page: Page) {
+  const more = page.getByRole('button', { name: 'More options' })
+  if (await more.isVisible()) await more.click()
+}
+
+/**
+ * A mode's button in the menu. Its accessible name drags the hint line along
+ * ("Challenge Counts for a medal. Three lives…"), so it is looked up by how it starts.
  */
 export type ModeName = 'Practice' | 'Levels' | 'Challenge'
 
@@ -39,11 +57,12 @@ export function modeButton(page: Page, mode: ModeName) {
 }
 
 /**
- * Configura la partida en el menú y la arranca.
+ * Sets the run up in the menu and starts it.
  *
- * En Niveles no se eligen palos ni dificultad —los dice el nivel—, así que ahí
- * `sticks` es lo que se espera ver en el marcador y no lo que se pulsa. Sin
- * fin, el marcador no dice «de N»: los palos no se acaban.
+ * Only practice asks for sticks and difficulty: in Levels the level says them and
+ * the challenge is fixed (`CHALLENGE_SETUP`), so there `sticks` is what is
+ * expected to be seen on the scoreboard and not what is pressed. Endless, the scoreboard
+ * does not say «de N»: the sticks do not run out.
  */
 export async function startGame(
   page: Page,
@@ -54,15 +73,17 @@ export async function startGame(
     endless = false,
   }: { sticks: number; difficulty?: string; mode?: ModeName; endless?: boolean },
 ) {
-  if (mode) await modeButton(page, mode).click()
-  if (mode !== 'Levels') {
+  // With no mode said, practice is played: the menu opens on the challenge, which is fixed.
+  await modeButton(page, mode ?? 'Practice').click()
+  if (mode === undefined || mode === 'Practice') {
+    await showMoreOptions(page)
     await page.getByRole('button', { name: String(sticks), exact: true }).click()
     if (difficulty) {
       await page.getByRole('button', { name: difficulty, exact: true }).click()
     }
     if (endless) await page.getByRole('button', { name: /^Endless/ }).click()
   }
-  await page.getByRole('button', { name: 'Play' }).click()
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
 
   await expect(page.getByRole('status')).toHaveAttribute(
     'aria-label',
@@ -70,24 +91,24 @@ export async function startGame(
       ? /Caught 0, endless, set 1$/
       : new RegExp(`Caught 0 of ${sticks}$`),
   )
-  // La partida no empieza al pulsar, sino cuando se agota la cuenta atrás.
-  // Devolver antes dejaría a los tests intentando atrapar palos que todavía
-  // cuelgan quietos y no se dejan coger.
+  // The run does not start on pressing, but when the countdown runs out.
+  // Returning earlier would leave the tests trying to catch sticks that still
+  // hang still and cannot be caught.
   await expect(page.getByRole('timer')).toBeHidden()
 }
 
-/** Palos atrapados según el marcador. */
+/** Sticks caught according to the scoreboard. */
 export async function readScore(page: Page): Promise<number> {
   const label = await page.getByRole('status').getAttribute('aria-label')
   const match = label?.match(/Caught (\d+)(?: of (\d+)|, endless)/)
-  if (!match) throw new Error(`Marcador ilegible: ${label}`)
+  if (!match) throw new Error(`Unreadable scoreboard: ${label}`)
   return Number(match[1])
 }
 
 /**
- * Vidas que quedan según el marcador, o `null` si la partida no se juega con
- * ellas. Salen del mismo anuncio que la puntuación: los corazones son un dibujo
- * y lo que un lector de pantalla oye es este texto.
+ * Lives left according to the scoreboard, or `null` if the run is not played with
+ * them. They come from the same announcement as the score: the hearts are a drawing
+ * and what a screen reader hears is this text.
  */
 export async function readLives(page: Page): Promise<number | null> {
   const label = await page.getByRole('status').getAttribute('aria-label')
@@ -95,23 +116,23 @@ export async function readLives(page: Page): Promise<number | null> {
   return match ? Number(match[1]) : null
 }
 
-/** Puntos acumulados según el marcador. */
+/** Points accumulated according to the scoreboard. */
 export async function readPoints(page: Page): Promise<number> {
   const label = await page.getByRole('status').getAttribute('aria-label')
   const match = label?.match(/^([\d,]+) points/)
-  if (!match) throw new Error(`Marcador ilegible: ${label}`)
+  if (!match) throw new Error(`Unreadable scoreboard: ${label}`)
   return Number(match[1].replace(/\./g, ''))
 }
 
 /**
- * Localiza un palo atrapable barriendo el canvas con el puntero.
+ * Locates a catchable stick by sweeping the canvas with the pointer.
  *
- * No hay forma de seleccionar un objeto 3D desde el DOM, así que se usa la
- * señal que el propio juego da al jugador: `Stick` pone el cursor en `pointer`
- * mientras el palo se puede atrapar. El barrido va de arriba abajo, de modo que
- * encuentra primero los palos que aún cuelgan del aro (los más altos): se mecen
- * unos milímetros, así que apenas se mueven entre encontrarlos y hacer clic,
- * frente a los que ya están cayendo.
+ * There is no way of selecting a 3D object from the DOM, so the signal the game
+ * itself gives the player is used: `Stick` sets the cursor to `pointer`
+ * while the stick can be caught. The sweep goes from top to bottom, so that it
+ * finds first the sticks that still hang from the hoop (the highest ones): they sway
+ * a few millimetres, so they barely move between finding them and clicking,
+ * compared with the ones already falling.
  */
 export async function findCatchableStick(
   page: Page,
@@ -148,21 +169,21 @@ export async function findCatchableStick(
   }, step)
 }
 
-/** El cursor en `pointer` es la señal de que hay un palo bajo el puntero. */
+/** The cursor on `pointer` is the signal that there is a stick under the pointer. */
 export async function isPointingAtStick(page: Page): Promise<boolean> {
   return page.evaluate(() => document.body.style.cursor === 'pointer')
 }
 
 /**
- * Localiza un punto del canvas donde hay un palo **colgado del aro**, no uno
- * cayendo.
+ * Locates a point of the canvas where there is a stick **hanging from the hoop**, not one
+ * falling.
  *
- * El barrido no distingue uno de otro, así que el candidato se confirma un par
- * de segundos después colocando el ratón encima: el palo que cuelga sigue
- * exactamente donde estaba y el que caía ya se ha ido del sitio (en Fácil baja
- * medio metro en ese rato). Como los anclajes del aro solo dependen de cuántos
- * palos tenga la partida, el punto sigue valiendo en la siguiente con el mismo
- * número de palos.
+ * The sweep does not tell one from the other, so the candidate is confirmed a couple
+ * of seconds later by placing the mouse on top: the stick that hangs is still
+ * exactly where it was and the one that was falling has already left the spot (on Easy it drops
+ * half a metre in that while). As the hoop's anchors depend only on how many
+ * sticks the run has, the point is still good in the next one with the same
+ * number of sticks.
  */
 export async function findHangingStick(
   page: Page,
@@ -173,22 +194,22 @@ export async function findHangingStick(
     if (!candidate) continue
 
     await page.waitForTimeout(2000)
-    // Por pasos: con un solo salto la escena no llega a registrar el palo que
-    // hay debajo, igual que no lo registraría un ratón teletransportado.
+    // In steps: with a single jump the scene does not get to register the stick
+    // underneath, just as it would not register a teleported mouse.
     await page.mouse.move(candidate.x, candidate.y, { steps: 8 })
     if (await isPointingAtStick(page)) return candidate
   }
 
-  throw new Error(`No se encontró ningún palo colgado en ${attempts} intentos`)
+  throw new Error(`No hanging stick was found in ${attempts} attempts`)
 }
 
 /**
- * Atrapa un palo que todavía cuelga del aro y devuelve dónde estaba.
+ * Catches a stick that still hangs from the hoop and returns where it was.
  *
- * Es `catchStick` restringido al caso que fija la decisión de producto: el palo
- * se coge también antes de soltarse. Se reintenta porque entre confirmar el
- * palo y pulsar puede haberle tocado el turno justo entonces, y ahí el clic
- * llega a un hueco.
+ * It is `catchStick` restricted to the case the product decision fixes: the stick
+ * is caught before it is released too. It is retried because between confirming the
+ * stick and pressing its turn may have come right then, and there the click
+ * lands in a gap.
  */
 export async function catchHangingStick(
   page: Page,
@@ -197,7 +218,7 @@ export async function catchHangingStick(
   const scoreBefore = await readScore(page)
 
   for (let attempt = 0; attempt < attempts; attempt++) {
-    // Deja el ratón sobre el palo y confirma el hover: solo falta pulsar.
+    // Leaves the mouse over the stick and confirms the hover: only pressing is left.
     const hanging = await findHangingStick(page)
     await page.mouse.down()
     await page.mouse.up()
@@ -206,17 +227,17 @@ export async function catchHangingStick(
   }
 
   throw new Error(
-    `No se pudo atrapar ningún palo colgado en ${attempts} intentos (marcador: ${scoreBefore})`,
+    `No hanging stick could be caught in ${attempts} attempts (scoreboard: ${scoreBefore})`,
   )
 }
 
 /**
- * Atrapa un palo y devuelve el punto donde se hizo clic.
+ * Catches a stick and returns the point where the click was made.
  *
- * El barrido localiza un candidato con eventos sintéticos (instantáneos), pero
- * antes de pulsar se coloca el ratón de verdad y se confirma el hover: entre el
- * barrido y el clic el palo ha seguido cayendo, así que el punto puede haberse
- * quedado atrás. Si el candidato ya no vale, se vuelve a barrer.
+ * The sweep locates a candidate with synthetic events (instantaneous), but
+ * before pressing the real mouse is placed and the hover is confirmed: between the
+ * sweep and the click the stick has kept falling, so the point may have been
+ * left behind. If the candidate is no longer good, it sweeps again.
  */
 export async function catchStick(
   page: Page,
@@ -238,11 +259,11 @@ export async function catchStick(
   }
 
   throw new Error(
-    `No se pudo atrapar ningún palo en ${attempts} intentos (marcador: ${scoreBefore})`,
+    `No stick could be caught in ${attempts} attempts (scoreboard: ${scoreBefore})`,
   )
 }
 
-/** Espera al diálogo de fin de partida. */
+/** Waits for the end-of-run dialog. */
 export async function waitForGameOver(page: Page, timeout = 60_000) {
   await expect(page.getByRole('dialog')).toBeVisible({ timeout })
 }

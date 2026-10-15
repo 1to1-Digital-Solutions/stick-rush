@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useXR } from '@react-three/xr'
 import {
   DIFFICULTY_COLORS,
@@ -10,40 +10,47 @@ import {
   MIN_STICKS,
   STICK_COLOR,
 } from '../../lib/gameConfig'
-import {
-  CHALLENGE_LIVES,
-  GAME_MODE_HINTS,
-  GAME_MODE_ORDER,
-  type GameMode,
-} from '../../lib/gameMode'
+import { CHALLENGE_LIVES, GAME_MODE_HINTS, type GameMode } from '../../lib/gameMode'
+import { optionsButton, isShown, nextMode } from '../../lib/gameMenu'
 import { useGame } from '../../lib/gameStore'
-import { useLang } from '../../lib/ajustesCliente'
-import { traductor, type TextKey } from '../../lib/textos'
+import { PLAYER_COUNT_HINTS, playsAsDuel, type PlayerCount } from '../../lib/duel'
+import { useLang } from '../../lib/settingsClient'
+import { translator, type TextKey } from '../../lib/textos'
 import { CanvasPanel, drawParagraph, drawText } from './canvasPanel'
 import { LEVEL_COUNT } from '../../lib/levels'
 import { useExit } from '../../game/exit'
+import { gameName } from '../../lib/menuTemplate'
 import { HOOP_ADJUST_RANGE } from '../../lib/hoopHeight'
 import {
-  MENU_LABELS,
+  menuLabelsFor,
+  menuLabelText,
   ROW_LABEL_RISE,
   MENU_TEXT,
+  MENU_TITLE,
   XR_DIFFICULTY_SPACING,
   XR_ENDLESS_TOGGLE_OFFSET,
+  XR_MENU_HIT,
+  XR_PLAYERS_TOGGLE_OFFSET,
   XR_HOOP_DOWN_OFFSET,
   XR_HOOP_GAUGE_OFFSET,
   XR_HOOP_UP_OFFSET,
   XR_LEVEL_PICKER_SPACING,
   XR_MENU_EXIT_OFFSET,
-  XR_MENU_POSITION,
+  XR_MENU_OPTIONS_OFFSET,
+  OPTIONS_WIDTH,
+  menuPoseFor,
   XR_MENU_TUTORIAL_OFFSET,
   XR_MODE_TOGGLE_OFFSET,
   XR_SCENERY_PICKER_OFFSET,
   XR_STICK_PICKER_SPACING,
-  BANDA_DE_LA_PISTA,
-  PISTA_ANCHO,
-  PISTA_Y,
+  MENU_PANEL,
+  HINT_WIDTH,
+  HINT_Y,
   XR_MENU_PLAY_HIT,
   XR_MENU_PLAY_OFFSET,
+  XR_DIFFICULTY_ROW_Y,
+  XR_ROW_HIT_HEIGHT,
+  XR_STICK_ROW_Y,
 } from '../../lib/xrLayout'
 import { ControllerModel } from './XRControllerModel'
 import { HandModel } from './XRHandModel'
@@ -52,11 +59,12 @@ import {
   PANEL_COLOR,
   XRArrowIcon,
   XRDifficultyBars,
-  XRSalirIcon,
+  XRExitIcon,
   XRHeartIcon,
   XRPanel,
   XRPassthroughIcon,
   XRPlayIcon,
+  XRPlayersIcon,
   XRPressable,
   XRSceneIcon,
   XRStarsRow,
@@ -64,36 +72,36 @@ import {
   XR_STAR_SPENT_COLOR,
 } from './XRUi'
 /**
- * Menú de partida para sesiones inmersivas.
+ * Run menu for immersive sessions.
  *
- * En VR/AR no hay DOM, así que la pantalla de inicio no se ve: antes la sesión
- * arrancaba una partida sola y el jugador no podía elegir nada. Este menú la
- * sustituye con geometría, delante del jugador y a la altura de los ojos.
+ * In VR/AR there is no DOM, so the start screen is not seen: before, the session
+ * started a run by itself and the player could not choose anything. This menu
+ * replaces it with geometry, in front of the player and at eye height.
  *
- * **Sin una sola letra, a propósito.** `<Text>` de drei descarga las fuentes de
- * un CDN (troika las resuelve contra jsDelivr) y el juego debe funcionar en un
- * visor sin salida a internet —además, la CSP lo bloquea—. Así que cada ajuste
- * se representa por lo que significa: el número de palos, con los propios
- * palos; la dificultad, con barras que crecen y el color que ya usa el menú de
- * escritorio. Cada estado se distingue por forma *y* color, nunca solo color.
+ * **Without a single letter, on purpose.** drei's `<Text>` downloads the fonts from
+ * a CDN (troika resolves them against jsDelivr) and the game must work on a
+ * headset with no way out to the internet —besides, the CSP blocks it—. So each setting
+ * is represented by what it means: the number of sticks, with the sticks
+ * themselves; the difficulty, with growing bars and the colour the desktop
+ * menu already uses. Each state is told by shape *and* colour, never colour alone.
  */
 
-// El layout vive en `@/lib/xrLayout` para que los tests de sesión inmersiva
-// apunten el mando exactamente a estos mismos puntos.
+// The layout lives in `@/lib/xrLayout` so that the immersive-session tests
+// aim the controller at exactly these same points.
 const STICK_PICKER_SPACING = XR_STICK_PICKER_SPACING
 const DIFFICULTY_SPACING = XR_DIFFICULTY_SPACING
 
 /**
- * Selector del número de palos: una fila con los 13 posibles, encendidos hasta
- * el elegido. Se lee contando y es literalmente lo que colgará de la máquina.
- * Tocar uno selecciona ese número (el store recorta al rango permitido).
+ * Picker for the number of sticks: a row with the 13 possible ones, lit up to
+ * the chosen one. It is read by counting and it is literally what will hang from the machine.
+ * Touching one selects that number (the store clamps to the allowed range).
  */
 function StickPicker() {
   const { stickCount, setStickCount } = useGame()
   const width = (MAX_STICKS - 1) * STICK_PICKER_SPACING
 
   return (
-    <group position={[0, 0.16, 0]}>
+    <group position={[0, XR_STICK_ROW_Y, 0]}>
       {Array.from({ length: MAX_STICKS }, (_, index) => {
         const count = index + 1
         const on = count <= stickCount
@@ -104,9 +112,9 @@ function StickPicker() {
             position={[index * STICK_PICKER_SPACING - width / 2, 0, 0]}
             onSelect={() => setStickCount(count)}
             disabled={!selectable}
-            hitSize={[STICK_PICKER_SPACING, 0.16, 0.05]}
+            hitSize={[STICK_PICKER_SPACING, XR_ROW_HIT_HEIGHT.sticks, 0.05]}
           >
-            {/* Un palo en miniatura: encendido si entra en la selección. */}
+            {/* A miniature stick: lit if it is within the selection. */}
             <mesh position={[0, on ? 0.008 : 0, 0]}>
               <cylinderGeometry
                 args={[0.008, 0.008, on ? 0.11 : 0.075, 8]}
@@ -126,17 +134,17 @@ function StickPicker() {
 }
 
 /**
- * Selector de nivel, en la fila de los palos cuando se juega a Niveles: una
- * casilla por nivel, encendida la elegida, con sus estrellas encima y apagadas
- * las que quedan por abrir. Como el de palos, se elige tocando la que se
- * quiere; las bloqueadas no responden.
+ * Level picker, in the sticks' row when playing Levels: one
+ * box per level, the chosen one lit, with its stars on top and the ones
+ * still to be opened dimmed. Like the sticks' one, it is chosen by touching the one
+ * wanted; the locked ones do not respond.
  */
 function LevelPicker() {
   const { activeLevel, unlockedLevel, levelStars, setLevel } = useGame()
   const width = (LEVEL_COUNT - 1) * XR_LEVEL_PICKER_SPACING
 
   return (
-    <group position={[0, 0.16, 0]}>
+    <group position={[0, XR_STICK_ROW_Y, 0]}>
       {Array.from({ length: LEVEL_COUNT }, (_, index) => {
         const level = index + 1
         const locked = level > unlockedLevel
@@ -148,7 +156,7 @@ function LevelPicker() {
             position={[index * XR_LEVEL_PICKER_SPACING - width / 2, 0, selected ? 0.02 : 0]}
             onSelect={() => setLevel(level)}
             disabled={locked}
-            hitSize={[XR_LEVEL_PICKER_SPACING, 0.16, 0.05]}
+            hitSize={[XR_LEVEL_PICKER_SPACING, XR_ROW_HIT_HEIGHT.sticks, 0.05]}
           >
             <mesh position={[0, -0.02, 0]}>
               <boxGeometry args={[0.03, selected ? 0.07 : 0.05, 0.012]} />
@@ -161,8 +169,8 @@ function LevelPicker() {
                 opacity={locked ? 0.35 : 1}
               />
             </mesh>
-            {/* Las estrellas ganadas, apiladas encima de la casilla: sin sitio
-                para tres en fila, se ponen en columna y se cuentan. */}
+            {/* The stars earned, stacked on top of the box: with no room
+                for three in a row, they are put in a column and counted. */}
             {!locked &&
               Array.from({ length: 3 }, (_, star) => (
                 <mesh key={star} position={[0, 0.03 + star * 0.016, 0.004]}>
@@ -181,17 +189,17 @@ function LevelPicker() {
 }
 
 /**
- * Selector de dificultad: cinco fichas con 1 a 5 barras crecientes, del verde
- * al rojo. La elegida se adelanta y se ilumina, así que no depende del color.
- * En Niveles la dice el nivel: la ficha que toca se enseña encendida y las
- * demás no responden.
+ * Difficulty picker: five tokens with 1 to 5 growing bars, from green
+ * to red. The chosen one comes forward and lights up, so it does not depend on colour.
+ * In Levels the level says it: the token in question is shown lit and the
+ * others do not respond.
  */
 function DifficultyPicker({ locked = false }: { locked?: boolean }) {
   const { activeDifficulty: difficulty, setDifficulty } = useGame()
   const width = (DIFFICULTY_ORDER.length - 1) * DIFFICULTY_SPACING
 
   return (
-    <group position={[0, -0.04, 0]}>
+    <group position={[0, XR_DIFFICULTY_ROW_Y, 0]}>
       {DIFFICULTY_ORDER.map((level, index) => {
         const selected = level === difficulty
         const color = DIFFICULTY_COLORS[level]
@@ -201,7 +209,7 @@ function DifficultyPicker({ locked = false }: { locked?: boolean }) {
             position={[index * DIFFICULTY_SPACING - width / 2, 0, selected ? 0.022 : 0]}
             onSelect={() => setDifficulty(level)}
             disabled={locked}
-            hitSize={[DIFFICULTY_SPACING * 0.92, 0.15, 0.05]}
+            hitSize={[DIFFICULTY_SPACING * 0.92, XR_ROW_HIT_HEIGHT.difficulty, 0.05]}
           >
             <mesh position={[0, 0, -0.008]}>
               <boxGeometry args={[DIFFICULTY_SPACING * 0.82, 0.13, 0.012]} />
@@ -214,8 +222,8 @@ function DifficultyPicker({ locked = false }: { locked?: boolean }) {
                 opacity={locked && !selected ? 0.35 : 1}
               />
             </mesh>
-            {/* Barras: tantas como nivel, cada una más alta que la anterior.
-                Las mismas que enseña el tutorial al recordar el nivel. */}
+            {/* Bars: as many as the level, each one taller than the previous.
+                The same ones the tutorial shows when recalling the level. */}
             <XRDifficultyBars
               difficulty={level}
               lit={selected}
@@ -228,23 +236,24 @@ function DifficultyPicker({ locked = false }: { locked?: boolean }) {
   )
 }
 
-/** Separación entre los corazones del interruptor de modo. */
+/** Spacing between the hearts of the mode toggle. */
 const MODE_HEART_SPACING = 0.045
-/** Semilado de esos corazones: más pequeños que un icono de botón, van tres. */
+/** Half-side of those hearts: smaller than a button icon, there are three. */
 const MODE_HEART_SIZE = 0.016
 /**
- * El modo, dicho con lo que cada uno pone en juego: nada en práctica —los
- * corazones apagados—, estrellas en niveles, los tres corazones encendidos en
- * desafío. Cada pulsación pasa al siguiente y del último vuelve al primero: un
- * botón que recorre tres estados, sin una letra, como todo el menú inmersivo.
- * El estado se distingue por dibujo, brillo y tamaño, nunca solo por color.
+ * The mode, said with what each one puts at stake: nothing in practice —the
+ * hearts dimmed—, stars in levels, the three hearts lit in
+ * challenge. Each press goes to the next and from the last back to the first: one
+ * button that cycles through three states, without a letter, like the whole immersive menu.
+ * The state is told by drawing, brightness and size, never by colour alone.
  */
 function ModeToggle() {
   const { gameMode, setGameMode } = useGame()
   const challenge = gameMode === 'challenge'
   const levels = gameMode === 'levels'
   const width = (CHALLENGE_LIVES - 1) * MODE_HEART_SPACING
-  const next = GAME_MODE_ORDER[(GAME_MODE_ORDER.indexOf(gameMode) + 1) % GAME_MODE_ORDER.length]
+  // The challenge first (`MENU_MODES`): from the challenge it goes to practice and from the levels, to the challenge.
+  const next = nextMode(gameMode)
 
   return (
     <XRPressable
@@ -278,9 +287,9 @@ function ModeToggle() {
 }
 
 /**
- * Tanda o sin fin, solo en práctica. Encendido, la máquina se recarga cada vez
- * que se vacía y la partida la termina el jugador. Se dibuja como lo que es: un
- * anillo, el camino que no se acaba; apagado, un tramo suelto.
+ * Round or endless, only in practice. On, the machine reloads every time
+ * it empties and the run is ended by the player. It is drawn as what it is: a
+ * ring, the path that never ends; off, a loose stretch.
  */
 function EndlessToggle() {
   const { endless, setEndless } = useGame()
@@ -308,13 +317,49 @@ function EndlessToggle() {
   )
 }
 /**
- * Escenario o habitación real, sin salir de la sesión.
+ * Against whom, only in the challenge: a single chip or two facing each other —the siblings' icon—,
+ * and each press goes to the other, like the endless toggle in whose slot it goes. On for
+ * two, the plate lights up besides changing the drawing: never colour alone.
+ */
+function PlayersToggle() {
+  const { players, setPlayers } = useGame()
+  const twoPlayers = players === 2
+  const ink = twoPlayers ? '#ffffff' : '#94a3b8'
+
+  return (
+    <XRPressable
+      position={XR_PLAYERS_TOGGLE_OFFSET}
+      onSelect={() => setPlayers(twoPlayers ? 1 : 2)}
+      hitSize={XR_MENU_HIT.endless}
+    >
+      <mesh position={[0, 0, -0.008]}>
+        <boxGeometry args={[0.13, 0.1, 0.014]} />
+        <meshStandardMaterial
+          color={twoPlayers ? '#15803d' : '#1c2634'}
+          emissive="#22c55e"
+          emissiveIntensity={twoPlayers ? 0.45 : 0.05}
+          roughness={0.5}
+        />
+      </mesh>
+      <XRPlayersIcon
+        position={[0, 0, 0.008]}
+        size={0.016}
+        table={ink}
+        near={{ color: ink }}
+        far={twoPlayers ? { color: ink } : null}
+      />
+    </XRPressable>
+  )
+}
+
+/**
+ * Scenery or real room, without leaving the session.
  *
- * En una sesión `immersive-ar` los dos modos son la misma sesión pintada de dos
- * formas, así que el cambio es inmediato (con su fundido, ver `SceneryFade`).
- * En una sesión `immersive-vr` no hay passthrough que enseñar —el visor no lo
- * entrega—, así que la opción se muestra apagada en vez de mentir. Escribe el
- * escenario del arcade: el panel del salón y este selector enseñan lo mismo.
+ * In an `immersive-ar` session the two modes are the same session painted in two
+ * ways, so the change is immediate (with its fade, see `SceneryFade`).
+ * In an `immersive-vr` session there is no passthrough to show —the headset does not
+ * deliver it—, so the option is shown dimmed instead of lying. It writes the
+ * hall's scenery: the hall's panel and this picker show the same thing.
  */
 function SceneryPicker({ passthroughAvailable }: { passthroughAvailable: boolean }) {
   const { scenery, setScenery } = useGame()
@@ -347,8 +392,8 @@ function SceneryPicker({ passthroughAvailable }: { passthroughAvailable: boolean
                 emissive="#60a5fa"
                 emissiveIntensity={selected ? 0.45 : 0.05}
                 roughness={0.5}
-                // Apagada de verdad cuando el visor no da passthrough: el
-                // estado se distingue por opacidad y no solo por color.
+                // Really dimmed when the headset gives no passthrough: the
+                // state is told by opacity and not only by colour.
                 transparent
                 opacity={enabled ? 1 : 0.35}
               />
@@ -365,24 +410,24 @@ function SceneryPicker({ passthroughAvailable }: { passthroughAvailable: boolean
   )
 }
 
-/** Alto de la regla del aro, en metros. */
+/** Height of the hoop's gauge, in metres. */
 const HOOP_GAUGE_HEIGHT = 0.085
-/** Semilado del recorrido de la marca dentro de esa regla. */
+/** Half-length of the mark's travel inside that gauge. */
 const HOOP_GAUGE_TRAVEL = HOOP_GAUGE_HEIGHT / 2 - 0.014
 
 /**
- * Subir y bajar el aro a mano.
+ * Raising and lowering the hoop by hand.
  *
- * El aro se coloca solo a partir de la altura del visor (ver `hoopHeight.ts`),
- * pero eso no siempre acierta: el visor no siempre dice a qué altura está la
- * cabeza, y quien juega sentado en un sofá con el espacio calibrado de pie sale
- * medido de más. Esto es la corrección.
+ * The hoop places itself from the height of the headset (see `hoopHeight.ts`),
+ * but that does not always get it right: the headset does not always say at what height the
+ * head is, and whoever plays seated on a sofa with the space calibrated standing comes out
+ * measured too tall. This is the correction.
  *
- * **La respuesta es la propia máquina.** El aro está justo encima del panel, así
- * que al pulsar se ve subir o bajar: no hace falta ninguna cifra, que además no
- * se podría escribir (el menú inmersivo va sin una sola letra, ver arriba). La
- * regla del medio solo dice cuánto queda de recorrido, y los botones se apagan
- * al llegar al tope, así que el límite se ve antes de chocar con él.
+ * **The answer is the machine itself.** The hoop passes in front of the panel, on its
+ * right, so on pressing it is seen going up or down: no figure is needed, which besides could
+ * not be written (the immersive menu goes without a single letter, see above). The
+ * gauge in the middle only says how much travel is left, and the buttons go dim
+ * on reaching the limit, so the limit is seen before bumping into it.
  */
 function HoopHeightPicker() {
   const { hoopAdjustment, adjustHoop } = useGame()
@@ -411,8 +456,8 @@ function HoopHeightPicker() {
               emissive="#94a3b8"
               emissiveIntensity={disabled ? 0.02 : 0.24}
               roughness={0.5}
-              // Apagado de verdad en el tope: el estado se distingue por
-              // opacidad y por brillo, no solo por color.
+              // Really dimmed at the limit: the state is told by
+              // opacity and by brightness, not only by colour.
               transparent
               opacity={disabled ? 0.35 : 1}
             />
@@ -425,7 +470,7 @@ function HoopHeightPicker() {
         </XRPressable>
       ))}
 
-      {/* Regla: un raíl con el aro en miniatura marcando dónde está. */}
+      {/* Gauge: a rail with the miniature hoop marking where it is. */}
       <group position={XR_HOOP_GAUGE_OFFSET}>
         <mesh position={[0, 0, -0.008]}>
           <boxGeometry args={[0.012, HOOP_GAUGE_HEIGHT, 0.008]} />
@@ -457,14 +502,14 @@ function HoopHeightPicker() {
 }
 
 /**
- * Volver a ver la demostración de cómo se juega.
+ * Watching the demonstration of how to play again.
  *
- * El tutorial se interpone una sola vez, así que quien lo saltó —o quien vuelve
- * meses después— necesita una forma de recuperarlo. Lleva en miniatura lo que
- * va a enseñar —el mando con su gatillo marcado, o la mano si se entró sin
- * mandos—, porque a un metro se reconoce mejor un objeto que un símbolo
- * inventado, y porque prometer un mando a quien juega con las manos es prometer
- * otra demostración.
+ * The tutorial gets in the way only once, so whoever skipped it —or whoever comes back
+ * months later— needs a way to get it back. It carries in miniature what
+ * it is going to teach —the controller with its trigger marked, or the hand if one entered without
+ * controllers—, because at one metre an object is recognised better than an invented
+ * symbol, and because promising a controller to whoever plays with their hands is promising
+ * another demonstration.
  */
 function TutorialButton() {
   const { startGame } = useGame()
@@ -485,8 +530,8 @@ function TutorialButton() {
           roughness={0.5}
         />
       </mesh>
-      {/* Quieto y sin latido: en el menú el latido competiría con el botón de
-          empezar, que es a donde va casi todo el mundo. */}
+      {/* Still and without a pulse: in the menu the pulse would compete with the start
+          button, which is where almost everybody goes. */}
       {bareHanded ? (
         <group position={[0, 0.006, 0.02]} rotation={[0.2, -0.2, 0]} scale={0.42}>
           <HandModel side={1} highlight pulsing={false} />
@@ -500,52 +545,78 @@ function TutorialButton() {
   )
 }
 
-/** Lo que ocupa la placa del menú, en metros. */
-export const MENU_PANEL: [number, number] = [1.06, 0.92 + BANDA_DE_LA_PISTA]
+/** What the menu's plate takes up, in metres (`xrLayout.ts`, which needs it for the sticks). */
+export { MENU_PANEL }
 
 /**
- * De qué es cada fila del menú.
+ * What each row of the menu is about.
  *
- * Va en un lienzo aparte porque el resto del panel es geometría y ahí no cabe una letra, y
- * encima de los botones y no dentro: dentro habría que elegir entre el nombre y el icono,
- * y el icono es lo que se pulsa.
+ * It goes on a separate canvas because the rest of the panel is geometry and a letter does not fit there, and
+ * above the buttons and not inside: inside one would have to choose between the name and the icon,
+ * and the icon is what gets pressed.
  */
 /**
- * Los rótulos del panel: qué es cada fila. Sale del componente para que un test
- * pueda medirlos con un lienzo de mentira —`legibilidad.ts`— sin montar la escena:
- * si un nombre se pisa con otro o se sale, se ve aquí y no con el visor puesto.
+ * The panel's labels: what each row is. It comes out of the component so a test
+ * can measure them with a fake canvas —`legibility.ts`— without mounting the scene:
+ * if one name overlaps another or runs off, it is seen here and not with the headset on.
  */
-export function dibujarLosNombres(
+export function drawNames(
   ctx: CanvasRenderingContext2D,
-  t: (clave: TextKey) => string,
+  t: (key: TextKey) => string,
   gameMode: GameMode = 'practice',
+  players: PlayerCount = 1,
+  moreOptions = false,
 ): void {
-  for (const { text, x, y } of MENU_LABELS) {
-    drawText(ctx, t(text), x, y + ROW_LABEL_RISE, {
+  // The cabinet's name, top left: it is a proper name and is not translated.
+  drawText(ctx, gameName(), MENU_TITLE.x, MENU_TITLE.y, {
+    size: MENU_TEXT.title,
+    color: '#ffffff',
+    align: 'left',
+    maxWidth: MENU_TITLE.width,
+  })
+
+  for (const { text, x, y } of menuLabelsFor(gameMode, moreOptions)) {
+    // The mode's row says «Modo» and which one is chosen: «Modo: Reto».
+    drawText(ctx, menuLabelText(text, gameMode, t), x, y + ROW_LABEL_RISE, {
       size: MENU_TEXT.label,
       color: '#94a3b8',
       maxWidth: 0.3,
     })
   }
 
-  // Qué es el modo elegido. Los modos eran **solo nombres** en el panel —«Práctica»,
-  // «Desafío»— y lo que los distingue solo lo contaba la pantalla de la web, que con las
-  // gafas puestas no se ve.
-  drawParagraph(ctx, t(GAME_MODE_HINTS[gameMode]), 0, PISTA_Y, {
+  // What the chosen mode is. The modes were **only names** on the panel —«Práctica»,
+  // «Desafío»— and what tells them apart was only told by the website's screen, which with the
+  // headset on is not seen.
+  // For two, the explanation is that of the two-player match: its toggle already says the mode.
+  const hint = playsAsDuel(gameMode, players) ? PLAYER_COUNT_HINTS[2] : GAME_MODE_HINTS[gameMode]
+  drawParagraph(ctx, t(hint), 0, HINT_Y, {
     size: MENU_TEXT.hint,
     color: '#94a3b8',
-    maxWidth: PISTA_ANCHO,
+    maxWidth: HINT_WIDTH,
     anchor: 'top',
   })
+
+  // The name of the fold button, on its plate and in two lines: «Más / opciones».
+  const options = optionsButton(gameMode, 'headset', moreOptions)
+  if (options != null) {
+    // At the explanation's letter size and not the labels': right at the bottom, in the corner and seen
+    // foreshortened, the labels' one stayed at 1.39°.
+    drawParagraph(ctx, t(options), XR_MENU_OPTIONS_OFFSET[0], XR_MENU_OPTIONS_OFFSET[1], {
+      size: MENU_TEXT.hint,
+      color: '#ffffff',
+      maxWidth: OPTIONS_WIDTH,
+      lineHeight: 1.15,
+    })
+  }
 }
 
-function RowLabels() {
-  const t = traductor(useLang())
-  const { gameMode } = useGame()
+function RowLabels({ moreOptions }: { moreOptions: boolean }) {
+  const t = translator(useLang())
+  const { gameMode, players } = useGame()
 
-  const escribir = useCallback(
-    (ctx: CanvasRenderingContext2D) => dibujarLosNombres(ctx, t, gameMode),
-    [t, gameMode],
+  const write = useCallback(
+    (ctx: CanvasRenderingContext2D) => drawNames(ctx, t, gameMode, players, moreOptions),
+    [t, gameMode, players, moreOptions],
   )
 
   return (
@@ -553,42 +624,79 @@ function RowLabels() {
       <CanvasPanel
         width={MENU_PANEL[0]}
         height={MENU_PANEL[1]}
-        draw={escribir}
+        draw={write}
         fallbackColor={PANEL_COLOR}
       />
     </group>
   )
 }
 
+/**
+ * The «Más opciones» button, in the corner opposite the exit one: it unfolds what the template
+ * leaves folded when the menu opens (`gameMenu.ts`) and folds it again. Its name is written
+ * with the labels, on top of the plate.
+ */
+function OptionsButton({ moreOptions, onToggle }: { moreOptions: boolean; onToggle: () => void }) {
+  return (
+    <XRPressable position={XR_MENU_OPTIONS_OFFSET} onSelect={onToggle} hitSize={XR_MENU_HIT.options}>
+      <mesh position={[0, 0, -0.008]}>
+        <boxGeometry args={[OPTIONS_WIDTH, 0.1, 0.014]} />
+        <meshStandardMaterial
+          color={moreOptions ? '#1d4ed8' : '#334155'}
+          emissive="#94a3b8"
+          emissiveIntensity={0.22}
+          roughness={0.5}
+        />
+      </mesh>
+    </XRPressable>
+  )
+}
+
 export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
   const mode = useXR((state) => state.mode)
-  const { gameState, gameMode, startGame } = useGame()
-  const exit = useExit()
-  const levels = gameMode === 'levels'
-  // Fuera de sesión inmersiva manda la pantalla de inicio en DOM.
+  const { gameState } = useGame()
+  // Outside the immersive session the DOM start screen rules.
   if ((hasDomUi && mode == null) || gameState !== 'menu') {
     return null
   }
+  // The panel is mounted every time one goes back to the menu: that way it is born folded.
+  return <MenuPanel immersive={mode != null} passthroughAvailable={mode === 'immersive-ar'} />
+}
 
+function MenuPanel({ immersive, passthroughAvailable }: { immersive: boolean; passthroughAvailable: boolean }) {
+  const { gameMode, startGame } = useGame()
+  const exit = useExit()
+  // What is folded behind «Más opciones» belongs to the UI: it is not saved, and the menu opens folded.
+  const [moreOptions, setMoreOptions] = useState(false)
+  const shows = (row: Parameters<typeof isShown>[0]) => isShown(row, gameMode, 'headset', moreOptions)
+  const options = optionsButton(gameMode, 'headset', moreOptions)
+
+  // In the headset, the column at ≤30° to the left (`XR_MENU_POSE`); without a headset —the hall on
+  // desktop— in front.
+  const pose = menuPoseFor(immersive)
   return (
-    <group position={XR_MENU_POSITION}>
-      {/* Más alto que antes: la fila del aro va arriba del todo y necesita
-          panel detrás para no quedar flotando fuera de él. */}
+    <group position={pose.position} rotation={[0, pose.yaw, 0]} scale={pose.scale}>
+      {/* Taller than before: the hoop's row goes right at the top and needs
+          panel behind it so as not to be left floating outside it. */}
       <XRPanel width={MENU_PANEL[0]} height={MENU_PANEL[1]} color={PANEL_COLOR} />
-      <RowLabels />
-      <HoopHeightPicker />
+      <RowLabels moreOptions={moreOptions} />
+      {shows('hoop') && <HoopHeightPicker />}
       <TutorialButton />
-      {/* En Niveles los palos y la velocidad los dice el nivel: la fila de
-          palos se cambia por la escalera y las fichas se quedan de muestra. */}
-      {levels ? <LevelPicker /> : <StickPicker />}
-      <DifficultyPicker locked={levels} />
+      {/* **Only practice asks** for sticks and speed, and behind «Más opciones». In Levels the
+          level says them: the sticks' row is swapped for the ladder and the tokens stay as a
+          sample. The challenge is fixed (`CHALLENGE_SETUP`): the mode is chosen and start is pressed,
+          without rows that change nothing. */}
+      {shows('levels') ? <LevelPicker /> : shows('sticks') ? <StickPicker /> : null}
+      {(shows('levels') || shows('speed')) && <DifficultyPicker locked={shows('levels')} />}
       <ModeToggle />
-      {gameMode === 'practice' && <EndlessToggle />}
-      <SceneryPicker passthroughAvailable={mode === 'immersive-ar'} />
-      {/* Empezar. La primera vez la partida se abre con el tutorial —con las
-          gafas puestas no hay forma de saber que los palos se agarran, ni con
-          qué botón—, pero eso lo decide el juego y no este botón: dentro de la
-          sesión también se puede empezar desde el overlay con el teclado. */}
+      {shows('endless') && <EndlessToggle />}
+      {shows('players') && <PlayersToggle />}
+      {shows('around') && <SceneryPicker passthroughAvailable={passthroughAvailable} />}
+      {options != null && <OptionsButton moreOptions={moreOptions} onToggle={() => setMoreOptions(!moreOptions)} />}
+      {/* Start. The first time the run opens with the tutorial —with the
+          headset on there is no way of knowing that the sticks are grabbed, nor with
+          which button—, but that is decided by the game and not by this button: inside the
+          session one can also start from the overlay with the keyboard. */}
       <XRPressable
         position={XR_MENU_PLAY_OFFSET}
         onSelect={() => startGame()}
@@ -606,11 +714,11 @@ export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
         <XRPlayIcon position={[0, 0, 0.008]} />
       </XRPressable>
 
-      {/* Salir. Desde el menú inmersivo no había forma de volver sin quitarse
-          las gafas: el botón del sistema no siempre está a mano. A dónde se
-          vuelve lo decide quien monta el juego (ver `game/exit.tsx`): en su
-          propia web es cerrar la sesión; dentro del salón de xrcade, devolverle
-          al jugador sin tocarla. */}
+      {/* Exit. From the immersive menu there was no way to go back without taking the
+          headset off: the system button is not always to hand. Where one
+          goes back to is decided by whoever mounts the game (see `game/exit.tsx`): on its
+          own website it is closing the session; inside the xrcade hall, handing the
+          player back to it without touching it. */}
       <XRPressable
         position={XR_MENU_EXIT_OFFSET}
         onSelect={exit}
@@ -626,7 +734,7 @@ export function XRMenu({ hasDomUi = false }: { hasDomUi?: boolean }) {
           />
         </mesh>
         <group position={[0, 0, 0.008]}>
-          <XRSalirIcon />
+          <XRExitIcon />
         </group>
       </XRPressable>
 

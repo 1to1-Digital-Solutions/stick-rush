@@ -1,30 +1,30 @@
 import { type Difficulty } from './gameConfig'
 
 /**
- * Puntuación de una partida.
+ * Scoring of a run.
  *
- * Atrapar un palo vale más o menos según tres cosas, y las tres premian jugar
- * mejor y no solo jugar más:
+ * Catching a stick is worth more or less depending on three things, and all three reward playing
+ * better and not just playing more:
  *
- * - **La dificultad elegida**, porque en Imposible un palo pasa en siete
- *   décimas y en Fácil tienes casi seis segundos.
- * - **La racha**, porque encadenar sin fallar es más difícil que acertar la
- *   mitad de los palos repartidos. Un fallo la corta de golpe.
- * - **Los reflejos**: cogerlo recién soltado vale el doble que rescatarlo a ras
- *   de suelo. Sin esto daba igual lanzarse a por él que esperarlo abajo.
+ * - **The chosen difficulty**, because on Impossible a stick goes by in seven
+ *   tenths and on Easy you have almost six seconds.
+ * - **The streak**, because chaining without missing is harder than getting
+ *   half of the sticks spread out. A miss cuts it at a stroke.
+ * - **The reflexes**: catching it just released is worth double that of rescuing it at floor
+ *   level. Without this it made no difference whether you dived for it or waited for it below.
  *
- * Todo son funciones puras sobre números: el estado de la partida vive en
- * `gameStore` y la escena solo pinta el resultado. Así la fórmula se puede
- * ajustar y probar sin abrir el navegador.
+ * Everything is pure functions over numbers: the state of the run lives in
+ * `gameStore` and the scene only draws the result. That way the formula can be
+ * tuned and tested without opening the browser.
  */
 
-/** Puntos de un palo atrapado antes de aplicar ningún multiplicador. */
+/** Points of a caught stick before applying any multiplier. */
 export const BASE_STICK_POINTS = 100
 
 /**
- * Cuánto multiplica cada dificultad. Crece más que proporcionalmente al tiempo
- * de reacción que quita: si fuera lineal, jugar en Fácil con 13 palos rendiría
- * lo mismo que en Imposible, y la elección de dificultad daría igual.
+ * How much each difficulty multiplies. It grows more than proportionally to the reaction
+ * time it takes away: if it were linear, playing on Easy with 13 sticks would yield
+ * the same as on Impossible, and the choice of difficulty would make no difference.
  */
 export const DIFFICULTY_MULTIPLIERS: Record<Difficulty, number> = {
   easy: 1,
@@ -34,23 +34,23 @@ export const DIFFICULTY_MULTIPLIERS: Record<Difficulty, number> = {
   impossible: 5,
 }
 
-/** Cuánto suma cada palo encadenado a la racha. */
+/** How much each chained stick adds to the streak. */
 export const STREAK_STEP = 0.15
 
 /**
- * Tope del multiplicador de racha. Sin él, una partida de 13 palos en Fácil
- * daría más que uno perfecto en Imposible solo por ser más larga.
+ * Cap of the streak multiplier. Without it, a run of 13 sticks on Easy
+ * would give more than a perfect one on Impossible just for being longer.
  */
 export const MAX_STREAK_MULTIPLIER = 2.5
 
-/** Cuánto añade como mucho coger el palo nada más soltarse. */
+/** How much catching the stick as soon as it is released adds at most. */
 export const MAX_REFLEX_BONUS = 1
 
 /**
- * Multiplicador por racha. El primer palo va a 1 y cada uno encadenado suma,
- * hasta el tope.
+ * Streak multiplier. The first stick goes at 1 and each chained one adds,
+ * up to the cap.
  *
- * @param streak palos consecutivos atrapados **incluido** el actual
+ * @param streak consecutive sticks caught **including** the current one
  */
 export function streakMultiplier(streak: number): number {
   if (!Number.isFinite(streak) || streak <= 1) return 1
@@ -58,11 +58,13 @@ export function streakMultiplier(streak: number): number {
 }
 
 /**
- * Multiplicador por reflejos.
+ * Reflex multiplier.
  *
- * @param fallProgress cuánto ha caído el palo, de 0 (recién soltado) a 1 (a
- *   punto de tocar el suelo). Valores fuera de rango se recortan: un palo
- *   atrapado mientras aún cuelga cuenta como el mejor caso.
+ * @param fallProgress how long the stick had been falling, as a fraction of its fall
+ *   time: from 0 (just released) to 1 (about to touch the floor). It is time
+ *   and not travel because the stick accelerates (see `stickFallProgress`). Values
+ *   out of range are trimmed: a stick caught while it still hangs counts
+ *   as the best case.
  */
 export function reflexMultiplier(fallProgress: number): number {
   if (!Number.isFinite(fallProgress)) return 1
@@ -71,8 +73,8 @@ export function reflexMultiplier(fallProgress: number): number {
 }
 
 /**
- * Puntos que suma atrapar un palo. Siempre un entero: una puntuación con
- * decimales no dice nada al jugador.
+ * Points that catching a stick adds. Always an integer: a score with
+ * decimals says nothing to the player.
  */
 export function stickPoints({
   difficulty,
@@ -92,10 +94,10 @@ export function stickPoints({
 }
 
 /**
- * Puntuación máxima alcanzable en una partida: todos los palos atrapados nada
- * más soltarse y sin romper la racha. Sirve para situar el resultado ("has
- * hecho la mitad de lo posible") sin que el jugador tenga que adivinar la
- * escala.
+ * Maximum score reachable in a run: all the sticks caught as soon as
+ * they are released and without breaking the streak. It serves to place the result ("you have
+ * done half of what is possible") without the player having to guess the
+ * scale.
  */
 export function maxScore(difficulty: Difficulty, stickCount: number): number {
   let total = 0
@@ -106,9 +108,9 @@ export function maxScore(difficulty: Difficulty, stickCount: number): number {
 }
 
 /**
- * Cómo de bien ha ido, de 0 a 1, para elegir el mensaje de cierre. Se compara
- * con el máximo real de esa partida, así que no penaliza haber elegido pocos
- * palos ni una dificultad baja.
+ * How well it has gone, from 0 to 1, to choose the closing message. It is compared
+ * with the real maximum of that run, so it does not penalise having chosen few
+ * sticks nor a low difficulty.
  */
 export function scoreRatio(
   points: number,

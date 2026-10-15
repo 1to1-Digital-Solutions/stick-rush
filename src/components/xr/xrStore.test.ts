@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// El store de verdad abre WebXR, que no existe fuera del visor, y el mando que
-// monta arrastra media escena de R3F. Lo que se prueba aquí es su cableado:
-// dónde busca los perfiles de mando y qué pasa con la sesión al desmontar el
-// juego. Que el mando se pinte es cosa de la sesión en `e2e/xr.spec.ts`.
+// The real store opens WebXR, which does not exist outside the headset, and the controller it
+// mounts drags half an R3F scene along. What is tested here is its wiring:
+// where it looks for the controller profiles and what happens to the session when the
+// game is unmounted. That the controller is painted is up to the session in `e2e/xr.spec.ts`.
 vi.mock('./XRController', () => ({ StickRushController: () => null }))
 
 const { createXRStore, state } = vi.hoisted(() => {
@@ -19,13 +19,13 @@ const { createXRStore, state } = vi.hoisted(() => {
 vi.mock('@react-three/xr', () => ({ createXRStore }))
 
 /**
- * Carga el módulo de cero, opcionalmente con otra base de ficheros estáticos.
+ * Loads the module from scratch, optionally with another base for static files.
  *
- * Tanto el store como la base son estado de módulo —una sesión y una base por
- * documento—, así que sin esto el primero de estos tests le dejaría los suyos a
- * los de después. La base se pone entre el reinicio y el import a propósito:
- * así llega antes de que nadie pida el store, que es el orden que sigue el
- * juego al montarse.
+ * Both the store and the base are module state —one session and one base per
+ * document—, so without this the first of these tests would leave its own to
+ * the later ones. The base is set between the reset and the import on purpose:
+ * that way it arrives before anybody asks for the store, which is the order the
+ * game follows when it mounts.
  */
 async function loadXrStore(assetsBase?: string) {
   vi.resetModules()
@@ -41,15 +41,15 @@ beforeEach(() => {
   createXRStore.mockClear()
 })
 
-describe('store de WebXR', () => {
-  it('lo crea una sola vez, compartido entre el DOM y el Canvas', async () => {
+describe('WebXR store', () => {
+  it('creates it only once, shared between the DOM and the Canvas', async () => {
     const { getXrStore } = await loadXrStore()
 
     expect(getXrStore()).toBe(getXrStore())
     expect(createXRStore).toHaveBeenCalledTimes(1)
   })
 
-  it('sirve los perfiles de mando desde la raíz mientras nadie diga otra cosa', async () => {
+  it('serves the controller profiles from the root while nobody says otherwise', async () => {
     const { getXrStore } = await loadXrStore()
 
     expect(getXrStore()).toMatchObject({
@@ -57,7 +57,7 @@ describe('store de WebXR', () => {
     })
   })
 
-  it('los busca donde los haya puesto quien monta el juego', async () => {
+  it('looks for them wherever whoever mounts the game has put them', async () => {
     const { getXrStore } = await loadXrStore('/juegos/stick-rush/')
 
     expect(getXrStore()).toMatchObject({
@@ -68,8 +68,8 @@ describe('store de WebXR', () => {
   })
 })
 
-describe('cerrar la sesión inmersiva', () => {
-  it('cierra la que esté viva: el visor vuelve a quien montó el juego', async () => {
+describe('closing the immersive session', () => {
+  it('closes the live one: the headset goes back to whoever mounted the game', async () => {
     const end = vi.fn(() => Promise.resolve())
     const { getXrStore, endXrSession } = await loadXrStore()
     getXrStore()
@@ -80,29 +80,29 @@ describe('cerrar la sesión inmersiva', () => {
     expect(end).toHaveBeenCalledTimes(1)
   })
 
-  it('no hace nada si nadie llegó a pedir el store', async () => {
+  it('does nothing if nobody got to ask for the store', async () => {
     const { endXrSession } = await loadXrStore()
 
     expect(() => endXrSession()).not.toThrow()
     expect(createXRStore).not.toHaveBeenCalled()
   })
 
-  it('no hace nada si no se llegó a entrar en el visor', async () => {
+  it('does nothing if the headset was never entered', async () => {
     const { getXrStore, endXrSession } = await loadXrStore()
     getXrStore()
 
     expect(() => endXrSession()).not.toThrow()
   })
 
-  it('se traga el fallo de una sesión que ya se estaba cerrando', async () => {
+  it('swallows the failure of a session that was already closing', async () => {
     const end = vi.fn(() => Promise.reject(new Error('InvalidStateError')))
     const { getXrStore, endXrSession } = await loadXrStore()
     getXrStore()
     state.session = { end }
 
     expect(() => endXrSession()).not.toThrow()
-    // Una promesa rechazada sin `catch` tumbaría el proceso, no este `expect`:
-    // se le da un turno al microtask queue para que salte si se escapara.
+    // A rejected promise without a `catch` would bring down the process, not this `expect`:
+    // the microtask queue is given a turn so it blows up if it escaped.
     await Promise.resolve()
   })
 })
